@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import base64
 import json
+import struct
 import subprocess
 from collections import deque
 from pathlib import Path
@@ -14,6 +14,7 @@ from gymnasium import spaces
 
 class KazukiGymEnv(gym.Env[np.ndarray, int]):
     metadata = {"render_modes": []}
+    _HEADER_STRUCT = struct.Struct(">II")
 
     def __init__(
         self,
@@ -46,36 +47,52 @@ class KazukiGymEnv(gym.Env[np.ndarray, int]):
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
+            text=False,
+            bufsize=0,
         )
 
         # Establish the protocol early so failures are obvious.
         self._request({"cmd": "ping"})
 
-    def _request(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _read_exact(self, size: int) -> bytes:
+        if self._proc.stdout is None:
+            raise RuntimeError("Kazuki worker stdout is unavailable")
+
+        chunks: list[bytes] = []
+        remaining = size
+        while remaining > 0:
+            chunk = self._proc.stdout.read(remaining)
+            if not chunk:
+                stderr = b""
+                if self._proc.stderr is not None:
+                    stderr = self._proc.stderr.read().strip()
+                raise RuntimeError(
+                    f"Kazuki worker exited unexpectedly while reading {size} bytes. stderr={stderr.decode(errors='replace')}"
+                )
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
+
+    def _request(self, payload: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
         if self._closed:
             raise RuntimeError("KazukiGymEnv is closed")
-        if self._proc.stdin is None or self._proc.stdout is None:
-            raise RuntimeError("Kazuki worker stdio is unavailable")
+        if self._proc.stdin is None:
+            raise RuntimeError("Kazuki worker stdin is unavailable")
 
-        self._proc.stdin.write(json.dumps(payload) + "\n")
+        meta = json.dumps(payload).encode("utf-8")
+        header = self._HEADER_STRUCT.pack(len(meta), 0)
+        self._proc.stdin.write(header)
+        self._proc.stdin.write(meta)
         self._proc.stdin.flush()
 
-        line = self._proc.stdout.readline()
-        if not line:
-            stderr = ""
-            if self._proc.stderr is not None:
-                stderr = self._proc.stderr.read().strip()
-            raise RuntimeError(f"Kazuki worker exited unexpectedly. stderr={stderr}")
-
-        message = json.loads(line)
+        meta_length, binary_length = self._HEADER_STRUCT.unpack(self._read_exact(self._HEADER_STRUCT.size))
+        message = json.loads(self._read_exact(meta_length).decode("utf-8"))
+        binary = self._read_exact(binary_length) if binary_length else b""
         if not message.get("ok"):
             raise RuntimeError(message.get("error", "Unknown Kazuki worker error"))
-        return message
+        return message, binary
 
-    def _decode_obs(self, obs_b64: str) -> np.ndarray:
-        raw = base64.b64decode(obs_b64)
+    def _decode_obs(self, raw: bytes) -> np.ndarray:
         obs = np.frombuffer(raw, dtype=np.uint8)
         return obs.reshape(self.obs_size, self.obs_size)
 
@@ -88,22 +105,22 @@ class KazukiGymEnv(gym.Env[np.ndarray, int]):
         if options and "max_steps" in options:
             max_steps = int(options["max_steps"])
 
-        response = self._request(
+        response, observation = self._request(
             {
                 "cmd": "reset",
                 "seed": seed,
                 "max_steps": max_steps,
             }
         )
-        first_frame = self._decode_obs(response["obs_b64"])
+        first_frame = self._decode_obs(observation)
         self._frames.clear()
         for _ in range(self.frame_stack):
             self._frames.append(first_frame.copy())
         return self._stacked_obs(), response["info"]
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        response = self._request({"cmd": "step", "action": int(action)})
-        frame = self._decode_obs(response["obs_b64"])
+        response, observation = self._request({"cmd": "step", "action": int(action)})
+        frame = self._decode_obs(observation)
         self._frames.append(frame)
         return (
             self._stacked_obs(),

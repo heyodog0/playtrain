@@ -100,10 +100,10 @@ Latest snapshot on an Apple M4 Pro:
 
 | Baseline | FPS | Delta vs Python Gym | Speedup |
 |---|---:|---:|---:|
-| Node headless RL step | 1799 | +371 | 1.26x |
-| Python `KazukiGymEnv` RL step | 1428 | 0 | 1.00x |
-| Playwright `getImageData()` RL step | 78 | -1350 | 18.2x slower |
-| Playwright screenshot RL step | 24 | -1404 | 59.8x slower |
+| Node headless RL step | 1799 | +142 | 1.09x |
+| Python `KazukiGymEnv` RL step | 1657 | 0 | 1.00x |
+| Playwright `getImageData()` RL step | 78 | -1579 | 21.1x slower |
+| Playwright screenshot RL step | 24 | -1633 | 69.4x slower |
 
 This is the practical baseline split:
 
@@ -124,8 +124,8 @@ And for the actual Python PPO-facing wrapper:
 
 | Component | Python `KazukiGymEnv` |
 |---|---:|
-| Total RL step | `0.700 ms` |
-| Effective FPS | `1428` |
+| Total RL step | `0.603 ms` |
+| Effective FPS | `1657` |
 
 The main bottleneck is not game rendering itself. The large gap comes from observation extraction and transfer out of the browser process.
 
