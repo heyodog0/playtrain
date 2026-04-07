@@ -111,6 +111,24 @@ This is the practical baseline split:
 - the Python `Gymnasium` wrapper adds overhead, but is still much faster than browser automation
 - Playwright only becomes remotely competitive if you ignore realistic observation transfer costs
 
+Measured per-step breakdown:
+
+| Component | Browserless Node | Playwright `getImageData()` | Playwright screenshot |
+|---|---:|---:|---:|
+| Render-only step | `0.349 ms` | `0.478 ms` | `0.478 ms` |
+| Observation + state overhead | `0.207 ms` | `12.280 ms` | `41.394 ms` |
+| Total RL step | `0.556 ms` | `12.758 ms` | `41.872 ms` |
+| Effective FPS | `1799` | `78` | `24` |
+
+And for the actual Python PPO-facing wrapper:
+
+| Component | Python `KazukiGymEnv` |
+|---|---:|
+| Total RL step | `0.700 ms` |
+| Effective FPS | `1428` |
+
+The main bottleneck is not game rendering itself. The large gap comes from observation extraction and transfer out of the browser process.
+
 Current artifacts are written under `outputs/`, including:
 
 - browserless vs Playwright benchmark summaries
