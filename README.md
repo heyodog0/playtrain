@@ -142,4 +142,4 @@ src/fast_llm_games/       Python Gymnasium + PPO tooling
 
 - Python in this repo is managed with `uv`.
 - Generated artifacts under `outputs/` are disposable.
-- Design notes and broader motivation live in `llm-games-rl-pipeline.md`.
+- Design notes and broader motivion live in `llm-games-rl-pipeline.md`.
