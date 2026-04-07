@@ -1,0 +1,17 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+.venv/
+node_modules/
+
+outputs/models/
+outputs/evals/
+outputs/sb3/
+outputs/*latest.json
+outputs/*latest.md
+outputs/kazuki-benchmark-*.json
+outputs/kazuki-benchmark-*.md
+outputs/kazuki_gym_benchmark_*.json
+outputs/verify-*.png
+outputs/verify-*.json
