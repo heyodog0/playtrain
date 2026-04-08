@@ -143,6 +143,16 @@ npm run bench:kazuki
 uv run python -m fast_llm_games.bench_kazuki_gym --frames 1000
 ```
 
+## Validation
+
+The environment is validated against Procgen-style criteria: API compliance, determinism, observation sanity, and reward/terminal correctness. See [VALIDATION.md](VALIDATION.md) for details.
+
+```bash
+uv run python -m fast_llm_games.validate_kazuki
+```
+
+Visual proof artifacts (observation grids, determinism proof, frame stack) are saved to `outputs/validation/`.
+
 ## Repo Map
 
 ```text

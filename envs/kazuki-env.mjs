@@ -102,6 +102,7 @@ export class KazukiEnv {
       lives: state.lives,
       gameState: state.gameState,
       currentRoom: state.currentRoom,
+      player: { x: state.player.x, y: state.player.y },
       episodeReturn: this.episodeReturn,
       episodeLength: this.steps,
       seed: this.seed,
