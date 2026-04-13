@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from google import genai
 ROOT = Path(__file__).resolve().parent.parent
 GAMES_DIR = ROOT / "games"
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
+LOG_DIR = GAMES_DIR / "logs"
 
 MODELS = {
     "flash": "gemini-3-flash-preview",
@@ -52,7 +54,38 @@ def needs_matter(name: str) -> bool:
     return False
 
 
-def refine_game(name: str, feedback: str, model_key: str) -> str:
+def save_log(name: str, model: str, prompt: str, raw_output: str, code: str, duration_s: float, feedback: str):
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    log = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "action": "refine",
+        "game": name,
+        "model": model,
+        "feedback": feedback,
+        "duration_s": round(duration_s, 2),
+        "prompt_chars": len(prompt),
+        "output_chars": len(raw_output),
+        "code_chars": len(code),
+        "prompt": prompt,
+        "raw_output": raw_output,
+    }
+    log_path = LOG_DIR / f"{ts}_{name}_refine.json"
+    log_path.write_text(json.dumps(log, indent=2))
+    return log_path
+
+
+def backup_game(name: str):
+    src = GAMES_DIR / f"{name}.js"
+    if not src.exists():
+        return
+    backup_dir = GAMES_DIR / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    (backup_dir / f"{name}_{ts}.js").write_text(src.read_text())
+
+
+def refine_game(name: str, feedback: str, model_key: str) -> dict:
     client = get_client()
     if not client:
         raise RuntimeError("GEMINI_API_KEY not set")
@@ -75,8 +108,18 @@ Player feedback:
 Update the game to address the feedback while maintaining full compliance with the template.
 Output ONLY the complete updated JavaScript code. No markdown fences, no explanation."""
 
+    t0 = time.time()
     response = client.models.generate_content(model=model, contents=prompt)
-    return strip_fences(response.text)
+    duration = time.time() - t0
+
+    raw_output = response.text
+    new_code = strip_fences(raw_output)
+
+    backup_game(name)
+    log_path = save_log(name, model, prompt, raw_output, new_code, duration, feedback)
+    print(f"  Refined {name} ({duration:.1f}s, {len(new_code)} bytes, log: {log_path.name})")
+
+    return {"code": new_code, "duration_s": round(duration, 2)}
 
 
 # -- HTML templates (inline) --------------------------------------------------
@@ -163,7 +206,7 @@ async function refine() {
     });
     const data = await res.json();
     if (data.success) {
-      status.textContent = 'Refined! Reloading...';
+      status.textContent = 'Refined in ' + data.duration_s + 's. Reloading...';
       document.getElementById('feedback').value = '';
       const iframe = document.querySelector('#main iframe');
       iframe.src = iframe.src;
@@ -272,9 +315,11 @@ class Handler(BaseHTTPRequestHandler):
             model_key = body.get("model", "flash")
 
             try:
-                new_code = refine_game(name, feedback, model_key)
-                (GAMES_DIR / f"{name}.js").write_text(new_code)
-                self._send(200, "application/json", json.dumps({"success": True}).encode())
+                result = refine_game(name, feedback, model_key)
+                (GAMES_DIR / f"{name}.js").write_text(result["code"])
+                self._send(200, "application/json", json.dumps({
+                    "success": True, "duration_s": result["duration_s"]
+                }).encode())
             except Exception as e:
                 self._send(500, "application/json", json.dumps({"success": False, "error": str(e)}).encode())
         else:

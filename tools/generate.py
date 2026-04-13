@@ -165,6 +165,42 @@ Output ONLY the JavaScript code. No markdown fences, no explanation."""
     return prompt
 
 
+LOG_DIR = ROOT / "games" / "logs"
+
+
+def save_log(name: str, model: str, prompt: str, raw_output: str, code: str, duration_s: float, action: str):
+    """Save a generation/refinement log entry."""
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    log = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "action": action,
+        "game": name,
+        "model": model,
+        "duration_s": round(duration_s, 2),
+        "prompt_chars": len(prompt),
+        "output_chars": len(raw_output),
+        "code_chars": len(code),
+        "prompt": prompt,
+        "raw_output": raw_output,
+    }
+    log_path = LOG_DIR / f"{ts}_{name}_{action}.json"
+    log_path.write_text(json.dumps(log, indent=2))
+    return log_path
+
+
+def backup_game(name: str, output_dir: Path):
+    """Backup existing game file before overwriting."""
+    src = output_dir / f"{name}.js"
+    if not src.exists():
+        return
+    backup_dir = output_dir / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    dst = backup_dir / f"{name}_{ts}.js"
+    dst.write_text(src.read_text())
+
+
 def generate_one(client: genai.Client, game: dict, template: str, model: str, output_dir: Path, use_ref: bool):
     name = game["name"]
     out_path = output_dir / f"{name}.js"
@@ -175,14 +211,21 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str, ou
         print(f"fetching ref...", end=" ", flush=True)
         ref_text = fetch_ref(game["ref"])
 
+    prompt = build_prompt(game, template, ref_text)
+
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=build_prompt(game, template, ref_text),
-        )
-        code = strip_fences(response.text)
+        t0 = time.time()
+        response = client.models.generate_content(model=model, contents=prompt)
+        duration = time.time() - t0
+
+        raw_output = response.text
+        code = strip_fences(raw_output)
+
+        backup_game(name, output_dir)
         out_path.write_text(code)
-        print(f"OK ({len(code)} bytes) -> {out_path}")
+
+        log_path = save_log(name, model, prompt, raw_output, code, duration, "generate")
+        print(f"OK ({len(code)} bytes, {duration:.1f}s) -> {out_path}")
     except Exception as e:
         print(f"FAILED: {e}")
 
