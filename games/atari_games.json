@@ -1,0 +1,62 @@
+[
+  {
+    "name": "breakout",
+    "ref": "https://ale.farama.org/environments/breakout/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "paddle + ball + bricks"
+  },
+  {
+    "name": "space_invaders",
+    "ref": "https://ale.farama.org/environments/space_invaders/",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fixed shooter, descending enemies"
+  },
+  {
+    "name": "freeway",
+    "ref": "https://ale.farama.org/environments/freeway/",
+    "actions_used": ["UP", "DOWN"],
+    "mechanic": "lane crossing, avoid traffic"
+  },
+  {
+    "name": "frostbite",
+    "ref": "https://ale.farama.org/environments/frostbite/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "platformer, hop across ice floes"
+  },
+  {
+    "name": "asteroids",
+    "ref": "https://ale.farama.org/environments/asteroids/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "360 rotation + thrust + shoot"
+  },
+  {
+    "name": "seaquest",
+    "ref": "https://ale.farama.org/environments/seaquest/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "submarine shooter + oxygen management"
+  },
+  {
+    "name": "riverraid",
+    "ref": "https://ale.farama.org/environments/riverraid/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "vertical scroller + fuel management"
+  },
+  {
+    "name": "enduro",
+    "ref": "https://ale.farama.org/environments/enduro/",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D"],
+    "mechanic": "racing, overtake cars"
+  },
+  {
+    "name": "pong",
+    "ref": "https://ale.farama.org/environments/pong/",
+    "actions_used": ["UP", "DOWN", "D"],
+    "mechanic": "paddle vs CPU opponent"
+  },
+  {
+    "name": "boxing",
+    "ref": "https://ale.farama.org/environments/boxing/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fighting, land punches"
+  }
+]

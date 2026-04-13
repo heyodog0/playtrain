@@ -1,0 +1,65 @@
+[
+  {
+    "name": "block_blast",
+    "ref": "https://apps.apple.com/us/app/block-blast/id1617391485",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "block puzzle, clear rows/columns"
+  },
+  {
+    "name": "angry_birds",
+    "ref": "https://en.wikipedia.org/wiki/Angry_Birds_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "physics slingshot, destroy structures",
+    "physics": "matter.js"
+  },
+  {
+    "name": "suika",
+    "ref": "https://store.steampowered.com/app/1740640/Suika_Game/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "drop + merge fruits, physics stacking",
+    "physics": "matter.js"
+  },
+  {
+    "name": "vvvvvv",
+    "ref": "https://store.steampowered.com/app/70300/VVVVVV/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "gravity-flip platformer"
+  },
+  {
+    "name": "doodle_jump",
+    "ref": "https://apps.apple.com/us/app/doodle-jump/id307727765",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "vertical auto-bounce platformer"
+  },
+  {
+    "name": "downwell",
+    "ref": "https://store.steampowered.com/app/360740/Downwell/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "vertical descent shooter"
+  },
+  {
+    "name": "jetpack_joyride",
+    "ref": "https://apps.apple.com/us/app/jetpack-joyride/id457446957",
+    "actions_used": ["D"],
+    "mechanic": "horizontal scroller, hold to rise"
+  },
+  {
+    "name": "mini_golf",
+    "ref": "https://apps.apple.com/us/app/mini-golf-games/id1660962856",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "aim angle + power + shoot",
+    "physics": "matter.js"
+  },
+  {
+    "name": "crossy_road",
+    "ref": "https://apps.apple.com/us/app/crossy-road/id924373886",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "grid-based lane crossing"
+  },
+  {
+    "name": "flappy_bird",
+    "ref": "https://en.wikipedia.org/wiki/Flappy_Bird",
+    "actions_used": ["D"],
+    "mechanic": "tap to flap through pipe gaps"
+  }
+]

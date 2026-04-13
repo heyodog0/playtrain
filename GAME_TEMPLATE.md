@@ -55,11 +55,12 @@ const ACTIONS = [
 
 ## Observation Space
 
-- Canvas: any size in-game, downscaled to **84x84 grayscale** by the runtime
-- Stacked: **4 consecutive frames** → final observation shape: `(84, 84, 4)` uint8
-- The game does NOT handle downscaling or grayscale conversion
+- Canvas: any size in-game, downscaled to **64x64 RGB** by the runtime
+- **No frame stacking** — single frame, 3 color channels → final observation shape: `(64, 64, 3)` uint8
+- The game does NOT handle downscaling or color conversion
+- This matches ProcGen's observation spec exactly
 
-Recommended canvas size: 400x400 to 640x480. Anything that looks readable at 84x84.
+Recommended canvas size: 256x256 to 512x512. Anything that looks readable at 64x64.
 
 ## Required Game Interface
 
@@ -222,6 +223,62 @@ games/
 
 Each file is a self-contained game. No imports, no modules — all game code in a single file. The runtime provides p5.js globals and (optionally) Matter.js globals before execution.
 
+## Visual Design Rules
+
+The agent sees the game as a **64x64 RGB image**. Every visual decision must serve that constraint. Think ProcGen / Atari 2600, not modern mobile game.
+
+### Color and Contrast
+- **Black or dark background** — maximizes contrast with game elements
+- **Use color to encode meaning** — red = danger/enemies, green = collectibles/safe, blue = player, yellow = coins/points. The agent has full RGB, so color IS information
+- **Distinct color per element type**: player, enemies, collectibles, and terrain should each be a different hue. Don't use similar colors for different entity types
+- **No gradients, shadows, glow effects, or alpha transparency** — these become muddy blobs at 64x64
+- **Solid fills only** — `fill()` + `rect()`/`ellipse()`, no complex rendering
+
+### Size and Shape
+- **Minimum entity size: 6x6 pixels** on the source canvas (scales to ~1px at 64x64 — edge of visibility). Prefer 10x10+ for important entities
+- **Player should be at least 12x12 pixels** on the source canvas
+- **Use distinct shapes per entity type**: player = rectangle, enemies = circles, collectibles = small squares, terrain = large rectangles. Shape + color differentiation helps the CNN
+- **No fine detail** — no 1px lines, no small dots, no intricate patterns
+
+### HUD and Text
+- **No text-based HUD** — text is unreadable at 64x64. The agent cannot read "Score: 150"
+- **No title screens, menus, or instructions** — `resetGame()` goes straight to gameplay
+- **No pause screens or cutscenes** — every frame is gameplay
+- If you must show score visually, use a **bar or block indicator** at the screen edge, not text
+
+### What NOT to Render
+- Decorative backgrounds (starfields, clouds, grass patterns)
+- Particle effects (explosions, sparkles, trails)
+- Screen shake or visual transitions
+- Drop shadows or outlines on entities
+- Antialiased or rounded visual flourishes
+
+### Reference Style
+Think: **ProcGen**. Flat colored rectangles, circles, and lines on a dark background. Bright, distinct colors per entity type. Every pixel on screen either means something to gameplay or is background.
+
+## Mechanical Simplicity Rules
+
+Games must be simple enough that an RL agent can learn a basic policy within 1-5 million steps. Complexity kills learning.
+
+### Core Mechanic
+- **One core mechanic per game** — "jump over obstacles", "shoot enemies", "collect items while avoiding hazards". Not all three combined
+- **The core mechanic must be exercisable within 10 steps** — the agent shouldn't need 500 steps of preamble before gameplay starts
+- **No multi-phase gameplay** — no "first collect keys, then unlock doors, then fight boss". One continuous loop
+- **No inventory, crafting, or resource management** beyond simple counters (lives, ammo)
+
+### Difficulty and Pacing
+- **Immediate reward signal** — the agent should encounter its first positive reward opportunity within 20-50 steps of random play
+- **Frequent scoring opportunities** — at least one chance to score every 50-100 steps
+- **Gradual difficulty** — early seeds/levels should be easy enough that random agents occasionally score; later seeds should be challenging
+- **Death should be possible but not instant** — give the agent a few lives so it can learn from mistakes within an episode
+
+### What NOT to Include
+- Shops, upgrades, or progression systems
+- Multiple weapon types or character classes
+- Story, dialogue, or narrative elements
+- Tutorial sequences
+- Complex state machines (charge attacks, combo systems, stance switching)
+
 ## Constraints for LLM Generation
 
 When prompting an LLM to generate games:
@@ -235,7 +292,8 @@ When prompting an LLM to generate games:
 7. **Keyboard input only** — no mouse, no touch, no gamepad
 8. **Score must be meaningful** — a random-action agent should score near zero; a skilled agent should score high
 9. **Episodes must terminate** — games must reach WIN or GAMEOVER within reasonable play, not run forever
-10. **Readable at 84x84** — use high-contrast colors, large shapes, avoid fine detail
+10. **ProcGen-style visuals** — dark background, distinct colors per entity type, solid shapes, no text HUD, no decorations (see Visual Design Rules above)
+11. **One core mechanic** — simple, learnable, immediate reward (see Mechanical Simplicity Rules above)
 
 ## Validation Checklist
 
