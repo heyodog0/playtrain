@@ -1,142 +1,80 @@
-# browserless-game-rl
+# browserless-game-RL
 
-Run browser-authored games as RL environments without a browser process.
+Generate p5.js games via LLM and train RL agents on them at native speed — no browser.
 
-This repo currently focuses on one p5.js game, `kazuki_game`, and provides:
+- **Game generation**: Gemini generates p5.js games from a strict template with fixed Discrete(8) action space and 64x64 RGB observations (matching ProcGen)
+- **Headless runtime**: Games run in Node.js via a p5.js shim on `node-canvas` — no browser process, no DOM
+- **RL training**: Python Gymnasium wrapper + SB3 PPO, validated against ProcGen-style criteria
+- **Game tester**: Browser UI for playtesting + Gemini-powered refinement via feedback
 
-- a headless Node runtime for stepping the game and producing `84x84` grayscale observations
-- a Python `Gymnasium` wrapper over that runtime
-- a minimal SB3 PPO baseline
-- browser-vs-browserless benchmarks against Playwright/Chromium
+## What Exists
 
-## What Exists Today
-
-- `poc/p5/`: working headless Canvas 2D runtime for the Kazuki game
-- `envs/`: reusable Node env and JSON-line worker
-- `src/fast_llm_games/`: Python wrapper, PPO training, evaluation, and env benchmark scripts
+- `tools/`: game generator CLI + browser-based tester with Gemini refinement
+- `games/`: game catalogs (10 Atari, 10 mobile) + generated game files
+- `GAME_TEMPLATE.md`: strict spec for LLM-generated games (action space, observations, visual rules, mechanical constraints)
+- `poc/p5/`: headless Canvas 2D runtime
+- `envs/`: Node-side environment + IPC worker
+- `src/fast_llm_games/`: Python Gymnasium wrapper, PPO training, validation
 - `benchmarks/`: headless vs Playwright comparison
-- `configs/`: short PPO config preset
-
-The WebGPU / Three.js path is still a POC, not a full RL runtime.
 
 ## Setup
-
-### Requirements
-
-- Node.js `24+`
-- Python `3.11+`
-- `uv`
-- For browser benchmarks: a local Chrome or Chromium install
-- For the WebGPU POC only: a working GPU backend
-  - macOS: Metal
-  - Linux: Vulkan
-
-### Install
 
 ```bash
 npm install
 uv sync
 ```
 
-## Quickstart
+Requires Node.js 24+, Python 3.11+, and `uv`.
 
-Headless p5 POC:
+## Game Generation
 
-```bash
-npm run poc:p5
-```
-
-Python wrapper smoke test:
+Generate games from catalogs using Gemini:
 
 ```bash
-uv run python -c "from fast_llm_games import KazukiGymEnv; env = KazukiGymEnv(); obs, info = env.reset(seed=123); print(obs.shape, info['gameState']); env.close()"
+# Set your API key
+export GEMINI_API_KEY=your-key
+
+# Generate one game
+uv run python tools/generate.py --catalog games/atari_games.json --name breakout
+
+# Generate all Atari games with reference context
+uv run python tools/generate.py --catalog games/atari_games.json --ref
+
+# Generate all games (both catalogs) with Gemini Pro
+uv run python tools/generate.py --all --model pro
 ```
 
-Strict browserless vs Playwright benchmark:
+## Game Tester
+
+Playtest games in the browser and refine them via Gemini feedback:
 
 ```bash
-npm run bench:kazuki
+uv run python tools/tester.py
+# open http://localhost:3000
 ```
 
-Python-side env throughput benchmark:
+Select a game from the sidebar, play it, type feedback, and click Refine. The game file is updated in-place and reloads automatically.
 
-```bash
-uv run python -m fast_llm_games.bench_kazuki_gym --frames 1000
-```
-
-## PPO
-
-Run the bundled short PPO config:
+## RL Training
 
 ```bash
 uv run python -m fast_llm_games.train_sb3_ppo --config configs/kazuki_short_ppo.json
-```
-
-Run a larger manual PPO job:
-
-```bash
-uv run python -m fast_llm_games.train_sb3_ppo --total-timesteps 50000 --save-path outputs/models/kazuki_ppo
-```
-
-Evaluate a saved model:
-
-```bash
 uv run python -m fast_llm_games.eval_sb3_ppo --model-path outputs/models/kazuki_ppo.zip
 ```
 
-The PPO environment uses:
-
-- discrete action space with 8 actions
-- `84x84x4` stacked grayscale observations
-- reward = score delta
-- `terminated` on `WIN`, `EXIT`, or `GAMEOVER`
-- `truncated` on max episode length
-
 ## Benchmarks
 
-The important comparison in this repo is not just render speed, but RL-step speed with matched `84x84` grayscale observations.
+Apple M4 Pro, 84x84 grayscale observations:
 
-Latest snapshot on an Apple M4 Pro:
+| Approach | FPS | Speedup |
+|---|---:|---:|
+| Node headless render only | 2,570 | — |
+| Node headless RL step | 1,623 | 20x vs Playwright |
+| Playwright base64 | 1,154 | 14x vs getImageData |
+| Playwright getImageData | 82 | 1x (baseline) |
+| Playwright screenshot | 23 | 0.3x |
 
-| Baseline | FPS | Delta vs Python Gym | Speedup |
-|---|---:|---:|---:|
-| Node headless RL step | 1799 | +142 | 1.09x |
-| Python `KazukiGymEnv` RL step | 1657 | 0 | 1.00x |
-| Playwright `getImageData()` RL step | 78 | -1579 | 21.1x slower |
-| Playwright screenshot RL step | 24 | -1633 | 69.4x slower |
-
-This is the practical baseline split:
-
-- raw Node headless runtime is fastest
-- the Python `Gymnasium` wrapper adds overhead, but is still much faster than browser automation
-- Playwright only becomes remotely competitive if you ignore realistic observation transfer costs
-
-Measured per-step breakdown:
-
-| Component | Browserless Node | Playwright `getImageData()` | Playwright screenshot |
-|---|---:|---:|---:|
-| Render-only step | `0.349 ms` | `0.478 ms` | `0.478 ms` |
-| Observation + state overhead | `0.207 ms` | `12.280 ms` | `41.394 ms` |
-| Total RL step | `0.556 ms` | `12.758 ms` | `41.872 ms` |
-| Effective FPS | `1799` | `78` | `24` |
-
-And for the actual Python PPO-facing wrapper:
-
-| Component | Python `KazukiGymEnv` |
-|---|---:|
-| Total RL step | `0.603 ms` |
-| Effective FPS | `1657` |
-
-The main bottleneck is not game rendering itself. The large gap comes from observation extraction and transfer out of the browser process.
-
-Current artifacts are written under `outputs/`, including:
-
-- browserless vs Playwright benchmark summaries
-- Python Gym wrapper benchmark summaries
-- PPO monitor logs and evaluation summaries
-- saved models
-
-Two useful commands:
+The bottleneck is never the game — rendering costs ~0.4 ms either way. The gap is entirely in how pixels get from the game to the RL agent. See the [marimo notebook](notebooks/headless_node_vs_playwright.py) for the full breakdown.
 
 ```bash
 npm run bench:kazuki
@@ -153,21 +91,38 @@ uv run python -m fast_llm_games.validate_kazuki
 
 Visual proof artifacts (observation grids, determinism proof, frame stack) are saved to `outputs/validation/`.
 
+## Notebooks
+
+Interactive marimo notebook for benchmarking analysis:
+
+```bash
+uv run marimo edit notebooks/headless_node_vs_playwright.py
+```
+
+A pre-rendered HTML export is also available at `notebooks/headless_node_vs_playwright.html`.
+
 ## Repo Map
 
 ```text
-benchmarks/               browserless vs Playwright benchmark scripts
+tools/                    game generator + browser tester
+games/                    game catalogs (.json) + generated games (.js)
+GAME_TEMPLATE.md          strict spec for LLM-generated games
+envs/                     Node-side environment runtime + IPC worker
+poc/p5/                   headless p5.js shim + helpers
+src/fast_llm_games/       Python Gymnasium wrapper, PPO training, validation
+benchmarks/               headless vs Playwright comparison
+notebooks/                marimo notebooks + Node demos
 configs/                  PPO presets
-envs/                     reusable Node-side environment runtime
-games/                    source browser game files
-outputs/                  generated benchmarks, evals, and models
-poc/p5/                   headless p5 runtime and helpers
-poc/webgpu/               Three.js + Dawn POC
-src/fast_llm_games/       Python Gymnasium + PPO tooling
+outputs/                  generated benchmarks, evals, models, validation
 ```
 
-## Notes
+## Design
 
-- Python in this repo is managed with `uv`.
-- Generated artifacts under `outputs/` are disposable.
-- Design notes and broader motivion live in `llm-games-rl-pipeline.md`.
+See `GAME_TEMPLATE.md` for the full game spec. Key points:
+
+- **Action space**: Discrete(8) — abstract directional + button, identical across all games (like ProcGen's Discrete(15))
+- **Observations**: 64x64x3 RGB, no frame stacking (matches ProcGen)
+- **Games**: single `.js` files, seeded RNG for deterministic procedural generation, ProcGen-style visuals
+- **Runtime**: 1,623 FPS headless / 1,154 FPS base64 / 82 FPS getImageData / 23 FPS screenshot
+
+See `llm-games-rl-pipeline.md` for the broader research motivation.
