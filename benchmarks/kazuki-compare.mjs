@@ -119,7 +119,41 @@ globalThis.getGameState = () => ({ gameState, score, lives, player, inventory, c
   });
   rlStep.label = `RL step (action + tick + ${OBS_WIDTH}x${OBS_HEIGHT} grayscale + state)`;
 
-  return { renderOnly, rlStep };
+  // Sub-step breakdown: measure each operation individually
+  let tickTotal = 0;
+  let pixelReadTotal = 0;
+  let preprocessTotal = 0;
+  let stateTotal = 0;
+  const SUB_FRAMES = FRAMES_HEADLESS;
+
+  for (let i = 0; i < SUB_FRAMES; i++) {
+    setKeysDown(actionForFrame(i));
+
+    let t0 = performance.now();
+    tick();
+    tickTotal += performance.now() - t0;
+
+    t0 = performance.now();
+    const frame = getPixelData();
+    pixelReadTotal += performance.now() - t0;
+
+    t0 = performance.now();
+    preprocessObservationFromRGBA(frame.data, frame.width, frame.height);
+    preprocessTotal += performance.now() - t0;
+
+    t0 = performance.now();
+    globalThis.getGameState();
+    stateTotal += performance.now() - t0;
+  }
+
+  const substeps = {
+    tick: { totalMs: tickTotal, perStepMs: tickTotal / SUB_FRAMES, frames: SUB_FRAMES },
+    pixelRead: { totalMs: pixelReadTotal, perStepMs: pixelReadTotal / SUB_FRAMES, frames: SUB_FRAMES },
+    preprocess: { totalMs: preprocessTotal, perStepMs: preprocessTotal / SUB_FRAMES, frames: SUB_FRAMES },
+    stateRead: { totalMs: stateTotal, perStepMs: stateTotal / SUB_FRAMES, frames: SUB_FRAMES },
+  };
+
+  return { renderOnly, rlStep, substeps };
 }
 
 async function setupBrowserPage(page) {
@@ -157,6 +191,21 @@ async function setupBrowserPage(page) {
         window.__codexObsHeight,
       );
       return Array.from(obs);
+    };
+    window.__codexGetObservationBase64 = () => {
+      const canvasEl = document.querySelector('canvas');
+      const ctx = canvasEl.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+      const obs = window.__codexPreprocessObservation(
+        imageData.data,
+        canvasEl.width,
+        canvasEl.height,
+        window.__codexObsWidth,
+        window.__codexObsHeight,
+      );
+      let binary = '';
+      for (let i = 0; i < obs.length; i++) binary += String.fromCharCode(obs[i]);
+      return btoa(binary);
     };
   }, {
     preprocessSource: preprocessObservationFromRGBA.toString(),
@@ -234,6 +283,31 @@ async function runBrowserBenchmark() {
       renderChecksum,
     );
 
+    // getImageData in-browser but DON'T return pixels — isolates GPU readback cost
+    const gpuReadbackStart = performance.now();
+    let gpuReadbackChecksum = 0;
+    for (let i = 0; i < FRAMES_BROWSER; i++) {
+      const state = await page.evaluate((keys) => {
+        window.__codexSetKeys(keys);
+        draw();
+        // Do the getImageData (forces GPU → CPU sync) but only return byte count
+        const canvasEl = document.querySelector('canvas');
+        const ctx = canvasEl.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+        return {
+          state: window.__codexGetState(),
+          pixelBytes: imageData.data.length,
+        };
+      }, actionForFrame(i));
+      gpuReadbackChecksum += state.state.score + state.state.lives + state.state.player.x + state.pixelBytes;
+    }
+    const gpuReadback = formatResult(
+      'Render + getImageData in-browser (no pixel transfer)',
+      FRAMES_BROWSER,
+      performance.now() - gpuReadbackStart,
+      gpuReadbackChecksum,
+    );
+
     const canvasReadbackStart = performance.now();
     let canvasReadbackChecksum = 0;
     for (let i = 0; i < FRAMES_BROWSER; i++) {
@@ -252,6 +326,28 @@ async function runBrowserBenchmark() {
       FRAMES_BROWSER,
       performance.now() - canvasReadbackStart,
       canvasReadbackChecksum,
+    );
+
+    // base64 readback: preprocess in-browser, return base64 string instead of JSON array
+    const base64Start = performance.now();
+    let base64Checksum = 0;
+    for (let i = 0; i < FRAMES_BROWSER; i++) {
+      const payload = await page.evaluate((keys) => {
+        window.__codexSetKeys(keys);
+        draw();
+        return {
+          state: window.__codexGetState(),
+          observation: window.__codexGetObservationBase64(),
+        };
+      }, actionForFrame(i));
+      const obsBuffer = Buffer.from(payload.observation, 'base64');
+      base64Checksum += checksumObservation(obsBuffer, payload.state);
+    }
+    const base64Readback = formatResult(
+      `RL step (action + draw + ${OBS_WIDTH}x${OBS_HEIGHT} grayscale via base64 + state over Playwright)`,
+      FRAMES_BROWSER,
+      performance.now() - base64Start,
+      base64Checksum,
     );
 
     const screenshotStart = performance.now();
@@ -274,7 +370,7 @@ async function runBrowserBenchmark() {
     );
 
     const finalState = await page.evaluate(() => window.__codexGetState());
-    return { renderOnly, canvasReadback, screenshotReadback, finalState, consoleLogs };
+    return { renderOnly, gpuReadback, canvasReadback, base64Readback, screenshotReadback, finalState, consoleLogs };
   } finally {
     await browser.close();
   }
@@ -289,6 +385,9 @@ function printComparison(headless, browser) {
     `  RL-step speedup vs browser getImageData: ${(headless.rlStep.fps / browser.canvasReadback.fps).toFixed(1)}x (${headless.rlStep.fps.toFixed(0)} vs ${browser.canvasReadback.fps.toFixed(0)} FPS)`,
   );
   console.log(
+    `  RL-step speedup vs browser base64: ${(headless.rlStep.fps / browser.base64Readback.fps).toFixed(1)}x (${headless.rlStep.fps.toFixed(0)} vs ${browser.base64Readback.fps.toFixed(0)} FPS)`,
+  );
+  console.log(
     `  RL-step speedup vs browser screenshot: ${(headless.rlStep.fps / browser.screenshotReadback.fps).toFixed(1)}x (${headless.rlStep.fps.toFixed(0)} vs ${browser.screenshotReadback.fps.toFixed(0)} FPS)`,
   );
 }
@@ -301,7 +400,20 @@ function writeOutputs(headless, browser) {
   const comparison = {
     render_only_speedup: headless.renderOnly.fps / browser.renderOnly.fps,
     rl_step_vs_browser_getimagedata_speedup: headless.rlStep.fps / browser.canvasReadback.fps,
+    rl_step_vs_browser_base64_speedup: headless.rlStep.fps / browser.base64Readback.fps,
     rl_step_vs_browser_screenshot_speedup: headless.rlStep.fps / browser.screenshotReadback.fps,
+  };
+
+  // Derived sub-step costs for browser (from measured aggregate phases)
+  const browserRenderPerStep = browser.renderOnly.elapsedMs / browser.renderOnly.steps;
+  const browserGpuReadbackPerStep = browser.gpuReadback.elapsedMs / browser.gpuReadback.steps;
+  const browserCanvasPerStep = browser.canvasReadback.elapsedMs / browser.canvasReadback.steps;
+  const browserBase64PerStep = browser.base64Readback.elapsedMs / browser.base64Readback.steps;
+  const browserSubsteps = {
+    cdpRoundtrip: { perStepMs: browserRenderPerStep, description: 'CDP round-trip + draw() + state' },
+    gpuReadback: { perStepMs: browserGpuReadbackPerStep - browserRenderPerStep, description: 'getImageData() GPU→CPU readback (no pixel transfer)' },
+    jsonTransfer: { perStepMs: browserCanvasPerStep - browserGpuReadbackPerStep, description: 'Array.from() + JSON.stringify + CDP pixel transfer' },
+    base64Transfer: { perStepMs: browserBase64PerStep - browserGpuReadbackPerStep, description: 'base64 encode + CDP string transfer' },
   };
 
   const artifact = {
@@ -322,8 +434,8 @@ function writeOutputs(headless, browser) {
       observation_height: OBS_HEIGHT,
       observation_format: 'grayscale',
     },
-    headless,
-    browser,
+    headless: { ...headless, substeps: headless.substeps },
+    browser: { ...browser, substeps: browserSubsteps },
     comparison,
   };
 
@@ -349,13 +461,16 @@ function writeOutputs(headless, browser) {
     `| ${headless.renderOnly.label} | ${headless.renderOnly.fps.toFixed(0)} | ${headless.renderOnly.steps} | ${headless.renderOnly.elapsedMs.toFixed(1)} |`,
     `| ${headless.rlStep.label} | ${headless.rlStep.fps.toFixed(0)} | ${headless.rlStep.steps} | ${headless.rlStep.elapsedMs.toFixed(1)} |`,
     `| ${browser.renderOnly.label} | ${browser.renderOnly.fps.toFixed(0)} | ${browser.renderOnly.steps} | ${browser.renderOnly.elapsedMs.toFixed(1)} |`,
+    `| ${browser.gpuReadback.label} | ${browser.gpuReadback.fps.toFixed(0)} | ${browser.gpuReadback.steps} | ${browser.gpuReadback.elapsedMs.toFixed(1)} |`,
     `| ${browser.canvasReadback.label} | ${browser.canvasReadback.fps.toFixed(0)} | ${browser.canvasReadback.steps} | ${browser.canvasReadback.elapsedMs.toFixed(1)} |`,
+    `| ${browser.base64Readback.label} | ${browser.base64Readback.fps.toFixed(0)} | ${browser.base64Readback.steps} | ${browser.base64Readback.elapsedMs.toFixed(1)} |`,
     `| ${browser.screenshotReadback.label} | ${browser.screenshotReadback.fps.toFixed(0)} | ${browser.screenshotReadback.steps} | ${browser.screenshotReadback.elapsedMs.toFixed(1)} |`,
     '',
     '## Speedups',
     '',
     `- Render-only speedup: ${comparison.render_only_speedup.toFixed(1)}x`,
     `- RL-step speedup vs browser getImageData: ${comparison.rl_step_vs_browser_getimagedata_speedup.toFixed(1)}x`,
+    `- RL-step speedup vs browser base64: ${comparison.rl_step_vs_browser_base64_speedup.toFixed(1)}x`,
     `- RL-step speedup vs browser screenshot: ${comparison.rl_step_vs_browser_screenshot_speedup.toFixed(1)}x`,
     '',
     '## Final Browser State',
@@ -382,11 +497,18 @@ async function main() {
   const headless = runHeadlessBenchmark();
   printResult('  ', headless.renderOnly);
   printResult('  ', headless.rlStep);
+  console.log('  Sub-step breakdown (per step):');
+  console.log(`    tick():                ${headless.substeps.tick.perStepMs.toFixed(4)} ms`);
+  console.log(`    getPixelData():        ${headless.substeps.pixelRead.perStepMs.toFixed(4)} ms`);
+  console.log(`    preprocessObservation: ${headless.substeps.preprocess.perStepMs.toFixed(4)} ms`);
+  console.log(`    getGameState():        ${headless.substeps.stateRead.perStepMs.toFixed(4)} ms`);
 
   console.log('\nBenchmarking Playwright + Chromium...');
   const browser = await runBrowserBenchmark();
   printResult('  ', browser.renderOnly);
+  printResult('  ', browser.gpuReadback);
   printResult('  ', browser.canvasReadback);
+  printResult('  ', browser.base64Readback);
   printResult('  ', browser.screenshotReadback);
   console.log(`  Final browser state: ${browser.finalState.gameState}, score=${browser.finalState.score}, lives=${browser.finalState.lives}`);
 
