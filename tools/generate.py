@@ -16,12 +16,7 @@ TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
 GAMES_DIR = ROOT / "games"
 CATALOGS_DIR = GAMES_DIR / "catalogs"
 JS_DIR = GAMES_DIR / "js"
-CATALOGS = [
-    CATALOGS_DIR / "atari_games.json",
-    CATALOGS_DIR / "mobile_games.json",
-    CATALOGS_DIR / "nes_games.json",
-    CATALOGS_DIR / "arcade_games.json",
-]
+CATALOGS = sorted(CATALOGS_DIR.glob("*_games.json"))
 
 MODELS = {
     "flash": "gemini-3-flash-preview",
@@ -29,6 +24,8 @@ MODELS = {
 }
 
 MAX_REF_CHARS = 2000
+MAX_SOURCE_CHARS = 16000
+PROCGEN_SRC_DIR = GAMES_DIR / "procgen_src"
 
 
 class _HTMLToText(HTMLParser):
@@ -145,7 +142,19 @@ def strip_fences(text: str) -> str:
     return m.group(1).strip() if m else text.strip()
 
 
-def build_prompt(game: dict, template: str, ref_text: str) -> str:
+def load_source_context(name: str) -> str:
+    """Load local source context for games with checked-in reference code."""
+    path = PROCGEN_SRC_DIR / f"{name}.cpp"
+    if not path.exists():
+        return ""
+
+    text = path.read_text()
+    if len(text) > MAX_SOURCE_CHARS:
+        text = text[:MAX_SOURCE_CHARS] + "\n// ... truncated ...\n"
+    return text
+
+
+def build_prompt(game: dict, template: str, ref_text: str, source_text: str) -> str:
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
@@ -158,12 +167,22 @@ Reference description of the original game:
 {ref_text}
 """
 
+    source_section = ""
+    if source_text:
+        source_section = f"""
+Reference implementation source code:
+```cpp
+{source_text}
+```
+"""
+
     prompt = f"""Generate a p5.js game implementing "{name}".
 
 Mechanic: {mechanic}
 Actions this game should use: {actions}
 {"This game requires Matter.js physics (available as global `Matter`)." if physics else ""}
 {ref_section}
+{source_section}
 The game MUST conform to this template specification exactly:
 
 {template}
@@ -218,7 +237,11 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str, ou
         print(f"fetching ref...", end=" ", flush=True)
         ref_text = fetch_ref(game["ref"])
 
-    prompt = build_prompt(game, template, ref_text)
+    source_text = load_source_context(name)
+    if source_text:
+        print("using source...", end=" ", flush=True)
+
+    prompt = build_prompt(game, template, ref_text, source_text)
 
     try:
         t0 = time.time()
