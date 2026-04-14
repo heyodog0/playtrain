@@ -14,11 +14,13 @@ from google import genai
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
 GAMES_DIR = ROOT / "games"
+CATALOGS_DIR = GAMES_DIR / "catalogs"
+JS_DIR = GAMES_DIR / "js"
 CATALOGS = [
-    GAMES_DIR / "atari_games.json",
-    GAMES_DIR / "mobile_games.json",
-    GAMES_DIR / "nes_games.json",
-    GAMES_DIR / "arcade_games.json",
+    CATALOGS_DIR / "atari_games.json",
+    CATALOGS_DIR / "mobile_games.json",
+    CATALOGS_DIR / "nes_games.json",
+    CATALOGS_DIR / "arcade_games.json",
 ]
 
 MODELS = {
@@ -199,7 +201,7 @@ def backup_game(name: str, output_dir: Path):
     src = output_dir / f"{name}.js"
     if not src.exists():
         return
-    backup_dir = output_dir / "backups"
+    backup_dir = GAMES_DIR / "backups"
     backup_dir.mkdir(exist_ok=True)
     ts = time.strftime("%Y%m%d-%H%M%S")
     dst = backup_dir / f"{name}_{ts}.js"
@@ -241,7 +243,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="Process all catalogs")
     parser.add_argument("--name", help="Generate only this game from the catalog")
     parser.add_argument("--model", choices=["flash", "pro"], default="flash")
-    parser.add_argument("--output-dir", type=Path, default=GAMES_DIR)
+    parser.add_argument("--output-dir", type=Path, default=JS_DIR)
     parser.add_argument("--ref", action="store_true", help="Fetch ref URLs and include in prompt")
     args = parser.parse_args()
 

@@ -10,7 +10,7 @@ Generate p5.js games via LLM and train RL agents on them at native speed — no 
 ## What Exists
 
 - `tools/`: game generator CLI + browser-based tester with Gemini refinement
-- `games/`: game catalogs (10 Atari, 10 mobile) + generated game files
+- `games/`: 100 games across 4 catalogs (Atari, Mobile, NES, Arcade) + generated JS files
 - `GAME_TEMPLATE.md`: strict spec for LLM-generated games (action space, observations, visual rules, mechanical constraints)
 - `poc/p5/`: headless Canvas 2D runtime
 - `envs/`: Node-side environment + IPC worker
@@ -35,12 +35,12 @@ Generate games from catalogs using Gemini:
 export GEMINI_API_KEY=your-key
 
 # Generate one game
-uv run python tools/generate.py --catalog games/atari_games.json --name breakout
+uv run python tools/generate.py --catalog games/catalogs/atari_games.json --name breakout
 
 # Generate all Atari games with reference context
-uv run python tools/generate.py --catalog games/atari_games.json --ref
+uv run python tools/generate.py --catalog games/catalogs/atari_games.json --ref
 
-# Generate all games (both catalogs) with Gemini Pro
+# Generate all games (all catalogs) with Gemini Pro
 uv run python tools/generate.py --all --model pro
 ```
 
@@ -105,7 +105,12 @@ A pre-rendered HTML export is also available at `notebooks/headless_node_vs_play
 
 ```text
 tools/                    game generator + browser tester
-games/                    game catalogs (.json) + generated games (.js)
+games/
+  catalogs/               game lists — 4 JSON files (Atari, Mobile, NES, Arcade), 25 each
+  js/                     generated p5.js game files
+  backups/                auto-saved before each refinement
+  logs/                   generation + refinement logs (JSON)
+  archive/                retired files
 GAME_TEMPLATE.md          strict spec for LLM-generated games
 envs/                     Node-side environment runtime + IPC worker
 poc/p5/                   headless p5.js shim + helpers

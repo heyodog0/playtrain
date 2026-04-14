@@ -11,6 +11,8 @@ from google import genai
 
 ROOT = Path(__file__).resolve().parent.parent
 GAMES_DIR = ROOT / "games"
+CATALOGS_DIR = GAMES_DIR / "catalogs"
+JS_DIR = GAMES_DIR / "js"
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
 LOG_DIR = GAMES_DIR / "logs"
 
@@ -39,11 +41,11 @@ def strip_fences(text: str) -> str:
 
 
 def list_games() -> list[str]:
-    return sorted(p.stem for p in GAMES_DIR.glob("*.js"))
+    return sorted(p.stem for p in JS_DIR.glob("*.js"))
 
 
 def needs_matter(name: str) -> bool:
-    for catalog_file in GAMES_DIR.glob("*.json"):
+    for catalog_file in CATALOGS_DIR.glob("*.json"):
         try:
             catalog = json.loads(catalog_file.read_text())
             for g in catalog:
@@ -76,7 +78,7 @@ def save_log(name: str, model: str, prompt: str, raw_output: str, code: str, dur
 
 
 def backup_game(name: str):
-    src = GAMES_DIR / f"{name}.js"
+    src = JS_DIR / f"{name}.js"
     if not src.exists():
         return
     backup_dir = GAMES_DIR / "backups"
@@ -90,7 +92,7 @@ def refine_game(name: str, feedback: str, model_key: str) -> dict:
     if not client:
         raise RuntimeError("GEMINI_API_KEY not set")
 
-    code = (GAMES_DIR / f"{name}.js").read_text()
+    code = (JS_DIR / f"{name}.js").read_text()
     template = TEMPLATE_PATH.read_text()
     model = MODELS.get(model_key, MODELS["flash"])
 
@@ -291,7 +293,7 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path.startswith("/api/games/"):
             name = path.split("/api/games/")[1]
-            fp = GAMES_DIR / f"{name}.js"
+            fp = JS_DIR / f"{name}.js"
             if fp.exists():
                 self._send(200, "application/javascript", fp.read_bytes())
             else:
@@ -316,7 +318,7 @@ class Handler(BaseHTTPRequestHandler):
 
             try:
                 result = refine_game(name, feedback, model_key)
-                (GAMES_DIR / f"{name}.js").write_text(result["code"])
+                (JS_DIR / f"{name}.js").write_text(result["code"])
                 self._send(200, "application/json", json.dumps({
                     "success": True, "duration_s": result["duration_s"]
                 }).encode())
