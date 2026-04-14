@@ -128,6 +128,23 @@ uv run python -m fast_llm_games.aggregate_results
 
 Add `--use-wandb` to any training command for W&B logging (requires `uv pip install wandb`).
 
+## Notebooks
+
+Interactive [marimo](https://marimo.io) notebooks for visualization and benchmarking:
+
+```bash
+# Run a notebook
+uv run marimo edit notebooks/all_games_benchmark.py
+
+# Export to static HTML
+uv run marimo export html notebooks/all_games_benchmark.py -o notebooks/all_games_benchmark.html
+```
+
+| Notebook | Description |
+|----------|-------------|
+| `all_games_benchmark.py` | All 14 games benchmarked: RL step throughput, headless Node vs Playwright + base64, sub-step breakdown, 64x64 RGB sample frames |
+| `headless_node_vs_playwright.py` | Deep dive into why headless Node is faster than Playwright — architecture diagrams, pixel transfer analysis, base64 optimization, IPC protocol |
+
 ## Benchmarks
 
 Apple M4 Pro, 64x64 RGB observations:
@@ -173,6 +190,8 @@ envs/
   game-worker.mjs         IPC worker (binary protocol)
   kazuki-env.mjs          original single-game environment (legacy)
 poc/p5/                   headless p5.js shim + observation preprocessing
+notebooks/                marimo notebooks (benchmarks, visualization)
+benchmarks/               Node.js benchmark scripts (headless + Playwright)
 configs/                  training presets (smoke, short, full)
 outputs/                  experiments, models, validation, benchmarks
 GAME_TEMPLATE.md          strict spec for LLM-generated games
