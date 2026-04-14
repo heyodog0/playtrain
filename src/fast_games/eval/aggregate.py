@@ -4,7 +4,7 @@ Scans outputs/experiments/ for completed runs, loads eval logs,
 and computes normalized scores and aggregate metrics.
 
 Usage:
-    uv run python -m fast_llm_games.aggregate_results
+    uv run python -m fast_games.eval.aggregate
 """
 
 from __future__ import annotations
@@ -15,11 +15,11 @@ from pathlib import Path
 
 import numpy as np
 
-from .metrics import aggregate_results, compute_normalized_scores, interquartile_mean, load_random_baselines
+from fast_games.metrics import aggregate_results, compute_normalized_scores, interquartile_mean, load_random_baselines
 
-EXPERIMENTS_DIR = Path(__file__).resolve().parents[2] / "outputs" / "experiments"
-BASELINES_PATH = Path(__file__).resolve().parents[2] / "outputs" / "baselines" / "random_agent_scores.json"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs" / "results"
+EXPERIMENTS_DIR = Path(__file__).resolve().parents[3] / "outputs" / "experiments"
+BASELINES_PATH = Path(__file__).resolve().parents[3] / "outputs" / "baselines" / "random_agent_scores.json"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "results"
 
 
 def find_experiments() -> dict[str, dict[str, list[Path]]]:
@@ -74,7 +74,7 @@ def main() -> None:
         print(f"Loaded random baselines for {len(baselines)} games")
     else:
         print(f"No baselines found at {BASELINES_PATH}")
-        print("Run: uv run python -m fast_llm_games.collect_baselines --all")
+        print("Run: uv run python -m fast_games.eval.baselines --all")
 
     # Find experiments
     experiments = find_experiments()

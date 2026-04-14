@@ -3,8 +3,8 @@
 These baselines are used for score normalization (ProcGen-style).
 
 Usage:
-    uv run python -m fast_llm_games.collect_baselines --all
-    uv run python -m fast_llm_games.collect_baselines --game breakout
+    uv run python -m fast_games.eval.baselines --all
+    uv run python -m fast_games.eval.baselines --game breakout
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ from pathlib import Path
 
 import numpy as np
 
-from fast_llm_games import GameGymEnv
+from fast_games.env import GameGymEnv
 
-GAMES_DIR = Path(__file__).resolve().parents[2] / "games" / "js"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs" / "baselines"
+GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "js"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "baselines"
 
 
 def list_games() -> list[str]:

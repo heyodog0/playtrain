@@ -72,13 +72,13 @@ Validate all games against ProcGen-style criteria (API compliance, determinism, 
 
 ```bash
 # Validate all games
-uv run python -m fast_llm_games.validate_games --all
+uv run python -m fast_games.validate.validate --all
 
 # Validate one game
-uv run python -m fast_llm_games.validate_games --game breakout
+uv run python -m fast_games.validate.validate --game breakout
 
 # Benchmark throughput
-uv run python -m fast_llm_games.bench_games --all
+uv run python -m fast_games.validate.bench --all
 ```
 
 ## RL Training
@@ -87,16 +87,16 @@ uv run python -m fast_llm_games.bench_games --all
 
 ```bash
 # Smoke test (~30 sec)
-uv run python -m fast_llm_games.train_ppo --game breakout --config configs/smoke_test.json
+uv run python -m fast_games.train.ppo --game breakout --config configs/smoke_test.json
 
 # Short run (~5 min)
-uv run python -m fast_llm_games.train_ppo --game breakout --config configs/short_run.json
+uv run python -m fast_games.train.ppo --game breakout --config configs/short_run.json
 
 # Full run (cluster)
-uv run python -m fast_llm_games.train_ppo --game breakout --config configs/full_run.json
+uv run python -m fast_games.train.ppo --game breakout --config configs/full_run.json
 
 # DQN
-uv run python -m fast_llm_games.train_dqn --game breakout --config configs/smoke_test.json
+uv run python -m fast_games.train.dqn --game breakout --config configs/smoke_test.json
 ```
 
 ### Multi-game ProcGen-style training
@@ -105,10 +105,10 @@ Train a single CNN policy across multiple games simultaneously:
 
 ```bash
 # All 14 games
-uv run python -m fast_llm_games.train_multigame --all-games --total-timesteps 100000
+uv run python -m fast_games.train.multigame --all-games --total-timesteps 100000
 
 # Specific games
-uv run python -m fast_llm_games.train_multigame --games breakout mario vvvvvv flappy_bird
+uv run python -m fast_games.train.multigame --games breakout mario vvvvvv flappy_bird
 ```
 
 Uses ProcGen conventions: train seeds 0-199, test seeds 1000-1099, fixed game assignment per env.
@@ -117,13 +117,13 @@ Uses ProcGen conventions: train seeds 0-199, test seeds 1000-1099, fixed game as
 
 ```bash
 # Eval with train/test seed separation
-uv run python -m fast_llm_games.eval_model --game breakout --model outputs/experiments/breakout/ppo/.../final_model.zip
+uv run python -m fast_games.eval.evaluate --game breakout --model outputs/experiments/breakout/ppo/.../final_model.zip
 
 # Collect random agent baselines (needed for score normalization)
-uv run python -m fast_llm_games.collect_baselines --all
+uv run python -m fast_games.eval.baselines --all
 
 # Aggregate results across experiments
-uv run python -m fast_llm_games.aggregate_results
+uv run python -m fast_games.eval.aggregate
 ```
 
 Add `--use-wandb` to any training command for W&B logging (requires `uv pip install wandb`).
@@ -174,17 +174,21 @@ games/
   js/                     generated p5.js game files
   backups/                auto-saved before each refinement
   logs/                   generation + refinement logs
-src/fast_llm_games/
-  game_gym_env.py         Gymnasium wrapper (GameGymEnv) + multi-game utilities
-  train_ppo.py            per-game PPO training
-  train_dqn.py            per-game DQN training
-  train_multigame.py      ProcGen-style multi-game training
-  eval_model.py           evaluation with train/test seed split
-  collect_baselines.py    random agent baseline scores
-  validate_games.py       ProcGen-style validation suite
-  bench_games.py          throughput benchmarks
+src/fast_games/
+  env.py                  Gymnasium wrapper (GameGymEnv) + multi-game utilities
   metrics.py              normalized scoring, IQM
-  aggregate_results.py    experiment results aggregation
+  train/
+    ppo.py                per-game PPO training
+    dqn.py                per-game DQN training
+    multigame.py          ProcGen-style multi-game training
+  eval/
+    evaluate.py           evaluation with train/test seed split
+    baselines.py          random agent baseline scores
+    aggregate.py          experiment results aggregation
+  validate/
+    validate.py           ProcGen-style validation suite
+    bench.py              throughput benchmarks
+  archive/                legacy kazuki-only scripts
 envs/
   game-env.mjs            parameterized game environment
   game-worker.mjs         IPC worker (binary protocol)

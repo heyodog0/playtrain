@@ -5,8 +5,8 @@ ProcGen-style evaluation:
   - Test seeds: 1000-1099 (held-out levels for generalization)
 
 Usage:
-    uv run python -m fast_llm_games.eval_model --game breakout --model outputs/experiments/breakout/ppo/.../final_model.zip
-    uv run python -m fast_llm_games.eval_model --game breakout --model path/to/model.zip --mode test
+    uv run python -m fast_games.eval.evaluate --game breakout --model outputs/experiments/breakout/ppo/.../final_model.zip
+    uv run python -m fast_games.eval.evaluate --game breakout --model path/to/model.zip --mode test
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import numpy as np
 from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecTransposeImage
 
-from .game_gym_env import GameGymEnv
+from fast_games.env import GameGymEnv
 
 TRAIN_SEEDS = range(0, 200)
 TEST_SEEDS = range(1000, 1100)

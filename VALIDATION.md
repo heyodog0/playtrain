@@ -23,7 +23,7 @@ The environment runs a p5.js browser game headlessly via node-canvas. We need to
 ## Running
 
 ```bash
-uv run python -m fast_llm_games.validate_kazuki
+uv run python -m fast_games.validate.validate --all
 ```
 
 All checks pass/fail to stdout. Exit code 0 if all pass, 1 otherwise.

@@ -1,8 +1,8 @@
 """Benchmark step throughput for all games.
 
 Usage:
-    uv run python -m fast_llm_games.bench_games --all
-    uv run python -m fast_llm_games.bench_games --game breakout
+    uv run python -m fast_games.validate.bench --all
+    uv run python -m fast_games.validate.bench --game breakout
 """
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fast_llm_games import GameGymEnv
+from fast_games.env import GameGymEnv
 
-GAMES_DIR = Path(__file__).resolve().parents[2] / "games" / "js"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs" / "benchmarks"
+GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "js"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "benchmarks"
 
 
 def list_games() -> list[str]:

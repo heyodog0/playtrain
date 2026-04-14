@@ -1,11 +1,9 @@
-"""Train DQN on a single game using GameGymEnv.
-
-DQN is a natural fit for Discrete(8) action spaces. Off-policy with
-replay buffer — trades sample efficiency for memory usage.
+"""Train PPO on a single game using GameGymEnv.
 
 Usage:
-    uv run python -m fast_llm_games.train_dqn --game breakout
-    uv run python -m fast_llm_games.train_dqn --game breakout --config configs/smoke_test.json
+    uv run python -m fast_games.train.ppo --game breakout
+    uv run python -m fast_games.train.ppo --game breakout --config configs/smoke_test.json
+    uv run python -m fast_games.train.ppo --game breakout --use-wandb
 """
 
 from __future__ import annotations
@@ -16,35 +14,35 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback
-from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecTransposeImage
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor, VecTransposeImage
 
-from .game_gym_env import GameGymEnv
+from fast_games.env import GameGymEnv
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train DQN on a game")
+    parser = argparse.ArgumentParser(description="Train PPO on a game")
     parser.add_argument("--game", type=str, required=True)
     parser.add_argument("--config", type=Path, default=None)
 
     # Environment
+    parser.add_argument("--n-envs", type=int, default=4)
     parser.add_argument("--obs-size", type=int, default=64)
     parser.add_argument("--obs-mode", choices=["rgb", "gray"], default="rgb")
     parser.add_argument("--frame-stack", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=2000)
 
-    # DQN hyperparameters
+    # PPO hyperparameters
     parser.add_argument("--total-timesteps", type=int, default=1_000_000)
-    parser.add_argument("--learning-rate", type=float, default=1e-4)
-    parser.add_argument("--buffer-size", type=int, default=100_000)
-    parser.add_argument("--learning-starts", type=int, default=10_000)
-    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--n-steps", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--learning-rate", type=float, default=2.5e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--target-update-interval", type=int, default=1000)
-    parser.add_argument("--train-freq", type=int, default=4)
-    parser.add_argument("--exploration-fraction", type=float, default=0.1)
-    parser.add_argument("--exploration-final-eps", type=float, default=0.01)
+    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--ent-coef", type=float, default=0.01)
+    parser.add_argument("--clip-range", type=float, default=0.2)
+    parser.add_argument("--n-epochs", type=int, default=3)
 
     # Eval
     parser.add_argument("--eval-freq", type=int, default=10_000)
@@ -75,12 +73,19 @@ def apply_config(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+def make_env(game: str, **kwargs):
+    def _init():
+        return GameGymEnv(game=game, **kwargs)
+    return _init
+
+
 def main() -> None:
     args = apply_config(parse_args())
 
+    # Output directory
     if args.output_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output_dir = Path(f"outputs/experiments/{args.game}/dqn/{timestamp}")
+        args.output_dir = Path(f"outputs/experiments/{args.game}/ppo/{timestamp}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save config
@@ -93,27 +98,28 @@ def main() -> None:
         pass
 
     config_snapshot = {
-        "algorithm": "dqn",
+        "algorithm": "ppo",
         "game": args.game,
         "git_hash": git_hash,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "n_envs": args.n_envs,
         "obs_size": args.obs_size,
         "obs_mode": args.obs_mode,
         "frame_stack": args.frame_stack,
         "max_steps": args.max_steps,
         "total_timesteps": args.total_timesteps,
-        "learning_rate": args.learning_rate,
-        "buffer_size": args.buffer_size,
-        "learning_starts": args.learning_starts,
+        "n_steps": args.n_steps,
         "batch_size": args.batch_size,
+        "learning_rate": args.learning_rate,
         "gamma": args.gamma,
-        "target_update_interval": args.target_update_interval,
-        "train_freq": args.train_freq,
-        "exploration_fraction": args.exploration_fraction,
-        "exploration_final_eps": args.exploration_final_eps,
+        "gae_lambda": args.gae_lambda,
+        "ent_coef": args.ent_coef,
+        "clip_range": args.clip_range,
+        "n_epochs": args.n_epochs,
     }
     (args.output_dir / "config.json").write_text(json.dumps(config_snapshot, indent=2) + "\n")
 
+    # Environment factory kwargs
     env_kwargs = dict(
         obs_size=args.obs_size,
         obs_mode=args.obs_mode,
@@ -121,12 +127,13 @@ def main() -> None:
         max_steps=args.max_steps,
     )
 
-    # DQN uses a single env (off-policy, replay buffer handles sample reuse)
-    env = DummyVecEnv([lambda: GameGymEnv(game=args.game, **env_kwargs)])
+    # Create vectorized envs
+    VecEnvClass = SubprocVecEnv if args.n_envs > 1 else DummyVecEnv
+    env = VecEnvClass([make_env(args.game, **env_kwargs) for _ in range(args.n_envs)])
     env = VecMonitor(env, filename=str(args.output_dir / "train_monitor"))
     env = VecTransposeImage(env)
 
-    eval_env = DummyVecEnv([lambda: GameGymEnv(game=args.game, **env_kwargs)])
+    eval_env = DummyVecEnv([make_env(args.game, **env_kwargs)])
     eval_env = VecMonitor(eval_env, filename=str(args.output_dir / "eval_monitor"))
     eval_env = VecTransposeImage(eval_env)
 
@@ -140,51 +147,54 @@ def main() -> None:
             wandb.init(
                 project=args.wandb_project,
                 config=config_snapshot,
-                tags=["dqn", args.game],
-                name=f"dqn-{args.game}",
+                tags=["ppo", args.game],
+                name=f"ppo-{args.game}",
                 sync_tensorboard=True,
             )
             callbacks.append(WandbCallback(verbose=0))
         except ImportError:
-            print("wandb not installed, skipping. Install: uv pip install wandb")
+            print("wandb not installed, skipping W&B logging. Install: uv pip install wandb")
 
+    # Eval callback
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=str(args.output_dir / "best_model"),
         log_path=str(args.output_dir / "eval"),
-        eval_freq=args.eval_freq,
+        eval_freq=max(args.eval_freq // args.n_envs, 1),
         n_eval_episodes=args.n_eval_episodes,
         deterministic=True,
         render=False,
     )
     callbacks.append(eval_callback)
 
-    model = DQN(
+    # Train
+    model = PPO(
         "CnnPolicy",
         env,
         verbose=1,
-        learning_rate=args.learning_rate,
-        buffer_size=args.buffer_size,
-        learning_starts=args.learning_starts,
+        n_steps=args.n_steps,
         batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
         gamma=args.gamma,
-        target_update_interval=args.target_update_interval,
-        train_freq=args.train_freq,
-        exploration_fraction=args.exploration_fraction,
-        exploration_final_eps=args.exploration_final_eps,
+        gae_lambda=args.gae_lambda,
+        ent_coef=args.ent_coef,
+        clip_range=args.clip_range,
+        n_epochs=args.n_epochs,
         tensorboard_log=str(args.output_dir / "tb"),
         device="auto",
     )
 
-    print(f"Training DQN on {args.game} for {args.total_timesteps} timesteps")
-    print(f"  buffer_size={args.buffer_size}, learning_starts={args.learning_starts}")
+    print(f"Training PPO on {args.game} for {args.total_timesteps} timesteps")
+    print(f"  n_envs={args.n_envs}, obs={args.obs_size}x{args.obs_size} {args.obs_mode}")
     print(f"  output: {args.output_dir}")
 
     model.learn(total_timesteps=args.total_timesteps, callback=callbacks)
 
+    # Save final model
     final_path = args.output_dir / "final_model"
     model.save(str(final_path))
     print(f"\nSaved final model to {final_path}.zip")
+    print(f"Best model: {args.output_dir / 'best_model'}")
 
     env.close()
     eval_env.close()

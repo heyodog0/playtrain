@@ -488,8 +488,8 @@ wheels = [
 ]
 
 [[package]]
-name = "fast-llm-games"
-version = "0.0.1"
+name = "fast-games"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-genai" },

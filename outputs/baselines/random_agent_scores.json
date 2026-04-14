@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-04-14T00:44:43.361743+00:00",
-  "episodes_per_game": 10,
+  "generated_at": "2026-04-14T01:41:07.928786+00:00",
+  "episodes_per_game": 5,
   "max_steps": 2000,
   "baselines": {
     "breakout": {
       "game": "breakout",
-      "episodes": 10,
+      "episodes": 5,
       "max_steps": 2000,
-      "mean_return": 59.0,
-      "std_return": 20.71231517720798,
+      "mean_return": 64.0,
+      "std_return": 25.768197453450252,
       "min_return": 30.0,
       "max_return": 100.0,
-      "median_return": 60.0,
-      "mean_length": 512.0,
-      "std_length": 116.2703745586123
+      "median_return": 70.0,
+      "mean_length": 483.2,
+      "std_length": 102.81906438010414
     }
   }
 }

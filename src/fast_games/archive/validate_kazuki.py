@@ -9,7 +9,7 @@ Validates the headless KazukiGymEnv against Procgen-style criteria:
 Generates visual proof artifacts under outputs/validation/.
 
 Usage:
-    uv run python -m fast_llm_games.validate_kazuki
+    uv run python -m fast_games.archive.validate_kazuki
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
-from fast_llm_games import KazukiGymEnv
+from fast_games.archive.kazuki_gym_env import KazukiGymEnv
 
 SEED = 42
 NUM_STEPS = 200
@@ -33,7 +33,7 @@ PADDING = 4
 TERMINAL_STATES = {"WIN", "EXIT", "GAMEOVER"}
 ACTION_NAMES = ["NOOP", "LEFT", "RIGHT", "JUMP", "LEFT_JUMP", "RIGHT_JUMP", "UP", "DOWN"]
 
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs" / "validation"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "validation"
 
 
 # ---------------------------------------------------------------------------

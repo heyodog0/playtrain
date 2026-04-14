@@ -8,8 +8,8 @@ Runs 5 checks on each game:
   5. Step throughput (FPS)
 
 Usage:
-    uv run python -m fast_llm_games.validate_games --all
-    uv run python -m fast_llm_games.validate_games --game breakout
+    uv run python -m fast_games.validate.validate --all
+    uv run python -m fast_games.validate.validate --game breakout
 """
 
 from __future__ import annotations
@@ -23,12 +23,12 @@ from pathlib import Path
 
 import numpy as np
 
-from fast_llm_games import GameGymEnv
+from fast_games.env import GameGymEnv
 
 SEED = 42
 NUM_STEPS = 200
-GAMES_DIR = Path(__file__).resolve().parents[2] / "games" / "js"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs" / "validation"
+GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "js"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "validation"
 
 
 def list_games() -> list[str]:

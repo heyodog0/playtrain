@@ -933,7 +933,7 @@ def _(REPO_ROOT, os, sys, time):
     if os.path.join(REPO_ROOT, "src") not in sys.path:
         sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
-    from fast_llm_games.kazuki_gym_env import KazukiGymEnv
+    from fast_games.archive.kazuki_gym_env import KazukiGymEnv
 
     env = KazukiGymEnv()
     obs, info = env.reset(seed=42)

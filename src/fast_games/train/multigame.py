@@ -5,9 +5,9 @@ Each parallel env instance is permanently assigned one game.
 On reset, the same game continues with a new procedural seed.
 
 Usage:
-    uv run python -m fast_llm_games.train_multigame --all-games
-    uv run python -m fast_llm_games.train_multigame --games breakout flappy_bird mario
-    uv run python -m fast_llm_games.train_multigame --all-games --config configs/smoke_test.json
+    uv run python -m fast_games.train.multigame --all-games
+    uv run python -m fast_games.train.multigame --games breakout flappy_bird mario
+    uv run python -m fast_games.train.multigame --all-games --config configs/smoke_test.json
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecTransposeImage
 
-from .game_gym_env import GameGymEnv, SeedRangeWrapper, list_available_games, make_multigame_vec_env
+from fast_games.env import GameGymEnv, SeedRangeWrapper, list_available_games, make_multigame_vec_env
 
 # ProcGen seed ranges
 TRAIN_SEEDS = (0, 200)

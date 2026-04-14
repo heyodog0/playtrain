@@ -28,7 +28,7 @@ class KazukiGymEnv(gym.Env[np.ndarray, int]):
         self.frame_stack = frame_stack
         self.obs_size = obs_size
         self.max_steps = max_steps
-        self._repo_root = Path(__file__).resolve().parents[2]
+        self._repo_root = Path(__file__).resolve().parents[3]
         self._worker_path = self._repo_root / "envs" / "kazuki-worker.mjs"
         self._frames: deque[np.ndarray] = deque(maxlen=frame_stack)
         self._closed = False
