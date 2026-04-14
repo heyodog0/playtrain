@@ -14,7 +14,12 @@ from google import genai
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
 GAMES_DIR = ROOT / "games"
-CATALOGS = [GAMES_DIR / "atari_games.json", GAMES_DIR / "mobile_games.json"]
+CATALOGS = [
+    GAMES_DIR / "atari_games.json",
+    GAMES_DIR / "mobile_games.json",
+    GAMES_DIR / "nes_games.json",
+    GAMES_DIR / "arcade_games.json",
+]
 
 MODELS = {
     "flash": "gemini-3-flash-preview",

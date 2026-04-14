@@ -6,9 +6,6 @@ __pycache__/
 .venv/
 node_modules/
 
-games/backups/
-games/logs/
-
 outputs/models/
 outputs/evals/
 outputs/sb3/

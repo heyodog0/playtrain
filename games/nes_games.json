@@ -1,0 +1,152 @@
+[
+  {
+    "name": "tetris",
+    "ref": "https://ale.farama.org/environments/tetris/",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D"],
+    "mechanic": "falling block puzzle, rotate + place to clear lines"
+  },
+  {
+    "name": "pacman",
+    "ref": "https://ale.farama.org/environments/pacman/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "maze navigation, eat dots, avoid ghosts"
+  },
+  {
+    "name": "mega_man",
+    "ref": "https://en.wikipedia.org/wiki/Mega_Man_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "run + gun platformer, shoot + jump"
+  },
+  {
+    "name": "contra",
+    "ref": "https://en.wikipedia.org/wiki/Contra_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "run + gun, 8-directional shooting"
+  },
+  {
+    "name": "bomberman",
+    "ref": "https://en.wikipedia.org/wiki/Bomberman_(1983_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "grid-based bomb placement, destroy walls + enemies"
+  },
+  {
+    "name": "galaga",
+    "ref": "https://en.wikipedia.org/wiki/Galaga",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "fixed shooter, enemies dive in formations"
+  },
+  {
+    "name": "excitebike",
+    "ref": "https://en.wikipedia.org/wiki/Excitebike",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "side-scrolling racing, lane switch + ramps"
+  },
+  {
+    "name": "balloon_fight",
+    "ref": "https://en.wikipedia.org/wiki/Balloon_Fight",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "flap to float, pop enemy balloons"
+  },
+  {
+    "name": "ice_climber",
+    "ref": "https://en.wikipedia.org/wiki/Ice_Climber",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "vertical climbing platformer, break platforms above"
+  },
+  {
+    "name": "kirby",
+    "ref": "https://en.wikipedia.org/wiki/Kirby%27s_Dream_Land",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "platformer, inhale enemies + float"
+  },
+  {
+    "name": "mario",
+    "ref": "https://en.wikipedia.org/wiki/Super_Mario_Bros.",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "side-scrolling platformer, jump on enemies + collect coins"
+  },
+  {
+    "name": "punch_out",
+    "ref": "https://en.wikipedia.org/wiki/Punch-Out!!_(NES)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "pattern-based boxing, dodge + punch"
+  },
+  {
+    "name": "duck_hunt",
+    "ref": "https://en.wikipedia.org/wiki/Duck_Hunt",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "aim crosshair + shoot ducks"
+  },
+  {
+    "name": "zelda",
+    "ref": "https://en.wikipedia.org/wiki/The_Legend_of_Zelda_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "top-down adventure, sword + explore rooms"
+  },
+  {
+    "name": "metroid",
+    "ref": "https://en.wikipedia.org/wiki/Metroid_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "exploration platformer, shoot + jump + bomb"
+  },
+  {
+    "name": "castlevania",
+    "ref": "https://en.wikipedia.org/wiki/Castlevania_(1986_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "platformer, whip enemies + sub-weapons"
+  },
+  {
+    "name": "ninja_gaiden",
+    "ref": "https://en.wikipedia.org/wiki/Ninja_Gaiden_(NES_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fast action platformer, slash + wall cling"
+  },
+  {
+    "name": "double_dragon",
+    "ref": "https://en.wikipedia.org/wiki/Double_Dragon_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "side-scrolling beat-em-up, punch + kick"
+  },
+  {
+    "name": "bubble_bobble",
+    "ref": "https://en.wikipedia.org/wiki/Bubble_Bobble",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "trap enemies in bubbles, pop to defeat"
+  },
+  {
+    "name": "gradius",
+    "ref": "https://en.wikipedia.org/wiki/Gradius_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "horizontal scrolling shooter, collect powerups"
+  },
+  {
+    "name": "battletoads",
+    "ref": "https://en.wikipedia.org/wiki/Battletoads_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "beat-em-up platformer, combo attacks"
+  },
+  {
+    "name": "kid_icarus",
+    "ref": "https://en.wikipedia.org/wiki/Kid_Icarus_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "vertical platformer, shoot arrows upward"
+  },
+  {
+    "name": "dr_mario",
+    "ref": "https://en.wikipedia.org/wiki/Dr._Mario",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D"],
+    "mechanic": "falling pill puzzle, match colors to clear viruses"
+  },
+  {
+    "name": "arkanoid",
+    "ref": "https://en.wikipedia.org/wiki/Arkanoid",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "breakout with powerups, paddle + ball + bricks"
+  },
+  {
+    "name": "rc_pro_am",
+    "ref": "https://en.wikipedia.org/wiki/R.C._Pro-Am",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "isometric racing, collect weapons + speed boosts"
+  }
+]

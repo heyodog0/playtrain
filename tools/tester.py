@@ -234,7 +234,7 @@ PLAY_HTML = """<!DOCTYPE html>
 {matter_tag}
 <style>
   body {{ margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; }}
-  #controls {{ position: fixed; top: 4px; right: 8px; color: #888; font: 11px monospace; z-index: 10; }}
+  #controls {{ position: fixed; bottom: 4px; left: 0; right: 0; text-align: center; color: #888; font: 11px monospace; z-index: 10; }}
   #controls button {{ background: #222; color: #aaa; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: 11px monospace; }}
 </style>
 </head>
