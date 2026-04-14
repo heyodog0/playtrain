@@ -106,7 +106,7 @@ def _(browser_bench, games, np, plt):
     _names_sorted = [_names[i] for i in _order]
     _fps_sorted = [_rl_fps[i] for i in _order]
 
-    _fig, _ax = plt.subplots(figsize=(10, 6))
+    _fig, _ax = plt.subplots(figsize=(10, max(6, len(_names_sorted) * 0.35)))
     _colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(_names_sorted)))
     _bars = _ax.barh(_names_sorted[::-1], _fps_sorted[::-1], color=_colors[::-1], edgecolor="white", linewidth=0.5)
 
@@ -123,7 +123,7 @@ def _(browser_bench, games, np, plt):
     _ax.axvline(_pw_b64, color="#f39c12", linestyle=":", linewidth=1.5, label=f"Playwright+base64 mean: {_pw_b64:,.0f} FPS")
 
     _ax.set_xlabel("RL Step FPS (64x64 RGB)")
-    _ax.set_title("RL Step Throughput — All 14 Games (with Playwright reference)")
+    _ax.set_title(f"RL Step Throughput — All {len(_names)} Games (with Playwright reference)")
     _ax.legend(loc="lower right", fontsize=8)
     _ax.set_xlim(0, max(_rl_fps) * 1.15)
     _fig.tight_layout()
@@ -187,7 +187,7 @@ def _(mo):
     Our headless Node approach bypasses all of this: pixels are read directly from the
     `node-canvas` framebuffer in the same process — zero serialization, zero IPC.
 
-    Both approaches benchmarked on **all 14 games** with identical 64x64 RGB observations.
+    Both approaches benchmarked on **all games** with identical 64x64 RGB observations.
     """)
     return
 
@@ -246,7 +246,7 @@ def _(browser_bench, games, np, plt):
     _names_sorted = [_common[i] for i in _order]
     _b64_sorted = [_speedup_b64[i] for i in _order]
 
-    _fig, _ax = plt.subplots(figsize=(12, 5))
+    _fig, _ax = plt.subplots(figsize=(12, max(5, len(_names_sorted) * 0.35)))
     _colors = plt.cm.YlOrRd(np.linspace(0.3, 0.7, len(_names_sorted)))
     _bars = _ax.barh(_names_sorted[::-1], _b64_sorted[::-1], color=_colors[::-1],
                      edgecolor="white", linewidth=0.5)

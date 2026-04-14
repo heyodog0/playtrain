@@ -17,6 +17,7 @@ let _textAlignH = 'left';
 let _textFontFamily = 'sans-serif';
 let _keysDown = new Set();
 let _rectMode = 'corner'; // 'corner' or 'center'
+let _ellipseMode = 'center'; // 'center' or 'corner'
 
 // ---- Color helpers ----
 function colorArgs(args) {
@@ -75,11 +76,18 @@ function rect(x, y, w, h, r) {
   }
 }
 
+function ellipseMode(mode) {
+  if (mode === 'corner' || mode === CORNER) _ellipseMode = 'corner';
+  else _ellipseMode = 'center';
+}
+
 function ellipse(x, y, w, h) {
   if (h === undefined) h = w;
+  let cx = x, cy = y;
+  if (_ellipseMode === 'corner') { cx = x + w / 2; cy = y + h / 2; }
   _ctx.fillStyle = _fillStyle;
   _ctx.beginPath();
-  _ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+  _ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
   _ctx.fill();
   if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
 }
@@ -90,6 +98,18 @@ function triangle(x1, y1, x2, y2, x3, y3) {
   _ctx.moveTo(x1, y1);
   _ctx.lineTo(x2, y2);
   _ctx.lineTo(x3, y3);
+  _ctx.closePath();
+  _ctx.fill();
+  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+}
+
+function quad(x1, y1, x2, y2, x3, y3, x4, y4) {
+  _ctx.fillStyle = _fillStyle;
+  _ctx.beginPath();
+  _ctx.moveTo(x1, y1);
+  _ctx.lineTo(x2, y2);
+  _ctx.lineTo(x3, y3);
+  _ctx.lineTo(x4, y4);
   _ctx.closePath();
   _ctx.fill();
   if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
@@ -204,6 +224,9 @@ function simulateKeyPress(code) {
   if (typeof globalThis.keyPressed === 'function') globalThis.keyPressed();
 }
 
+// ---- Timing ----
+function millis() { return _frameCount * (1000 / 60); }
+
 // ---- Loop control ----
 let _looping = true;
 function loop() { _looping = true; }
@@ -247,14 +270,14 @@ const CLOSE = 'close';
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, background, fill, rectMode, rect, ellipse, circle, triangle, line,
+    createCanvas, background, fill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color,
     textSize, textAlign, textFont, text,
     push, pop, translate, rotate, scale,
     beginShape, vertex, endShape,
     map, constrain, lerp, dist,
     abs, floor, ceil, round, sqrt, pow, sin, cos, atan2, random, min, max,
-    keyIsDown, loop, noLoop, tint,
+    keyIsDown, loop, noLoop, tint, millis,
     LEFT_ARROW, UP_ARROW, RIGHT_ARROW, DOWN_ARROW, ENTER,
     CENTER, CORNER, LEFT, PI, TWO_PI, HALF_PI, CLOSE,
     get width() { return _width; },
