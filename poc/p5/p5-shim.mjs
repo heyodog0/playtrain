@@ -16,9 +16,11 @@ let _textSz = 12;
 let _textAlignH = 'left';
 let _textFontFamily = 'sans-serif';
 let _keysDown = new Set();
+let _rectMode = 'corner'; // 'corner' or 'center'
 
 // ---- Color helpers ----
 function colorArgs(args) {
+  if (args.length === 1 && typeof args[0] === 'string') return args[0];
   if (args.length === 1) return `rgba(${args[0]},${args[0]},${args[0]},1)`;
   if (args.length === 2) return `rgba(${args[0]},${args[0]},${args[0]},${args[1]/255})`;
   if (args.length === 3) return `rgba(${args[0]},${args[1]},${args[2]},1)`;
@@ -53,16 +55,23 @@ function fill(...args) {
   _fillStyle = colorArgs(args);
 }
 
+function rectMode(mode) {
+  if (mode === 'center' || mode === CENTER) _rectMode = 'center';
+  else _rectMode = 'corner';
+}
+
 function rect(x, y, w, h, r) {
+  let dx = x, dy = y;
+  if (_rectMode === 'center') { dx = x - w / 2; dy = y - h / 2; }
   _ctx.fillStyle = _fillStyle;
   if (r && r > 0) {
     _ctx.beginPath();
-    _ctx.roundRect(x, y, w, h, r);
+    _ctx.roundRect(dx, dy, w, h, r);
     _ctx.fill();
     if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
   } else {
-    _ctx.fillRect(x, y, w, h);
-    if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.strokeRect(x, y, w, h); }
+    _ctx.fillRect(dx, dy, w, h);
+    if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.strokeRect(dx, dy, w, h); }
   }
 }
 
@@ -73,6 +82,30 @@ function ellipse(x, y, w, h) {
   _ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
   _ctx.fill();
   if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+}
+
+function triangle(x1, y1, x2, y2, x3, y3) {
+  _ctx.fillStyle = _fillStyle;
+  _ctx.beginPath();
+  _ctx.moveTo(x1, y1);
+  _ctx.lineTo(x2, y2);
+  _ctx.lineTo(x3, y3);
+  _ctx.closePath();
+  _ctx.fill();
+  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+}
+
+function circle(x, y, d) {
+  ellipse(x, y, d, d);
+}
+
+function color(...args) {
+  // Returns the color string for use with fill(color(...))
+  return colorArgs(args);
+}
+
+function noSmooth() {
+  // No-op in headless mode (disables anti-aliasing in browser)
 }
 
 function line(x1, y1, x2, y2) {
@@ -144,6 +177,23 @@ function endShape(mode) {
 function map(v, s1, e1, s2, e2) { return s2 + (e2 - s2) * ((v - s1) / (e1 - s1)); }
 function constrain(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
 function lerp(a, b, t) { return a + (b - a) * t; }
+function dist(x1, y1, x2, y2) { return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2); }
+function abs(v) { return Math.abs(v); }
+function floor(v) { return Math.floor(v); }
+function ceil(v) { return Math.ceil(v); }
+function round(v) { return Math.round(v); }
+function sqrt(v) { return Math.sqrt(v); }
+function pow(b, e) { return Math.pow(b, e); }
+function sin(a) { return Math.sin(a); }
+function cos(a) { return Math.cos(a); }
+function atan2(y, x) { return Math.atan2(y, x); }
+function random(a, b) {
+  if (a === undefined) return Math.random();
+  if (b === undefined) return Math.random() * a;
+  return a + Math.random() * (b - a);
+}
+function min(...args) { return Math.min(...(args.length === 1 && Array.isArray(args[0]) ? args[0] : args)); }
+function max(...args) { return Math.max(...(args.length === 1 && Array.isArray(args[0]) ? args[0] : args)); }
 
 // ---- Input ----
 function keyIsDown(code) { return _keysDown.has(code); }
@@ -187,22 +237,26 @@ const RIGHT_ARROW = 39;
 const DOWN_ARROW = 40;
 const ENTER = 13;
 const CENTER = 'center';
+const CORNER = 'corner';
 const LEFT = 'left';
 const PI = Math.PI;
+const TWO_PI = Math.PI * 2;
+const HALF_PI = Math.PI / 2;
 const CLOSE = 'close';
 
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, background, fill, rect, ellipse, line,
-    stroke, noStroke, strokeWeight,
+    createCanvas, background, fill, rectMode, rect, ellipse, circle, triangle, line,
+    stroke, noStroke, strokeWeight, noSmooth, color,
     textSize, textAlign, textFont, text,
     push, pop, translate, rotate, scale,
     beginShape, vertex, endShape,
-    map, constrain, lerp,
+    map, constrain, lerp, dist,
+    abs, floor, ceil, round, sqrt, pow, sin, cos, atan2, random, min, max,
     keyIsDown, loop, noLoop, tint,
     LEFT_ARROW, UP_ARROW, RIGHT_ARROW, DOWN_ARROW, ENTER,
-    CENTER, LEFT, PI, CLOSE,
+    CENTER, CORNER, LEFT, PI, TWO_PI, HALF_PI, CLOSE,
     get width() { return _width; },
     get height() { return _height; },
     get frameCount() { return _frameCount; },

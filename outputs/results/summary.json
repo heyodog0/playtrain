@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-04-14T00:48:07.256816+00:00",
+  "algorithms": {
+    "ppo": {
+      "per_game_raw": {
+        "breakout": 40.0
+      },
+      "per_game_normalized": {
+        "breakout": -0.9173286442120083
+      },
+      "aggregate": {
+        "mean": -0.9173286442120083,
+        "median": -0.9173286442120083,
+        "iqm": -0.9173286442120083,
+        "std": 0.0,
+        "min": -0.9173286442120083,
+        "max": -0.9173286442120083,
+        "n_games": 1
+      }
+    }
+  },
+  "baselines_source": "/Users/heyodogo/code/lab/fast-llm-games/outputs/baselines/random_agent_scores.json"
+}

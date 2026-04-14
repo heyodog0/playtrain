@@ -16,6 +16,10 @@ notebook = [
   "marimo>=0.13.0",
   "matplotlib>=3.9.0",
 ]
+experiment = [
+  "wandb>=0.18.0",
+  "tensorboard>=2.18.0",
+]
 
 [build-system]
 requires = ["hatchling"]

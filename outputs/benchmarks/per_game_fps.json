@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-04-14T00:42:19.468468+00:00",
+  "frames_per_game": 500,
+  "results": [
+    {
+      "game": "breakout",
+      "frames": 500,
+      "elapsed_ms": 108.8019169983454,
+      "fps": 4595.5,
+      "ms_per_step": 0.218,
+      "checksum": 15910
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "total_timesteps": 500000,
+  "n_envs": 4,
+  "n_steps": 256,
+  "batch_size": 256,
+  "eval_freq": 25000,
+  "n_eval_episodes": 5,
+  "max_steps": 2000
+}
