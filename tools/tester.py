@@ -1,43 +1,18 @@
 """Lightweight game tester: play games in browser + refine via Gemini."""
 
 import json
-import os
-import re
-import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
-from google import genai
+if __package__:
+    from .refine import refine_game
+else:
+    from refine import refine_game
 
 ROOT = Path(__file__).resolve().parent.parent
 GAMES_DIR = ROOT / "games"
 CATALOGS_DIR = GAMES_DIR / "catalogs"
 JS_DIR = GAMES_DIR / "js"
-TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
-LOG_DIR = GAMES_DIR / "logs"
-
-MODELS = {
-    "flash": "gemini-3-flash-preview",
-    "pro": "gemini-3.1-pro-preview",
-}
-
-CLIENT = None
-
-
-def get_client():
-    global CLIENT
-    if CLIENT is None:
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            print("Warning: GEMINI_API_KEY not set, refinement will fail")
-            return None
-        CLIENT = genai.Client(api_key=api_key)
-    return CLIENT
-
-
-def strip_fences(text: str) -> str:
-    m = re.search(r"```(?:javascript|js)?\s*\n(.*?)```", text, re.DOTALL)
-    return m.group(1).strip() if m else text.strip()
 
 
 def list_games() -> list[str]:
@@ -56,74 +31,6 @@ def needs_matter(name: str) -> bool:
     return False
 
 
-def save_log(name: str, model: str, prompt: str, raw_output: str, code: str, duration_s: float, feedback: str):
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    log = {
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "action": "refine",
-        "game": name,
-        "model": model,
-        "feedback": feedback,
-        "duration_s": round(duration_s, 2),
-        "prompt_chars": len(prompt),
-        "output_chars": len(raw_output),
-        "code_chars": len(code),
-        "prompt": prompt,
-        "raw_output": raw_output,
-    }
-    log_path = LOG_DIR / f"{ts}_{name}_refine.json"
-    log_path.write_text(json.dumps(log, indent=2))
-    return log_path
-
-
-def backup_game(name: str):
-    src = JS_DIR / f"{name}.js"
-    if not src.exists():
-        return
-    backup_dir = GAMES_DIR / "backups"
-    backup_dir.mkdir(exist_ok=True)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    (backup_dir / f"{name}_{ts}.js").write_text(src.read_text())
-
-
-def refine_game(name: str, feedback: str, model_key: str) -> dict:
-    client = get_client()
-    if not client:
-        raise RuntimeError("GEMINI_API_KEY not set")
-
-    code = (JS_DIR / f"{name}.js").read_text()
-    template = TEMPLATE_PATH.read_text()
-    model = MODELS.get(model_key, MODELS["flash"])
-
-    prompt = f"""Here is the current game code:
-
-{code}
-
-The game must conform to this template specification:
-
-{template}
-
-Player feedback:
-{feedback}
-
-Update the game to address the feedback while maintaining full compliance with the template.
-Output ONLY the complete updated JavaScript code. No markdown fences, no explanation."""
-
-    t0 = time.time()
-    response = client.models.generate_content(model=model, contents=prompt)
-    duration = time.time() - t0
-
-    raw_output = response.text
-    new_code = strip_fences(raw_output)
-
-    backup_game(name)
-    log_path = save_log(name, model, prompt, raw_output, new_code, duration, feedback)
-    print(f"  Refined {name} ({duration:.1f}s, {len(new_code)} bytes, log: {log_path.name})")
-
-    return {"code": new_code, "duration_s": round(duration, 2)}
-
-
 # -- HTML templates (inline) --------------------------------------------------
 
 TESTER_HTML = """<!DOCTYPE html>
@@ -133,6 +40,7 @@ TESTER_HTML = """<!DOCTYPE html>
 <title>Game Tester</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --stage-width: 520px; --stage-height: 560px; --game-scale: 1; }
   body { font-family: monospace; background: #111; color: #eee; height: 100vh; display: flex; flex-direction: column; }
   #top { display: flex; flex: 1; min-height: 0; }
   #sidebar { width: 180px; background: #1a1a1a; border-right: 1px solid #333; overflow-y: auto; padding: 8px; }
@@ -141,8 +49,17 @@ TESTER_HTML = """<!DOCTYPE html>
     color: #ccc; padding: 6px 8px; cursor: pointer; font-family: monospace; font-size: 12px; margin-bottom: 2px; }
   .game-btn:hover { background: #252525; }
   .game-btn.active { background: #333; color: #fff; border-color: #555; }
-  #main { flex: 1; display: flex; justify-content: center; align-items: center; background: #0a0a0a; }
-  #main iframe { border: none; width: 520px; height: 560px; }
+  #main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #0a0a0a; overflow: auto; }
+  #stage { width: var(--stage-width); height: var(--stage-height); border: 1px solid #2d2d2d; border-radius: 18px;
+    overflow: hidden; background: #000; box-shadow: 0 24px 70px rgba(0,0,0,0.45); transition: width 160ms ease, height 160ms ease, box-shadow 160ms ease; }
+  #main iframe { border: none; width: 100%; height: 100%; }
+  #main.large-view { --stage-width: 860px; --stage-height: 900px; }
+  #main.large-view #stage { box-shadow: 0 30px 90px rgba(0,0,0,0.6); }
+  #view-toggle { position: absolute; top: 14px; right: 16px; border: 1px solid #3d3d3d; background: rgba(20,20,20,0.92);
+    color: #d7d7d7; border-radius: 999px; padding: 8px 14px; cursor: pointer; font-family: monospace; font-size: 12px;
+    letter-spacing: 0.02em; transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease; }
+  #view-toggle:hover { background: rgba(36,36,36,0.96); border-color: #5a5a5a; color: #fff; transform: translateY(-1px); }
+  #view-toggle.active { background: #d9efe4; color: #0f291d; border-color: #d9efe4; }
   #empty { color: #555; font-size: 14px; }
   #bottom { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1a1a1a; border-top: 1px solid #333; }
   #bottom select { background: #222; color: #eee; border: 1px solid #444; padding: 6px; font-family: monospace; }
@@ -155,7 +72,10 @@ TESTER_HTML = """<!DOCTYPE html>
 <body>
 <div id="top">
   <div id="sidebar"><h3>Games</h3><div id="game-list"></div></div>
-  <div id="main"><span id="empty">Select a game</span></div>
+  <div id="main">
+    <button id="view-toggle" onclick="toggleBigScreen()" disabled>Big Screen</button>
+    <span id="empty">Select a game</span>
+  </div>
 </div>
 <div id="bottom">
   <select id="model"><option value="flash">Flash</option><option value="pro">Pro</option></select>
@@ -165,6 +85,7 @@ TESTER_HTML = """<!DOCTYPE html>
 </div>
 <script>
 let currentGame = null;
+let bigScreen = false;
 
 async function loadGames() {
   const res = await fetch('/api/games');
@@ -184,10 +105,37 @@ function selectGame(name) {
   currentGame = name;
   document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.textContent === name));
   const main = document.getElementById('main');
-  main.innerHTML = '<iframe src="/play/' + name + '"></iframe>';
+  main.querySelector('#empty')?.remove();
+  const oldStage = document.getElementById('stage');
+  if (oldStage) oldStage.remove();
+  const stage = document.createElement('div');
+  stage.id = 'stage';
+  stage.innerHTML = '<iframe id="game-frame" src="/play/' + name + '"></iframe>';
+  main.appendChild(stage);
+  stage.querySelector('iframe').addEventListener('load', syncBigScreen);
   document.getElementById('feedback').disabled = false;
   document.getElementById('refine-btn').disabled = false;
+  document.getElementById('view-toggle').disabled = false;
   document.getElementById('status').textContent = 'Playing: ' + name;
+  syncBigScreen();
+}
+
+function syncBigScreen() {
+  const main = document.getElementById('main');
+  const btn = document.getElementById('view-toggle');
+  const iframe = document.getElementById('game-frame');
+  main.classList.toggle('large-view', bigScreen);
+  btn.classList.toggle('active', bigScreen);
+  btn.textContent = bigScreen ? 'Standard View' : 'Big Screen';
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'tester-scale', scale: bigScreen ? 1.5 : 1 }, window.location.origin);
+  }
+}
+
+function toggleBigScreen() {
+  if (!currentGame) return;
+  bigScreen = !bigScreen;
+  syncBigScreen();
 }
 
 async function refine() {
@@ -197,6 +145,7 @@ async function refine() {
   const btn = document.getElementById('refine-btn');
   const status = document.getElementById('status');
 
+  btn.blur();
   btn.disabled = true;
   status.textContent = 'Refining...';
 
@@ -208,9 +157,10 @@ async function refine() {
     });
     const data = await res.json();
     if (data.success) {
-      status.textContent = 'Refined in ' + data.duration_s + 's. Reloading...';
+      const strategy = data.strategy ? ' (' + data.strategy + ')' : '';
+      status.textContent = 'Refined in ' + data.duration_s + 's' + strategy + '. Reloading...';
       document.getElementById('feedback').value = '';
-      const iframe = document.querySelector('#main iframe');
+      const iframe = document.getElementById('game-frame');
       iframe.src = iframe.src;
     } else {
       status.textContent = 'Error: ' + (data.error || 'unknown');
@@ -235,14 +185,16 @@ PLAY_HTML = """<!DOCTYPE html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 {matter_tag}
 <style>
-  body {{ margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; }}
+  :root {{ --game-scale: 1; }}
+  body {{ margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; overflow: auto; }}
+  canvas {{ transform: scale(var(--game-scale)); transform-origin: top center; transition: transform 140ms ease; }}
   #controls {{ position: fixed; bottom: 4px; left: 0; right: 0; text-align: center; color: #888; font: 11px monospace; z-index: 10; }}
   #controls button {{ background: #222; color: #aaa; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: 11px monospace; }}
 </style>
 </head>
 <body>
 <div id="controls">
-  <button onclick="resetGame(Date.now()>>>0)">Reset</button>
+  <button id="reset-btn" onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button>
   <span id="state"></span>
 </div>
 <script src="/api/games/{name}"></script>
@@ -261,6 +213,14 @@ setInterval(() => {{
       'Score: ' + s.score + ' | Lives: ' + s.lives + ' | ' + s.gameState;
   }}
 }}, 200);
+
+window.addEventListener('message', event => {{
+  if (event.origin !== window.location.origin) return;
+  if (event.data && event.data.type === 'tester-scale') {{
+    const scale = Number(event.data.scale) || 1;
+    document.documentElement.style.setProperty('--game-scale', String(scale));
+  }}
+}});
 </script>
 </body>
 </html>"""
@@ -318,9 +278,10 @@ class Handler(BaseHTTPRequestHandler):
 
             try:
                 result = refine_game(name, feedback, model_key)
-                (JS_DIR / f"{name}.js").write_text(result["code"])
                 self._send(200, "application/json", json.dumps({
-                    "success": True, "duration_s": result["duration_s"]
+                    "success": True,
+                    "duration_s": result["duration_s"],
+                    "strategy": result.get("strategy"),
                 }).encode())
             except Exception as e:
                 self._send(500, "application/json", json.dumps({"success": False, "error": str(e)}).encode())

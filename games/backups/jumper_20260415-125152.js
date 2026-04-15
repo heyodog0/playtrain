@@ -72,8 +72,7 @@ function resetGame(seed) {
     addBlock(19 * TILE_SIZE, i * TILE_SIZE, grid, 19, i);      // Right
   }
 
-  // Pre-calculate gap positions for each floor to prevent blocking paths
-  let floorGaps = {};
+  // Generate cavern platforms with gaps
   let lastGapX = -1;
   for (let y = 16; y >= 4; y -= 3) {
     let gapWidth = Math.floor(rng() * 2) + 3; // 3 or 4 tiles gap
@@ -82,12 +81,6 @@ function resetGame(seed) {
       gapX = Math.floor(rng() * (18 - gapWidth)) + 1;
     } while (lastGapX !== -1 && Math.abs(gapX - lastGapX) < 2);
     lastGapX = gapX;
-    floorGaps[y] = { gapX, gapWidth };
-  }
-
-  // Generate cavern platforms with gaps
-  for (let y = 16; y >= 4; y -= 3) {
-    let { gapX, gapWidth } = floorGaps[y];
 
     for (let x = 1; x < 19; x++) {
       if (x < gapX || x >= gapX + gapWidth) {
@@ -116,12 +109,9 @@ function resetGame(seed) {
 
     // Vertical dividers to create a maze-like structure
     if (y > 4) {
-      let nextGap = floorGaps[y - 3];
       if (rng() < 0.5) {
         // Divider on the right side of the gap
         let minX = gapX + gapWidth + 1;
-        // Ensure the divider doesn't block the path to the next gap
-        minX = Math.max(minX, nextGap.gapX + nextGap.gapWidth);
         let maxX = 18;
         if (maxX > minX) {
           let divX = minX + Math.floor(rng() * (maxX - minX));
@@ -132,8 +122,6 @@ function resetGame(seed) {
         // Divider on the left side of the gap
         let minX = 1;
         let maxX = gapX - 1;
-        // Ensure the divider doesn't block the path to the next gap
-        maxX = Math.min(maxX, nextGap.gapX - 1);
         if (maxX > minX) {
           let divX = minX + Math.floor(rng() * (maxX - minX));
           addBlock(divX * TILE_SIZE, (y - 1) * TILE_SIZE, grid, divX, y - 1);
@@ -155,8 +143,7 @@ function resetGame(seed) {
   };
 
   // Goal at the top platform (y=4)
-  let topGapX = floorGaps[4].gapX;
-  let goalX = (topGapX < 10) ? 17 * TILE_SIZE + 4 : 2 * TILE_SIZE + 4;
+  let goalX = (lastGapX < 10) ? 17 * TILE_SIZE + 4 : 2 * TILE_SIZE + 4;
   goal = { x: goalX, y: 3 * TILE_SIZE + 8, w: 12, h: 12 };
 }
 
