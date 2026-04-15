@@ -211,4 +211,4 @@ See `GAME_TEMPLATE.md` for the full game spec. Key points:
 - **Train/test split**: seeds 0-199 for training, 1000-1099 for generalization testing
 - **Metrics**: normalized scores via random baselines, Interquartile Mean (IQM) across games
 
-See `llm-games-rl-pipeline.md` for the broader research motivation.
+See `llm/llm-games-rl-pipeline.md` for the broader research motivation and `llm/threejs-v2.md` for the Three.js / WebGPU v2 direction.
