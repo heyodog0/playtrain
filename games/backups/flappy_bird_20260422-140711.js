@@ -1,24 +1,12 @@
 let score = 0;
 let lives = 1;
 let gameState = 'PLAYING';
+let rng = null;
 
-let bird = { x: 100, y: 200, vy: 0, size: 20 };
-let pipes = [];
-let frames = 0;
+let bird;
+let pipes;
+let frames;
 let prevSpaceDown = false;
-
-function mulberry32(seed) {
-  let t = seed !== undefined ? seed >>> 0 : 42;
-  return function() {
-    t += 0x6D2B79F5;
-    let n = Math.imul(t ^ (t >>> 15), t | 1);
-    n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
-    return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Initialize globally to prevent crashes if draw() is invoked before setup()
-let rng = mulberry32(42);
 
 const GRAVITY = 0.5;
 const FLAP_STRENGTH = -8;
@@ -33,8 +21,7 @@ function setup() {
 }
 
 function resetGame(seed) {
-  let s = seed !== undefined ? seed : 42;
-  rng = mulberry32(s);
+  rng = mulberry32(seed);
   score = 0;
   lives = 1;
   gameState = 'PLAYING';
@@ -60,21 +47,14 @@ function getGameState() {
 }
 
 function draw() {
-  let spaceDown = keyIsDown(32); // 32 is SPACE key
-  
   if (gameState === 'PLAYING') {
-    updateGame(spaceDown);
-  } else if (gameState === 'GAMEOVER') {
-    if (spaceDown && !prevSpaceDown) {
-      resetGame(42);
-    }
-    prevSpaceDown = spaceDown;
+    updateGame();
   }
-  
   render();
 }
 
-function updateGame(spaceDown) {
+function updateGame() {
+  let spaceDown = keyIsDown(32); // 32 is SPACE key (Action D)
   if (spaceDown && !prevSpaceDown) {
     bird.vy = FLAP_STRENGTH;
   }
@@ -85,12 +65,9 @@ function updateGame(spaceDown) {
 
   if (frames % PIPE_SPAWN_RATE === 0) {
     let gapSize = 100 + Math.floor(rng() * 40);
-    let h = (typeof height !== 'undefined' && height > 0) ? height : 400;
-    let w = (typeof width !== 'undefined' && width > 0) ? width : 400;
-    let gapY = 50 + Math.floor(rng() * Math.max(10, h - gapSize - 100));
-    
+    let gapY = 50 + Math.floor(rng() * (height - gapSize - 100));
     pipes.push({
-      x: w,
+      x: width,
       top: gapY,
       bottom: gapY + gapSize,
       passed: false
@@ -125,8 +102,7 @@ function updateGame(spaceDown) {
     }
   }
 
-  let h = (typeof height !== 'undefined' && height > 0) ? height : 400;
-  if (bird.y - bird.size / 2 < 0 || bird.y + bird.size / 2 > h) {
+  if (bird.y - bird.size / 2 < 0 || bird.y + bird.size / 2 > height) {
     die();
   }
 
@@ -142,15 +118,24 @@ function render() {
   background(0);
 
   fill(0, 200, 0);
-  let h = (typeof height !== 'undefined' && height > 0) ? height : 400;
-  
   for (let p of pipes) {
     rect(p.x, 0, PIPE_WIDTH, p.top);
-    rect(p.x, p.bottom, PIPE_WIDTH, h - p.bottom);
+    rect(p.x, p.bottom, PIPE_WIDTH, height - p.bottom);
   }
 
   fill(0, 150, 255);
   rectMode(CENTER);
   rect(bird.x, bird.y, bird.size, bird.size);
   rectMode(CORNER);
+}
+
+let t;
+function mulberry32(seed) {
+  t = seed >>> 0;
+  return () => {
+    t += 0x6D2B79F5;
+    let n = Math.imul(t ^ (t >>> 15), t | 1);
+    n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
+    return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
+  };
 }
