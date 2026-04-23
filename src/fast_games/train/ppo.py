@@ -15,6 +15,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor, VecTransposeImage
 
 from fast_games.env import GameGymEnv
+from fast_games.policy import impala_policy_kwargs
 from fast_games.train._common import (
     apply_config,
     common_timestamp,
@@ -22,7 +23,11 @@ from fast_games.train._common import (
     get_git_hash,
     make_eval_callback,
     make_output_dir,
+    save_vecnormalize,
+    seed_everything,
     setup_wandb,
+    wrap_vecnormalize_eval,
+    wrap_vecnormalize_train,
     write_config_snapshot,
 )
 
@@ -54,6 +59,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-freq", type=int, default=10_000)
     parser.add_argument("--n-eval-episodes", type=int, default=5)
 
+    # Architecture / normalization (paper-comparable defaults; flip off for ablations)
+    parser.add_argument("--impala-cnn", dest="impala_cnn", action="store_true", default=True)
+    parser.add_argument("--no-impala-cnn", dest="impala_cnn", action="store_false")
+    parser.add_argument("--norm-reward", dest="norm_reward", action="store_true", default=True)
+    parser.add_argument("--no-norm-reward", dest="norm_reward", action="store_false")
+
+    # Reproducibility
+    parser.add_argument("--seed", type=int, default=None)
+
     # Output
     parser.add_argument("--output-dir", type=Path, default=None)
 
@@ -73,6 +87,7 @@ def make_env(game: str, **kwargs):
 def main() -> None:
     args = apply_config(parse_args())
     args.output_dir = make_output_dir(args.game, "ppo", args.output_dir)
+    seed_everything(args.seed)
 
     config_snapshot = {
         "algorithm": "ppo",
@@ -93,6 +108,9 @@ def main() -> None:
         "ent_coef": args.ent_coef,
         "clip_range": args.clip_range,
         "n_epochs": args.n_epochs,
+        "impala_cnn": args.impala_cnn,
+        "norm_reward": args.norm_reward,
+        "seed": args.seed,
     }
     write_config_snapshot(args.output_dir, config_snapshot)
 
@@ -107,10 +125,12 @@ def main() -> None:
     env = VecEnvClass([make_env(args.game, **env_kwargs) for _ in range(args.n_envs)])
     env = VecMonitor(env, filename=str(args.output_dir / "train_monitor"))
     env = VecTransposeImage(env)
+    env = wrap_vecnormalize_train(env, norm_reward=args.norm_reward, gamma=args.gamma)
 
     eval_env = DummyVecEnv([make_env(args.game, **env_kwargs)])
     eval_env = VecMonitor(eval_env, filename=str(args.output_dir / "eval_monitor"))
     eval_env = VecTransposeImage(eval_env)
+    eval_env = wrap_vecnormalize_eval(eval_env, enabled=args.norm_reward, gamma=args.gamma)
 
     callbacks = []
     wandb_cb = setup_wandb(
@@ -130,6 +150,7 @@ def main() -> None:
         )
     )
 
+    policy_kwargs = impala_policy_kwargs() if args.impala_cnn else None
     model = PPO(
         "CnnPolicy",
         env,
@@ -142,6 +163,8 @@ def main() -> None:
         ent_coef=args.ent_coef,
         clip_range=args.clip_range,
         n_epochs=args.n_epochs,
+        policy_kwargs=policy_kwargs,
+        seed=args.seed,
         tensorboard_log=str(args.output_dir / "tb"),
         device="auto",
     )
@@ -154,6 +177,7 @@ def main() -> None:
 
     final_path = args.output_dir / "final_model"
     model.save(str(final_path))
+    save_vecnormalize(env, args.output_dir)
     print(f"\nSaved final model to {final_path}.zip")
     print(f"Best model: {args.output_dir / 'best_model'}")
 

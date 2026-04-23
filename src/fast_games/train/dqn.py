@@ -56,6 +56,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-freq", type=int, default=10_000)
     parser.add_argument("--n-eval-episodes", type=int, default=5)
 
+    # Reproducibility
+    parser.add_argument("--seed", type=int, default=None)
+
     # Output
     parser.add_argument("--output-dir", type=Path, default=None)
 
@@ -69,6 +72,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = apply_config(parse_args())
     args.output_dir = make_output_dir(args.game, "dqn", args.output_dir)
+    seed_everything(args.seed)
 
     config_snapshot = {
         "algorithm": "dqn",
@@ -89,6 +93,7 @@ def main() -> None:
         "train_freq": args.train_freq,
         "exploration_fraction": args.exploration_fraction,
         "exploration_final_eps": args.exploration_final_eps,
+        "seed": args.seed,
     }
     write_config_snapshot(args.output_dir, config_snapshot)
 
@@ -139,6 +144,7 @@ def main() -> None:
         train_freq=args.train_freq,
         exploration_fraction=args.exploration_fraction,
         exploration_final_eps=args.exploration_final_eps,
+        seed=args.seed,
         tensorboard_log=str(args.output_dir / "tb"),
         device="auto",
     )

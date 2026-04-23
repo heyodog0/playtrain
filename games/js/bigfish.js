@@ -25,6 +25,17 @@ function resetGame(seed) {
 function resetLevel() {
   player = { x: 200, y: 200, r: 15, speed: 5 };
   fishes = [];
+  // Seed a few initial fish so the first observation has visual variety.
+  if (rng) {
+    for (let i = 0; i < 4; i++) {
+      let r = 8 + Math.pow(rng(), 1.4) * 30;
+      let y = r + rng() * (400 - 2 * r);
+      let movesRight = rng() < 0.5;
+      let x = movesRight ? rng() * 400 : (400 - rng() * 400);
+      let vx = (1.5 + rng() * 3.5) * (movesRight ? 1 : -1);
+      fishes.push({ x, y, r, vx });
+    }
+  }
 }
 
 function getGameState() {

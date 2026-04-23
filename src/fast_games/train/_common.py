@@ -14,7 +14,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import random
 from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.vec_env import VecNormalize
 
 
 def apply_config(args: argparse.Namespace) -> argparse.Namespace:
@@ -131,3 +133,53 @@ def finish_wandb(enabled: bool) -> None:
 def common_timestamp() -> str:
     """UTC ISO timestamp for config snapshots."""
     return datetime.now(timezone.utc).isoformat()
+
+
+def seed_everything(seed: int | None) -> None:
+    """Seed Python, NumPy, and PyTorch RNGs for reproducible runs.
+
+    No-op if `seed is None`. SB3 internally re-seeds during `model.learn()` if
+    you pass `seed=` to the algorithm constructor; this just covers everything
+    else (env workers, eval rollouts, action sampling, weight init).
+    """
+    if seed is None:
+        return
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except ImportError:
+        pass
+    try:
+        import torch
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    except ImportError:
+        pass
+
+
+def wrap_vecnormalize_train(env, *, norm_reward: bool, gamma: float):
+    """Apply VecNormalize to a training env (reward only — obs are images)."""
+    if not norm_reward:
+        return env
+    return VecNormalize(env, norm_obs=False, norm_reward=True, gamma=gamma, clip_reward=10.0)
+
+
+def wrap_vecnormalize_eval(env, *, enabled: bool, gamma: float):
+    """Wrap an eval env to match the train env's VecNormalize layer.
+
+    Eval rewards stay raw (`norm_reward=False`) but the wrapper is required
+    so SB3's EvalCallback can call `sync_envs_normalization()` to copy the
+    train env's running stats. `training=False` freezes the running mean/std.
+    """
+    if not enabled:
+        return env
+    eval_env = VecNormalize(env, norm_obs=False, norm_reward=False, gamma=gamma)
+    eval_env.training = False
+    return eval_env
+
+
+def save_vecnormalize(env, output_dir: Path, name: str = "vecnormalize.pkl") -> None:
+    """Persist running-mean/std stats so eval can reload them."""
+    if isinstance(env, VecNormalize):
+        env.save(str(output_dir / name))

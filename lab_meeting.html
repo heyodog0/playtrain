@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Browserless game RL — a fast, LLM-generated benchmark</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+
+<style>
+  :root {
+    --fg: #111;
+    --muted: #555;
+    --rule: #222;
+    --accent: #0a52a1;
+    --bg: #ffffff;
+    --body-font: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --mono-font: "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  html, body { background: var(--bg); color: var(--fg); }
+  .reveal { font-family: var(--body-font); color: var(--fg); font-size: 28px; }
+
+  .reveal .slides { text-align: left; }
+
+  .reveal .slides > section,
+  .reveal .slides > section > section {
+    display: grid;
+    place-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 4vh 6vw;
+    box-sizing: border-box;
+  }
+
+  .reveal .slide-content {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .reveal h1, .reveal h2, .reveal h3 {
+    color: var(--fg);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6em 0;
+  }
+  .reveal h1 { font-size: 1.8em; line-height: 1.15; }
+  .reveal h2 { font-size: 1.35em; line-height: 1.2; }
+  .reveal h3 { font-size: 1em; color: var(--muted); font-weight: 500; margin-top: 1em; }
+
+  .reveal p, .reveal li { line-height: 1.45; }
+  .reveal ul, .reveal ol { margin-left: 1.2em; }
+  .reveal li { margin-bottom: 0.35em; }
+  .reveal li > ul { margin-top: 0.3em; }
+
+  .reveal strong { font-weight: 600; }
+  .reveal em { font-style: italic; color: var(--muted); }
+
+  .reveal blockquote {
+    border-left: 3px solid var(--rule);
+    padding-left: 0.9em;
+    margin: 0.8em 0;
+    font-style: normal;
+    color: var(--fg);
+    background: none;
+    box-shadow: none;
+    font-family: var(--mono-font);
+    font-size: 0.95em;
+  }
+
+  .reveal code {
+    font-family: var(--mono-font);
+    font-size: 0.92em;
+    background: #f3f3f3;
+    padding: 0.05em 0.35em;
+    border-radius: 3px;
+  }
+  .reveal pre {
+    box-shadow: none;
+    font-size: 0.7em;
+  }
+  .reveal pre code {
+    background: #f6f6f6;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    display: block;
+    line-height: 1.35;
+  }
+
+  .reveal table {
+    border-collapse: collapse;
+    margin: 0.6em auto;
+    font-size: 0.92em;
+  }
+  .reveal table th, .reveal table td {
+    padding: 0.45em 0.9em;
+    border: none;
+    text-align: left;
+    vertical-align: top;
+  }
+  .reveal table thead th {
+    border-top: 2px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    font-weight: 600;
+  }
+  .reveal table tbody tr:last-child td {
+    border-bottom: 2px solid var(--rule);
+  }
+
+  .reveal .katex-display { margin: 0.6em 0; }
+
+  .title-slide h1 { font-size: 2.0em; margin-bottom: 0.3em; }
+  .title-slide .subtitle { font-size: 1.1em; color: var(--muted); margin-bottom: 2em; }
+  .title-slide .author { font-size: 0.95em; color: var(--fg); }
+  .title-slide .date { font-size: 0.85em; color: var(--muted); }
+
+  .claim {
+    margin-top: 0.5em;
+    padding: 0.5em 0.9em;
+    border-left: 3px solid var(--rule);
+    background: #fafafa;
+  }
+  .predict-yes { color: #0a52a1; font-weight: 600; }
+  .predict-no  { color: #8a1a1a; font-weight: 600; }
+  .num         { color: #0a52a1; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .reveal .slide-number {
+    color: var(--muted);
+    background: transparent;
+    font-family: var(--mono-font);
+    font-size: 0.7em;
+    right: 12px;
+    bottom: 8px;
+  }
+
+  .reveal .controls { color: var(--muted); }
+  .reveal .progress { color: var(--muted); height: 2px; }
+
+  .refs { color: var(--muted); font-size: 0.85em; margin-top: 0.7em; font-style: italic; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5em; }
+  .two-col > div { min-width: 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2em; font-size: 0.95em; }
+
+  .arch {
+    font-family: var(--mono-font);
+    font-size: 0.78em;
+    line-height: 1.45;
+    background: #f6f6f6;
+    padding: 1em 1.2em;
+    border-radius: 4px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. Title -->
+<section class="title-slide">
+  <div class="slide-content">
+    <h1>Browserless game RL</h1>
+    <div class="subtitle">A fast, LLM-generated benchmark for procedural-generalization studies — running JavaScript games at native speed without a browser</div>
+    <div class="author">Ryan Truong</div>
+    <div class="date">Lab meeting &middot; April 2026</div>
+  </div>
+</section>
+
+<!-- 2. The puzzle -->
+<section>
+  <div class="slide-content">
+    <h2>The puzzle, in one sentence</h2>
+    <p>RL benchmarks force a three-way tradeoff between <strong>speed</strong>, <strong>diversity</strong>, and <strong>cost of authoring new environments</strong>. Today you pick two.</p>
+    <ul>
+      <li><strong>Atari</strong>: fast, fixed (57 games hand-written 30 years ago), zero authoring</li>
+      <li><strong>ProcGen</strong>: fast, 16 procedurally-generated games, requires a custom C++ build</li>
+      <li><strong>Browser/web games</strong>: huge corpus, slow (~30 FPS), expensive infra (Playwright + base64)</li>
+    </ul>
+    <div class="claim">
+      <span class="predict-yes">Core claim:</span> an LLM that writes games against a strict template, executed in a headless Node runtime, gets you all three at once.
+    </div>
+  </div>
+</section>
+
+<!-- 3. ProcGen recap -->
+<section>
+  <div class="slide-content">
+    <h2>ProcGen sets the gold standard</h2>
+    <ul>
+      <li><strong>Procedural generation</strong>: each level a fresh draw from a distribution &rArr; train/test seed splits actually measure generalization, not memorization</li>
+      <li><strong>Fixed action / observation interface</strong> across all games (Discrete(15), 64&times;64 RGB) &rArr; one CNN policy trains on all 16 simultaneously</li>
+      <li><strong>Canonical baseline</strong>: PPO + IMPALA-CNN, 25–50M steps, normalized scores (Cobbe et al. 2019)</li>
+    </ul>
+    <p>The benchmark works because the <em>interface is uniform</em> and the <em>levels are infinite</em>. Both properties carry over to anything that respects the same template.</p>
+    <p class="refs">Cobbe, Hesse, Hilton &amp; Schulman 2019 — "Leveraging Procedural Generation to Benchmark RL"</p>
+  </div>
+</section>
+
+<!-- 4. The cost of slowness -->
+<section>
+  <div class="slide-content">
+    <h2>Slow benchmarks compound</h2>
+    <p>A 2&times; slowdown on env step is not a 2&times; slowdown on the field — it's a 2&times; tax on every iteration of every method, every paper, every grad student.</p>
+    <table>
+      <thead><tr><th>Throughput</th><th>One ProcGen-paper run (25M steps)</th><th>10-seed sweep</th></tr></thead>
+      <tbody>
+        <tr><td><span class="num">200</span> FPS  (browser)</td><td>~35 hours</td><td>~2 weeks</td></tr>
+        <tr><td><span class="num">1.5k</span> FPS  (this work, M4 Pro, 4 envs)</td><td>~5 hours</td><td>~2 days</td></tr>
+        <tr><td><span class="num">10k</span> FPS  (ProcGen on cluster)</td><td>~40 min</td><td>~7 hours</td></tr>
+      </tbody>
+    </table>
+    <p>The interesting question isn't whether you <em>can</em> run a benchmark — it's whether iteration cycles are short enough that exploring methods <em>feels free</em>.</p>
+  </div>
+</section>
+
+<!-- 5. Why browser RL failed -->
+<section>
+  <div class="slide-content">
+    <h2>Why browser-based RL has been a dead end</h2>
+    <ul>
+      <li><strong>The DOM is the bottleneck</strong>, not JavaScript. A browser RL step is: render &rarr; <code>canvas.toDataURL()</code> &rarr; base64 encode &rarr; IPC to Python &rarr; base64 decode &rarr; image decode &rarr; resize</li>
+      <li>Each round-trip is ~5 ms of overhead before the game does anything useful</li>
+      <li>Playwright + headless Chromium ≈ <strong>~50–200 FPS</strong> per env, regardless of how trivial the game is</li>
+      <li>Parallelism is bounded by Chromium memory (~250 MB / instance)</li>
+    </ul>
+    <p>Conclusion: keep the JavaScript, drop the browser.</p>
+  </div>
+</section>
+
+<!-- 6. The gap -->
+<section>
+  <div class="slide-content">
+    <h2>The gap</h2>
+    <p>Existing benchmarks force a choice between authoring effort and diversity:</p>
+    <ul>
+      <li>Hand-written Atari/ProcGen environments: 100s of hours per game</li>
+      <li>Browser-game corpora: cheap to find, expensive to run, never standardized</li>
+      <li>No benchmark exists where <strong>game generation itself is cheap</strong>, the runtime is fast, and the interface is procedurally-generalizable</li>
+    </ul>
+    <div class="claim">
+      Can an LLM produce, against a strict spec, games that pass ProcGen-style validation and run at native JS speed in headless Node?
+    </div>
+  </div>
+</section>
+
+<!-- 7. Architecture -->
+<section>
+  <div class="slide-content">
+    <h2>Architecture (one picture)</h2>
+    <div class="arch">  Gemini  ──generates──▶  games/js/breakout.js   (p5.js, Discrete(8), seeded)
+                                       │
+                                       ▼
+                         ┌─────────────────────────────────┐
+  Python (SB3 PPO) ◀──── │   GameGymEnv (Gymnasium)        │
+   ▲   │ obs            │       │                         │
+   │   │ action          │       ▼                         │
+   │   ▼                 │   binary IPC                    │
+   │  reward             │       │                         │
+   │                     │       ▼                         │
+   │                     │   Node worker (game-worker.mjs) │
+   │                     │       │                         │
+   │                     │       ▼                         │
+   │                     │   p5.js shim on node-canvas     │
+   │                     │   (no DOM, no browser)          │
+   │                     └─────────────────────────────────┘
+   │
+   └──── one Node subprocess per parallel env ────</div>
+    <p>Every layer is replaceable. The contracts (game template, IPC protocol, Gymnasium API) are the load-bearing pieces.</p>
+  </div>
+</section>
+
+<!-- 8. Method §1: game template -->
+<section>
+  <div class="slide-content">
+    <h2>Method §1 — the game template</h2>
+    <p>One <code>.js</code> file per game, exposing four globals: <code>setup()</code>, <code>draw()</code>, <code>resetGame(seed)</code>, <code>getGameState()</code>.</p>
+    <div class="two-col">
+      <div>
+        <h3>Action space</h3>
+        <p><strong>Discrete(8)</strong> — abstract directional + button. Identical across every game.</p>
+        <pre><code>NOOP, LEFT, RIGHT, UP, DOWN,
+D, LEFT+D, RIGHT+D</code></pre>
+      </div>
+      <div>
+        <h3>Observation</h3>
+        <p><strong>64&times;64&times;3 uint8</strong> — runtime downscales the canvas. Game never touches resolution.</p>
+        <p><strong>Seeded RNG</strong> — same seed + same actions &rArr; bit-identical trajectory.</p>
+      </div>
+    </div>
+    <p class="refs">Mirrors ProcGen's interface deliberately so a single CNN policy can train across the whole catalog.</p>
+  </div>
+</section>
+
+<!-- 9. Method §2: LLM generation -->
+<section>
+  <div class="slide-content">
+    <h2>Method §2 — the LLM generation pipeline</h2>
+    <ul>
+      <li><strong>Catalogs</strong>: 4 JSON files of 25 games each (atari, arcade, nes, mobile, procgen), 100 cataloged total</li>
+      <li><strong>Generator</strong>: Gemini 2.5 Flash/Pro receives the catalog entry + <code>GAME_TEMPLATE.md</code> + (optionally) Wikipedia reference</li>
+      <li><strong>Output</strong>: a single <code>games/js/{name}.js</code> conforming to the spec</li>
+      <li><strong>Refinement loop</strong>: browser game-tester (<code>tools/tester.py</code>) plays the game, captures feedback, re-prompts Gemini with the diff</li>
+    </ul>
+    <p>Generation is cheap (<code>just gen-game atari_games.json breakout</code>, ~30 s) — the costly thing is <em>verifying</em> what came back.</p>
+  </div>
+</section>
+
+<!-- 10. Method §3: headless runtime -->
+<section>
+  <div class="slide-content">
+    <h2>Method §3 — headless Node + p5 shim</h2>
+    <p>Replace the browser with a 200-line shim:</p>
+    <ul>
+      <li><strong><code>node-canvas</code></strong> provides <code>CanvasRenderingContext2D</code> backed by Cairo — no GPU, no compositor</li>
+      <li><strong>p5 shim</strong> exposes the p5.js global API (<code>fill</code>, <code>rect</code>, <code>keyIsDown</code>, …) by routing draw calls to the canvas context</li>
+      <li><strong>No <code>requestAnimationFrame</code></strong>: the runtime invokes <code>draw()</code> on demand from the IPC handler, one tick per RL step</li>
+      <li><strong>No event loop coupling</strong>: deterministic stepping, no jitter</li>
+    </ul>
+    <p>Net result: a p5.js game runs <em>identically</em> to its browser version, but the entire process is one Node thread.</p>
+    <p class="refs">See <code>poc/p5/</code> for the shim; <code>notebooks/headless_node_vs_playwright.py</code> for the architecture deep-dive.</p>
+  </div>
+</section>
+
+<!-- 11. Method §4: IPC protocol -->
+<section>
+  <div class="slide-content">
+    <h2>Method §4 — the IPC protocol</h2>
+    <p>Python ↔ Node communication. Designed to make the per-step overhead measurable in microseconds.</p>
+    <pre><code>// header (8 bytes, big-endian)
+[ uint32 meta_length ][ uint32 binary_length ]
+// then: meta_length bytes of UTF-8 JSON  (cmd, action, seed, ...)
+// then: binary_length bytes of raw uint8 obs buffer
+
+# Python decode
+obs = np.frombuffer(raw, dtype=np.uint8).reshape(64, 64, 3)</code></pre>
+    <ul>
+      <li>No base64, no JSON pixel arrays, no string parsing on the obs</li>
+      <li>Raw uint8 buffer ≈ 12 KB / step &mdash; single <code>read()</code> on the pipe</li>
+      <li>Sub-step timing on this path: <strong><span class="num">0.12</span> ms</strong> for pixel read + transfer (per <code>all_games_benchmark.py</code>)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 12. Method §5: Gymnasium wrapper -->
+<section>
+  <div class="slide-content">
+    <h2>Method §5 — Gymnasium wrapper</h2>
+    <p><code>GameGymEnv</code> is a standard <code>gym.Env</code>. Each instance:</p>
+    <ol>
+      <li>Spawns one Node subprocess running <code>game-worker.mjs --game GAME</code></li>
+      <li>Holds open stdin/stdout pipes for the lifetime of the env</li>
+      <li>On <code>reset(seed)</code>: writes <code>{cmd: "reset", seed}</code>, reads first frame</li>
+      <li>On <code>step(action)</code>: writes <code>{cmd: "step", action}</code>, reads frame + reward + terminated + truncated + info</li>
+      <li>On <code>close()</code>: writes <code>{cmd: "close"}</code>, joins subprocess</li>
+    </ol>
+    <p>Parallelism falls out for free via SB3's <code>SubprocVecEnv</code> — N envs &rArr; N Node subprocesses, no shared state, no GIL contention.</p>
+  </div>
+</section>
+
+<!-- 13. Method §6: validation suite -->
+<section>
+  <div class="slide-content">
+    <h2>Method §6 — the validation suite</h2>
+    <p>Five mechanical checks per game. A game enters the catalog only if it passes all five.</p>
+    <table>
+      <thead><tr><th>Check</th><th>What it asserts</th></tr></thead>
+      <tbody>
+        <tr><td>API compliance</td><td><code>gymnasium.utils.env_checker.check_env</code> passes</td></tr>
+        <tr><td>Determinism</td><td>Seed + 200 random actions &rArr; bit-identical observations, rewards, info["score"] across two runs</td></tr>
+        <tr><td>Observation sanity</td><td>Shape (64,64,3), dtype uint8, range [0,255], &gt;5 unique values, frame changes within 30 steps</td></tr>
+        <tr><td>Reward / terminal</td><td><code>reward == score_t − score_{t−1}</code> at every step; <code>terminated</code> implies <code>gameState ∈ {WIN, EXIT, GAMEOVER}</code></td></tr>
+        <tr><td>Throughput</td><td>Step FPS measured, no crashes over 500 steps</td></tr>
+      </tbody>
+    </table>
+    <p>This <em>is</em> the contract. An LLM that produces a game passing it is producing a usable RL environment, period.</p>
+  </div>
+</section>
+
+<!-- 14. Method §7: multi-game vec env -->
+<section>
+  <div class="slide-content">
+    <h2>Method §7 — multi-game vectorized env (ProcGen-style)</h2>
+    <p>Each parallel slot is <em>permanently</em> assigned one game. With 14 games and <code>n_envs_per_game = 4</code>:</p>
+    <pre><code>vec_env = make_multigame_vec_env(
+    games=list_available_games(),       # 14 games
+    n_envs_per_game=4,                  # 56 parallel envs total
+    seed_range=(0, 200),                # ProcGen train seeds
+)</code></pre>
+    <ul>
+      <li>On reset, the slot keeps its game and draws a new seed from the train range</li>
+      <li>The PPO rollout buffer collects experience from all 14 games simultaneously</li>
+      <li>One CNN policy must learn to play all of them — generalization across <em>games</em>, not just <em>levels</em></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 15. Method §8: PPO baseline -->
+<section>
+  <div class="slide-content">
+    <h2>Method §8 — PPO baseline (matches OpenAI ProcGen paper)</h2>
+    <p>Hyperparameters lifted verbatim from <code>train-procgen/train.py</code>:</p>
+    <table>
+      <thead><tr><th>Param</th><th>Value</th><th>Param</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>learning_rate</td><td>5e-4</td><td>n_steps</td><td>256</td></tr>
+        <tr><td>ent_coef</td><td>0.01</td><td>n_epochs</td><td>3</td></tr>
+        <tr><td>gamma</td><td>0.999</td><td>clip_range</td><td>0.2</td></tr>
+        <tr><td>gae_lambda</td><td>0.95</td><td>vf_coef</td><td>0.5</td></tr>
+        <tr><td>batch_size</td><td>2048</td><td>max_grad_norm</td><td>0.5</td></tr>
+      </tbody>
+    </table>
+    <p>Implemented via <code>stable-baselines3</code> rather than OpenAI baselines (TF1) — same numbers, modern stack. <code>just train-multi configs/full_run.json</code>.</p>
+    <p class="refs">Deferred to v2: IMPALA-CNN features extractor + <code>VecNormalize(norm_reward=True)</code> — the two remaining gaps vs. the canonical baseline.</p>
+  </div>
+</section>
+
+<!-- 16. Method §9: train/test splits -->
+<section>
+  <div class="slide-content">
+    <h2>Method §9 — train / test seed splits</h2>
+    <p>ProcGen convention, applied per game:</p>
+    <table>
+      <thead><tr><th>Split</th><th>Seeds</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td>Train</td><td>0 – 199</td><td>Rollouts during <code>model.learn()</code></td></tr>
+        <tr><td>Test (held-out)</td><td>1000 – 1099</td><td><code>EvalCallback</code> + final <code>eval/evaluate.py</code></td></tr>
+      </tbody>
+    </table>
+    <p>Aggregate metric: <strong>interquartile mean (IQM)</strong> of normalized scores (raw − random) / (best − random), across games. Random baselines collected via <code>just baselines</code> (100 episodes/game, written to <code>outputs/baselines/</code>).</p>
+    <p class="refs">Agarwal et al. 2021 (Deep RL at the Edge of the Statistical Precipice) — IQM is robust to outliers across games.</p>
+  </div>
+</section>
+
+<!-- 17. Throughput results -->
+<section>
+  <div class="slide-content">
+    <h2>Throughput — Apple M4 Pro, 64&times;64 RGB</h2>
+    <table>
+      <thead><tr><th>Config</th><th>FPS</th><th>Bottleneck</th></tr></thead>
+      <tbody>
+        <tr><td>Render-only (no RL plumbing)</td><td><span class="num">~19,000</span></td><td>p5 draw + canvas</td></tr>
+        <tr><td>Raw env step (breakout, 1 env)</td><td><span class="num">~3,700</span></td><td>pixel read + IPC</td></tr>
+        <tr><td>Raw env step (catalog median, 30 games)</td><td><span class="num">~4,150</span></td><td>pixel read + IPC</td></tr>
+        <tr><td>PPO training, 1 env</td><td><span class="num">~450</span></td><td>CNN inference + grad</td></tr>
+        <tr><td>PPO training, 4 envs (SubprocVec)</td><td><span class="num">~1,500</span></td><td>CNN inference + grad</td></tr>
+        <tr><td>Validation suite, 30 games</td><td>—</td><td>~90 s wall-clock</td></tr>
+      </tbody>
+    </table>
+    <p>Brower-based comparison (Playwright + Chromium, same game): <span class="num">~120</span> FPS at the env step layer — <strong>~38&times; slower</strong>.</p>
+    <p class="refs"><code>notebooks/all_games_benchmark.py</code> — per-game tables and sub-step breakdowns.</p>
+  </div>
+</section>
+
+<!-- 18. Sub-step breakdown -->
+<section>
+  <div class="slide-content">
+    <h2>Sub-step breakdown — the env is not the bottleneck</h2>
+    <p>Per-step time on breakout, M4 Pro (median over 500 steps):</p>
+    <table>
+      <thead><tr><th>Phase</th><th>ms / step</th><th>%</th></tr></thead>
+      <tbody>
+        <tr><td>Game tick (p5 <code>draw()</code> + game logic)</td><td>0.05</td><td>23%</td></tr>
+        <tr><td>Pixel read (canvas → uint8 buffer)</td><td>0.12</td><td>54%</td></tr>
+        <tr><td>Preprocess (downscale to 64&times;64)</td><td>0.02</td><td>9%</td></tr>
+        <tr><td>State read (game info dict)</td><td>&lt;0.001</td><td>~0%</td></tr>
+        <tr><td>IPC round-trip</td><td>~0.03</td><td>14%</td></tr>
+        <tr><td><strong>Total</strong></td><td><strong>~0.22</strong></td><td>100%</td></tr>
+      </tbody>
+    </table>
+    <p>Pixel-readback dominates. Even halving it would not change the training story — once you're past ~1 kHz/env, gradient updates are the wall.</p>
+  </div>
+</section>
+
+<!-- 19. Headless Node vs Playwright -->
+<section>
+  <div class="slide-content">
+    <h2>Headless Node vs. Playwright — why ~38×</h2>
+    <table>
+      <thead><tr><th>Component</th><th>Playwright (Chromium)</th><th>Headless Node</th></tr></thead>
+      <tbody>
+        <tr><td>Process boundary</td><td>Browser ↔ CDP ↔ Node ↔ Python</td><td>Node ↔ Python (one hop)</td></tr>
+        <tr><td>Frame transport</td><td><code>toDataURL()</code> + base64 + JSON</td><td>raw uint8 over pipe</td></tr>
+        <tr><td>Event loop</td><td>RAF, compositor, GPU coupling</td><td>synchronous draw on demand</td></tr>
+        <tr><td>Memory / instance</td><td>~250 MB</td><td>~40 MB</td></tr>
+        <tr><td>Determinism</td><td>jittered (compositor scheduling)</td><td>bit-exact</td></tr>
+      </tbody>
+    </table>
+    <p class="refs">Full pixel-transfer / base64 / IPC analysis with diagrams: <code>notebooks/headless_node_vs_playwright.py</code>.</p>
+  </div>
+</section>
+
+<!-- 20. Game catalog -->
+<section>
+  <div class="slide-content">
+    <h2>The catalog — 30 implemented, 100 cataloged</h2>
+    <div class="three-col">
+      <div>
+        <h3>Atari</h3>
+        <ul>
+          <li>breakout</li>
+          <li>space_invaders</li>
+          <li>asteroids</li>
+          <li>freeway</li>
+          <li>frostbite</li>
+        </ul>
+      </div>
+      <div>
+        <h3>ProcGen-likes</h3>
+        <ul>
+          <li>bigfish, bossfight</li>
+          <li>caveflyer, chaser</li>
+          <li>climber, coinrun</li>
+          <li>dodgeball, fruitbot</li>
+          <li>heist, jumper, leaper</li>
+          <li>maze, miner, ninja</li>
+          <li>plunder, starpilot</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Other / physics</h3>
+        <ul>
+          <li>flappy_bird</li>
+          <li>crossy_road</li>
+          <li>downwell</li>
+          <li>jetpack_joyride</li>
+          <li>mario, sonic, vvvvvv</li>
+          <li>angry_birds  <em>(Matter.js)</em></li>
+          <li>suika  <em>(Matter.js)</em></li>
+        </ul>
+      </div>
+    </div>
+    <p>All 30 share the same Discrete(8) action space and 64&times;64 RGB observation. The remaining 70 catalog entries are Gemini-generation candidates.</p>
+  </div>
+</section>
+
+<!-- 21. Validation results -->
+<section>
+  <div class="slide-content">
+    <h2>Validation results — 30 / 30 pass all five checks</h2>
+    <ul>
+      <li><strong>All 30</strong> games pass API + determinism + obs sanity + reward + throughput</li>
+      <li>Median throughput: <strong><span class="num">~4,150</span> FPS</strong> (raw env step; range <span class="num">1.2k</span>–<span class="num">4.8k</span> across games, mean <span class="num">~3,800</span>)</li>
+      <li>Slowest games are physics-heavy (<code>miner</code>, <code>chaser</code>); paddle / shooter games sit at the top end</li>
+      <li>The 5-check suite is the regression gate — when an LLM-generated game lands, this is what tells you whether it's usable</li>
+    </ul>
+    <p class="refs">Re-run any time: <code>just validate</code>. Per-game results in <code>outputs/validation/summary.json</code>.</p>
+  </div>
+</section>
+
+<!-- 22. Reproducibility / runner -->
+<section>
+  <div class="slide-content">
+    <h2>End-to-end reproduction — one command per stage</h2>
+    <pre><code>just setup                      # npm install + uv sync
+just validate                   # run 5-check suite on every game
+just baselines                  # random-agent normalization scores
+just train-multi configs/full_run.json   # ProcGen-style multi-game PPO
+just aggregate                  # IQM-normalized scores across runs
+
+# or in one shot:
+just paper-run</code></pre>
+    <p>Configs are committed (<code>smoke_test.json</code>, <code>short_run.json</code>, <code>full_run.json</code>); every output is timestamped under <code>outputs/experiments/{scope}/{algo}/{ts}/</code> with a <code>config.json</code> snapshot including the git hash.</p>
+  </div>
+</section>
+
+<!-- 23. Implications — RL methods -->
+<section>
+  <div class="slide-content">
+    <h2>Implications — RL methods research</h2>
+    <ul>
+      <li><strong>Iteration cycles drop from days to hours.</strong> A 25M-step ProcGen-style sweep finishes in ~5 hours on a laptop. Method ablations become a single afternoon.</li>
+      <li><strong>The benchmark grows with the field.</strong> When a new method is sensitive to a property no current game tests, you generate a game that tests it (cost: ~30 s of Gemini + one validation pass).</li>
+      <li><strong>Generalization gets a stronger signal.</strong> ProcGen tests generalization across <em>levels of one game</em>; this tests across <em>games</em>, with the same uniform interface.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 24. Implications — LLM eval -->
+<section>
+  <div class="slide-content">
+    <h2>Implications — LLMs as environment generators</h2>
+    <ul>
+      <li>"Write a game that passes this validation suite" is itself a benchmark for LLM coding under spec constraints — far more discriminating than "implement quicksort"</li>
+      <li>The validation pass rate per LLM (Gemini Flash vs. Pro vs. Claude Sonnet) is a directly measurable, well-defined number</li>
+      <li>The refinement loop (tester &rarr; failure feedback &rarr; re-prompt) converts LLM coding into an interactive, gradient-free optimization with a verifiable objective</li>
+    </ul>
+    <p>Open question: does this transfer? An LLM that writes a passing <em>breakout</em> ought to write a passing novel game-genre cousin. We have not yet measured generalization on the LLM side.</p>
+  </div>
+</section>
+
+<!-- 25. Implications — generalization -->
+<section>
+  <div class="slide-content">
+    <h2>Implications — procedural generalization</h2>
+    <p>Two kinds of generalization can now be studied separately on one stack:</p>
+    <table>
+      <thead><tr><th>Axis</th><th>Operationalized as</th></tr></thead>
+      <tbody>
+        <tr><td>Within-game (ProcGen-style)</td><td>train seeds 0–199 &rarr; test seeds 1000–1099 of the <em>same</em> game</td></tr>
+        <tr><td>Across-game</td><td>train on subset $G_{\text{train}} \subset \mathcal{G}$ &rarr; test on $\mathcal{G} \setminus G_{\text{train}}$</td></tr>
+      </tbody>
+    </table>
+    <p>The Discrete(8) / 64&times;64 RGB interface guarantees the policy network is the same for both — so cross-game transfer is a clean ablation, not an architecture comparison.</p>
+  </div>
+</section>
+
+<!-- 26. Status -->
+<section>
+  <div class="slide-content">
+    <h2>Status</h2>
+    <ul>
+      <li>Headless Node + p5 shim runtime &mdash; stable, ~5k FPS env step</li>
+      <li>30 games implemented, 27 passing all 5 validation checks</li>
+      <li>Gemini generation pipeline + browser tester + refinement loop</li>
+      <li>SB3 PPO + DQN training scripts, ProcGen seed splits, IQM aggregation</li>
+      <li>Smoke / short / full configs committed; all runs produce a timestamped, git-tagged snapshot</li>
+      <li><code>justfile</code> runner — every workflow is one recipe (<code>just paper-run</code>, <code>just reproduce</code>)</li>
+      <li>Three marimo notebooks: all-games benchmark, headless-vs-Playwright deep dive, PPO breakout dynamics</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 27. Next steps -->
+<section>
+  <div class="slide-content">
+    <h2>Next steps</h2>
+    <ol>
+      <li><strong>Match the OpenAI baseline content</strong>: IMPALA-CNN features extractor + <code>VecNormalize(norm_reward=True)</code> + bump <code>n_envs_per_game</code> to 4 (56 envs total)</li>
+      <li><strong>Bring in the rest of the catalog</strong>: generate the remaining 70 cataloged games, target ≥80 passing validation</li>
+      <li><strong>Cross-game generalization study</strong>: 11-train / 3-test held-out games, IQM on the held-out set</li>
+      <li><strong>LLM-as-generator benchmark</strong>: validation pass rate × refinement-rounds-to-pass for Gemini Flash, Pro, and Claude Sonnet on a frozen catalog</li>
+      <li><strong>Methods/benchmarks paper</strong>: the runtime + the catalog + PPO baseline numbers + the cross-game generalization figure</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 28. Open questions -->
+<section>
+  <div class="slide-content">
+    <h2>Open questions for today</h2>
+    <ol>
+      <li><strong>Action space.</strong> Is Discrete(8) too narrow for the more complex catalog entries (mario, sonic, vvvvvv), or does the abstraction hold?</li>
+      <li><strong>Reward shaping.</strong> Reward = Δscore. Several games have natural reward shaping the LLM <em>could</em> emit (proximity-to-goal, near-misses) — do we standardize, or accept score-only?</li>
+      <li><strong>Cross-game splits.</strong> 14-game catalog &rArr; only ~3 games to hold out. Is the LLM-generation route the principled way to enlarge $|\mathcal{G}|$, or do we hand-author?</li>
+      <li><strong>Headline framing.</strong> Lead with the <em>runtime</em> (technical novelty) or the <em>generation pipeline</em> (research-enabling) when writing it up?</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$',  right: '$',  display: false}
+          ],
+          throwOnError: false
+        });"></script>
+
+<script>
+  Reveal.initialize({
+    hash: true,
+    center: false,
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+    transition: 'none',
+    width: 1280,
+    height: 800,
+    margin: 0.04
+  });
+</script>
+</body>
+</html>

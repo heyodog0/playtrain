@@ -169,15 +169,15 @@ def check_observation_sanity(game: str) -> tuple[bool, str]:
         if np.unique(obs).size < 5:
             issues.append(f"only {np.unique(obs).size} unique values (degenerate)")
 
-        # Check frames change over time
-        initial_frame = obs[:, :, 0].copy()
+        # Check frames change over time (across all channels — single-channel
+        # checks miss blue-on-black scenes whose red channel is constant)
+        initial_frame = obs.copy()
         rng = np.random.default_rng(SEED)
         for _ in range(30):
             obs, _, terminated, truncated, _ = env.step(random_action(rng))
             if terminated or truncated:
                 break
-        later_frame = obs[:, :, 0]
-        if np.array_equal(initial_frame, later_frame):
+        if np.array_equal(initial_frame, obs):
             issues.append("observation unchanged after 30 steps")
 
         if issues:

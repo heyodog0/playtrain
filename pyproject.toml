@@ -30,6 +30,8 @@ fast-games-baselines = "fast_games.eval.baselines:main"
 fast-games-aggregate = "fast_games.eval.aggregate:main"
 fast-games-validate = "fast_games.validate.validate:main"
 fast-games-bench = "fast_games.validate.bench:main"
+fast-games-sweep = "fast_games.sweep:main"
+fast-games-figures = "fast_games.figures:main"
 
 [build-system]
 requires = ["hatchling"]

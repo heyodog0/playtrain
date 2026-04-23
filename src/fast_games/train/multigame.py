@@ -19,6 +19,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecMonitor, VecTransposeImage
 
 from fast_games.env import list_available_games, make_multigame_vec_env
+from fast_games.policy import impala_policy_kwargs
 from fast_games.train._common import (
     apply_config,
     common_timestamp,
@@ -26,7 +27,11 @@ from fast_games.train._common import (
     get_git_hash,
     make_eval_callback,
     make_output_dir,
+    save_vecnormalize,
+    seed_everything,
     setup_wandb,
+    wrap_vecnormalize_eval,
+    wrap_vecnormalize_train,
     write_config_snapshot,
 )
 
@@ -67,6 +72,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-freq", type=int, default=50_000)
     parser.add_argument("--n-eval-episodes", type=int, default=5)
 
+    # Architecture / normalization (paper-comparable defaults; flip off for ablations)
+    parser.add_argument("--impala-cnn", dest="impala_cnn", action="store_true", default=True)
+    parser.add_argument("--no-impala-cnn", dest="impala_cnn", action="store_false")
+    parser.add_argument("--norm-reward", dest="norm_reward", action="store_true", default=True)
+    parser.add_argument("--no-norm-reward", dest="norm_reward", action="store_false")
+
+    # Reproducibility
+    parser.add_argument("--seed", type=int, default=None)
+
+    # Dual eval (train-set + test-set)
+    parser.add_argument("--dual-eval", dest="dual_eval", action="store_true", default=True,
+                        help="Evaluate on both train and test seed ranges (default: on)")
+    parser.add_argument("--no-dual-eval", dest="dual_eval", action="store_false")
+
     # Output
     parser.add_argument("--output-dir", type=Path, default=None)
 
@@ -79,6 +98,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = apply_config(parse_args())
+    seed_everything(args.seed)
 
     games = list_available_games() if args.all_games else args.games
     n_total_envs = len(games) * args.n_envs_per_game
@@ -109,6 +129,10 @@ def main() -> None:
         "ent_coef": args.ent_coef,
         "clip_range": args.clip_range,
         "n_epochs": args.n_epochs,
+        "impala_cnn": args.impala_cnn,
+        "norm_reward": args.norm_reward,
+        "dual_eval": args.dual_eval,
+        "seed": args.seed,
     }
     write_config_snapshot(args.output_dir, config_snapshot)
 
@@ -129,17 +153,33 @@ def main() -> None:
     )
     env = VecMonitor(env, filename=str(args.output_dir / "train_monitor"))
     env = VecTransposeImage(env)
+    env = wrap_vecnormalize_train(env, norm_reward=args.norm_reward, gamma=args.gamma)
 
-    # Eval env: test seed range (held-out levels), 1 env per game
-    eval_env = make_multigame_vec_env(
+    # Eval env (test): held-out seed range, 1 env per game — raw rewards
+    eval_test = make_multigame_vec_env(
         games,
         n_envs_per_game=1,
         seed_range=TEST_SEEDS,
         use_subproc=False,
         **env_kwargs,
     )
-    eval_env = VecMonitor(eval_env, filename=str(args.output_dir / "eval_monitor"))
-    eval_env = VecTransposeImage(eval_env)
+    eval_test = VecMonitor(eval_test, filename=str(args.output_dir / "eval_test_monitor"))
+    eval_test = VecTransposeImage(eval_test)
+    eval_test = wrap_vecnormalize_eval(eval_test, enabled=args.norm_reward, gamma=args.gamma)
+
+    # Eval env (train): same seed range as training rollouts — Fig 4 generalization gap
+    eval_train = None
+    if args.dual_eval:
+        eval_train = make_multigame_vec_env(
+            games,
+            n_envs_per_game=1,
+            seed_range=TRAIN_SEEDS,
+            use_subproc=False,
+            **env_kwargs,
+        )
+        eval_train = VecMonitor(eval_train, filename=str(args.output_dir / "eval_train_monitor"))
+        eval_train = VecTransposeImage(eval_train)
+        eval_train = wrap_vecnormalize_eval(eval_train, enabled=args.norm_reward, gamma=args.gamma)
 
     callbacks = []
     wandb_cb = setup_wandb(
@@ -151,18 +191,34 @@ def main() -> None:
     )
     if wandb_cb is not None:
         callbacks.append(wandb_cb)
+    # Test-set eval: writes best_model/, eval/ (held-out seeds — the headline metric)
     callbacks.append(
         make_eval_callback(
-            eval_env, args.output_dir,
+            eval_test, args.output_dir,
             eval_freq=args.eval_freq, n_eval_episodes=args.n_eval_episodes,
             n_envs=n_total_envs,
         )
     )
+    # Train-set eval: writes eval_train/ — for the train/test generalization gap (Fig 4)
+    if eval_train is not None:
+        from stable_baselines3.common.callbacks import EvalCallback
+        callbacks.append(
+            EvalCallback(
+                eval_train,
+                best_model_save_path=None,
+                log_path=str(args.output_dir / "eval_train"),
+                eval_freq=max(args.eval_freq // max(n_total_envs, 1), 1),
+                n_eval_episodes=args.n_eval_episodes,
+                deterministic=True,
+                render=False,
+            )
+        )
 
     # Adjust batch_size to be divisible by n_total_envs * n_steps
     rollout_size = n_total_envs * args.n_steps
     batch_size = min(args.batch_size, rollout_size)
 
+    policy_kwargs = impala_policy_kwargs() if args.impala_cnn else None
     model = PPO(
         "CnnPolicy",
         env,
@@ -175,6 +231,8 @@ def main() -> None:
         ent_coef=args.ent_coef,
         clip_range=args.clip_range,
         n_epochs=args.n_epochs,
+        policy_kwargs=policy_kwargs,
+        seed=args.seed,
         tensorboard_log=str(args.output_dir / "tb"),
         device="auto",
     )
@@ -191,10 +249,13 @@ def main() -> None:
 
     final_path = args.output_dir / "final_model"
     model.save(str(final_path))
+    save_vecnormalize(env, args.output_dir)
     print(f"\nSaved final model to {final_path}.zip")
 
     env.close()
-    eval_env.close()
+    eval_test.close()
+    if eval_train is not None:
+        eval_train.close()
     finish_wandb(args.use_wandb)
 
 

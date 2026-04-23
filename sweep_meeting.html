@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The ProcGen-style baseline sweep — what, why, how it matches</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+
+<style>
+  :root {
+    --fg: #111;
+    --muted: #555;
+    --rule: #222;
+    --accent: #0a52a1;
+    --accent-soft: #dfe9f5;
+    --warn: #8a1a1a;
+    --warn-soft: #f5e2e2;
+    --ok: #1a6b3a;
+    --ok-soft: #d7ead8;
+    --bg: #ffffff;
+    --body-font: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --mono-font: "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  html, body { background: var(--bg); color: var(--fg); }
+  .reveal { font-family: var(--body-font); color: var(--fg); font-size: 28px; }
+
+  .reveal .slides { text-align: left; }
+
+  .reveal .slides > section,
+  .reveal .slides > section > section {
+    display: grid;
+    place-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 4vh 6vw;
+    box-sizing: border-box;
+  }
+
+  .reveal .slide-content {
+    max-width: 1150px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .reveal h1, .reveal h2, .reveal h3 {
+    color: var(--fg);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6em 0;
+  }
+  .reveal h1 { font-size: 1.8em; line-height: 1.15; }
+  .reveal h2 { font-size: 1.35em; line-height: 1.2; }
+  .reveal h3 { font-size: 1em; color: var(--muted); font-weight: 500; margin-top: 1em; }
+
+  .reveal p, .reveal li { line-height: 1.45; }
+  .reveal ul, .reveal ol { margin-left: 1.2em; }
+  .reveal li { margin-bottom: 0.35em; }
+  .reveal li > ul { margin-top: 0.3em; }
+
+  .reveal strong { font-weight: 600; }
+  .reveal em { font-style: italic; color: var(--muted); }
+
+  .reveal code {
+    font-family: var(--mono-font);
+    font-size: 0.92em;
+    background: #f3f3f3;
+    padding: 0.05em 0.35em;
+    border-radius: 3px;
+  }
+  .reveal pre {
+    box-shadow: none;
+    font-size: 0.7em;
+  }
+  .reveal pre code {
+    background: #f6f6f6;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    display: block;
+    line-height: 1.35;
+  }
+
+  .reveal table {
+    border-collapse: collapse;
+    margin: 0.6em auto;
+    font-size: 0.9em;
+    width: 100%;
+  }
+  .reveal table th, .reveal table td {
+    padding: 0.4em 0.8em;
+    border: none;
+    text-align: left;
+    vertical-align: top;
+  }
+  .reveal table thead th {
+    border-top: 2px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    font-weight: 600;
+  }
+  .reveal table tbody tr:last-child td {
+    border-bottom: 2px solid var(--rule);
+  }
+  .reveal table td.match { background: var(--ok-soft); }
+  .reveal table td.differ { background: var(--warn-soft); }
+  .reveal table td.num { font-variant-numeric: tabular-nums; font-family: var(--mono-font); font-size: 0.95em; }
+  .reveal table.compact { font-size: 0.82em; }
+
+  .reveal .katex-display { margin: 0.6em 0; }
+
+  .title-slide h1 { font-size: 2.0em; margin-bottom: 0.3em; }
+  .title-slide .subtitle { font-size: 1.1em; color: var(--muted); margin-bottom: 2em; }
+  .title-slide .author { font-size: 0.95em; color: var(--fg); }
+  .title-slide .date { font-size: 0.85em; color: var(--muted); }
+
+  .claim {
+    margin-top: 0.5em;
+    padding: 0.5em 0.9em;
+    border-left: 3px solid var(--rule);
+    background: #fafafa;
+  }
+  .predict-yes { color: var(--accent); font-weight: 600; }
+  .predict-no  { color: var(--warn); font-weight: 600; }
+  .num         { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .good        { color: var(--ok); font-weight: 600; }
+  .bad         { color: var(--warn); font-weight: 600; }
+
+  .reveal .slide-number {
+    color: var(--muted);
+    background: transparent;
+    font-family: var(--mono-font);
+    font-size: 0.7em;
+    right: 12px;
+    bottom: 8px;
+  }
+
+  .reveal .controls { color: var(--muted); }
+  .reveal .progress { color: var(--muted); height: 2px; }
+
+  .refs { color: var(--muted); font-size: 0.85em; margin-top: 0.7em; font-style: italic; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5em; }
+  .two-col > div { min-width: 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2em; font-size: 0.95em; }
+
+  /* Pipeline-flow diagram: 4 vertical stages, styled HTML not ASCII */
+  .flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 0.5em;
+    margin-top: 1em;
+  }
+  .flow-stage {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 0.5em 0.9em;
+    background: #fafafa;
+  }
+  .flow-stage .stage-head {
+    font-family: var(--mono-font);
+    font-size: 0.82em;
+    color: var(--muted);
+    margin-bottom: 0.2em;
+  }
+  .flow-stage .stage-body {
+    font-size: 0.95em;
+  }
+  .flow-arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+
+  /* Mock figure boxes for slides 18-20 */
+  .mockfig {
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    padding: 0.8em;
+    background: #fdfdfd;
+    font-family: var(--mono-font);
+    font-size: 0.82em;
+    line-height: 1.55;
+  }
+  .mockfig .mockfig-title {
+    color: var(--muted);
+    margin-bottom: 0.4em;
+  }
+
+  /* Inline timeline (no chart library — pure CSS bars) */
+  .bar-row { display: grid; grid-template-columns: 220px 1fr 80px; gap: 0.5em; align-items: center; margin: 0.35em 0; font-size: 0.88em; }
+  .bar-row .label { color: var(--fg); }
+  .bar-row .bar { background: var(--accent-soft); border-radius: 3px; height: 18px; position: relative; }
+  .bar-row .bar .fill { background: var(--accent); height: 100%; border-radius: 3px; }
+  .bar-row .ms { font-family: var(--mono-font); color: var(--muted); text-align: right; }
+
+  /* SVG mock plots for figures section */
+  svg.mock { width: 100%; height: auto; display: block; background: #fdfdfd; border: 1px dashed var(--rule); border-radius: 6px; }
+</style>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. Title -->
+<section class="title-slide">
+  <div class="slide-content">
+    <h1>The ProcGen-style baseline sweep</h1>
+    <div class="subtitle">What we're running on FASRC, why, and exactly how it matches the OpenAI ProcGen paper's methodology</div>
+    <div class="author">Ryan Truong</div>
+    <div class="date">Sweep briefing &middot; April 2026</div>
+  </div>
+</section>
+
+<!-- 2. Why a sweep at all -->
+<section>
+  <div class="slide-content">
+    <h2>Why run a sweep instead of a single model?</h2>
+    <ul>
+      <li><strong>Single-seed results are not publishable.</strong> Deep RL has ~10% run-to-run variance; one seed could be the peak or the floor of a three-seed distribution. Reviewers will reject.</li>
+      <li><strong>A sweep gives error bars.</strong> 3 seeds × 30 games = a distribution of 90 training curves. Any aggregate claim ("our baseline beats random by X") carries bootstrap CIs from this matrix.</li>
+      <li><strong>A sweep is the thing the paper reports.</strong> Every ProcGen paper table and figure comes from exactly this kind of grid.</li>
+    </ul>
+    <div class="claim">
+      <span class="predict-yes">Goal:</span> produce the first sweep-level number for this benchmark — one that's directly comparable to Cobbe et al. (2019) Fig 2–3.
+    </div>
+  </div>
+</section>
+
+<!-- 3. The sweep, in one table -->
+<section>
+  <div class="slide-content">
+    <h2>The sweep, in one table</h2>
+    <table>
+      <thead><tr><th>Dimension</th><th>Value</th><th>Rationale</th></tr></thead>
+      <tbody>
+        <tr><td>Algorithm</td><td>PPO</td><td>Canonical ProcGen baseline</td></tr>
+        <tr><td>Games</td><td class="num">30</td><td>All of ours that pass the 5-check validation</td></tr>
+        <tr><td>Seeds per game</td><td class="num">3</td><td>Minimum for error bars; matches ProcGen paper figures</td></tr>
+        <tr><td>Timesteps / run</td><td class="num">5,000,000</td><td>Pilot-grade (paper is 25M); first-pass budget</td></tr>
+        <tr><td>Parallel envs / run</td><td class="num">32</td><td>Matches one FASRC <code>sapphire</code> node's core count</td></tr>
+        <tr><td>Cells total</td><td class="num">90</td><td>30 × 3</td></tr>
+        <tr><td>Core-hours total</td><td class="num">~5,800</td><td>90 cells × 32 cores × ~2 h wall-clock each</td></tr>
+        <tr><td>Walltime / cell ceiling</td><td class="num">12 h</td><td>Generous; actual ~2 h at 750 FPS</td></tr>
+      </tbody>
+    </table>
+    <p class="refs">Launch: <code>just fasrc-submit "0 1 2"</code> — submits a 90-element SLURM job array + a dependent aggregate job.</p>
+  </div>
+</section>
+
+<!-- 4. Hyperparams match -->
+<section>
+  <div class="slide-content">
+    <h2>PPO hyperparameters — side-by-side with the paper</h2>
+    <table class="compact">
+      <thead><tr><th>Param</th><th>ProcGen paper<br><small>(<code>train_procgen/train.py</code> L17–26)</small></th><th>Our sweep<br><small>(<code>configs/full_run.json</code>)</small></th><th>Match?</th></tr></thead>
+      <tbody>
+        <tr><td><code>learning_rate</code></td><td class="num">5e-4</td><td class="num">5e-4</td><td class="match">exact</td></tr>
+        <tr><td><code>ent_coef</code></td><td class="num">0.01</td><td class="num">0.01</td><td class="match">exact</td></tr>
+        <tr><td><code>gamma</code></td><td class="num">0.999</td><td class="num">0.999</td><td class="match">exact</td></tr>
+        <tr><td><code>gae_lambda</code> / <code>lam</code></td><td class="num">0.95</td><td class="num">0.95</td><td class="match">exact</td></tr>
+        <tr><td><code>n_steps</code> / <code>nsteps</code></td><td class="num">256</td><td class="num">256</td><td class="match">exact</td></tr>
+        <tr><td>Minibatch count</td><td class="num">8</td><td class="num">8</td><td class="match">exact (256×32/8 = 1024 bs)</td></tr>
+        <tr><td><code>n_epochs</code> / <code>ppo_epochs</code></td><td class="num">3</td><td class="num">3</td><td class="match">exact</td></tr>
+        <tr><td><code>clip_range</code></td><td class="num">0.2</td><td class="num">0.2</td><td class="match">exact</td></tr>
+        <tr><td><code>vf_coef</code></td><td class="num">0.5</td><td class="num">0.5</td><td class="match">SB3 default</td></tr>
+        <tr><td><code>max_grad_norm</code></td><td class="num">0.5</td><td class="num">0.5</td><td class="match">SB3 default</td></tr>
+        <tr><td><code>num_envs</code></td><td class="num">64</td><td class="num">32</td><td class="differ">half (core-budget constraint)</td></tr>
+        <tr><td><code>total_timesteps</code></td><td class="num">25M (easy) / 200M (hard)</td><td class="num">5M</td><td class="differ">1/5 of easy — pilot</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 5. Architecture match -->
+<section>
+  <div class="slide-content">
+    <h2>Policy architecture — IMPALA-CNN exactly as in the paper</h2>
+    <table>
+      <thead><tr><th>Layer</th><th>ProcGen paper<br><small><code>build_impala_cnn(x, depths=[16,32,32], emb_size=256)</code></small></th><th>Our implementation<br><small><code>src/fast_games/policy.py:ImpalaCNN</code></small></th></tr></thead>
+      <tbody>
+        <tr><td>Stage 1</td><td>Conv(3&rarr;16,3×3) → MaxPool(3×3,s=2) → 2× ResBlock</td><td class="match">identical</td></tr>
+        <tr><td>Stage 2</td><td>Conv(16&rarr;32,3×3) → MaxPool(3×3,s=2) → 2× ResBlock</td><td class="match">identical</td></tr>
+        <tr><td>Stage 3</td><td>Conv(32&rarr;32,3×3) → MaxPool(3×3,s=2) → 2× ResBlock</td><td class="match">identical</td></tr>
+        <tr><td>ResBlock</td><td>ReLU → Conv3×3 → ReLU → Conv3×3 → +skip</td><td class="match">identical</td></tr>
+        <tr><td>Head</td><td>ReLU → Flatten → FC(2048 → 256) → ReLU</td><td class="match">identical</td></tr>
+        <tr><td>Policy + value heads</td><td>Linear(256 → num_actions) + Linear(256 → 1)</td><td class="match">SB3 <code>ActorCriticPolicy</code> default</td></tr>
+        <tr><td>Parameters</td><td class="num">~622 K</td><td class="num">622,144</td></tr>
+      </tbody>
+    </table>
+    <p class="refs">Implementation: <code>src/fast_games/policy.py</code>, 90 lines. Wired in via <code>policy_kwargs=impala_policy_kwargs()</code> — PPO default is off, our configs turn it on.</p>
+  </div>
+</section>
+
+<!-- 6. VecNormalize -->
+<section>
+  <div class="slide-content">
+    <h2>Reward normalization — <code>VecNormalize(ob=False)</code></h2>
+    <p>ProcGen paper wraps the training env with <code>baselines.VecNormalize(venv, ob=False)</code> — running-mean/std normalization of <em>rewards only</em>, not observations. Same in ours via <code>stable-baselines3.VecNormalize</code>.</p>
+    <table>
+      <thead><tr><th>Property</th><th>Paper</th><th>Ours</th></tr></thead>
+      <tbody>
+        <tr><td>Normalize observations?</td><td class="bad">No</td><td class="match">No (<code>norm_obs=False</code>)</td></tr>
+        <tr><td>Normalize rewards (running std)?</td><td class="good">Yes</td><td class="match">Yes (<code>norm_reward=True</code>)</td></tr>
+        <tr><td>Gamma for reward return</td><td class="num">0.999</td><td class="num">0.999</td></tr>
+        <tr><td>Clip reward</td><td class="num">10.0</td><td class="num">10.0</td></tr>
+        <tr><td>Stats saved with model?</td><td>Yes</td><td class="match">Yes → <code>vecnormalize.pkl</code></td></tr>
+        <tr><td>Eval env uses same stats?</td><td>Yes (via dual-role env)</td><td class="match">Yes (<code>sync_envs_normalization</code>)</td></tr>
+      </tbody>
+    </table>
+    <p>Without this, reward magnitudes differ wildly across games (breakout scores in 10s, miner in 100s) and the single cross-game policy's gradient is dominated by whichever game happens to score biggest.</p>
+  </div>
+</section>
+
+<!-- 7. Train/test seed protocol -->
+<section>
+  <div class="slide-content">
+    <h2>Train/test seed protocol — the generalization contract</h2>
+    <p>ProcGen's defining move: <strong>generate 200 training levels, evaluate on 100 unseen ones</strong>. The train/test gap is what the benchmark exists to measure.</p>
+    <table>
+      <thead><tr><th>Split</th><th>ProcGen paper (easy)</th><th>Our sweep</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>Train levels</td><td><code>num_levels=200, start_level=0</code></td><td>seeds 0 – 199 (per game)</td><td>Rollouts during <code>model.learn</code></td></tr>
+        <tr><td>Test levels</td><td><code>num_levels=0, start_level=0</code> <small>(held-out)</small></td><td>seeds 1000 – 1099 (per game)</td><td><code>EvalCallback</code> every 50k steps</td></tr>
+        <tr><td>Resampling</td><td>Fresh seed each episode from the set</td><td class="match">Same — <code>SeedRangeWrapper</code> draws uniformly</td></tr>
+        <tr><td>Seeds visible to agent at train time?</td><td>No seed info in obs</td><td class="match">No — seed only controls game reset</td></tr>
+      </tbody>
+    </table>
+    <p>The multigame variant additionally logs <strong>train-set eval</strong> in an <code>eval_train/</code> directory so Fig 4 (gap) is reproducible.</p>
+  </div>
+</section>
+
+<!-- 8. Aggregation -->
+<section>
+  <div class="slide-content">
+    <h2>Cross-game aggregation — IQM over ProcGen's mean</h2>
+    <p>ProcGen paper reports <strong>mean normalized return</strong>. We report the same plus <strong>IQM (interquartile mean)</strong> — both available in <code>src/fast_games/metrics.py</code>.</p>
+    <p>$$\text{normalized}_g = \frac{R_g - R_{\text{random},g}}{R_{\text{best},g} - R_{\text{random},g}}$$</p>
+    <ul>
+      <li><strong>Random baseline</strong> <code>R_random,g</code>: 100 random-action episodes per game, via <code>just baselines</code>. Committed to <code>outputs/baselines/</code>.</li>
+      <li><strong>Best baseline</strong> <code>R_best,g</code>: max over all PPO runs in <code>outputs/experiments/&lt;game&gt;/ppo/</code> — a stand-in for "expert" until a stronger upper bound exists.</li>
+      <li><strong>IQM</strong>: trim top + bottom 25% of normalized scores across (game, seed) pairs, average the middle. Robust to the 1–2 games that might totally fail.</li>
+    </ul>
+    <p class="refs">Agarwal, Schwarzer, Castro, Courville &amp; Bellemare 2021 — <em>Deep RL at the Edge of the Statistical Precipice</em> (NeurIPS).</p>
+  </div>
+</section>
+
+<!-- 9. The cell — what one run does -->
+<section>
+  <div class="slide-content">
+    <h2>One cell — what a single (game, seed) run executes</h2>
+    <p>Every cell runs exactly the same code path, only the args differ.</p>
+    <pre><code>uv run fast-games-train \
+    --game breakout --seed 0 \
+    --config configs/full_run.json \
+    --output-dir outputs/sweeps/&lt;sweep_id&gt;/breakout/seed0</code></pre>
+    <p>Internally: <code>SubprocVecEnv(32) → VecMonitor → VecTransposeImage → VecNormalize</code> → <code>PPO("CnnPolicy", policy_kwargs={ImpalaCNN})</code> → <code>model.learn(5_000_000, callback=EvalCallback)</code>.</p>
+    <p>Produces (~50 MB per cell):</p>
+    <ul>
+      <li><code>config.json</code> — every hyperparam + git hash + timestamp</li>
+      <li><code>final_model.zip</code> — policy at 5M steps</li>
+      <li><code>best_model/</code> — checkpoint with highest held-out eval return</li>
+      <li><code>vecnormalize.pkl</code> — reward-normalization running stats</li>
+      <li><code>eval/evaluations.npz</code> — <strong>the file <code>figures.py</code> reads</strong></li>
+      <li><code>tb/</code> — TensorBoard logs (for real-time monitoring if wanted)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 10. The sweep pipeline — HTML, not ASCII -->
+<section>
+  <div class="slide-content">
+    <h2>The sweep pipeline</h2>
+    <div class="flow">
+      <div class="flow-stage">
+        <div class="stage-head">stage 1 — login node</div>
+        <div class="stage-body"><code>just fasrc-submit</code> → <code>fasrc_submit.sh</code> writes <code>cells.txt</code>, <code>manifest.json</code>; <code>sbatch --array=0-89</code></div>
+      </div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-stage">
+        <div class="stage-head">stage 2 — 90 compute nodes, in parallel</div>
+        <div class="stage-body">Each task runs <code>fasrc_cell.sbatch</code>: bootstrap uv + Node, <code>uv sync --frozen</code>, read its line of <code>cells.txt</code>, call <code>just _fasrc-cell &lt;game&gt; &lt;seed&gt;</code>. Writes <code>outputs/sweeps/&lt;id&gt;/&lt;game&gt;/seed&lt;N&gt;/</code>.</div>
+      </div>
+      <div class="flow-arrow">&darr; (<code>--dependency=afterany</code>)</div>
+      <div class="flow-stage">
+        <div class="stage-head">stage 3 — one compute node</div>
+        <div class="stage-body"><code>fasrc_aggregate.sbatch</code> → <code>just fasrc-figures</code> → <code>figures/&lt;id&gt;/{fig2,fig3,fig4}.pdf</code></div>
+      </div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-stage">
+        <div class="stage-head">stage 4 — local laptop</div>
+        <div class="stage-body"><code>just pull-results</code> → rsync outputs + figures back</div>
+      </div>
+    </div>
+    <p class="refs">Details: <code>SWEEP_EXPLAINED.md</code> — line-by-line walkthrough.</p>
+  </div>
+</section>
+
+<!-- 11. Why SLURM job arrays -->
+<section>
+  <div class="slide-content">
+    <h2>Why a job array, not one big job</h2>
+    <table>
+      <thead><tr><th>Approach</th><th>Walltime risk</th><th>Failure model</th><th>FASRC fair-share</th></tr></thead>
+      <tbody>
+        <tr><td>One giant job (90 cells sequential)</td><td class="bad">~180 h total &mdash; exceeds any partition limit</td><td class="bad">single crash kills everything</td><td class="bad">Bad — monopolizes one allocation</td></tr>
+        <tr><td>One giant job (90 cells parallel on 1 node)</td><td class="bad">needs 90×32 = 2880 cores on one node (impossible)</td><td class="bad">same</td><td class="bad">same</td></tr>
+        <tr><td><strong>Job array (our choice)</strong></td><td class="good">12 h / task ceiling &mdash; each cell independent</td><td class="good">one cell fails → 89 others unaffected</td><td class="good">Good — tiny jobs flow through the queue</td></tr>
+        <tr><td>90 separate <code>sbatch</code> invocations</td><td class="good">same as array</td><td class="good">same as array</td><td class="good">Works but no single job ID to monitor</td></tr>
+      </tbody>
+    </table>
+    <p>Job arrays give us the failure isolation of 90 separate jobs with the monitoring convenience of one.</p>
+  </div>
+</section>
+
+<!-- 12. Resource envelope per cell -->
+<section>
+  <div class="slide-content">
+    <h2>Resource envelope per cell — <code>sapphire</code></h2>
+    <div class="two-col">
+      <div>
+        <h3>Requested (sbatch header)</h3>
+        <table class="compact">
+          <tbody>
+            <tr><td>Partition</td><td class="num">sapphire</td></tr>
+            <tr><td>Cores</td><td class="num">32</td></tr>
+            <tr><td>Memory</td><td class="num">32 GB</td></tr>
+            <tr><td>Walltime</td><td class="num">12 h ceiling</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Actually used (from local smoke)</h3>
+        <table class="compact">
+          <tbody>
+            <tr><td>Peak RSS</td><td class="num">~8 GB</td></tr>
+            <tr><td>Wall-clock @ 5M steps</td><td class="num">~2 h</td></tr>
+            <tr><td>FPS (paper-config, IMPALA-CNN)</td><td class="num">~750</td></tr>
+            <tr><td>Core utilization</td><td class="num">~95%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p><strong>BLAS pinning is critical:</strong> <code>OMP_NUM_THREADS=1</code>, <code>OPENBLAS_NUM_THREADS=1</code>, <code>MKL_NUM_THREADS=1</code>. Without it, 32 envs × 32 BLAS threads = 1024 threads fighting for 32 cores, and training slows 5–10×.</p>
+  </div>
+</section>
+
+<!-- 13. Why CPU not GPU -->
+<section>
+  <div class="slide-content">
+    <h2>Why CPU, not GPU, for this workload</h2>
+    <p>Our env is a Node.js subprocess per slot — <strong>CPU-bound by design</strong>. On a GPU, the env becomes the bottleneck, not the CNN.</p>
+    <table>
+      <thead><tr><th>Setup</th><th>FPS</th><th>CNN util</th><th>Env util</th><th>Cost / run</th></tr></thead>
+      <tbody>
+        <tr><td>FASRC sapphire (32 cores)</td><td class="num">~750</td><td>high (single-thread PyTorch)</td><td>high</td><td class="good">cheap</td></tr>
+        <tr><td>FASRC 1× V100</td><td class="num">~3,000</td><td>low (GPU idle waiting)</td><td>maxed</td><td>~3× CPU</td></tr>
+        <tr><td>FASRC 1× A100</td><td class="num">~4,500</td><td>very low</td><td>maxed</td><td>~10× CPU</td></tr>
+      </tbody>
+    </table>
+    <p>Every extra dollar of GPU gets a smaller speedup because the CPU-side env dominates. CPU's the right call unless we port games to a vectorized GPU-native runtime (not on this paper's scope).</p>
+  </div>
+</section>
+
+<!-- 14. Expected timeline -->
+<section>
+  <div class="slide-content">
+    <h2>Expected wall-clock timeline</h2>
+    <div class="bar-row"><div class="label">smoke test (1 cell)</div><div class="bar"><div class="fill" style="width: 2%;"></div></div><div class="ms">~1 h</div></div>
+    <div class="bar-row"><div class="label">sweep: cell execution</div><div class="bar"><div class="fill" style="width: 12%;"></div></div><div class="ms">~2 h / cell</div></div>
+    <div class="bar-row"><div class="label">sweep: queue + scheduling</div><div class="bar"><div class="fill" style="width: 25%;"></div></div><div class="ms">~1 day</div></div>
+    <div class="bar-row"><div class="label">sweep: end-to-end (90 cells)</div><div class="bar"><div class="fill" style="width: 75%;"></div></div><div class="ms">3 – 5 days</div></div>
+    <div class="bar-row"><div class="label">aggregate (figures)</div><div class="bar"><div class="fill" style="width: 1%;"></div></div><div class="ms">~5 min</div></div>
+    <div class="bar-row"><div class="label">rsync back to local</div><div class="bar"><div class="fill" style="width: 1%;"></div></div><div class="ms">~5 min</div></div>
+    <p>The wide bar is real: 90 cells × 2h each = 180 core-days of compute, but SLURM schedules 15–30 concurrently under typical fair-share, so wall-clock is 3–5 days.</p>
+  </div>
+</section>
+
+<!-- 15. Resource cost honest accounting -->
+<section>
+  <div class="slide-content">
+    <h2>Honest resource accounting</h2>
+    <table>
+      <thead><tr><th>Quantity</th><th>Value</th><th>Reference</th></tr></thead>
+      <tbody>
+        <tr><td>Total core-hours</td><td class="num">~5,800</td><td>&mdash;</td></tr>
+        <tr><td>Equivalent: typical chem MD run</td><td class="num">5–50 k core-h</td><td>~1–10× larger than ours</td></tr>
+        <tr><td>Equivalent: typical fmriprep sweep</td><td class="num">10 k+ core-h</td><td>~2× larger</td></tr>
+        <tr><td>Equivalent: 1 BERT-small pretrain epoch</td><td class="num">20 k+ GPU-h</td><td>orders of magnitude larger</td></tr>
+        <tr><td>FASRC sapphire total cores</td><td class="num">~50,000</td><td>cluster-wide</td></tr>
+        <tr><td>Disk footprint</td><td class="num">~5 GB</td><td>well below <code>$SCRATCH</code> quota</td></tr>
+      </tbody>
+    </table>
+    <p>This is a <strong>small</strong> FASRC workload — specifically sized so a grad student can run it without burning goodwill. Every component (partition, walltime, memory, BLAS pinning) is chosen to be a good citizen.</p>
+  </div>
+</section>
+
+<!-- 16. What we log -->
+<section>
+  <div class="slide-content">
+    <h2>What's logged per cell</h2>
+    <table>
+      <thead><tr><th>File</th><th>Content</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td><code>config.json</code></td><td>All hyperparams, git hash, timestamp, seed, host</td><td>Reproducibility — paste this into methods section</td></tr>
+        <tr><td><code>train_monitor.monitor.csv</code></td><td>Per-episode return + length, timestamped</td><td>Training-curve diagnostic</td></tr>
+        <tr><td><code>eval/evaluations.npz</code></td><td><code>(timesteps, results, ep_lengths)</code> arrays</td><td><strong>Fig 2, 3, 4 source</strong></td></tr>
+        <tr><td><code>final_model.zip</code></td><td>Policy weights at 5M steps</td><td>Final eval, cross-game transfer study</td></tr>
+        <tr><td><code>best_model/best_model.zip</code></td><td>Policy weights at highest held-out return</td><td>Best-checkpoint eval</td></tr>
+        <tr><td><code>vecnormalize.pkl</code></td><td>Reward running-mean/std</td><td>Reload for consistent eval</td></tr>
+        <tr><td><code>tb/</code></td><td>TensorBoard logs</td><td>Live monitoring during training</td></tr>
+        <tr><td><code>sweep.log</code></td><td>Stdout/stderr from this cell's training</td><td>Debugging a failed cell</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 17. Fig 2 mock -->
+<section>
+  <div class="slide-content">
+    <h2>Fig 2 — per-game training curves</h2>
+    <p>One panel per game, mean of 3 seeds ± std band. ProcGen paper's Fig 2 is the same structure for its 16 games.</p>
+    <svg class="mock" viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="SFMono-Regular, Menlo, monospace" font-size="11" fill="#555">
+        <text x="12" y="16">fig2_per_game_test.pdf  (mock layout — 6 × 5 grid for 30 games)</text>
+      </g>
+      <g>
+        <!-- 5 rows × 6 cols of tiny curve panels -->
+        <!-- each panel is 170×70 with a curve -->
+        <g transform="translate(12,30)">
+          <!-- Row 1 -->
+          <g>
+            <rect x="0" y="0" width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,65 Q 40,60 60,40 T 110,20 T 165,10" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <path d="M5,65 L165,65 L165,55 L120,40 L60,40 L5,55 Z" fill="#0a52a1" fill-opacity="0.12" stroke="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">breakout</text>
+          </g>
+          <g transform="translate(180,0)">
+            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,65 Q 40,55 70,50 T 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">mario</text>
+          </g>
+          <g transform="translate(360,0)">
+            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,65 L40,60 L80,50 L120,35 L165,20" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">asteroids</text>
+          </g>
+          <g transform="translate(540,0)">
+            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,62 Q 50,58 90,45 T 165,30" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">starpilot</text>
+          </g>
+          <g transform="translate(720,0)">
+            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,65 C 40,60 80,40 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">flappy_bird</text>
+          </g>
+          <g transform="translate(900,0)">
+            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+            <path d="M5,60 Q 80,55 165,40" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">vvvvvv</text>
+          </g>
+        </g>
+        <!-- Repeat 4 more rows with different curves -->
+        <g transform="translate(12,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,62 Q 60,55 120,30 T 165,20" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">space_invaders</text>
+        </g>
+        <g transform="translate(192,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,65 L165,60" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">maze</text>
+        </g>
+        <g transform="translate(372,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,60 Q 80,50 165,35" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">bigfish</text>
+        </g>
+        <g transform="translate(552,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,63 Q 70,50 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">chaser</text>
+        </g>
+        <g transform="translate(732,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,65 Q 50,62 120,40 T 165,15" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">miner</text>
+        </g>
+        <g transform="translate(912,108)" opacity="0.85">
+          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
+          <path d="M5,60 L80,50 L165,30" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
+          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">fruitbot</text>
+        </g>
+
+        <!-- Indicate more rows below -->
+        <g transform="translate(12,188)" opacity="0.6">
+          <rect width="1058" height="70" fill="#fafafa" stroke="#ccc" stroke-dasharray="3,3"/>
+          <text x="529" y="40" text-anchor="middle" font-family="Helvetica" font-size="13" fill="#555">... 18 more game panels ...</text>
+        </g>
+        <g transform="translate(12,268)" opacity="0.6">
+          <rect width="1058" height="70" fill="#fafafa" stroke="#ccc" stroke-dasharray="3,3"/>
+          <text x="529" y="40" text-anchor="middle" font-family="Helvetica" font-size="13" fill="#555">... IQM summary at bottom ...</text>
+        </g>
+
+        <!-- x/y labels -->
+        <text x="550" y="410" text-anchor="middle" font-family="Helvetica" font-size="11" fill="#333">timesteps  (0 → 5M per panel)</text>
+        <text x="8" y="210" text-anchor="middle" font-family="Helvetica" font-size="11" fill="#333" transform="rotate(-90, 8, 210)">mean episode return (test seeds)</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- 18. Fig 3 mock -->
+<section>
+  <div class="slide-content">
+    <h2>Fig 3 — mean normalized return across games</h2>
+    <p>Aggregates all 30 games × 3 seeds into a single curve: normalized score over training progress. Directly comparable to ProcGen paper's Fig 3 (top row).</p>
+    <svg class="mock" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg">
+      <!-- plot area -->
+      <rect x="70" y="30" width="780" height="230" fill="#fdfdfd" stroke="#ccc"/>
+      <!-- axes -->
+      <line x1="70" y1="260" x2="850" y2="260" stroke="#555" stroke-width="1"/>
+      <line x1="70" y1="30" x2="70" y2="260" stroke="#555" stroke-width="1"/>
+      <!-- y ticks -->
+      <g font-family="SFMono-Regular, Menlo, monospace" font-size="10" fill="#555">
+        <text x="60" y="263" text-anchor="end">0.0</text>
+        <text x="60" y="205" text-anchor="end">0.25</text>
+        <text x="60" y="145" text-anchor="end">0.50</text>
+        <text x="60" y="85" text-anchor="end">0.75</text>
+        <text x="60" y="35" text-anchor="end">1.00</text>
+        <text x="70" y="280" text-anchor="start">0</text>
+        <text x="460" y="280" text-anchor="middle">2.5M</text>
+        <text x="850" y="280" text-anchor="end">5M</text>
+      </g>
+      <!-- shaded std band -->
+      <path d="M75,235 Q 220,215 350,160 T 600,80 T 845,55 L 845,95 T 620,140 T 370,220 T 75,250 Z" fill="#0a52a1" fill-opacity="0.15" stroke="none"/>
+      <!-- mean curve -->
+      <path d="M75,245 Q 220,225 350,175 T 600,95 T 845,68" stroke="#0a52a1" stroke-width="2.2" fill="none"/>
+      <!-- labels -->
+      <g font-family="Helvetica" font-size="12" fill="#333">
+        <text x="460" y="308" text-anchor="middle">timesteps</text>
+        <text x="20" y="150" text-anchor="middle" transform="rotate(-90, 20, 150)">normalized return</text>
+        <text x="450" y="20" text-anchor="middle" font-size="13" font-weight="600">mean (agent − random) / (best − random)   across 30 games × 3 seeds</text>
+      </g>
+      <!-- legend -->
+      <g transform="translate(700,40)" font-family="SFMono-Regular, Menlo, monospace" font-size="10">
+        <line x1="0" y1="7" x2="18" y2="7" stroke="#0a52a1" stroke-width="2"/>
+        <text x="22" y="11" fill="#333">mean across 90 runs</text>
+        <rect x="0" y="18" width="18" height="10" fill="#0a52a1" fill-opacity="0.15"/>
+        <text x="22" y="27" fill="#333">± 1 std across runs</text>
+      </g>
+    </svg>
+    <p class="refs">Random &amp; best baselines loaded from <code>src/fast_games/constants.py</code> via <code>get_random_baselines()</code> / <code>get_best_baselines()</code>.</p>
+  </div>
+</section>
+
+<!-- 19. Fig 4 mock -->
+<section>
+  <div class="slide-content">
+    <h2>Fig 4 — train vs. test generalization gap (multigame only)</h2>
+    <p>Per-game final return: train-set levels vs. held-out test-set levels. The gap is ProcGen's headline generalization number.</p>
+    <svg class="mock" viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg">
+      <rect x="70" y="20" width="920" height="220" fill="#fdfdfd" stroke="#ccc"/>
+      <line x1="70" y1="240" x2="990" y2="240" stroke="#555" stroke-width="1"/>
+      <line x1="70" y1="20" x2="70" y2="240" stroke="#555" stroke-width="1"/>
+
+      <!-- 10 grouped bars (subset of 30 for readability in mock) -->
+      <g font-family="Helvetica" font-size="10" fill="#333">
+        <!-- (train bar, test bar) per game; train tall, test shorter to show gap -->
+        <g transform="translate(90, 0)">
+          <rect x="0" y="80" width="22" height="160" fill="#0a52a1"/>
+          <rect x="24" y="115" width="22" height="125" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">breakout</text>
+        </g>
+        <g transform="translate(180, 0)">
+          <rect x="0" y="60" width="22" height="180" fill="#0a52a1"/>
+          <rect x="24" y="140" width="22" height="100" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">mario</text>
+        </g>
+        <g transform="translate(270, 0)">
+          <rect x="0" y="100" width="22" height="140" fill="#0a52a1"/>
+          <rect x="24" y="110" width="22" height="130" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">space_invaders</text>
+        </g>
+        <g transform="translate(360, 0)">
+          <rect x="0" y="120" width="22" height="120" fill="#0a52a1"/>
+          <rect x="24" y="155" width="22" height="85" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">asteroids</text>
+        </g>
+        <g transform="translate(450, 0)">
+          <rect x="0" y="50" width="22" height="190" fill="#0a52a1"/>
+          <rect x="24" y="80" width="22" height="160" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">flappy_bird</text>
+        </g>
+        <g transform="translate(540, 0)">
+          <rect x="0" y="140" width="22" height="100" fill="#0a52a1"/>
+          <rect x="24" y="180" width="22" height="60" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">maze</text>
+        </g>
+        <g transform="translate(630, 0)">
+          <rect x="0" y="90" width="22" height="150" fill="#0a52a1"/>
+          <rect x="24" y="130" width="22" height="110" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">bigfish</text>
+        </g>
+        <g transform="translate(720, 0)">
+          <rect x="0" y="110" width="22" height="130" fill="#0a52a1"/>
+          <rect x="24" y="145" width="22" height="95" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">chaser</text>
+        </g>
+        <g transform="translate(810, 0)">
+          <rect x="0" y="75" width="22" height="165" fill="#0a52a1"/>
+          <rect x="24" y="100" width="22" height="140" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">starpilot</text>
+        </g>
+        <g transform="translate(900, 0)">
+          <rect x="0" y="65" width="22" height="175" fill="#0a52a1"/>
+          <rect x="24" y="90" width="22" height="150" fill="#8a1a1a"/>
+          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">fruitbot</text>
+        </g>
+
+        <!-- legend -->
+        <g transform="translate(85, 30)">
+          <rect x="0" y="0" width="14" height="12" fill="#0a52a1"/>
+          <text x="20" y="10">train levels (seeds 0 – 199)</text>
+          <rect x="180" y="0" width="14" height="12" fill="#8a1a1a"/>
+          <text x="200" y="10">test levels (seeds 1000 – 1099, held out)</text>
+        </g>
+        <text x="30" y="130" text-anchor="middle" transform="rotate(-90, 30, 130)" font-size="11">final mean return</text>
+      </g>
+    </svg>
+    <p class="refs">Produced only when <code>--algo multigame --dual-eval</code> is used. A second sweep (<code>just fasrc-submit-multi "0 1 2"</code>) provides this figure.</p>
+  </div>
+</section>
+
+<!-- 20. Deviations from the paper -->
+<section>
+  <div class="slide-content">
+    <h2>Where we deviate from the paper &mdash; and why</h2>
+    <table>
+      <thead><tr><th>Aspect</th><th>Paper</th><th>Ours</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>Timesteps</td><td class="num">25M (easy) / 200M (hard)</td><td class="num differ">5M</td><td>Pilot budget; fits in 12 h walltime. Bumping to 25M is a config change + longer queue.</td></tr>
+        <tr><td>Parallel envs</td><td class="num">64</td><td class="num differ">32</td><td>Matches one <code>sapphire</code> node (56 cores with Node subprocess headroom).</td></tr>
+        <tr><td>Baseline framework</td><td>OpenAI baselines (TF1)</td><td>stable-baselines3 (PyTorch)</td><td>Modern stack, same PPO semantics.</td></tr>
+        <tr><td>Distribution mode</td><td>explicit <code>easy</code> / <code>hard</code></td><td class="differ">implicit (via max_steps, game difficulty)</td><td>Our games don't have a difficulty knob yet. Closest to ProcGen "easy".</td></tr>
+        <tr><td>Game count</td><td class="num">16 (ProcGen suite)</td><td class="num">30 (ours)</td><td>Nearly 2× more — the benefit of LLM generation.</td></tr>
+        <tr><td>MPI distribution</td><td>yes, <code>test_worker_interval</code></td><td class="differ">SLURM job array instead</td><td>Same effect (parallel train + test workers), different mechanism.</td></tr>
+        <tr><td>Hardware</td><td>GPU nodes</td><td class="differ">CPU nodes (sapphire)</td><td>Env is CPU-bound; GPU's advantage capped; CPU sweep is cheaper for the lab.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 21. Concerns -->
+<section>
+  <div class="slide-content">
+    <h2>Concerns &amp; what could still be wrong</h2>
+    <ul>
+      <li><strong>5M may be too few steps</strong> to see the paper's mean-normalized-return curves asymptote. Pilot will tell us; 25M is the Plan B.</li>
+      <li><strong>32 envs instead of 64</strong> doubles the wall-clock per effective step vs. paper. Numbers will be directionally right but biased toward noisier gradients.</li>
+      <li><strong>"Best baseline" is a moving target.</strong> <code>constants.py</code> uses the max over historical PPO runs as the denominator — so as training improves, normalization tightens. Fine for within-paper comparisons, bad for cross-paper comparisons until we freeze a snapshot.</li>
+      <li><strong>Action-space mismatch</strong>: ProcGen is Discrete(15), ours Discrete(8). The policy head size differs; the qualitative behavior should be identical but absolute numbers aren't directly comparable.</li>
+      <li><strong>No difficulty modes</strong> on our games yet. Can't run an "easy vs hard" axis like the paper does in Fig 6.</li>
+    </ul>
+    <div class="claim">None of these are blockers for the first sweep — they're the list of things to fix <em>after</em> we see what 5M-step numbers look like.</div>
+  </div>
+</section>
+
+<!-- 22. What success looks like -->
+<section>
+  <div class="slide-content">
+    <h2>What success looks like</h2>
+    <table>
+      <thead><tr><th>Criterion</th><th>Target</th><th>If miss</th></tr></thead>
+      <tbody>
+        <tr><td>All 90 cells complete</td><td>&ge; 85 / 90</td><td>Investigate failed cells' logs; rerun</td></tr>
+        <tr><td>Per-game return &gt; random</td><td>&ge; 25 / 30 games</td><td>PPO is learning. Remaining games need harder investigation (sparse reward, bad obs, etc.)</td></tr>
+        <tr><td>Mean normalized return (Fig 3, final)</td><td>&gt; <span class="num">0.3</span></td><td>Matches "PPO gets ~30–60% of expert" regime in ProcGen paper</td></tr>
+        <tr><td>Seed-to-seed std (Fig 2 bands)</td><td>&lt; 30% of mean</td><td>If wider, need more seeds to make claims</td></tr>
+        <tr><td>Generalization gap (Fig 4, multigame)</td><td>train &gt; test, visible gap</td><td>Confirms levels 1000–1099 are actually out-of-distribution (seed scheme works)</td></tr>
+      </tbody>
+    </table>
+    <p>If all five land &rArr; publishable baseline for the benchmark. If 3–4 land &rArr; publishable with known caveats. If &lt; 3 &rArr; methods bug; back to smoke tests.</p>
+  </div>
+</section>
+
+<!-- 23. What comes next -->
+<section>
+  <div class="slide-content">
+    <h2>What comes after this sweep</h2>
+    <ol>
+      <li><strong>25M-step rerun</strong> for paper numbers. Same infrastructure, bumped <code>total_timesteps</code>, ~9 h / cell; fits in the same 12 h walltime.</li>
+      <li><strong>Cross-game generalization sweep</strong>: train on 24 games, test on 6 held-out ones. Same runtime, different game-split manifest.</li>
+      <li><strong>LLM-as-generator benchmark</strong>: freeze a catalog, measure validation pass rate × refinement rounds for Gemini Flash / Pro / Claude Sonnet. No RL sweep needed; just generation + validation.</li>
+      <li><strong>Ablations</strong>: IMPALA-CNN off (NatureCNN), VecNormalize off, Discrete(8) alternatives. Each = one smaller sweep.</li>
+      <li><strong>Paper writeup</strong>: runtime + catalog + this baseline sweep + cross-game figure.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 24. One-page launch reference -->
+<section>
+  <div class="slide-content">
+    <h2>One-page launch reference</h2>
+    <pre><code># local
+just push-code truongtruong@login.rc.fas.harvard.edu:~/fast-llm-games
+
+# on FASRC login node
+cd ~/fast-llm-games
+just fasrc-smoke               # 1 cell, ~1 h — pipeline verification
+just fasrc-submit "0 1 2"      # 90-cell paper sweep on sapphire
+
+# monitor any time
+just fasrc-status &lt;sweep_id&gt;
+squeue -u $USER | grep &lt;sweep_id&gt;
+
+# back on local, once the sweep finishes
+just pull-results truongtruong@login.rc.fas.harvard.edu:~/fast-llm-games &lt;sweep_id&gt;
+just figures &lt;sweep_id&gt;
+open figures/&lt;sweep_id&gt;/*.pdf</code></pre>
+    <p class="refs">Line-by-line walkthrough of every script: <code>SWEEP_EXPLAINED.md</code>. Quick reference: <code>SERVER_NOTES.md</code>.</p>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$',  right: '$',  display: false}
+          ],
+          throwOnError: false
+        });"></script>
+
+<script>
+  Reveal.initialize({
+    hash: true,
+    center: false,
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+    transition: 'none',
+    width: 1280,
+    height: 800,
+    margin: 0.04
+  });
+</script>
+</body>
+</html>

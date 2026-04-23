@@ -1,8 +1,104 @@
 {
-  "generated_at": "2026-04-23T16:36:35.062402+00:00",
+  "generated_at": "2026-04-23T16:53:12.102588+00:00",
   "seed": 42,
   "num_steps": 200,
   "games": {
+    "angry_birds": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=29"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3872 FPS (0.26 ms/step)",
+        "fps": 3872.2055983403548
+      },
+      "all_passed": true
+    },
+    "asteroids": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=44"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3846 FPS (0.26 ms/step)",
+        "fps": 3845.5289479692897
+      },
+      "all_passed": true
+    },
+    "bigfish": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=25"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "241 steps, reward=0, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4148 FPS (0.24 ms/step)",
+        "fps": 4147.812817757279
+      },
+      "all_passed": true
+    },
+    "bossfight": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=12"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=-5, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4721 FPS (0.21 ms/step)",
+        "fps": 4721.199389990562
+      },
+      "all_passed": true
+    },
     "breakout": {
       "api_compliance": {
         "passed": true,
@@ -22,12 +118,612 @@
       },
       "throughput": {
         "passed": true,
-        "message": "4656 FPS (0.21 ms/step)",
-        "fps": 4656.496102808879
+        "message": "3705 FPS (0.27 ms/step)",
+        "fps": 3705.3322383638047
+      },
+      "all_passed": true
+    },
+    "caveflyer": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=15"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "2640 FPS (0.38 ms/step)",
+        "fps": 2640.39473896998
+      },
+      "all_passed": true
+    },
+    "chaser": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=31"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=9, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "1914 FPS (0.52 ms/step)",
+        "fps": 1914.2786041143897
+      },
+      "all_passed": true
+    },
+    "climber": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=16"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3208 FPS (0.31 ms/step)",
+        "fps": 3207.720763494455
+      },
+      "all_passed": true
+    },
+    "coinrun": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[20,255] unique=11"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=4, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3550 FPS (0.28 ms/step)",
+        "fps": 3549.7476514252153
+      },
+      "all_passed": true
+    },
+    "crossy_road": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=10"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=4, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4192 FPS (0.24 ms/step)",
+        "fps": 4192.356519385604
+      },
+      "all_passed": true
+    },
+    "dodgeball": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "110 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=27"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "110 steps, reward=0, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3750 FPS (0.27 ms/step)",
+        "fps": 3749.76681101955
+      },
+      "all_passed": true
+    },
+    "downwell": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=12"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=27, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4584 FPS (0.22 ms/step)",
+        "fps": 4583.926524157203
+      },
+      "all_passed": true
+    },
+    "flappy_bird": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "27 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=4"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "27 steps, reward=0, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4655 FPS (0.21 ms/step)",
+        "fps": 4655.191891484052
+      },
+      "all_passed": true
+    },
+    "freeway": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=11"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4610 FPS (0.22 ms/step)",
+        "fps": 4609.810305280105
+      },
+      "all_passed": true
+    },
+    "frostbite": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "136 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=15"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "136 steps, reward=10, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4377 FPS (0.23 ms/step)",
+        "fps": 4376.838513615158
+      },
+      "all_passed": true
+    },
+    "fruitbot": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "91 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=42"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "91 steps, reward=1, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "2963 FPS (0.34 ms/step)",
+        "fps": 2963.0390449514744
+      },
+      "all_passed": true
+    },
+    "heist": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[20,255] unique=28"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "2508 FPS (0.40 ms/step)",
+        "fps": 2508.4298923710944
+      },
+      "all_passed": true
+    },
+    "jetpack_joyride": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=7"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=50, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4844 FPS (0.21 ms/step)",
+        "fps": 4843.7643811627795
+      },
+      "all_passed": true
+    },
+    "jumper": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=16"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3595 FPS (0.28 ms/step)",
+        "fps": 3595.313859271609
+      },
+      "all_passed": true
+    },
+    "leaper": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "144 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=30"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "144 steps, reward=11, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4309 FPS (0.23 ms/step)",
+        "fps": 4309.250463950406
+      },
+      "all_passed": true
+    },
+    "mario": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=8"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3502 FPS (0.29 ms/step)",
+        "fps": 3502.0841780200967
+      },
+      "all_passed": true
+    },
+    "maze": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=6"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "3250 FPS (0.31 ms/step)",
+        "fps": 3249.9706753177898
+      },
+      "all_passed": true
+    },
+    "miner": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=18"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=2, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "1175 FPS (0.85 ms/step)",
+        "fps": 1175.179618880012
+      },
+      "all_passed": true
+    },
+    "ninja": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=7"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4018 FPS (0.25 ms/step)",
+        "fps": 4017.739670868544
+      },
+      "all_passed": true
+    },
+    "plunder": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[20,255] unique=7"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4663 FPS (0.21 ms/step)",
+        "fps": 4662.586126034057
+      },
+      "all_passed": true
+    },
+    "sonic": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=9"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4150 FPS (0.24 ms/step)",
+        "fps": 4149.72627367368
+      },
+      "all_passed": true
+    },
+    "space_invaders": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=8"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=-20, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4220 FPS (0.24 ms/step)",
+        "fps": 4219.5472643207795
+      },
+      "all_passed": true
+    },
+    "starpilot": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=25"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "358 steps, reward=0, terminated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4316 FPS (0.23 ms/step)",
+        "fps": 4315.736372693302
+      },
+      "all_passed": true
+    },
+    "suika": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[15,255] unique=18"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=0, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4349 FPS (0.23 ms/step)",
+        "fps": 4349.364135400124
+      },
+      "all_passed": true
+    },
+    "vvvvvv": {
+      "api_compliance": {
+        "passed": true,
+        "message": "check_env passed"
+      },
+      "determinism": {
+        "passed": true,
+        "message": "200 steps deterministic (seed=42)"
+      },
+      "observation_sanity": {
+        "passed": true,
+        "message": "shape=(64, 64, 3) dtype=uint8 range=[0,255] unique=8"
+      },
+      "reward_terminal": {
+        "passed": true,
+        "message": "500 steps, reward=5, truncated"
+      },
+      "throughput": {
+        "passed": true,
+        "message": "4449 FPS (0.22 ms/step)",
+        "fps": 4448.837246785362
       },
       "all_passed": true
     }
   },
-  "total_games": 1,
-  "total_passed": 1
+  "total_games": 30,
+  "total_passed": 30
 }
