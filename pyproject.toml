@@ -21,6 +21,16 @@ experiment = [
   "tensorboard>=2.18.0",
 ]
 
+[project.scripts]
+fast-games-train = "fast_games.train.ppo:main"
+fast-games-train-dqn = "fast_games.train.dqn:main"
+fast-games-train-multi = "fast_games.train.multigame:main"
+fast-games-eval = "fast_games.eval.evaluate:main"
+fast-games-baselines = "fast_games.eval.baselines:main"
+fast-games-aggregate = "fast_games.eval.aggregate:main"
+fast-games-validate = "fast_games.validate.validate:main"
+fast-games-bench = "fast_games.validate.bench:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

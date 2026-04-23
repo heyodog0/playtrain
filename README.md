@@ -34,11 +34,10 @@ All games share: Discrete(8) actions, 64x64 RGB observations, seeded RNG, determ
 ## Setup
 
 ```bash
-npm install
-uv sync
+just setup       # npm install + uv sync
 ```
 
-Requires Node.js 24+, Python 3.11+, and `uv`.
+Requires Node.js 24+, Python 3.11+, [`uv`](https://docs.astral.sh/uv/), and [`just`](https://just.systems) (`brew install just`). Run `just` (no args) at any time to see every available command.
 
 ## Game Generation
 
@@ -47,23 +46,19 @@ Generate games from catalogs using Gemini:
 ```bash
 export GEMINI_API_KEY=your-key
 
-# Generate one game
-uv run python tools/generate.py --catalog games/catalogs/atari_games.json --name breakout
-
-# Generate all Atari games with reference context
-uv run python tools/generate.py --catalog games/catalogs/atari_games.json --ref
-
-# Generate all games (all catalogs) with Gemini Pro
-uv run python tools/generate.py --all --model pro
+just gen-game games/catalogs/atari_games.json breakout         # one game
+just gen-all                                                   # everything
+just gen-all pro                                               # use Gemini Pro
 ```
+
+Long form: `uv run python tools/generate.py --catalog ... --name ...`.
 
 ## Game Tester
 
 Playtest games in the browser and refine them via Gemini feedback:
 
 ```bash
-uv run python tools/tester.py
-# open http://localhost:3000
+just tester      # http://localhost:3000
 ```
 
 ## Validation
@@ -71,32 +66,22 @@ uv run python tools/tester.py
 Validate all games against ProcGen-style criteria (API compliance, determinism, observation sanity, reward/terminal correctness, throughput):
 
 ```bash
-# Validate all games
-uv run python -m fast_games.validate.validate --all
-
-# Validate one game
-uv run python -m fast_games.validate.validate --game breakout
-
-# Benchmark throughput
-uv run python -m fast_games.validate.bench --all
+just validate           # all games
+just validate breakout  # one game
+just bench              # FPS per game
 ```
+
+Long form: `uv run fast-games-validate --all` (or `uv run python -m fast_games.validate.validate --all`).
 
 ## RL Training
 
 ### Per-game training
 
 ```bash
-# Smoke test (~30 sec)
-uv run python -m fast_games.train.ppo --game breakout --config configs/smoke_test.json
-
-# Short run (~5 min)
-uv run python -m fast_games.train.ppo --game breakout --config configs/short_run.json
-
-# Full run (cluster)
-uv run python -m fast_games.train.ppo --game breakout --config configs/full_run.json
-
-# DQN
-uv run python -m fast_games.train.dqn --game breakout --config configs/smoke_test.json
+just smoke breakout                              # ~30 sec sanity check
+just train breakout                              # short_run.json (~5 min)
+just train breakout configs/full_run.json        # full run (cluster)
+just train-dqn breakout                          # DQN instead of PPO
 ```
 
 ### Multi-game ProcGen-style training
@@ -104,11 +89,9 @@ uv run python -m fast_games.train.dqn --game breakout --config configs/smoke_tes
 Train a single CNN policy across multiple games simultaneously:
 
 ```bash
-# All 14 games
-uv run python -m fast_games.train.multigame --all-games --total-timesteps 100000
-
-# Specific games
-uv run python -m fast_games.train.multigame --games breakout mario vvvvvv flappy_bird
+just train-multi                                 # all 14 games, short_run.json
+just train-multi configs/full_run.json           # full run
+just train-multi-some configs/short_run.json breakout mario flappy_bird
 ```
 
 Uses ProcGen conventions: train seeds 0-199, test seeds 1000-1099, fixed game assignment per env.
@@ -116,17 +99,22 @@ Uses ProcGen conventions: train seeds 0-199, test seeds 1000-1099, fixed game as
 ### Evaluation
 
 ```bash
-# Eval with train/test seed separation
-uv run python -m fast_games.eval.evaluate --game breakout --model outputs/experiments/breakout/ppo/.../final_model.zip
-
-# Collect random agent baselines (needed for score normalization)
-uv run python -m fast_games.eval.baselines --all
-
-# Aggregate results across experiments
-uv run python -m fast_games.eval.aggregate
+just baselines                                                                        # random-agent normalization scores
+just eval breakout outputs/experiments/breakout/ppo/<timestamp>/final_model.zip       # train + test split
+just aggregate                                                                        # IQM across all runs
 ```
 
-Add `--use-wandb` to any training command for W&B logging (requires `uv pip install wandb`).
+Add `--use-wandb` to any underlying training command (or call the long form) for W&B logging — requires the `experiment` extra: `uv sync --extra experiment`.
+
+## Workflow recipes
+
+Higher-level flows that compose the atomic recipes above:
+
+| Recipe | What it does |
+|---|---|
+| `just reproduce` | `validate` + `smoke breakout` — quick end-to-end check, ~5 min |
+| `just paper-run` | `validate` + `baselines` + `train-multi configs/full_run.json` + `aggregate` — full benchmark |
+| `just ci`        | `validate` + `bench` — what a CI run should cover |
 
 ## Notebooks
 
@@ -168,6 +156,7 @@ The environment is never the bottleneck — training FPS is bounded by CNN infer
 ## Repo Map
 
 ```text
+justfile                  task runner — `just` lists every command
 tools/                    game generator + browser tester
 games/
   catalogs/               game lists — 4 JSON files, 25 each
@@ -178,6 +167,7 @@ src/fast_games/
   env.py                  Gymnasium wrapper (GameGymEnv) + multi-game utilities
   metrics.py              normalized scoring, IQM
   train/
+    _common.py            shared boilerplate (config, output dir, wandb, eval cb)
     ppo.py                per-game PPO training
     dqn.py                per-game DQN training
     multigame.py          ProcGen-style multi-game training
@@ -188,7 +178,7 @@ src/fast_games/
   validate/
     validate.py           ProcGen-style validation suite
     bench.py              throughput benchmarks
-  archive/                legacy kazuki-only scripts
+  archive/                compatibility shim — actual sources live in /archive/
 envs/
   game-env.mjs            parameterized game environment
   game-worker.mjs         IPC worker (binary protocol)
@@ -198,6 +188,8 @@ notebooks/                marimo notebooks (benchmarks, visualization)
 benchmarks/               Node.js benchmark scripts (headless + Playwright)
 configs/                  training presets (smoke, short, full)
 outputs/                  experiments, models, validation, benchmarks
+archive/                  quarantined predecessors (kazuki-only scripts, orphaned configs)
+reference/                external repos kept for reference (train-procgen, reinforcement_learning)
 GAME_TEMPLATE.md          strict spec for LLM-generated games
 ```
 

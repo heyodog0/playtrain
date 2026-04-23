@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-14T01:40:59.949202+00:00",
+  "generated_at": "2026-04-23T16:36:35.062402+00:00",
   "seed": 42,
   "num_steps": 200,
   "games": {
@@ -22,8 +22,8 @@
       },
       "throughput": {
         "passed": true,
-        "message": "5356 FPS (0.19 ms/step)",
-        "fps": 5355.5385678428265
+        "message": "4656 FPS (0.21 ms/step)",
+        "fps": 4656.496102808879
       },
       "all_passed": true
     }

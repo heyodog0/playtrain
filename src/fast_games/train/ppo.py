@@ -9,16 +9,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor, VecTransposeImage
 
 from fast_games.env import GameGymEnv
+from fast_games.train._common import (
+    apply_config,
+    common_timestamp,
+    finish_wandb,
+    get_git_hash,
+    make_eval_callback,
+    make_output_dir,
+    setup_wandb,
+    write_config_snapshot,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,21 +64,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def apply_config(args: argparse.Namespace) -> argparse.Namespace:
-    if args.config is None:
-        return args
-    config = json.loads(args.config.read_text())
-    for key, value in config.items():
-        attr = key.replace("-", "_")
-        if hasattr(args, attr):
-            current = getattr(args, attr)
-            if isinstance(current, Path):
-                setattr(args, attr, Path(value))
-            else:
-                setattr(args, attr, value)
-    return args
-
-
 def make_env(game: str, **kwargs):
     def _init():
         return GameGymEnv(game=game, **kwargs)
@@ -81,27 +72,13 @@ def make_env(game: str, **kwargs):
 
 def main() -> None:
     args = apply_config(parse_args())
-
-    # Output directory
-    if args.output_dir is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output_dir = Path(f"outputs/experiments/{args.game}/ppo/{timestamp}")
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save config
-    git_hash = "unknown"
-    try:
-        git_hash = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
-        ).decode().strip()[:8]
-    except Exception:
-        pass
+    args.output_dir = make_output_dir(args.game, "ppo", args.output_dir)
 
     config_snapshot = {
         "algorithm": "ppo",
         "game": args.game,
-        "git_hash": git_hash,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "git_hash": get_git_hash(),
+        "timestamp": common_timestamp(),
         "n_envs": args.n_envs,
         "obs_size": args.obs_size,
         "obs_mode": args.obs_mode,
@@ -117,9 +94,8 @@ def main() -> None:
         "clip_range": args.clip_range,
         "n_epochs": args.n_epochs,
     }
-    (args.output_dir / "config.json").write_text(json.dumps(config_snapshot, indent=2) + "\n")
+    write_config_snapshot(args.output_dir, config_snapshot)
 
-    # Environment factory kwargs
     env_kwargs = dict(
         obs_size=args.obs_size,
         obs_mode=args.obs_mode,
@@ -127,7 +103,6 @@ def main() -> None:
         max_steps=args.max_steps,
     )
 
-    # Create vectorized envs
     VecEnvClass = SubprocVecEnv if args.n_envs > 1 else DummyVecEnv
     env = VecEnvClass([make_env(args.game, **env_kwargs) for _ in range(args.n_envs)])
     env = VecMonitor(env, filename=str(args.output_dir / "train_monitor"))
@@ -137,37 +112,24 @@ def main() -> None:
     eval_env = VecMonitor(eval_env, filename=str(args.output_dir / "eval_monitor"))
     eval_env = VecTransposeImage(eval_env)
 
-    # W&B
     callbacks = []
-    if args.use_wandb:
-        try:
-            import wandb
-            from wandb.integration.sb3 import WandbCallback
-
-            wandb.init(
-                project=args.wandb_project,
-                config=config_snapshot,
-                tags=["ppo", args.game],
-                name=f"ppo-{args.game}",
-                sync_tensorboard=True,
-            )
-            callbacks.append(WandbCallback(verbose=0))
-        except ImportError:
-            print("wandb not installed, skipping W&B logging. Install: uv pip install wandb")
-
-    # Eval callback
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path=str(args.output_dir / "best_model"),
-        log_path=str(args.output_dir / "eval"),
-        eval_freq=max(args.eval_freq // args.n_envs, 1),
-        n_eval_episodes=args.n_eval_episodes,
-        deterministic=True,
-        render=False,
+    wandb_cb = setup_wandb(
+        enabled=args.use_wandb,
+        project=args.wandb_project,
+        config_snapshot=config_snapshot,
+        tags=["ppo", args.game],
+        run_name=f"ppo-{args.game}",
     )
-    callbacks.append(eval_callback)
+    if wandb_cb is not None:
+        callbacks.append(wandb_cb)
+    callbacks.append(
+        make_eval_callback(
+            eval_env, args.output_dir,
+            eval_freq=args.eval_freq, n_eval_episodes=args.n_eval_episodes,
+            n_envs=args.n_envs,
+        )
+    )
 
-    # Train
     model = PPO(
         "CnnPolicy",
         env,
@@ -190,7 +152,6 @@ def main() -> None:
 
     model.learn(total_timesteps=args.total_timesteps, callback=callbacks)
 
-    # Save final model
     final_path = args.output_dir / "final_model"
     model.save(str(final_path))
     print(f"\nSaved final model to {final_path}.zip")
@@ -198,13 +159,7 @@ def main() -> None:
 
     env.close()
     eval_env.close()
-
-    if args.use_wandb:
-        try:
-            import wandb
-            wandb.finish()
-        except Exception:
-            pass
+    finish_wandb(args.use_wandb)
 
 
 if __name__ == "__main__":
