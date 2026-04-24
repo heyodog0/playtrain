@@ -96,11 +96,11 @@ aggregate:
 # === game generation / tester ===
 
 # Generate one Gemini-built game from a catalog
-gen-game catalog name model="flash":
+gen-game catalog name model="pro":
     uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}}
 
 # Generate every game across every catalog
-gen-all model="flash":
+gen-all model="pro":
     uv run python tools/generate.py --all --model {{model}}
 
 # Browser game-tester UI (http://localhost:3000)

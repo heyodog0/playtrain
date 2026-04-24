@@ -265,7 +265,7 @@ def main():
     parser.add_argument("--catalog", type=Path, help="Path to a JSON catalog file")
     parser.add_argument("--all", action="store_true", help="Process all catalogs")
     parser.add_argument("--name", help="Generate only this game from the catalog")
-    parser.add_argument("--model", choices=["flash", "pro"], default="flash")
+    parser.add_argument("--model", choices=["flash", "pro"], default="pro")
     parser.add_argument("--output-dir", type=Path, default=JS_DIR)
     parser.add_argument("--ref", action="store_true", help="Fetch ref URLs and include in prompt")
     args = parser.parse_args()
