@@ -25,6 +25,7 @@ After pulling either repo, run `just sync-all` to refresh both.
 Run `just` (no args) to see every recipe with a one-line description. The most common ones:
 
 ```bash
+just sync-all                                              # pull node-gym + reinstall deps in both repos
 just gen-game games/catalogs/atari_games.json breakout    # generate one game
 just tester                                                # browser playtest UI (localhost:3000)
 just validate                                              # run 5-check ProcGen validation suite
