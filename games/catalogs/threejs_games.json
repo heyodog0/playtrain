@@ -60,6 +60,24 @@
     "mechanic": "inspired by Wolfenstein 3D (1992): first-person navigation through a procedurally generated grid maze. LEFT/RIGHT turn 90°, UP move forward one tile, DOWN move back. Reach the exit pad. Walls are flat-shaded boxes, no enemies."
   },
   {
+    "name": "zelda_dungeon",
+    "ref": "https://en.wikipedia.org/wiki/The_Legend_of_Zelda:_Ocarina_of_Time",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "inspired by Ocarina of Time (N64, 1998) — a single dungeon room slice. Top-down third-person view. LEFT/RIGHT/UP/DOWN move the player cube, D swings a short directional sword (line segment). One patrolling enemy box, one floor switch, one door. Hit the switch (or kill the enemy) to open the door; reach the door to win. All primitives, no textures, no music."
+  },
+  {
+    "name": "mario_64",
+    "ref": "https://en.wikipedia.org/wiki/Super_Mario_64",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "inspired by Super Mario 64 (N64, 1996) — a single courtyard slice. Third-person camera tracking a player capsule. LEFT/RIGHT/UP/DOWN move (camera-relative), D jumps. Three floating box platforms over a pit, one collectible star (yellow octahedron) on the highest. Touch the star to win, fall in the pit to lose. Single AmbientLight + DirectionalLight, no enemies."
+  },
+  {
+    "name": "metroid_prime",
+    "ref": "https://en.wikipedia.org/wiki/Metroid_Prime",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "inspired by Metroid Prime (GameCube, 2002) — single first-person room. LEFT/RIGHT yaw the camera, UP/DOWN walk forward/back, D fires a small projectile sphere. Room contains one breakable target (red box) and one indestructible obstacle (gray box). Destroy the target to win. Cool blue/teal ambient palette to evoke the original; geometry is all axis-aligned primitives."
+  },
+  {
     "name": "stack_drop",
     "ref": "https://apps.apple.com/us/app/stack/id1080487957",
     "actions_used": ["D"],

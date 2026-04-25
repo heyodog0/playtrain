@@ -1,161 +1,265 @@
-# Three.js Game Template Specification (v2 — DRAFT)
+# Three.js Game Template Specification (v2)
 
-Standard interface for LLM-generated **Three.js** games targeting headless RL training via WebGPU/Dawn. Parallel to the p5 `GAME_TEMPLATE.md` — same action space, same observation contract, different lifecycle and rendering path.
+Standard interface for LLM-generated **Three.js** games targeting headless RL training via WebGPU/Dawn. Parallel to the p5 `GAME_TEMPLATE.md`: same action space, same observation contract, same determinism guarantees — different lifecycle and rendering path.
 
-> **Status:** draft. The headless runtime in `node-gym` does not yet support Three.js. Games written to this spec can be playtested in a browser today; the headless gauntlet (`just validate`, `just bench`) will work once `node-gym/runtime/three/` ships.
+A single RL agent with a fixed CNN policy will train across all v2 games. The template guarantees a uniform action space, observation space, and game state interface. Anything game-specific lives inside `update(dt)` and `resetGame(seed)`.
+
+---
 
 ## Action Space
 
-**Discrete(8)** — identical to p5 path. Same indices, same intent:
+**Discrete(8)** — identical indices and intent as the p5 path:
 
-| Index | Name | Typical 3D meaning |
-|---|---|---|
-| 0 | NOOP | hold position |
-| 1 | LEFT | strafe / turn left / lane left |
-| 2 | RIGHT | strafe / turn right / lane right |
-| 3 | UP | move forward / jump / pitch up |
-| 4 | DOWN | move back / slide / pitch down |
-| 5 | D | fire / boost / jump / interact |
-| 6 | LEFT+D | strafe-and-fire combos |
-| 7 | RIGHT+D | strafe-and-fire combos |
+| Index | Name    | Typical 3D meaning                       |
+|------:|---------|------------------------------------------|
+| 0     | NOOP    | hold position                            |
+| 1     | LEFT    | strafe / turn left / lane left           |
+| 2     | RIGHT   | strafe / turn right / lane right         |
+| 3     | UP      | forward / jump / pitch up                |
+| 4     | DOWN    | back / slide / pitch down                |
+| 5     | D       | fire / boost / jump / interact           |
+| 6     | LEFT+D  | strafe-and-fire combos                   |
+| 7     | RIGHT+D | strafe-and-fire combos                   |
 
-Unlike p5 (where input arrives via `keyIsDown` + `keyPressed`), Three.js games read the **current action index directly** from a global the runtime sets each frame:
+Games may interpret each index however they want; an agent learns the mapping from pixels and rewards. Games that don't need all 8 actions just ignore the extras.
+
+Unlike the p5 path (which exposes `keyIsDown(code)` and `keyPressed()`), Three.js games read the **current action index directly** from a global the runtime sets each frame:
 
 ```javascript
-// Runtime sets this before every update(dt). 0..7.
+// Set by the runtime BEFORE every update(dt). Integer in [0, 8).
 globalThis.currentAction;
 ```
 
 Games may map the integer to internal semantics however they want.
 
+---
+
 ## Observation Space
 
-- Renderer renders to a 64×64 (or larger) WebGPU texture; runtime reads it back as **64×64×3 uint8 RGB**.
-- No frame stacking. Final shape: `(64, 64, 3)` — same as p5 path.
-- The game does NOT downscale. Just render the scene; the runtime handles texture readback.
+- The runtime renders the scene to a WebGPU render target, then reads pixels back as **64×64×3 uint8 RGB**.
+- Final shape: `(64, 64, 3)`. No frame stacking, no preprocessing on the game side.
+- The game does NOT downscale. Just render the scene at any resolution; the runtime handles the readback path.
 
-Recommended render target size: 256×256 to 512×512. Anything readable at 64×64.
+Recommended internal render-target size: **256×256 to 512×512**. Anything readable at 64×64.
+
+---
 
 ## Required Game Interface
 
-Every game is a single `.js` file that defines these globals:
+Every game is a single `.js` file that defines these globals. The runtime calls them in this order each step: `update(dt)` → `render()`. Once at session start: `setup({...})`. Once per episode: `resetGame(seed)`.
+
+### `setup({ THREE, renderer, width, height })`
+
+Called **once**, immediately after the runtime constructs the WebGPU device and renderer.
+
+| Argument   | What you get                                                  |
+|------------|---------------------------------------------------------------|
+| `THREE`    | The `three/webgpu` module — use this instead of `import`-ing  |
+| `renderer` | A `WebGPURenderer`, already initialized and sized             |
+| `width`    | Render-target width in pixels                                 |
+| `height`   | Render-target height in pixels                                |
+
+Build persistent scene objects here: scene, camera, lights, geometry templates. **Do NOT generate level layout here** — defer to `resetGame()` so episodes are seeded.
 
 ```javascript
-// ============================================================
-// REQUIRED: Three.js lifecycle
-// ============================================================
-
-// Called once. Build scene, camera, lights, geometry, materials.
-// Do NOT generate level layout here — defer to resetGame().
 function setup({ THREE, renderer, width, height }) {
-  // THREE: the three module passed in by the runtime
-  // renderer: WebGPURenderer instance, already initialized
-  // width, height: render-target dimensions in pixels
   globalThis.scene = new THREE.Scene();
   globalThis.camera = new THREE.PerspectiveCamera(70, width / height, 0.1, 100);
-  // ... add lights, persistent meshes, etc.
+  globalThis.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 }
+```
 
-// Called every frame, BEFORE render. Mutate scene state based on currentAction.
-// dt is seconds since last update (fixed at 1/60 in headless mode).
+### `update(dt)`
+
+Called **every frame**, before render. Mutate scene state based on `globalThis.currentAction`.
+
+`dt` is seconds since the previous update. The runtime drives a fixed `dt = 1/60` in headless mode for determinism.
+
+```javascript
 function update(dt) {
-  const action = globalThis.currentAction;  // 0..7
-  // ... move player, advance physics, spawn obstacles, update score
+  if (gameState !== 'PLAYING') return;
+  const a = globalThis.currentAction;
+  if (a === 1) player.position.x -= 4 * dt;   // LEFT
+  if (a === 2) player.position.x += 4 * dt;   // RIGHT
+  // ... advance physics, spawn obstacles, update score, check terminal conditions
 }
+```
 
-// Called every frame, AFTER update. Render the scene.
+### `render()`
+
+Called **every frame**, after update. Just render the scene to the renderer. The runtime handles pixel readback after this returns.
+
+```javascript
 function render() {
   globalThis.renderer.render(globalThis.scene, globalThis.camera);
 }
+```
 
-// Called by the runtime on env.reset(). Initialize seeded state.
+### `resetGame(seed)`
+
+Called **once per episode**, on `env.reset()`. Reseed RNG, reset all per-episode state (score, lives, gameState), tear down + rebuild any per-episode scene objects (player position, level layout, enemies).
+
+```javascript
 function resetGame(seed) {
-  // Seed the RNG (mulberry32 pattern, same as p5 path)
-  // Reset score, lives, gameState, scene contents
-  // After this, getGameState().gameState should be 'PLAYING'
+  Math.random = mulberry32(seed >>> 0);   // see Determinism section
+  score = 0;
+  lives = 1;
+  gameState = 'PLAYING';
+  player.position.set(0, 0.5, 0);
+  // ... clear and rebuild level objects
 }
+```
 
-// Returns a small, stable JSON-serializable state object.
-// Same shape as p5 path. Used for reward computation + termination.
+After `resetGame()` returns, `getGameState().gameState` MUST be `'PLAYING'`.
+
+### `getGameState()`
+
+Returns a small JSON-serializable object the runtime reads after every step. Same shape as the p5 path.
+
+```javascript
 function getGameState() {
   return {
-    score: 0,        // monotonic; reward = score - lastScore
+    score: 0,                    // monotonic; reward = score - lastScore
     lives: 1,
-    gameState: 'PLAYING',  // or 'GAMEOVER', 'WIN', 'EXIT'
-    // ... any extra fields useful for debugging (player position, etc.)
+    gameState: 'PLAYING',        // 'PLAYING' | 'GAMEOVER' | 'WIN' | 'EXIT'
+    // optional debug fields (player position, etc.) are fine
   };
 }
 ```
 
-## Determinism
-
-Same contract as p5: **same seed + same action sequence ⇒ same trajectory.**
-
-Achieve this by:
-- Seeding `Math.random` in `resetGame(seed)` via mulberry32 (the runtime provides this).
-- Using fixed timestep `dt = 1/60` (the runtime drives this).
-- Avoiding any direct `Date.now()` / `performance.now()` in game logic — use frame counter instead.
-
-The runtime's headless test harness will call `resetGame(seed)` then run a fixed action sequence twice, comparing the resulting frames pixel-for-pixel. Any divergence is a game bug.
-
-## Rendering Constraints (from threejs-v2.md)
-
-To keep generation reliable and headless throughput practical:
-
-- **Primitive geometry only** at first: `BoxGeometry`, `SphereGeometry`, `PlaneGeometry`, `CylinderGeometry`, `ConeGeometry`. No imported models.
-- **Minimal materials**: `MeshBasicMaterial`, `MeshNormalMaterial`, `MeshLambertMaterial`. Skip `MeshStandardMaterial`/PBR.
-- **Minimal lighting**: at most one `AmbientLight` + one `DirectionalLight`.
-- **No post-processing**, no shadows, no anti-aliasing, no `EffectComposer`.
-- **No external assets**: no textures, no glTF, no audio. Color is enough.
-- **No animation pipelines**: no `AnimationMixer`, no skinned meshes. Tween via direct property mutation.
-
-These constraints exist because (a) every external asset is a generation failure mode, (b) post-processing and PBR balloon GPU memory and step time, (c) the goal is *the simplest 3D thing that's still 3D*.
+---
 
 ## Reward & Termination
 
-- `reward = state.score - lastScore` each step (delta on the monotonic score). Same as p5.
-- `terminated = true` when `state.gameState ∈ {'GAMEOVER', 'WIN', 'EXIT'}`.
-- `truncated = true` when step count hits `max_steps` (default 2000). Runtime handles this.
+The runtime, not the game, computes:
 
-## Example: minimum viable game
+- **`reward = state.score - lastScore`** each step. Make `score` monotonic.
+- **`terminated = true`** when `state.gameState ∈ {'GAMEOVER', 'WIN', 'EXIT'}`.
+- **`truncated = true`** when episode step count hits `max_steps` (default 2000).
 
-A trivial one-action runner that demonstrates the full contract:
+Games signal terminal conditions purely by setting `gameState`. Don't try to terminate from inside `update()` by other means.
+
+---
+
+## Determinism
+
+**Same `seed` + same action sequence ⇒ byte-identical pixel trajectory.** This is non-negotiable; validation runs each game twice and diffs frames.
+
+Three rules:
+
+1. **Seed `Math.random` in `resetGame()`** using `mulberry32`. The runtime injects this helper as a global, but you can also paste it inline:
+
+   ```javascript
+   function mulberry32(seed) {
+     let t = seed >>> 0;
+     return () => {
+       t += 0x6d2b79f5;
+       let n = Math.imul(t ^ (t >>> 15), t | 1);
+       n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
+       return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
+     };
+   }
+   ```
+
+2. **Use the `dt` from `update(dt)`**, not `performance.now()` or `Date.now()`. The runtime guarantees fixed-timestep `dt = 1/60` in headless mode.
+
+3. **Avoid wall-clock effects** — no real-time animation curves keyed off `Date.now()`, no `setTimeout`/`setInterval`. If you need a delay, count frames.
+
+---
+
+## Rendering Constraints
+
+To keep generation reliable and headless throughput practical, use only:
+
+- **Geometry**: `BoxGeometry`, `SphereGeometry`, `PlaneGeometry`, `CylinderGeometry`, `ConeGeometry`, `OctahedronGeometry`. No imported models, no `BufferGeometry` from raw vertices unless trivially small.
+- **Materials**: `MeshBasicMaterial`, `MeshNormalMaterial`, `MeshLambertMaterial`. Skip `MeshStandardMaterial`/`MeshPhysicalMaterial` (PBR is slow + nondeterministic across drivers).
+- **Lights**: at most one `AmbientLight` + one `DirectionalLight`. No point/spot/area lights.
+- **No post-processing**: no `EffectComposer`, no shadow maps, no anti-aliasing, no tone-mapping passes.
+- **No external assets**: no textures, no glTF/OBJ, no audio. Color the geometry directly.
+- **No animation pipelines**: no `AnimationMixer`, no skinned meshes. Tween via direct property mutation in `update()`.
+
+These constraints exist because (a) every external asset is a generation failure mode, (b) post-processing balloons GPU memory and per-step cost, (c) the goal is *the simplest 3D thing that's still 3D*.
+
+---
+
+## Common Pitfalls
+
+| Pitfall                                                         | Why it breaks                              | Fix                                         |
+|-----------------------------------------------------------------|--------------------------------------------|---------------------------------------------|
+| `import * as THREE from 'three'` at top of file                 | Runtime executes file in a VM context; bare imports fail | Use the `THREE` argument passed to `setup()` |
+| Reading `currentAction` inside `setup()` instead of `update()`  | `setup()` runs once before any action     | Only read in `update()`                      |
+| Mutating scene during `render()`                                | Pixel readback may capture inconsistent state | All mutation in `update()`, render is read-only |
+| Resetting in `setup()` instead of `resetGame()`                 | Reset is per-episode, not per-session     | Move all per-episode init to `resetGame(seed)` |
+| Calling `Math.random()` outside `resetGame()`-seeded paths      | Breaks determinism                        | Always go through the seeded RNG            |
+| Scaling reward by `dt`                                          | Reward must be monotonic on `score` delta | Increment `score` directly, runtime does the diff |
+| Not setting `gameState = 'WIN'` or `'GAMEOVER'`                 | Episode never terminates, just truncates  | Explicitly set on win/lose conditions       |
+
+---
+
+## Complete Example: `cube_collector`
+
+A minimal but complete game showing reset, scoring, and a state transition:
 
 ```javascript
-let player, ground;
+let player, goal;
+let score = 0, lives = 3, gameState = 'PLAYING';
 let frame = 0;
-let score = 0;
-let gameState = 'PLAYING';
 
 function setup({ THREE, renderer, width, height }) {
   globalThis.scene = new THREE.Scene();
+  globalThis.scene.background = new THREE.Color(0x202030);
   globalThis.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
-  globalThis.camera.position.set(0, 2, 5);
+  globalThis.camera.position.set(0, 8, 8);
   globalThis.camera.lookAt(0, 0, 0);
 
-  ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 100),
-    new THREE.MeshNormalMaterial(),
+  globalThis.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(5, 10, 5);
+  globalThis.scene.add(dl);
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(20, 20),
+    new THREE.MeshLambertMaterial({ color: 0x303040 }),
   );
   ground.rotation.x = -Math.PI / 2;
   globalThis.scene.add(ground);
 
   player = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.5, 0.5),
-    new THREE.MeshNormalMaterial(),
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshLambertMaterial({ color: 0x4dc3ff }),
   );
   globalThis.scene.add(player);
+
+  goal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.5),
+    new THREE.MeshLambertMaterial({ color: 0xffd54d }),
+  );
+  globalThis.scene.add(goal);
 }
 
 function update(dt) {
   if (gameState !== 'PLAYING') return;
-  const action = globalThis.currentAction;
-  if (action === 1) player.position.x -= 2 * dt;  // LEFT
-  if (action === 2) player.position.x += 2 * dt;  // RIGHT
-  player.position.x = Math.max(-5, Math.min(5, player.position.x));
   frame++;
-  score = frame;  // survival = reward
-  if (frame > 600) gameState = 'WIN';
+  const a = globalThis.currentAction;
+  const speed = 6;
+  if (a === 1) player.position.x -= speed * dt;
+  if (a === 2) player.position.x += speed * dt;
+  if (a === 3) player.position.z -= speed * dt;
+  if (a === 4) player.position.z += speed * dt;
+  player.position.x = Math.max(-9, Math.min(9, player.position.x));
+  player.position.z = Math.max(-9, Math.min(9, player.position.z));
+
+  // Bobbing goal animation (deterministic — uses frame, not wall clock)
+  goal.position.y = 0.5 + 0.2 * Math.sin(frame * 0.1);
+
+  const dx = player.position.x - goal.position.x;
+  const dz = player.position.z - goal.position.z;
+  if (dx * dx + dz * dz < 1.0) {
+    score += 10;
+    goal.position.set((Math.random() - 0.5) * 16, 0.5, (Math.random() - 0.5) * 16);
+  }
+
+  if (frame >= 1800) gameState = 'WIN';
 }
 
 function render() {
@@ -163,20 +267,34 @@ function render() {
 }
 
 function resetGame(seed) {
-  frame = 0;
+  Math.random = mulberry32(seed >>> 0);
   score = 0;
+  lives = 3;
+  frame = 0;
   gameState = 'PLAYING';
-  if (player) player.position.set(0, 0.25, 0);
+  player.position.set(0, 0.5, 0);
+  goal.position.set((Math.random() - 0.5) * 16, 0.5, (Math.random() - 0.5) * 16);
 }
 
 function getGameState() {
-  return { score, lives: 1, gameState };
+  return { score, lives, gameState };
+}
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let n = Math.imul(t ^ (t >>> 15), t | 1);
+    n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
+    return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
+  };
 }
 ```
 
-## Open Questions (TODO before this leaves draft)
+---
 
-- **Determinism on GPU**: WebGPU pipeline state caching may introduce frame-1 vs frame-N differences. Need to verify two runs from same seed produce byte-identical pixels.
-- **Throughput target**: p5 hits 5K–8K RL FPS per worker. Three.js will be slower — what's the floor we accept? threejs-v2.md says "not browser-automation speed" but doesn't pin a number.
-- **Action injection vs key emulation**: this draft uses `globalThis.currentAction`. An alternative is to keep the p5-style `keyIsDown`/`keyPressed` shim so games written for p5 with optional Three.js renderer share more code. Decide before generating the catalog.
-- **Single render target vs ping-pong**: currently `render()` writes to the configured swap-chain. For deterministic readback we may need an offscreen `RenderTarget`. Decide once the runtime is built.
+## Status
+
+This template is ready for game generation. The headless runtime implementation in `node-gym/runtime/three/` is in progress — until it lands, generated games can be playtested in a browser via the node-gym tester but cannot be stepped headlessly for RL.
+
+Open design questions tracked in `docs/llm/threejs-v2.md`.

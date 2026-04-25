@@ -114,6 +114,14 @@ gen-game catalog name model="pro":
 gen-all model="pro":
     uv run python tools/generate.py --all --model {{model}}
 
+# Generate one Three.js (v2) game (default catalog: threejs_games.json)
+gen-three name model="pro":
+    uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref
+
+# Generate every Three.js game in the v2 catalog
+gen-three-all model="pro":
+    uv run python tools/generate_threejs.py --model {{model}} --ref
+
 # Browser game-tester UI (http://localhost:3000)
 tester:
     uv run python tools/tester.py
