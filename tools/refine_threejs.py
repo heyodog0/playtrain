@@ -40,6 +40,7 @@ REFINE_RULES = """Critical requirements:
 - Preserve these required functions: setup, update, render, resetGame, getGameState, mulberry32.
 - Read the action via globalThis.currentAction (an integer 0..7), NOT via keyIsDown / keyPressed.
 - Keep deterministic reset: seed Math.random in resetGame via mulberry32.
+- Preserve per-seed variation: different seeds must produce visibly different episodes (level layout, obstacle positions, etc.). Do not collapse to a fixed level when refining.
 - Keep score, lives, and gameState consistent with getGameState() — gameState ∈ {'PLAYING','GAMEOVER','WIN','EXIT'}.
 - Mutate scene state in update(dt); render() should only call renderer.render(scene, camera).
 - Use only primitive geometry, MeshBasic/Normal/Lambert materials, at most 1 AmbientLight + 1 DirectionalLight, no post-processing, no external assets.

@@ -56,6 +56,11 @@ template before writing — pay particular attention to:
     render(), resetGame(seed), getGameState()
   - Reading the action via globalThis.currentAction (NOT keyIsDown)
   - Determinism: seed Math.random in resetGame via the mulberry32 helper
+  - PER-SEED VARIATION: different seeds MUST produce visibly different
+    episodes (different obstacle layouts, enemy positions, level geometry,
+    etc.). All randomization belongs in resetGame() AFTER reseeding
+    Math.random — do NOT hardcode a fixed level. Train/test generalization
+    eval depends on this.
   - Rendering constraints: primitive geometry only, MeshBasic/Normal/Lambert
     materials only, at most 1 AmbientLight + 1 DirectionalLight, no
     post-processing, no external assets

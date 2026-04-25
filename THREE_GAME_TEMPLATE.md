@@ -141,6 +141,39 @@ Games signal terminal conditions purely by setting `gameState`. Don't try to ter
 
 ---
 
+## Per-Seed Variation (procedural generation)
+
+**Different seeds MUST produce visibly different episodes.** This is what makes ProcGen-style train/test splits meaningful — seeds 0–199 are training levels, 1000–1099 are held-out test levels. If your `resetGame(seed)` ignores `seed` (or only uses it for cosmetic noise), train and test scores will be identical by construction and the eval signal is dead.
+
+What "varies by seed" should look like depends on the game:
+
+| Game shape          | What to vary per seed                                                     |
+|---------------------|---------------------------------------------------------------------------|
+| Endless runner      | Obstacle pattern, lane sequence, gem placements                           |
+| Grid puzzle         | Box positions, target positions, wall layout (within solvable constraints)|
+| Maze nav            | Maze topology                                                             |
+| First-person room   | Enemy/target positions, switch locations, room dimensions within bounds   |
+| Marble/tilt stage   | Stage hazard placement, goal location                                     |
+| Tube/lane shooter   | Spike sequence, ring placements                                           |
+| Tower / Stack       | Initial block size, slide speed, color sequence                           |
+| 3D platformer slice | Platform positions, star location                                         |
+
+The variation should be **broad enough that a policy trained only on seeds 0–199 cannot trivially memorize them**, but **narrow enough that the game stays the same game** (don't randomize the action mappings, the win condition, or the obstacle types).
+
+Implementation: do all randomization in `resetGame(seed)` AFTER reseeding `Math.random` via `mulberry32(seed)`. Don't draw random numbers in `setup()` — that runs once before any seed exists, and any RNG draws there leak across episodes.
+
+```javascript
+function resetGame(seed) {
+  Math.random = mulberry32(seed >>> 0);
+  // Now every Math.random() call is seeded:
+  for (let i = 0; i < 12; i++) {
+    obstacles[i].position.x = (Math.random() - 0.5) * 20;
+    obstacles[i].position.z = -10 - Math.random() * 80;
+  }
+  // ...
+}
+```
+
 ## Determinism
 
 **Same `seed` + same action sequence ⇒ byte-identical pixel trajectory.** This is non-negotiable; validation runs each game twice and diffs frames.
@@ -193,6 +226,7 @@ These constraints exist because (a) every external asset is a generation failure
 | Calling `Math.random()` outside `resetGame()`-seeded paths      | Breaks determinism                        | Always go through the seeded RNG            |
 | Scaling reward by `dt`                                          | Reward must be monotonic on `score` delta | Increment `score` directly, runtime does the diff |
 | Not setting `gameState = 'WIN'` or `'GAMEOVER'`                 | Episode never terminates, just truncates  | Explicitly set on win/lose conditions       |
+| `resetGame(seed)` builds the same level regardless of `seed`    | Train/test eval signal collapses (memorization) | Do all per-episode randomization AFTER `Math.random = mulberry32(seed)` |
 
 ---
 
