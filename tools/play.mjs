@@ -84,19 +84,21 @@ function playPage(name, source) {
 ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>' : ''}
 <style>${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
-  #controls { display: flex; gap: 12px; align-items: center; margin-bottom: 12px;
-              font-size: 12px; color: #888; }
-  #controls a { color: #888; }
-  #state { color: #666; min-width: 320px; }
+  #topbar { align-self: stretch; max-width: 720px; margin: 0 auto 16px;
+            display: flex; justify-content: space-between; font-size: 12px; color: #888; }
+  #topbar a { color: #888; }
+  #topbar strong { color: #ddd; font-weight: normal; }
+  #state { font-size: 12px; color: #888; margin-bottom: 6px; min-height: 18px; }
   canvas { background: #000; image-rendering: pixelated; box-shadow: 0 0 0 1px #222; }
-  #help { margin-top: 12px; color: #555; font-size: 11px; text-align: center; }
+  #reset-row { margin-top: 12px; }
+  #help { margin-top: 6px; color: #555; font-size: 11px; text-align: center; }
 </style></head><body>
-<div id="controls">
+<div id="topbar">
   <a href="/">&larr; all games</a>
-  <strong style="color:#ddd">${name}</strong>
-  <button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button>
-  <span id="state"></span>
+  <strong>${name}</strong>
 </div>
+
+<div id="state"></div>
 
 <script>
 // Stop the browser from scrolling / activating buttons on game keys.
@@ -137,6 +139,7 @@ setInterval(() => {
 }, 200);
 </script>
 
+<div id="reset-row"><button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button></div>
 <div id="help">click canvas to focus &middot; controls vary per game${needsMatter ? ' &middot; Matter.js' : ''}</div>
 </body></html>`;
 }
