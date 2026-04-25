@@ -47,6 +47,18 @@ pnpm add node-gym
 pip install node-gym       # or: uv pip install node-gym
 ```
 
+## Play a game in your browser
+
+The fastest way to see what node-gym actually does is to play one of the bundled games:
+
+```bash
+just play                 # picker UI listing all bundled games
+just play flappy_bird     # jump straight to one
+node tools/play.mjs path/to/your_game.js   # arbitrary file
+```
+
+The picker is at `http://localhost:5050`. Each game page loads p5.js (and Matter.js if the game needs it) from CDN, runs the game directly (no headless runtime in the loop), and shows a **Reset** button plus a live overlay of `getGameState()`.
+
 ## Using node-gym in your own project
 
 `just install` only sets up the cloned repo's local environment (`node-gym/.venv` and `node-gym/node_modules`). To use the package from a different project directory, install it into *that* project's environment:
@@ -98,18 +110,6 @@ env.close()
 | 5      | D / SPACE          |
 | 6      | LEFT + D           |
 | 7      | RIGHT + D          |
-
-## Play a game in your browser
-
-To eyeball a game (sanity-check controls, see what the agent will see, debug a custom game), serve it as a normal p5.js page:
-
-```bash
-just play                 # picker UI listing all bundled games
-just play flappy_bird     # jump straight to one
-node tools/play.mjs path/to/your_game.js   # arbitrary file
-```
-
-The picker is at `http://localhost:5050`. Each game page loads p5.js (and Matter.js if the game needs it) from CDN, runs the game directly (no headless runtime in the loop), and shows a **Reset** button plus a live overlay of `getGameState()` (score, lives, gameState).
 
 ## Bundled games
 
