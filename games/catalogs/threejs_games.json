@@ -88,5 +88,35 @@
     "ref": "https://apps.apple.com/us/app/helix-jump/id1345968745",
     "actions_used": ["LEFT", "RIGHT"],
     "mechanic": "inspired by Helix Jump (Voodoo, 2018, iOS): a ball falls down a stacked tower of colored disc segments. LEFT/RIGHT rotate the tower around its vertical axis. Ball must pass through the gap between segments; landing on a segment ends the run. Score = depth reached. Cylinder + sphere primitives only."
+  },
+  {
+    "name": "tetris_3d",
+    "ref": "https://en.wikipedia.org/wiki/Tetris",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D"],
+    "mechanic": "inspired by Tetris (1984): falling tetromino blocks land on a stacking grid. LEFT/RIGHT translate the active piece, DOWN soft-drop, D rotate 90°. Clear horizontal lines for points; game over when the stack reaches the top. Static iso camera looking at the well. Each piece type a distinct saturated color (cyan/yellow/purple/green/red/blue/orange). Pure BoxGeometry — primitive geometry IS the visual language."
+  },
+  {
+    "name": "snake_3d",
+    "ref": "https://en.wikipedia.org/wiki/Snake_(video_game_genre)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "inspired by Snake (Nokia 3310, 1997): an extending body of cubes moves continuously across a fixed grid. LEFT/RIGHT/UP/DOWN turn 90° (cannot reverse into self). Eat the food cube to grow by one segment and score. Game over on wall or self collision. Static top-down iso camera. White head, green body segments, gold food. Pure cubes, classic mechanic, primitive-native."
+  },
+  {
+    "name": "breakout_3d",
+    "ref": "https://en.wikipedia.org/wiki/Breakout_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "inspired by Breakout (Atari, 1976): paddle at the bottom of a 3D arena, ball bounces off paddle and walls, breaks colored brick rows above. LEFT/RIGHT slide paddle, D launch ball at start. Each brick row a different saturated color (red→orange→yellow→green→blue, top to bottom). Score per brick. Lose ball off bottom = lose life (3 lives). Static side/iso camera, all primitive."
+  },
+  {
+    "name": "bomberman_3d",
+    "ref": "https://en.wikipedia.org/wiki/Bomberman",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "inspired by Bomberman (Hudson Soft, 1983): top-down grid with indestructible pillar walls and destructible block walls. LEFT/RIGHT/UP/DOWN move one tile (with smooth tween), D drop a bomb. Bombs explode in + pattern after 2 seconds, destroying adjacent block walls and the player if caught. Score per block destroyed. Win by reaching the goal tile (revealed under a destructible block). Static iso camera, primitive cubes throughout."
+  },
+  {
+    "name": "tile_2048",
+    "ref": "https://en.wikipedia.org/wiki/2048_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "inspired by 2048 (Cirulli, 2014): 4×4 grid of numbered tiles. LEFT/RIGHT/UP/DOWN slide all tiles in that direction; tiles with matching numbers merge into a higher value. New random tile (2 or 4) appears each move. Score = sum of merged values. Game over when grid is full and no merges possible. Color encodes value (cool blues for low, warm oranges/reds for high). Static top-down camera, pure BoxGeometry tiles with HSL palette."
   }
 ]
