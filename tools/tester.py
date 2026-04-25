@@ -380,7 +380,7 @@ PLAY_HTML = """<!DOCTYPE html>
 </head>
 <body>
 <div id="controls">
-  <button id="reset-btn" onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button>
+  <button id="reset-btn" onclick="_maxLives=0; resetGame(Date.now()>>>0); this.blur();">Reset</button>
   <span id="state"></span>
 </div>
 <script>
@@ -408,12 +408,16 @@ setup = function() {{
   _origSetup();
   if (typeof resetGame === 'function') resetGame(Date.now() >>> 0);
 }};
-// State overlay
+// State overlay — only show "Lives" if a game actually uses lives (max ever > 1).
+var _maxLives = 0;
 setInterval(() => {{
   if (typeof getGameState === 'function') {{
     const s = getGameState();
-    document.getElementById('state').textContent =
-      'Score: ' + s.score + ' | Lives: ' + s.lives + ' | ' + s.gameState;
+    if (typeof s.lives === 'number' && s.lives > _maxLives) _maxLives = s.lives;
+    const parts = ['Score: ' + s.score];
+    if (_maxLives > 1) parts.push('Lives: ' + s.lives);
+    parts.push(s.gameState);
+    document.getElementById('state').textContent = parts.join(' | ');
   }}
 }}, 200);
 

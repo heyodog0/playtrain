@@ -372,9 +372,9 @@ PLAY_HTML = """<!DOCTYPE html>
   :root {{ --game-scale: 1; }}
   body {{ margin: 0; background: #000; color: #eee; font-family: monospace; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }}
   canvas {{ display: block; transform: scale(var(--game-scale)); transform-origin: center center; transition: transform 140ms ease; }}
-  #hud {{ position: fixed; top: 6px; left: 8px; right: 8px; display: flex; justify-content: space-between; font-size: 11px; color: #888; pointer-events: none; }}
+  #hud {{ position: fixed; top: 6px; left: 8px; right: 8px; display: flex; justify-content: space-between; font-size: 11px; color: #888; pointer-events: none; z-index: 100; }}
   #hud button {{ pointer-events: auto; background: #222; color: #aaa; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: 11px monospace; }}
-  #err {{ position: fixed; bottom: 8px; left: 8px; right: 8px; color: #e55; font-size: 11px; white-space: pre-wrap; }}
+  #err {{ position: fixed; bottom: 8px; left: 8px; right: 8px; color: #e55; font-size: 11px; white-space: pre-wrap; z-index: 100; }}
 </style></head><body>
 <div id="hud">
   <span id="state">loading...</span>
@@ -473,6 +473,15 @@ async function loadGame() {{
 
 let lastT = performance.now();
 let frame = 0;
+let maxLives = 0;
+
+function formatHUD(s) {{
+  if (typeof s.lives === 'number' && s.lives > maxLives) maxLives = s.lives;
+  const parts = ['score: ' + s.score];
+  if (maxLives > 1) parts.push('lives: ' + s.lives);
+  parts.push(s.gameState);
+  return parts.join('  |  ');
+}}
 
 function loop(t) {{
   const dt = Math.min(0.05, (t - lastT) / 1000);
@@ -483,7 +492,7 @@ function loop(t) {{
     window.render();
     if (frame++ % 12 === 0) {{
       const s = window.getGameState();
-      stateEl.textContent = 'score: ' + s.score + ' | lives: ' + s.lives + ' | ' + s.gameState;
+      stateEl.textContent = formatHUD(s);
     }}
   }} catch (e) {{
     errEl.textContent = e.message + '\\n' + (e.stack || '');
@@ -494,7 +503,7 @@ function loop(t) {{
 }}
 
 document.getElementById('reset-btn').onclick = () => {{
-  try {{ window.resetGame((Date.now() & 0x7fffffff) >>> 0); }} catch (e) {{ errEl.textContent = e.message; }}
+  try {{ maxLives = 0; window.resetGame((Date.now() & 0x7fffffff) >>> 0); }} catch (e) {{ errEl.textContent = e.message; }}
   document.getElementById('reset-btn').blur();
 }};
 
