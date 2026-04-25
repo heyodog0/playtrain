@@ -1,0 +1,50 @@
+[
+  {
+    "name": "runner_3d",
+    "ref": "endless lane runner (Subway Surfers / Temple Run lite)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "3-lane endless runner; LEFT/RIGHT switch lane, UP jump, DOWN slide; avoid box obstacles, collect gems"
+  },
+  {
+    "name": "box_pusher",
+    "ref": "Sokoban in 3D",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "grid-based puzzle; push colored boxes onto matching pads; deterministic, turn-based feel with smooth tweens"
+  },
+  {
+    "name": "ball_roller",
+    "ref": "Marble Madness / Super Monkey Ball lite",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "tilt-the-platform marble physics; roll a sphere across a tilted plane to reach a goal pad without falling off; gravity + simple sphere-plane collisions"
+  },
+  {
+    "name": "tube_racer",
+    "ref": "Audiosurf / Tempest 3D",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "ride along the inside of a procedural tube; LEFT/RIGHT rotate around the tube axis, D shoots; collect rings, avoid wall spikes"
+  },
+  {
+    "name": "drone_pilot",
+    "ref": "drone-racing gate course",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "fly through ring gates; LEFT/RIGHT yaw, UP/DOWN pitch, D throttle boost; depth perception via ring scaling"
+  },
+  {
+    "name": "cube_jumper",
+    "ref": "voxel platformer (Crossy Road in 3D)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "hop a cube across a grid of moving platforms; LEFT/RIGHT/UP/DOWN move one tile, D jump higher to clear gaps"
+  },
+  {
+    "name": "target_shooter",
+    "ref": "3D arena shooting gallery",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "first-person crosshair; LEFT/RIGHT/UP/DOWN aim, D fire; spheres spawn at random depths, hit them before they exit the arena"
+  },
+  {
+    "name": "maze_runner_3d",
+    "ref": "first-person 3D maze",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "first-person navigation through a procedurally generated maze; LEFT/RIGHT turn 90°, UP move forward, DOWN move back; reach the exit pad"
+  }
+]
