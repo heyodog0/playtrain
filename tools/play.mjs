@@ -84,7 +84,7 @@ function playPage(name, source) {
 ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>' : ''}
 <style>${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
-  #topbar { align-self: stretch; max-width: 720px; margin: 0 auto 16px;
+  #topbar { width: 100%; max-width: 480px; margin-bottom: 16px;
             display: flex; justify-content: space-between; font-size: 12px; color: #888; }
   #topbar a { color: #888; }
   #topbar strong { color: #ddd; font-weight: normal; }
@@ -140,7 +140,7 @@ setInterval(() => {
 </script>
 
 <div id="reset-row"><button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button></div>
-<div id="help">click canvas to focus &middot; controls vary per game${needsMatter ? ' &middot; Matter.js' : ''}</div>
+<div id="help">click canvas to focus${needsMatter ? ' &middot; Matter.js' : ''}</div>
 </body></html>`;
 }
 
