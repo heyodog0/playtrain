@@ -62,3 +62,21 @@ def test_frame_stack():
         assert obs.shape == (64, 64, 12)
     finally:
         env.close()
+
+
+@pytest.mark.parametrize("game", list_available_games())
+def test_every_bundled_game_boots(game):
+    """Each bundled game must reset + take 10 random steps without crashing."""
+    env = NodeGymEnv(game=game, obs_size=64, obs_mode="rgb")
+    try:
+        obs, info = env.reset(seed=0)
+        assert obs.shape == (64, 64, 3)
+        for _ in range(10):
+            action = int(env.action_space.sample())
+            obs, reward, terminated, truncated, info = env.step(action)
+            assert obs.shape == (64, 64, 3)
+            assert isinstance(reward, float)
+            if terminated or truncated:
+                env.reset(seed=0)
+    finally:
+        env.close()
