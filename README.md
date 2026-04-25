@@ -25,16 +25,16 @@ After future pulls, run `just sync-all` to refresh both repos.
 Run `just` (no args) to see every recipe with a one-line description. The most common ones:
 
 ```bash
-just sync-all                                              # pull node-gym + reinstall deps in both repos
-just gen-game games/catalogs/atari_games.json breakout    # generate one game
-just tester                                                # browser playtest UI (localhost:3000)
-just validate                                              # run 5-check ProcGen validation suite
-just bench                                                 # FPS per game
-just smoke breakout                                        # ~30 sec sanity training
-just train breakout                                        # short_run.json (~5 min)
-just train-multi                                           # multi-game ProcGen-style
-just eval breakout outputs/experiments/breakout/ppo/<ts>/final_model.zip
-just aggregate                                             # IQM across all runs
+just sync-all                # pull node-gym + reinstall deps in both repos
+just gen-game <catalog> <name>   # generate one game from a Gemini catalog
+just tester                  # browser playtest UI (localhost:3000)
+just validate                # run 5-check ProcGen validation suite
+just bench                   # FPS per game
+just smoke breakout          # ~30 sec sanity training
+just train breakout          # short_run.json (~5 min)
+just train-multi             # multi-game ProcGen-style training
+just eval <game> <model>     # train (seeds 0-199) vs test (1000-1099) split
+just aggregate               # IQM across all runs
 ```
 
 Higher-level meta-recipes that compose the above:
