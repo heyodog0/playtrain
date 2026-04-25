@@ -2,7 +2,7 @@
 // Shows that canvas creation, rendering, and pixel readback
 // all happen in a single Node.js process with direct memory access.
 
-import { installGlobals, tick, getPixelData } from '../../poc/p5/p5-shim.mjs';
+import { installGlobals, tick, getPixelData } from '../../../archive/poc/p5/p5-shim.mjs';
 
 // Install p5.js-compatible globals onto globalThis
 installGlobals();

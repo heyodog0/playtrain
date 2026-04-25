@@ -179,17 +179,25 @@ src/fast_games/
     validate.py           ProcGen-style validation suite
     bench.py              throughput benchmarks
   archive/                compatibility shim — actual sources live in /archive/
-envs/
-  kazuki-env.mjs          original single-game environment (legacy)
-  kazuki-worker.mjs       IPC worker for the legacy kazuki path
-poc/p5/                   headless p5.js shim + obs preprocessing (kept for benchmarks/legacy)
-notebooks/                marimo notebooks (benchmarks, visualization)
-benchmarks/               Node.js benchmark scripts (headless + Playwright)
 configs/                  training presets (smoke, short, full)
+scripts/                  FASRC sbatch + submit scripts
 outputs/                  experiments, models, validation, benchmarks
-archive/                  quarantined predecessors (kazuki-only scripts, orphaned configs)
+docs/                     supplementary materials (not load-bearing)
+  notebooks/              marimo notebooks (benchmarks, visualization)
+  benchmarks/             Node.js + Python benchmark scripts
+  llm/                    pipeline + validation write-ups
+  slides/                 lab + sweep meeting decks
+archive/                  quarantined predecessors (kazuki, poc/, legacy)
 reference/                external repos kept for reference (train-procgen, reinforcement_learning)
 GAME_TEMPLATE.md          strict spec for LLM-generated games
+```
+
+The Node.js runtime (game worker + p5 shim) lives in the sibling
+[`node-gym`](https://github.com/heyodog0/node-gym) repo. Clone both side-by-side:
+```
+parent/
+  fast-llm-games/   (this repo)
+  node-gym/         (the runtime)
 ```
 
 ## Design

@@ -9,11 +9,11 @@ import {
   setKeysDown,
   simulateKeyPress,
   tick,
-} from '../../poc/p5/p5-shim.mjs';
+} from '../../../archive/poc/p5/p5-shim.mjs';
 
 installGlobals();
 
-let gameCode = readFileSync('poc/p5/kazuki_game.js', 'utf8');
+let gameCode = readFileSync('archive/poc/p5/kazuki_game.js', 'utf8');
 gameCode += `
 globalThis.getGameState = () => ({
   gameState, score, lives, player, inventory, currentRoom

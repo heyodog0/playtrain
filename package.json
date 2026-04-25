@@ -4,10 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "smoke:dawn": "node poc/webgpu/smoke-dawn.mjs",
-    "poc:webgpu": "node poc/webgpu/poc.mjs",
-    "poc:p5": "node poc/p5/poc-p5.mjs",
-    "bench:kazuki": "node benchmarks/kazuki-compare.mjs"
+    "bench:all": "node docs/benchmarks/all-games-bench.mjs"
   },
   "dependencies": {
     "canvas": "^3.2.3",

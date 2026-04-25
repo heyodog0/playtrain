@@ -15,14 +15,14 @@ import {
   setKeysDown,
   tick,
   getPixelData,
-} from '../poc/p5/p5-shim.mjs';
+} from '../../../node-gym/runtime/p5/p5-shim.mjs';
 import {
   preprocessObservationFromRGBA,
   preprocessObservationRGB,
-} from '../poc/p5/obs.mjs';
+} from '../../../node-gym/runtime/p5/obs.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, '..');
+const repoRoot = resolve(__dirname, '..', '..');
 const gamesDir = join(repoRoot, 'games', 'js');
 
 const gameName = process.argv[2];

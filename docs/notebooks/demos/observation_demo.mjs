@@ -10,13 +10,13 @@ import {
   simulateKeyPress,
   tick,
   getPixelData,
-} from '../../poc/p5/p5-shim.mjs';
-import { preprocessObservationFromRGBA } from '../../poc/p5/obs.mjs';
+} from '../../../archive/poc/p5/p5-shim.mjs';
+import { preprocessObservationFromRGBA } from '../../../archive/poc/p5/obs.mjs';
 
 installGlobals();
 
 // Load and run the actual game code via vm
-let gameCode = readFileSync('poc/p5/kazuki_game.js', 'utf8');
+let gameCode = readFileSync('archive/poc/p5/kazuki_game.js', 'utf8');
 gameCode += `
 globalThis.getGameState = () => ({
   gameState, score, lives, player, inventory, currentRoom

@@ -111,25 +111,21 @@ tester:
 
 # Open a marimo notebook for editing (default: all_games_benchmark)
 notebook name="all_games_benchmark":
-    uv run marimo edit notebooks/{{name}}.py
+    uv run marimo edit docs/notebooks/{{name}}.py
 
 # Export a notebook to static HTML
 nb-export name:
-    uv run marimo export html notebooks/{{name}}.py -o notebooks/{{name}}.html
+    uv run marimo export html docs/notebooks/{{name}}.py -o docs/notebooks/{{name}}.html
 
 # === Node.js benchmarks ===
-
-# Compare old single-game env vs new multi-game env (legacy)
-bench-kazuki:
-    npm run bench:kazuki
 
 # Run the all-games headless Node.js benchmark
 bench-headless game="" frames="500":
     #!/usr/bin/env bash
     if [ -n "{{game}}" ]; then
-        node benchmarks/all-games-bench.mjs --game {{game}} --frames {{frames}}
+        node docs/benchmarks/all-games-bench.mjs --game {{game}} --frames {{frames}}
     else
-        node benchmarks/all-games-bench.mjs --frames {{frames}}
+        node docs/benchmarks/all-games-bench.mjs --frames {{frames}}
     fi
 
 # === sweeps (multi-seed, multi-game) ===

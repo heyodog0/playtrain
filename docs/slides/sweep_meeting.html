@@ -517,225 +517,24 @@
   </div>
 </section>
 
-<!-- 17. Fig 2 mock -->
+<!-- 17. Figures we'll produce -->
 <section>
   <div class="slide-content">
-    <h2>Fig 2 — per-game training curves</h2>
-    <p>One panel per game, mean of 3 seeds ± std band. ProcGen paper's Fig 2 is the same structure for its 16 games.</p>
-    <svg class="mock" viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg">
-      <g font-family="SFMono-Regular, Menlo, monospace" font-size="11" fill="#555">
-        <text x="12" y="16">fig2_per_game_test.pdf  (mock layout — 6 × 5 grid for 30 games)</text>
-      </g>
-      <g>
-        <!-- 5 rows × 6 cols of tiny curve panels -->
-        <!-- each panel is 170×70 with a curve -->
-        <g transform="translate(12,30)">
-          <!-- Row 1 -->
-          <g>
-            <rect x="0" y="0" width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,65 Q 40,60 60,40 T 110,20 T 165,10" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <path d="M5,65 L165,65 L165,55 L120,40 L60,40 L5,55 Z" fill="#0a52a1" fill-opacity="0.12" stroke="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">breakout</text>
-          </g>
-          <g transform="translate(180,0)">
-            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,65 Q 40,55 70,50 T 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">mario</text>
-          </g>
-          <g transform="translate(360,0)">
-            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,65 L40,60 L80,50 L120,35 L165,20" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">asteroids</text>
-          </g>
-          <g transform="translate(540,0)">
-            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,62 Q 50,58 90,45 T 165,30" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">starpilot</text>
-          </g>
-          <g transform="translate(720,0)">
-            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,65 C 40,60 80,40 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">flappy_bird</text>
-          </g>
-          <g transform="translate(900,0)">
-            <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-            <path d="M5,60 Q 80,55 165,40" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-            <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">vvvvvv</text>
-          </g>
-        </g>
-        <!-- Repeat 4 more rows with different curves -->
-        <g transform="translate(12,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,62 Q 60,55 120,30 T 165,20" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">space_invaders</text>
-        </g>
-        <g transform="translate(192,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,65 L165,60" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">maze</text>
-        </g>
-        <g transform="translate(372,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,60 Q 80,50 165,35" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">bigfish</text>
-        </g>
-        <g transform="translate(552,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,63 Q 70,50 165,25" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">chaser</text>
-        </g>
-        <g transform="translate(732,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,65 Q 50,62 120,40 T 165,15" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">miner</text>
-        </g>
-        <g transform="translate(912,108)" opacity="0.85">
-          <rect width="170" height="70" fill="#fdfdfd" stroke="#ccc"/>
-          <path d="M5,60 L80,50 L165,30" stroke="#0a52a1" stroke-width="1.5" fill="none"/>
-          <text x="5" y="10" font-family="Helvetica" font-size="9" fill="#333">fruitbot</text>
-        </g>
-
-        <!-- Indicate more rows below -->
-        <g transform="translate(12,188)" opacity="0.6">
-          <rect width="1058" height="70" fill="#fafafa" stroke="#ccc" stroke-dasharray="3,3"/>
-          <text x="529" y="40" text-anchor="middle" font-family="Helvetica" font-size="13" fill="#555">... 18 more game panels ...</text>
-        </g>
-        <g transform="translate(12,268)" opacity="0.6">
-          <rect width="1058" height="70" fill="#fafafa" stroke="#ccc" stroke-dasharray="3,3"/>
-          <text x="529" y="40" text-anchor="middle" font-family="Helvetica" font-size="13" fill="#555">... IQM summary at bottom ...</text>
-        </g>
-
-        <!-- x/y labels -->
-        <text x="550" y="410" text-anchor="middle" font-family="Helvetica" font-size="11" fill="#333">timesteps  (0 → 5M per panel)</text>
-        <text x="8" y="210" text-anchor="middle" font-family="Helvetica" font-size="11" fill="#333" transform="rotate(-90, 8, 210)">mean episode return (test seeds)</text>
-      </g>
-    </svg>
+    <h2>Figures we'll produce</h2>
+    <p>Once the sweep finishes, <code>just fasrc-figures &lt;sweep_id&gt;</code> reads every cell's <code>eval/evaluations.npz</code> and emits three PDFs into <code>figures/&lt;sweep_id&gt;/</code>:</p>
+    <table>
+      <thead><tr><th>File</th><th>What it shows</th><th>Paper analogue</th></tr></thead>
+      <tbody>
+        <tr><td><code>fig2_per_game_test.pdf</code></td><td>One panel per game, mean of 3 seeds ± std band over 5M training steps</td><td>ProcGen Fig 2 (per-game training curves)</td></tr>
+        <tr><td><code>fig3_mean_normalized.pdf</code></td><td>Single curve: <code>(agent − random) / (best − random)</code> averaged across 30 games × 3 seeds</td><td>ProcGen Fig 3 top row</td></tr>
+        <tr><td><code>fig4_train_vs_test.pdf</code></td><td>Per-game grouped bars: final return on train levels vs held-out test levels (multigame sweep only)</td><td>ProcGen Fig 4 (generalization gap)</td></tr>
+      </tbody>
+    </table>
+    <p class="refs">Random &amp; best baselines come from <code>src/fast_games/constants.py</code> via <code>get_random_baselines()</code> / <code>get_best_baselines()</code>. Multigame Fig 4 requires the second sweep: <code>just fasrc-submit-multi "0 1 2"</code>.</p>
   </div>
 </section>
 
-<!-- 18. Fig 3 mock -->
-<section>
-  <div class="slide-content">
-    <h2>Fig 3 — mean normalized return across games</h2>
-    <p>Aggregates all 30 games × 3 seeds into a single curve: normalized score over training progress. Directly comparable to ProcGen paper's Fig 3 (top row).</p>
-    <svg class="mock" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg">
-      <!-- plot area -->
-      <rect x="70" y="30" width="780" height="230" fill="#fdfdfd" stroke="#ccc"/>
-      <!-- axes -->
-      <line x1="70" y1="260" x2="850" y2="260" stroke="#555" stroke-width="1"/>
-      <line x1="70" y1="30" x2="70" y2="260" stroke="#555" stroke-width="1"/>
-      <!-- y ticks -->
-      <g font-family="SFMono-Regular, Menlo, monospace" font-size="10" fill="#555">
-        <text x="60" y="263" text-anchor="end">0.0</text>
-        <text x="60" y="205" text-anchor="end">0.25</text>
-        <text x="60" y="145" text-anchor="end">0.50</text>
-        <text x="60" y="85" text-anchor="end">0.75</text>
-        <text x="60" y="35" text-anchor="end">1.00</text>
-        <text x="70" y="280" text-anchor="start">0</text>
-        <text x="460" y="280" text-anchor="middle">2.5M</text>
-        <text x="850" y="280" text-anchor="end">5M</text>
-      </g>
-      <!-- shaded std band -->
-      <path d="M75,235 Q 220,215 350,160 T 600,80 T 845,55 L 845,95 T 620,140 T 370,220 T 75,250 Z" fill="#0a52a1" fill-opacity="0.15" stroke="none"/>
-      <!-- mean curve -->
-      <path d="M75,245 Q 220,225 350,175 T 600,95 T 845,68" stroke="#0a52a1" stroke-width="2.2" fill="none"/>
-      <!-- labels -->
-      <g font-family="Helvetica" font-size="12" fill="#333">
-        <text x="460" y="308" text-anchor="middle">timesteps</text>
-        <text x="20" y="150" text-anchor="middle" transform="rotate(-90, 20, 150)">normalized return</text>
-        <text x="450" y="20" text-anchor="middle" font-size="13" font-weight="600">mean (agent − random) / (best − random)   across 30 games × 3 seeds</text>
-      </g>
-      <!-- legend -->
-      <g transform="translate(700,40)" font-family="SFMono-Regular, Menlo, monospace" font-size="10">
-        <line x1="0" y1="7" x2="18" y2="7" stroke="#0a52a1" stroke-width="2"/>
-        <text x="22" y="11" fill="#333">mean across 90 runs</text>
-        <rect x="0" y="18" width="18" height="10" fill="#0a52a1" fill-opacity="0.15"/>
-        <text x="22" y="27" fill="#333">± 1 std across runs</text>
-      </g>
-    </svg>
-    <p class="refs">Random &amp; best baselines loaded from <code>src/fast_games/constants.py</code> via <code>get_random_baselines()</code> / <code>get_best_baselines()</code>.</p>
-  </div>
-</section>
-
-<!-- 19. Fig 4 mock -->
-<section>
-  <div class="slide-content">
-    <h2>Fig 4 — train vs. test generalization gap (multigame only)</h2>
-    <p>Per-game final return: train-set levels vs. held-out test-set levels. The gap is ProcGen's headline generalization number.</p>
-    <svg class="mock" viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg">
-      <rect x="70" y="20" width="920" height="220" fill="#fdfdfd" stroke="#ccc"/>
-      <line x1="70" y1="240" x2="990" y2="240" stroke="#555" stroke-width="1"/>
-      <line x1="70" y1="20" x2="70" y2="240" stroke="#555" stroke-width="1"/>
-
-      <!-- 10 grouped bars (subset of 30 for readability in mock) -->
-      <g font-family="Helvetica" font-size="10" fill="#333">
-        <!-- (train bar, test bar) per game; train tall, test shorter to show gap -->
-        <g transform="translate(90, 0)">
-          <rect x="0" y="80" width="22" height="160" fill="#0a52a1"/>
-          <rect x="24" y="115" width="22" height="125" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">breakout</text>
-        </g>
-        <g transform="translate(180, 0)">
-          <rect x="0" y="60" width="22" height="180" fill="#0a52a1"/>
-          <rect x="24" y="140" width="22" height="100" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">mario</text>
-        </g>
-        <g transform="translate(270, 0)">
-          <rect x="0" y="100" width="22" height="140" fill="#0a52a1"/>
-          <rect x="24" y="110" width="22" height="130" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">space_invaders</text>
-        </g>
-        <g transform="translate(360, 0)">
-          <rect x="0" y="120" width="22" height="120" fill="#0a52a1"/>
-          <rect x="24" y="155" width="22" height="85" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">asteroids</text>
-        </g>
-        <g transform="translate(450, 0)">
-          <rect x="0" y="50" width="22" height="190" fill="#0a52a1"/>
-          <rect x="24" y="80" width="22" height="160" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">flappy_bird</text>
-        </g>
-        <g transform="translate(540, 0)">
-          <rect x="0" y="140" width="22" height="100" fill="#0a52a1"/>
-          <rect x="24" y="180" width="22" height="60" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">maze</text>
-        </g>
-        <g transform="translate(630, 0)">
-          <rect x="0" y="90" width="22" height="150" fill="#0a52a1"/>
-          <rect x="24" y="130" width="22" height="110" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">bigfish</text>
-        </g>
-        <g transform="translate(720, 0)">
-          <rect x="0" y="110" width="22" height="130" fill="#0a52a1"/>
-          <rect x="24" y="145" width="22" height="95" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">chaser</text>
-        </g>
-        <g transform="translate(810, 0)">
-          <rect x="0" y="75" width="22" height="165" fill="#0a52a1"/>
-          <rect x="24" y="100" width="22" height="140" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">starpilot</text>
-        </g>
-        <g transform="translate(900, 0)">
-          <rect x="0" y="65" width="22" height="175" fill="#0a52a1"/>
-          <rect x="24" y="90" width="22" height="150" fill="#8a1a1a"/>
-          <text x="23" y="258" text-anchor="middle" transform="rotate(-40, 23, 258)">fruitbot</text>
-        </g>
-
-        <!-- legend -->
-        <g transform="translate(85, 30)">
-          <rect x="0" y="0" width="14" height="12" fill="#0a52a1"/>
-          <text x="20" y="10">train levels (seeds 0 – 199)</text>
-          <rect x="180" y="0" width="14" height="12" fill="#8a1a1a"/>
-          <text x="200" y="10">test levels (seeds 1000 – 1099, held out)</text>
-        </g>
-        <text x="30" y="130" text-anchor="middle" transform="rotate(-90, 30, 130)" font-size="11">final mean return</text>
-      </g>
-    </svg>
-    <p class="refs">Produced only when <code>--algo multigame --dual-eval</code> is used. A second sweep (<code>just fasrc-submit-multi "0 1 2"</code>) provides this figure.</p>
-  </div>
-</section>
-
-<!-- 20. Deviations from the paper -->
+<!-- 18. Deviations from the paper -->
 <section>
   <div class="slide-content">
     <h2>Where we deviate from the paper &mdash; and why</h2>

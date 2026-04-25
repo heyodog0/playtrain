@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, '..');
+const repoRoot = resolve(__dirname, '..', '..');
 const gamesDir = join(repoRoot, 'games', 'js');
 const outputsDir = join(repoRoot, 'outputs');
 const benchScript = join(__dirname, 'bench-single-game.mjs');

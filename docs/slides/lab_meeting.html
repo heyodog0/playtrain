@@ -276,7 +276,7 @@
 
       <!-- Row 1: Gemini → generated game file -->
       <rect class="box-accent" x="40" y="30" width="200" height="70" rx="4"/>
-      <text x="140" y="60" text-anchor="middle" font-weight="600" font-size="17">Gemini 2.5</text>
+      <text x="140" y="60" text-anchor="middle" font-weight="600" font-size="17">Gemini 3.1 Pro</text>
       <text x="140" y="82" text-anchor="middle" font-size="13" class="muted">LLM generator</text>
 
       <line class="edge" x1="240" y1="65" x2="495" y2="65" marker-end="url(#ah)"/>
@@ -369,7 +369,7 @@ D, LEFT+D, RIGHT+D</code></pre>
     <h2>Method §2 — the LLM generation pipeline</h2>
     <ul>
       <li><strong>Catalogs</strong>: 4 JSON files of 25 games each (atari, arcade, nes, mobile, procgen), 100 cataloged total</li>
-      <li><strong>Generator</strong>: Gemini 2.5 Flash/Pro receives the catalog entry + <code>GAME_TEMPLATE.md</code> + (optionally) Wikipedia reference</li>
+      <li><strong>Generator</strong>: Gemini 3.1 Pro (or 3 Flash) receives the catalog entry + <code>GAME_TEMPLATE.md</code> + (optionally) Wikipedia reference</li>
       <li><strong>Output</strong>: a single <code>games/js/{name}.js</code> conforming to the spec</li>
       <li><strong>Refinement loop</strong>: browser game-tester (<code>tools/tester.py</code>) plays the game, captures feedback, re-prompts Gemini with the diff</li>
     </ul>
