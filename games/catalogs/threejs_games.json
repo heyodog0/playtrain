@@ -46,5 +46,35 @@
     "ref": "https://en.wikipedia.org/wiki/Wolfenstein_3D",
     "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
     "mechanic": "inspired by Wolfenstein 3D (1992): first-person navigation through a procedurally generated grid maze. LEFT/RIGHT turn 90°, UP move forward one tile, DOWN move back. Reach the exit pad. Walls are flat-shaded boxes, no enemies."
+  },
+  {
+    "name": "stack_drop",
+    "ref": "https://apps.apple.com/us/app/stack/id1080487957",
+    "actions_used": ["D"],
+    "mechanic": "inspired by Stack (Ketchapp, 2016, iOS): a horizontally sliding block hovers above a growing tower. D drops the block — overhang is sliced off, the next block is smaller. Score = tower height. Game over when overhang fully consumes the block. Pure primitive geometry, single-action timing puzzle."
+  },
+  {
+    "name": "helix_jump",
+    "ref": "https://apps.apple.com/us/app/helix-jump/id1345968745",
+    "actions_used": ["LEFT", "RIGHT"],
+    "mechanic": "inspired by Helix Jump (Voodoo, 2018, iOS): a ball falls down a stacked tower of colored disc segments. LEFT/RIGHT rotate the tower around its vertical axis. Ball must pass through the gap between segments; landing on a segment ends the run. Score = depth reached. Cylinder + sphere primitives only."
+  },
+  {
+    "name": "hole_io",
+    "ref": "https://en.wikipedia.org/wiki/Hole.io",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "inspired by Hole.io (Voodoo, 2018, iOS): top-down view of a city made of cubes. LEFT/RIGHT/UP/DOWN move a black hole disc across the ground; objects fall in when overlapped. Score = mass consumed in fixed time. Hole grows as it eats larger objects, unlocking bigger targets."
+  },
+  {
+    "name": "cube_surfer",
+    "ref": "https://apps.apple.com/us/app/cube-surfer/id1487807533",
+    "actions_used": ["LEFT", "RIGHT"],
+    "mechanic": "inspired by Cube Surfer (Voodoo, 2019, iOS): character auto-runs forward along a track, collecting stacked cubes that pile on top. LEFT/RIGHT shift lateral position to grab cube pickups, dodge wall slicers that chop off the top of the stack. Score = stack height at finish line."
+  },
+  {
+    "name": "smash_hit",
+    "ref": "https://en.wikipedia.org/wiki/Smash_Hit",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "inspired by Smash Hit (Mediocre, 2014, iOS): on-rails first-person flight through a corridor of glass obstacle panes. LEFT/RIGHT/UP/DOWN aim a crosshair, D throws a metal ball at the aim point. Hit glass = shatter (score+); miss and hit the frame = ball wasted. All-primitive: cuboid panes, sphere ball, dark background."
   }
 ]
