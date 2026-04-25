@@ -180,10 +180,9 @@ src/fast_games/
     bench.py              throughput benchmarks
   archive/                compatibility shim — actual sources live in /archive/
 envs/
-  game-env.mjs            parameterized game environment
-  game-worker.mjs         IPC worker (binary protocol)
   kazuki-env.mjs          original single-game environment (legacy)
-poc/p5/                   headless p5.js shim + observation preprocessing
+  kazuki-worker.mjs       IPC worker for the legacy kazuki path
+poc/p5/                   headless p5.js shim + obs preprocessing (kept for benchmarks/legacy)
 notebooks/                marimo notebooks (benchmarks, visualization)
 benchmarks/               Node.js benchmark scripts (headless + Playwright)
 configs/                  training presets (smoke, short, full)

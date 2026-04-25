@@ -18,7 +18,7 @@ def _():
     _cwd = Path.cwd()
     REPO_ROOT = str(_cwd)
     for _p in [_cwd] + list(_cwd.parents):
-        if (_p / "envs" / "game-env.mjs").exists():
+        if (_p / "pyproject.toml").exists():
             REPO_ROOT = str(_p)
             break
 
