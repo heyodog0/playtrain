@@ -122,9 +122,13 @@ gen-three name model="pro":
 gen-three-all model="pro":
     uv run python tools/generate_threejs.py --model {{model}} --ref
 
-# Browser game-tester UI (http://localhost:3000)
+# Browser game-tester UI for p5 games (http://localhost:3000)
 tester:
     uv run python tools/tester.py
+
+# Browser tester for Three.js v2 games (http://localhost:3001)
+tester-three:
+    uv run python tools/tester_threejs.py
 
 # === notebooks (marimo) ===
 
