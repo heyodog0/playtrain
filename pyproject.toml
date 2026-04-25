@@ -1,0 +1,51 @@
+[project]
+name = "node-gym"
+version = "0.1.0"
+description = "Headless Node.js game environments for Python Gymnasium. Run JS games (p5.js, Matter.js) as RL envs without a browser."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Ryan Truong" },
+]
+keywords = ["reinforcement-learning", "gymnasium", "rl", "headless", "p5", "matter-js", "benchmark"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "gymnasium>=1.0",
+  "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/heyodog0/node-gym"
+Repository = "https://github.com/heyodog0/node-gym"
+Issues = "https://github.com/heyodog0/node-gym/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["python/node_gym"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "python/node_gym",
+  "runtime",
+  "examples/games",
+  "README.md",
+  "docs",
+  "LICENSE",
+]
