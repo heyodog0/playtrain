@@ -33,6 +33,6 @@ clean:
 smoke:
     uv run python -c "from node_gym import NodeGymEnv; e = NodeGymEnv(game='flappy_bird'); e.reset(seed=0); r = sum(e.step(e.action_space.sample())[1] for _ in range(100)); print(f'reward over 100 steps: {r:.2f}'); e.close()"
 
-# Play a bundled game in your browser (human tester). Example: `just play flappy_bird`
-play game:
+# Browser tester. `just play` opens a game picker; `just play flappy_bird` jumps to one.
+play game="":
     node tools/play.mjs {{game}}

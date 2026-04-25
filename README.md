@@ -104,11 +104,12 @@ env.close()
 To eyeball a game (sanity-check controls, see what the agent will see, debug a custom game), serve it as a normal p5.js page:
 
 ```bash
-just play flappy_bird     # any bundled game name
+just play                 # picker UI listing all bundled games
+just play flappy_bird     # jump straight to one
 node tools/play.mjs path/to/your_game.js   # arbitrary file
 ```
 
-The page loads p5.js (and Matter.js if the game needs it) from CDN and runs the game directly — no headless runtime in the loop. Click the canvas, then use the arrow keys / space.
+The picker is at `http://localhost:5050`. Each game page loads p5.js (and Matter.js if the game needs it) from CDN, runs the game directly (no headless runtime in the loop), and shows a **Reset** button plus a live overlay of `getGameState()` (score, lives, gameState).
 
 ## Bundled games
 
