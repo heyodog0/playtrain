@@ -59,15 +59,19 @@ function pickerPage(games, autoOpen) {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>node-gym tester</title>
 <style>${baseStyle}
-  main { max-width: 720px; margin: 40px auto; padding: 0 24px; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  p.sub { color: #777; font-size: 13px; margin: 0 0 28px; }
-  ul { list-style: none; padding: 0; columns: 3; column-gap: 24px; }
-  li { padding: 4px 0; break-inside: avoid; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { min-height: 100vh; display: flex; justify-content: center;
+         padding: 56px 24px; }
+  main { width: 100%; max-width: 640px; }
+  h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+  p.sub { color: #777; font-size: 13px; margin: 0 0 32px; text-align: center; }
+  ul { list-style: none; padding: 0; margin: 0;
+       display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 24px; }
+  li { padding: 0; }
 </style></head><body>
 <main>
   <h1>node-gym tester</h1>
-  <p class="sub">Pick a bundled game to play in your browser. ${games.length} games available.</p>
+  <p class="sub">${games.length} bundled games. Pick one to play.</p>
   <ul>
       ${items}
   </ul>
