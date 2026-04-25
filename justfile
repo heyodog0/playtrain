@@ -29,6 +29,12 @@ setup:
     npm install
     uv sync
 
+# Pull latest node-gym (sibling repo) + reinstall its node deps + uv sync here.
+# Run this after pulling fast-llm-games if node-gym may have changed too.
+sync-all:
+    cd ../node-gym && git pull && pnpm install
+    uv sync
+
 # Alias for `setup`
 install: setup
 
