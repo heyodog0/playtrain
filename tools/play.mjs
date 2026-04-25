@@ -83,7 +83,7 @@ function playPage(name, source) {
 <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
 ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>' : ''}
 <style>${baseStyle}
-  body { display: flex; flex-direction: column; align-items: center; padding: 16px; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
   #controls { display: flex; gap: 12px; align-items: center; margin-bottom: 12px;
               font-size: 12px; color: #888; }
   #controls a { color: #888; }
@@ -98,6 +98,18 @@ ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/buil
   <button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button>
   <span id="state"></span>
 </div>
+
+<script>
+// Stop the browser from scrolling / activating buttons on game keys.
+// Without this, arrow keys scroll the page and space activates the Reset
+// button, so p5's keyIsDown() reads the wrong state.
+window.addEventListener('keydown', (e) => {
+  if ([32, 37, 38, 39, 40, 68, 87, 65, 83].includes(e.keyCode)) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+  }
+}, { passive: false });
+</script>
 
 <script>
 ${source}
