@@ -279,7 +279,7 @@ def print_stream_header(model: str, prompt: str):
     print(f"  Prompt size: {len(prompt):,} chars")
 
 
-def stream_text(client, model: str, prompt: str, *, label: str) -> str:
+def stream_text(client, model: str, prompt: str, *, label: str, on_chunk=None) -> str:
     t0 = time.time()
     print(f"  {label}")
     print_stream_header(model, prompt)
@@ -305,6 +305,8 @@ def stream_text(client, model: str, prompt: str, *, label: str) -> str:
                 first_text.set()
                 print(text, end="", flush=True)
                 parts.append(text)
+                if on_chunk:
+                    on_chunk(text)
     finally:
         stop_waiting.set()
 
@@ -438,7 +440,7 @@ def validate_refined_code(code: str):
         raise ValueError("Missing seeded RNG")
 
 
-def full_rewrite(client, model: str, name: str, feedback: str, code: str) -> tuple[str, str]:
+def full_rewrite(client, model: str, name: str, feedback: str, code: str, *, on_chunk=None) -> tuple[str, str]:
     prompt = f"""Here is the current game code:
 
 {code}
@@ -451,11 +453,11 @@ Rewrite the full file to address the feedback while preserving compatibility.
 {REFINE_RULES}
 
 Output ONLY the complete updated JavaScript code. No markdown fences, no explanation."""
-    raw = stream_text(client, model, prompt, label="Falling back to full-file rewrite...")
+    raw = stream_text(client, model, prompt, label="Falling back to full-file rewrite...", on_chunk=on_chunk)
     return prompt, raw
 
 
-def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True) -> dict:
+def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True, on_event=None) -> dict:
     client = get_client()
     if not client:
         raise RuntimeError("GEMINI_API_KEY not set")
@@ -468,9 +470,14 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True)
     model = MODELS.get(model_key, MODELS["flash"])
     chunks = split_code_chunks(code)
 
+    def emit(ev_type, **kwargs):
+        if on_event:
+            on_event({"type": ev_type, **kwargs})
+
     print(f"  Refining {name} with {model}...")
     started = time.time()
 
+    emit("status", text="Selecting chunks to edit...")
     selection = select_chunks(client, model, name, feedback, chunks)
     chunk_ids = [chunk_id for chunk_id in selection["chunk_ids"] if chunk_id in {chunk["id"] for chunk in chunks}]
     print(f"  Selection mode: {selection['mode']}")
@@ -478,6 +485,13 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True)
         print(f"  Selected chunks: {', '.join(chunk_ids)}")
     if selection.get("reason"):
         print(f"  Reason: {selection['reason']}")
+
+    mode_label = selection["mode"]
+    if chunk_ids:
+        mode_label += f" — chunks: {', '.join(chunk_ids)}"
+    if selection.get("reason"):
+        mode_label += f" — {selection['reason']}"
+    emit("status", text=mode_label)
 
     strategy = "patch"
     metadata = {
@@ -494,7 +508,9 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True)
 
         selected_chunks = [chunk for chunk in chunks if chunk["id"] in chunk_ids]
         patch_prompt = build_patch_prompt(name, feedback, selected_chunks)
-        patch_raw = stream_text(client, model, patch_prompt, label="Generating targeted patch...")
+        emit("status", text="Generating targeted patch...")
+        patch_raw = stream_text(client, model, patch_prompt, label="Generating targeted patch...",
+                                on_chunk=lambda t: emit("chunk", text=t))
         patch_data = extract_json(patch_raw)
         edits = patch_data.get("edits", [])
         if not edits:
@@ -511,7 +527,9 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True)
     except Exception as patch_error:
         strategy = "rewrite"
         metadata["patch_error"] = str(patch_error)
-        prompt, raw_output = full_rewrite(client, model, name, feedback, code)
+        emit("status", text=f"Patch failed, falling back to full rewrite...")
+        prompt, raw_output = full_rewrite(client, model, name, feedback, code,
+                                          on_chunk=lambda t: emit("chunk", text=t))
         new_code = strip_fences(raw_output)
         validate_refined_code(new_code)
 

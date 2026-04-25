@@ -52,7 +52,7 @@ function resetGame(seed) {
   }
 
   let curr_x = Math.floor(rng() * 12) + 4;
-  let curr_y = WORLD_H - 1;
+  let curr_y = WORLD_H - 4;
 
   spawnX = curr_x * BLOCK_SIZE;
   spawnY = curr_y * BLOCK_SIZE - 16;

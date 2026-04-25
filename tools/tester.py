@@ -1,6 +1,9 @@
 """Lightweight game tester: play games in browser + refine via Gemini."""
 
 import json
+import queue
+import socketserver
+import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -15,8 +18,17 @@ CATALOGS_DIR = GAMES_DIR / "catalogs"
 JS_DIR = GAMES_DIR / "js"
 
 
+BACKUPS_DIR = GAMES_DIR / "backups"
+
+
 def list_games() -> list[str]:
     return sorted(p.stem for p in JS_DIR.glob("*.js"))
+
+
+def list_backups(name: str) -> list[str]:
+    """Return backup filenames for a game, newest first."""
+    files = sorted(BACKUPS_DIR.glob(f"{name}_*.js"), reverse=True)
+    return [f.name for f in files]
 
 
 def needs_matter(name: str) -> bool:
@@ -53,8 +65,18 @@ TESTER_HTML = """<!DOCTYPE html>
   #stage { width: var(--stage-width); height: var(--stage-height); border: 1px solid #2d2d2d; border-radius: 18px;
     overflow: hidden; background: #000; box-shadow: 0 24px 70px rgba(0,0,0,0.45); transition: width 160ms ease, height 160ms ease, box-shadow 160ms ease; }
   #main iframe { border: none; width: 100%; height: 100%; }
-  #main.large-view { --stage-width: 860px; --stage-height: 900px; }
+  #main.large-view { --stage-width: min(860px, calc(100% - 32px)); --stage-height: min(900px, calc(100% - 32px)); }
   #main.large-view #stage { box-shadow: 0 30px 90px rgba(0,0,0,0.6); }
+  #console { width: 260px; flex-shrink: 0; background: #111; border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; font-family: monospace; font-size: 11px; }
+  #console-header { padding: 5px 10px; color: #555; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; font-size: 11px; }
+  #console-header button { background: none; border: 1px solid #2a2a2a; color: #555; padding: 1px 8px; cursor: pointer; font: 11px monospace; border-radius: 3px; }
+  #console-header button:hover { color: #aaa; border-color: #555; }
+  #console-output { flex: 1; overflow-y: auto; padding: 2px 0; }
+  .con-line { padding: 2px 8px; word-break: break-all; white-space: pre-wrap; color: #666; border-bottom: 1px solid #181818; line-height: 1.4; }
+  .con-log { color: #aaa; }
+  .con-warn { color: #e94; }
+  .con-error { color: #e55; }
+  .con-stream { color: #5a8; font-size: 10px; opacity: 0.8; }
   #view-toggle { position: absolute; top: 14px; right: 16px; border: 1px solid #3d3d3d; background: rgba(20,20,20,0.92);
     color: #d7d7d7; border-radius: 999px; padding: 8px 14px; cursor: pointer; font-family: monospace; font-size: 12px;
     letter-spacing: 0.02em; transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease; }
@@ -67,6 +89,12 @@ TESTER_HTML = """<!DOCTYPE html>
   #bottom button { background: #2a6; color: #fff; border: none; padding: 6px 16px; cursor: pointer; font-family: monospace; }
   #bottom button:disabled { background: #444; cursor: not-allowed; }
   #status { color: #888; font-size: 11px; min-width: 100px; }
+  #version-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #161616; border-top: 1px solid #2a2a2a; font-family: monospace; font-size: 12px; color: #888; }
+  #version-bar.hidden { display: none; }
+  #version-select { background: #222; color: #eee; border: 1px solid #444; padding: 4px 6px; font-family: monospace; font-size: 12px; }
+  #restore-btn { background: #555; color: #eee; border: none; padding: 4px 12px; cursor: pointer; font-family: monospace; font-size: 12px; }
+  #restore-btn:hover { background: #e94; color: #fff; }
+  #restore-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -76,6 +104,15 @@ TESTER_HTML = """<!DOCTYPE html>
     <button id="view-toggle" onclick="toggleBigScreen()" disabled>Big Screen</button>
     <span id="empty">Select a game</span>
   </div>
+  <div id="console">
+    <div id="console-header"><span>Console</span><button onclick="clearConsole()">Clear</button></div>
+    <div id="console-output"></div>
+  </div>
+</div>
+<div id="version-bar" class="hidden">
+  <span>Version:</span>
+  <select id="version-select" onchange="switchVersion(this.value)"></select>
+  <button id="restore-btn" onclick="restoreBackup()" disabled>Restore</button>
 </div>
 <div id="bottom">
   <select id="model"><option value="flash">Flash</option><option value="pro">Pro</option></select>
@@ -86,6 +123,7 @@ TESTER_HTML = """<!DOCTYPE html>
 <script>
 let currentGame = null;
 let bigScreen = false;
+let currentBackup = null;
 
 async function loadGames() {
   const res = await fetch('/api/games');
@@ -101,23 +139,114 @@ async function loadGames() {
   });
 }
 
-function selectGame(name) {
-  currentGame = name;
-  document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.textContent === name));
+function loadGameFrame(src) {
+  clearConsole();
   const main = document.getElementById('main');
   main.querySelector('#empty')?.remove();
   const oldStage = document.getElementById('stage');
   if (oldStage) oldStage.remove();
   const stage = document.createElement('div');
   stage.id = 'stage';
-  stage.innerHTML = '<iframe id="game-frame" src="/play/' + name + '"></iframe>';
+  stage.innerHTML = '<iframe id="game-frame" src="' + src + '"></iframe>';
   main.appendChild(stage);
   stage.querySelector('iframe').addEventListener('load', syncBigScreen);
+  syncBigScreen();
+}
+
+function appendConsole(level, text) {
+  const out = document.getElementById('console-output');
+  const el = document.createElement('div');
+  el.className = 'con-line con-' + level;
+  const ts = new Date().toLocaleTimeString('en', {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  el.textContent = '[' + ts + '] ' + text;
+  out.appendChild(el);
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearConsole() {
+  document.getElementById('console-output').innerHTML = '';
+}
+
+async function selectGame(name) {
+  currentGame = name;
+  currentBackup = null;
+  document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.textContent === name));
+  loadGameFrame('/play/' + name);
   document.getElementById('feedback').disabled = false;
   document.getElementById('refine-btn').disabled = false;
   document.getElementById('view-toggle').disabled = false;
   document.getElementById('status').textContent = 'Playing: ' + name;
-  syncBigScreen();
+  await loadVersionBar(name);
+}
+
+async function loadVersionBar(name) {
+  const bar = document.getElementById('version-bar');
+  const sel = document.getElementById('version-select');
+  const res = await fetch('/api/backups/' + name);
+  const backups = await res.json();
+  sel.innerHTML = '';
+  const current = document.createElement('option');
+  current.value = 'current';
+  current.textContent = 'current';
+  sel.appendChild(current);
+  backups.forEach(fname => {
+    const opt = document.createElement('option');
+    opt.value = fname;
+    // show just the timestamp part: "20260422-140435" → "2026-04-22 14:04:35"
+    const ts = fname.replace(name + '_', '').replace('.js', '');
+    const d = ts.slice(0,4) + '-' + ts.slice(4,6) + '-' + ts.slice(6,8) + ' ' + ts.slice(9,11) + ':' + ts.slice(11,13) + ':' + ts.slice(13,15);
+    opt.textContent = d;
+    sel.appendChild(opt);
+  });
+  bar.classList.toggle('hidden', backups.length === 0);
+  document.getElementById('restore-btn').disabled = true;
+}
+
+function switchVersion(value) {
+  if (!currentGame) return;
+  const restoreBtn = document.getElementById('restore-btn');
+  if (value === 'current') {
+    currentBackup = null;
+    restoreBtn.disabled = true;
+    loadGameFrame('/play/' + currentGame);
+    document.getElementById('status').textContent = 'Playing: ' + currentGame;
+  } else {
+    currentBackup = value;
+    restoreBtn.disabled = false;
+    loadGameFrame('/play-backup/' + value);
+    const sel = document.getElementById('version-select');
+    document.getElementById('status').textContent = 'Backup: ' + sel.options[sel.selectedIndex].textContent;
+  }
+}
+
+async function restoreBackup() {
+  if (!currentBackup) return;
+  const btn = document.getElementById('restore-btn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'Restoring...';
+  try {
+    const res = await fetch('/api/restore', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({filename: currentBackup})
+    });
+    const data = await res.json();
+    if (data.success) {
+      status.textContent = 'Restored! Reloading current...';
+      currentBackup = null;
+      document.getElementById('version-select').value = 'current';
+      document.getElementById('restore-btn').disabled = true;
+      loadGameFrame('/play/' + currentGame);
+      await loadVersionBar(currentGame);
+    } else {
+      status.textContent = 'Error: ' + (data.error || 'unknown');
+      btn.disabled = false;
+    }
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+  }
 }
 
 function syncBigScreen() {
@@ -148,6 +277,15 @@ async function refine() {
   btn.blur();
   btn.disabled = true;
   status.textContent = 'Refining...';
+  clearConsole();
+
+  let liveEl = null;
+  let liveText = '';
+
+  function finalizeStream() {
+    liveEl = null;
+    liveText = '';
+  }
 
   try {
     const res = await fetch('/api/refine', {
@@ -155,21 +293,69 @@ async function refine() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({name: currentGame, feedback, model})
     });
-    const data = await res.json();
-    if (data.success) {
-      const strategy = data.strategy ? ' (' + data.strategy + ')' : '';
-      status.textContent = 'Refined in ' + data.duration_s + 's' + strategy + '. Reloading...';
-      document.getElementById('feedback').value = '';
-      const iframe = document.getElementById('game-frame');
-      iframe.src = iframe.src;
-    } else {
-      status.textContent = 'Error: ' + (data.error || 'unknown');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const parts = buffer.split('\\n\\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        let event;
+        try { event = JSON.parse(part.slice(6)); } catch(e) { continue; }
+
+        if (event.type === 'status') {
+          finalizeStream();
+          appendConsole('log', event.text);
+          status.textContent = event.text;
+        } else if (event.type === 'chunk') {
+          liveText += event.text;
+          if (!liveEl) {
+            liveEl = document.createElement('div');
+            liveEl.className = 'con-line con-stream';
+            document.getElementById('console-output').appendChild(liveEl);
+          }
+          liveEl.textContent = liveText;
+          const out = document.getElementById('console-output');
+          out.scrollTop = out.scrollHeight;
+        } else if (event.type === 'done') {
+          finalizeStream();
+          const strategy = event.strategy ? ' (' + event.strategy + ')' : '';
+          const summary = 'Done: ' + event.duration_s + 's' + strategy;
+          appendConsole('log', summary);
+          status.textContent = 'Refined in ' + event.duration_s + 's' + strategy + '. Reloading...';
+          document.getElementById('feedback').value = '';
+          currentBackup = null;
+          document.getElementById('version-select').value = 'current';
+          document.getElementById('restore-btn').disabled = true;
+          loadGameFrame('/play/' + currentGame);
+          await loadVersionBar(currentGame);
+        } else if (event.type === 'error') {
+          finalizeStream();
+          status.textContent = 'Error: ' + event.text;
+          appendConsole('error', event.text);
+        }
+      }
     }
   } catch(e) {
+    finalizeStream();
     status.textContent = 'Error: ' + e.message;
+    appendConsole('error', e.message);
   }
   btn.disabled = false;
 }
+
+window.addEventListener('message', event => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data && event.data.type === 'tester-console') {
+    appendConsole(event.data.level, event.data.text);
+  }
+});
 
 document.getElementById('feedback').addEventListener('keydown', e => { if (e.key === 'Enter') refine(); });
 loadGames();
@@ -197,6 +383,23 @@ PLAY_HTML = """<!DOCTYPE html>
   <button id="reset-btn" onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button>
   <span id="state"></span>
 </div>
+<script>
+(function() {{
+  ['log','warn','error'].forEach(function(lvl) {{
+    var orig = console[lvl].bind(console);
+    console[lvl] = function() {{
+      orig.apply(console, arguments);
+      try {{ parent.postMessage({{type:'tester-console',level:lvl,text:Array.from(arguments).map(function(a){{return typeof a==='object'?JSON.stringify(a):String(a)}}).join(' ')}}, window.location.origin); }} catch(e) {{}}
+    }};
+  }});
+  window.onerror = function(msg, src, line) {{
+    try {{ parent.postMessage({{type:'tester-console',level:'error',text:String(msg)+' (line '+line+')'}}, window.location.origin); }} catch(e) {{}}
+  }};
+  window.addEventListener('unhandledrejection', function(e) {{
+    try {{ parent.postMessage({{type:'tester-console',level:'error',text:'Unhandled: '+String(e.reason)}}, window.location.origin); }} catch(e) {{}}
+  }});
+}})();
+</script>
 <script src="/api/games/{name}"></script>
 <script>
 // Wrap setup to auto-call resetGame after canvas creation
@@ -259,6 +462,29 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send(404, "text/plain", b"not found")
 
+        elif path.startswith("/api/backups/"):
+            name = path.split("/api/backups/")[1]
+            backups = list_backups(name)
+            self._send(200, "application/json", json.dumps(backups).encode())
+
+        elif path.startswith("/api/backup-file/"):
+            filename = path.split("/api/backup-file/")[1]
+            fp = BACKUPS_DIR / filename
+            if fp.exists():
+                self._send(200, "application/javascript", fp.read_bytes())
+            else:
+                self._send(404, "text/plain", b"not found")
+
+        elif path.startswith("/play-backup/"):
+            filename = path.split("/play-backup/")[1]
+            # derive game name from filename (strip timestamp suffix)
+            name = "_".join(filename.replace(".js", "").split("_")[:-1])
+            matter = MATTER_TAG if needs_matter(name) else ""
+            html = PLAY_HTML.format(name=filename, matter_tag=matter).replace(
+                f"/api/games/{filename}", f"/api/backup-file/{filename}"
+            )
+            self._send(200, "text/html", html.encode())
+
         elif path.startswith("/play/"):
             name = path.split("/play/")[1]
             matter = MATTER_TAG if needs_matter(name) else ""
@@ -269,22 +495,54 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, "text/plain", b"not found")
 
     def do_POST(self):
-        if self.path == "/api/refine":
+        if self.path == "/api/restore":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length))
+            filename = body.get("filename", "")
+            src = BACKUPS_DIR / filename
+            if not src.exists():
+                self._send(404, "application/json", json.dumps({"success": False, "error": "backup not found"}).encode())
+                return
+            name = "_".join(filename.replace(".js", "").split("_")[:-1])
+            dest = JS_DIR / f"{name}.js"
+            dest.write_text(src.read_text())
+            self._send(200, "application/json", json.dumps({"success": True}).encode())
+
+        elif self.path == "/api/refine":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length))
             name = body["name"]
             feedback = body["feedback"]
-            model_key = body.get("model", "flash")
+            model_key = body.get("model", "pro")
+
+            q = queue.Queue()
+
+            def run():
+                try:
+                    result = refine_game(name, feedback, model_key, on_event=q.put)
+                    q.put({"type": "done", "duration_s": result["duration_s"], "strategy": result.get("strategy")})
+                except Exception as e:
+                    q.put({"type": "error", "text": str(e)})
+                finally:
+                    q.put(None)
+
+            threading.Thread(target=run, daemon=True).start()
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("X-Accel-Buffering", "no")
+            self.end_headers()
 
             try:
-                result = refine_game(name, feedback, model_key)
-                self._send(200, "application/json", json.dumps({
-                    "success": True,
-                    "duration_s": result["duration_s"],
-                    "strategy": result.get("strategy"),
-                }).encode())
-            except Exception as e:
-                self._send(500, "application/json", json.dumps({"success": False, "error": str(e)}).encode())
+                while True:
+                    event = q.get()
+                    if event is None:
+                        break
+                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         else:
             self._send(404, "text/plain", b"not found")
 
@@ -295,7 +553,10 @@ def main():
     parser.add_argument("--port", type=int, default=3000)
     args = parser.parse_args()
 
-    server = HTTPServer(("", args.port), Handler)
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+        daemon_threads = True
+
+    server = ThreadingHTTPServer(("", args.port), Handler)
     print(f"Tester running at http://localhost:{args.port}")
     try:
         server.serve_forever()
