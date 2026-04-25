@@ -494,6 +494,7 @@ source = { editable = "." }
 dependencies = [
     { name = "google-genai" },
     { name = "gymnasium" },
+    { name = "node-gym" },
     { name = "numpy" },
     { name = "stable-baselines3" },
 ]
@@ -514,6 +515,7 @@ requires-dist = [
     { name = "gymnasium", specifier = ">=1.1.1" },
     { name = "marimo", marker = "extra == 'notebook'", specifier = ">=0.13.0" },
     { name = "matplotlib", marker = "extra == 'notebook'", specifier = ">=3.9.0" },
+    { name = "node-gym", editable = "../node-gym" },
     { name = "numpy", specifier = ">=2.2.0" },
     { name = "stable-baselines3", specifier = ">=2.7.0" },
     { name = "tensorboard", marker = "extra == 'experiment'", specifier = ">=2.18.0" },
@@ -1238,6 +1240,23 @@ sdist = { url = "https://files.pythonhosted.org/packages/6a/51/63fe664f3908c97be
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/c9/b2622292ea83fbb4ec318f5b9ab867d0a28ab43c5717bb85b0a5f6b3b0a4/networkx-3.6.1-py3-none-any.whl", hash = "sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762", size = 2068504 },
 ]
+
+[[package]]
+name = "node-gym"
+version = "0.1.0"
+source = { editable = "../node-gym" }
+dependencies = [
+    { name = "gymnasium" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "gymnasium", specifier = ">=1.0" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
+]
+provides-extras = ["test"]
 
 [[package]]
 name = "numpy"

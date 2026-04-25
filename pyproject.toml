@@ -9,7 +9,14 @@ dependencies = [
   "gymnasium>=1.1.1",
   "numpy>=2.2.0",
   "stable-baselines3>=2.7.0",
+  "node-gym",
 ]
+
+[tool.uv.sources]
+# node-gym lives in a sibling repo. Clone both side-by-side:
+#   <parent>/fast-llm-games   (this repo)
+#   <parent>/node-gym         (https://github.com/heyodog0/node-gym)
+node-gym = { path = "../node-gym", editable = true }
 
 [project.optional-dependencies]
 notebook = [
