@@ -85,9 +85,10 @@ ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/buil
 <style>${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
   #topbar { width: 100%; max-width: 480px; margin-bottom: 16px;
-            display: flex; justify-content: space-between; font-size: 12px; color: #888; }
-  #topbar a { color: #888; }
-  #topbar strong { color: #ddd; font-weight: normal; }
+            display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; font-size: 12px; color: #888; }
+  #topbar a { color: #888; justify-self: start; }
+  #topbar strong { color: #ddd; font-weight: normal; justify-self: center; }
   #state { font-size: 12px; color: #888; margin-bottom: 6px; min-height: 18px; }
   canvas { background: #000; image-rendering: pixelated; box-shadow: 0 0 0 1px #222; }
   #reset-row { margin-top: 12px; }
