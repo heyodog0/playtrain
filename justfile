@@ -36,3 +36,11 @@ smoke:
 # Browser tester. `just play` opens a game picker; `just play flappy_bird` jumps to one.
 play game="":
     node tools/play.mjs {{game}}
+
+# Run the 5-check validation suite against all bundled games (~1 min)
+validate:
+    uv run python tools/validate.py --all
+
+# Validate a single game
+validate-one game:
+    uv run python tools/validate.py --game {{game}}

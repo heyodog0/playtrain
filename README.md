@@ -157,6 +157,18 @@ test_env  = SeedRangeWrapper(NodeGymEnv(game="coinrun"), seed_low=1000, seed_hig
 | `max_steps`     | 2000               | —                       |
 | `node_bin`      | `"node"`           | —                       |
 
+## Validation
+
+The bundled games can be checked against ProcGen-style criteria — Gymnasium API compliance, determinism, observation sanity, reward/terminal correctness, and step throughput:
+
+```bash
+just validate                  # all bundled games (~1 min with throughput)
+just validate-one breakout     # single game
+uv run python tools/validate.py --all --skip-throughput   # faster, no FPS bench
+```
+
+Useful when adding a custom game to the bundled set or debugging a regression. Results are written to `outputs/validation/summary.json` (gitignored).
+
 ## How it works
 
 The Python `NodeGymEnv` spawns a Node.js subprocess running `runtime/game-worker.mjs`. The worker loads the JS game inside a VM context with a custom p5.js shim drawing onto a `node-canvas` surface. Actions and observations flow over stdin/stdout using a binary protocol — see [docs/PROTOCOL.md](docs/PROTOCOL.md).
