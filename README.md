@@ -10,15 +10,15 @@ Generate p5.js games via LLM and train RL agents on them at native speed — no 
 
 ## Setup
 
-Clone this repo **and** [`node-gym`](https://github.com/heyodog0/node-gym) side-by-side under one parent directory, then:
-
-```bash
-just setup       # npm install + uv sync
-```
-
 Requires Node.js 24+, Python 3.11+, [`uv`](https://docs.astral.sh/uv/), and [`just`](https://just.systems) (`brew install just`).
 
-After pulling either repo, run `just sync-all` to refresh both.
+```bash
+git clone https://github.com/heyodog0/browserless-game-rl
+cd browserless-game-rl
+just bootstrap   # clones sibling node-gym + installs deps in both repos
+```
+
+After future pulls, run `just sync-all` to refresh both repos.
 
 ## Commands
 

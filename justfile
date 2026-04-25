@@ -24,6 +24,11 @@ default:
 
 # === setup ===
 
+# First-time setup: clone node-gym sibling if missing, install deps in both repos.
+bootstrap:
+    [ -d ../node-gym ] || git clone https://github.com/heyodog0/node-gym ../node-gym
+    just sync-all
+
 # Install Node + Python deps (npm install + uv sync)
 setup:
     npm install
