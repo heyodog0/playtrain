@@ -35,7 +35,7 @@ git clone https://github.com/heyodog0/node-gym
 cd node-gym
 ./bootstrap.sh             # only if you don't already have uv / pnpm / just
 just install               # pnpm install + uv sync
-just test                  # smoke suite (~5s)
+just test                  # boot every bundled game + API checks (~3s, 36 tests)
 ```
 
 Plain equivalent without `just`/`uv`: requires a system Python ≥3.11 and `pip`, then `pnpm install && pip install -e .[test] && pytest tests/`.
