@@ -90,7 +90,6 @@ ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/buil
   #state { color: #666; min-width: 320px; }
   canvas { background: #000; image-rendering: pixelated; box-shadow: 0 0 0 1px #222; }
   #help { margin-top: 12px; color: #555; font-size: 11px; text-align: center; }
-  code { background: #222; padding: 1px 5px; border-radius: 3px; }
 </style></head><body>
 <div id="controls">
   <a href="/">&larr; all games</a>
@@ -138,9 +137,7 @@ setInterval(() => {
 }, 200);
 </script>
 
-<div id="help">
-  click canvas to focus &middot; <code>arrows</code> move &middot; <code>space</code>/<code>d</code> action &middot; ${needsMatter ? 'Matter.js loaded' : 'p5.js only'}
-</div>
+<div id="help">click canvas to focus &middot; controls vary per game${needsMatter ? ' &middot; Matter.js' : ''}</div>
 </body></html>`;
 }
 
