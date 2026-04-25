@@ -26,7 +26,6 @@ Run `just` (no args) to see every recipe with a one-line description. The most c
 
 ```bash
 just sync-all                # pull node-gym + reinstall deps in both repos
-just gen-game <catalog> <name>   # generate one game from a Gemini catalog
 just tester                  # browser playtest UI (localhost:3000)
 just validate                # run 5-check ProcGen validation suite
 just bench                   # FPS per game
@@ -37,13 +36,20 @@ just eval <game> <model>     # train (seeds 0-199) vs test (1000-1099) split
 just aggregate               # IQM across all runs
 ```
 
+Generate a new game from a Gemini catalog (the `games/catalogs/*.json` files — `atari`, `arcade`, `mobile`, `nes`, `procgen` — each list 25 game specs). The second arg matches the `name` field inside the catalog JSON:
+
+```bash
+just gen-game games/catalogs/atari_games.json breakout
+just gen-game games/catalogs/procgen_games.json caveflyer
+```
+
 Higher-level meta-recipes that compose the above:
 
 | Recipe | What it does |
 |---|---|
-| `just reproduce` | Quick end-to-end check, ~5 min |
-| `just paper-run` | Full benchmark: validate + baselines + multi-game train + aggregate |
-| `just ci`        | What a CI run should cover |
+| `just reproduce` | `validate breakout` + `smoke breakout` — ~5 min smoke check |
+| `just paper-run` | Local approximation of the paper pipeline: validate + baselines + 5M-step `train-multi` + aggregate. Overnight on a workstation; real paper sweeps go through `fasrc-submit`. |
+| `just ci`        | `validate` + `bench` — what a CI pipeline should cover |
 
 Add `--use-wandb` (or use the long form) for W&B logging — requires `uv sync --extra experiment`.
 
