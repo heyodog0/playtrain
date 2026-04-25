@@ -140,6 +140,9 @@ bench-headless game="" frames="500":
     fi
 
 # === sweeps (multi-seed, multi-game) ===
+#
+# These run LOCALLY — meant for smoking the sweep driver, debugging a single
+# failed cell, or tiny experiments. Paper-grade sweeps go through `fasrc-submit`.
 
 # Foreground sweep — sees output live, runs sequentially
 sweep algo games seeds config=CONFIG:
@@ -323,12 +326,6 @@ paper-run:
     just baselines
     just train-multi {{FULL_CFG}}
     just aggregate
-
-# ProcGen-style paper sweep on a server: 30 games × 3 seeds, full_run config
-# Run with `just sweep-paper "0 1 2"` then `just sweep-status <id>` and
-# `just figures <id>` once it completes.
-sweep-paper seeds="0 1 2" max_parallel="2":
-    just sweep-bg ppo all "{{seeds}}" {{FULL_CFG}} {{max_parallel}}
 
 # What CI would run on every PR
 ci:
