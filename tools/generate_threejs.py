@@ -33,6 +33,10 @@ CATALOGS_DIR = GAMES_DIR / "catalogs"
 THREEJS_DIR = GAMES_DIR / "threejs"
 DEFAULT_CATALOG = CATALOGS_DIR / "threejs_games.json"
 
+# Engine integration files (used when --no-engine is NOT set, i.e. by default).
+ENGINE_README = ROOT / "engine" / "three" / "README.md"
+ENGINE_REFERENCE_GAME = ROOT / "games" / "threejs" / "crossy_road_3d_v2.js"
+
 
 def pick_template(catalog_path: Path, override: Path | None) -> Path:
     """Auto-pick template based on catalog filename, unless overridden."""
@@ -43,7 +47,11 @@ def pick_template(catalog_path: Path, override: Path | None) -> Path:
     return SIMPLE_TEMPLATE
 
 
-def build_prompt(game: dict, template: str, ref_text: str) -> str:
+def build_prompt(game: dict, template: str, ref_text: str, *, use_engine: bool = True) -> str:
+    """Build the LLM prompt. When use_engine=True (default), the engine README
+    + a reference engine-using game are included, and the LLM is told to
+    target the engine API. When use_engine=False, the older standalone
+    pattern is used (write everything from scratch)."""
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
@@ -55,6 +63,68 @@ Reference description of the original game:
 {ref_text}
 """
 
+    if use_engine:
+        # Engine-using prompt: inject the engine README + a reference example.
+        engine_readme = ENGINE_README.read_text() if ENGINE_README.exists() else ""
+        ref_game_src = ENGINE_REFERENCE_GAME.read_text() if ENGINE_REFERENCE_GAME.exists() else ""
+        engine_section = f"""
+========================================================================
+THIS GAME MUST USE THE FAST-LLM-GAMES ENGINE.
+The runtime injects the engine as `globalThis.engine` before your file
+runs. You write a thin game ON TOP of the engine — do NOT reimplement
+the things the engine provides (camera setup, lighting, color palette,
+mulberry32, particles, etc.).
+========================================================================
+
+Engine API reference (the LLM contract):
+
+{engine_readme}
+
+========================================================================
+Reference engine-using game (study this for idiomatic API usage):
+File: games/threejs/crossy_road_3d_v2.js
+
+```javascript
+{ref_game_src}
+```
+
+Note in particular:
+  - Destructure helpers from `engine` at the top: `const {{ setupGame, drawCube, ... }} = engine;`
+  - Do NOT destructure `render` from engine (would shadow the local render fn)
+  - In your local render() function, call `engine.render(world)` explicitly
+  - Use `engine.palette.*` / saturated color constants for semantic meaning
+  - Use `engine.mulberry32(seed)` in resetGame to seed Math.random
+========================================================================
+"""
+
+        prompt = f"""Generate a Three.js game implementing "{name}" USING THE FAST-LLM-GAMES ENGINE.
+
+Mechanic: {mechanic}
+Actions this game should use: {actions}
+{ref_section}
+{engine_section}
+
+Critical requirements:
+  - The lifecycle: setup({{ THREE, renderer, width, height }}), update(dt),
+    render(), resetGame(seed), getGameState()
+  - Action space: Discrete(15). Read action via engine.getCurrentAction()
+    or globalThis.currentAction (integer 0..14)
+  - Determinism: in resetGame, do `Math.random = engine.mulberry32(seed >>> 0)`
+  - PER-SEED VARIATION: different seeds MUST produce visibly different
+    episodes (different obstacle layouts, enemy positions, level geometry,
+    etc.). All randomization belongs in resetGame() AFTER reseeding
+    Math.random.
+  - Use engine helpers wherever possible. Don't manually create THREE.Mesh
+    instances when drawCube/drawSphere/drawPlane will do.
+  - Do NOT write `import * as THREE from 'three'` or any import statement.
+  - Do NOT define mulberry32 yourself — use engine.mulberry32.
+  - Do NOT destructure `render` from engine — call engine.render(world)
+    inside your local render() function instead.
+
+Output ONLY the JavaScript code. No markdown fences, no explanation."""
+        return prompt
+
+    # --- Standalone (no engine) path — original behavior, kept for --no-engine ---
     prompt = f"""Generate a Three.js game implementing "{name}".
 
 Mechanic: {mechanic}
@@ -92,7 +162,8 @@ Output ONLY the JavaScript code. No markdown fences, no explanation."""
 
 
 def generate_one(client: genai.Client, game: dict, template: str, model: str,
-                 output_dir: Path, use_ref: bool, *, force: bool = False, suffix: str = ""):
+                 output_dir: Path, use_ref: bool, *, force: bool = False,
+                 suffix: str = "", use_engine: bool = True):
     name = game["name"]
     out_name = f"{name}{suffix}"
     out_path = output_dir / f"{out_name}.js"
@@ -110,7 +181,7 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str,
         print("fetching ref...", end=" ", flush=True)
         ref_text = fetch_ref(game["ref"])
 
-    prompt = build_prompt(game, template, ref_text)
+    prompt = build_prompt(game, template, ref_text, use_engine=use_engine)
 
     try:
         t0 = time.time()
@@ -152,7 +223,14 @@ def main():
                         help="Append suffix to output filename (e.g. --suffix _v2 writes "
                              "crossy_road_3d_v2.js instead of crossy_road_3d.js). Lets you "
                              "keep the original alongside a regenerated version.")
+    parser.add_argument("--no-engine", action="store_true",
+                        help="Generate STANDALONE games (no engine usage). Default is to "
+                             "generate engine-using games — the engine README + a reference "
+                             "engine-using game are injected into the prompt, and the LLM "
+                             "is told to use engine.drawCube / engine.palette / engine.mulberry32 "
+                             "etc. instead of writing those itself.")
     args = parser.parse_args()
+    use_engine = not args.no_engine
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -183,10 +261,19 @@ def main():
     else:
         print("MODE: skip-if-exists (default). Use --force to overwrite or --suffix _v2 for versioned output.")
 
+    if use_engine:
+        print(f"ENGINE: ON (default). Prompts include engine README ({ENGINE_README.name})")
+        if ENGINE_REFERENCE_GAME.exists():
+            print(f"        + reference game ({ENGINE_REFERENCE_GAME.name})")
+        if not ENGINE_README.exists():
+            print(f"        WARNING: {ENGINE_README} not found, prompt will be missing engine docs")
+    else:
+        print("ENGINE: OFF (--no-engine). Standalone games only — game writes everything from scratch.")
+
     n_generated = n_skipped = 0
     for i, game in enumerate(games):
         wrote = generate_one(client, game, template, model, args.output_dir, args.ref,
-                             force=args.force, suffix=args.suffix)
+                             force=args.force, suffix=args.suffix, use_engine=use_engine)
         if wrote: n_generated += 1
         else: n_skipped += 1
         if i < len(games) - 1 and wrote:
