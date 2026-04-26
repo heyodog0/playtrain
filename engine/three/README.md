@@ -124,6 +124,22 @@ function update(dt) {
 
 For `CAMERA_FIXED_TOPDOWN`, set the camera once in setup and don't call updateCamera (or pass mode CAMERA_CUSTOM).
 
+### Aiming the camera
+
+The camera returned by `setupGame()` / `createCamera()` is a real `THREE.PerspectiveCamera`. **Two ways to aim it both work:**
+
+```js
+camera.lookAt(0, 0, 0);                    // standard Three.js
+camera.target.set(0, 0, 0);                // OrbitControls convention — also works
+                                            // (the engine patches camera.target.set/copy
+                                            // to auto-call lookAt for you)
+camera.position.set(8, 8, 8);              // works (real Vector3)
+camera.position.y = 5;                     // works (direct mutation)
+camera.rotation.y += 0.1;                  // works (real Three.js property)
+```
+
+The engine intentionally does not abstract the camera — it IS a `PerspectiveCamera`. Use any Three.js camera idiom you know.
+
 ---
 
 ## API surface

@@ -111,9 +111,29 @@ export function createCamera({ THREE, position = [0, 8, 8], target = [0, 0, 0], 
   cam.position.set(position[0], position[1], position[2]);
   cam.up.set(up[0], up[1], up[2]);
   cam.lookAt(target[0], target[1], target[2]);
-  // Engine extras
+
+  // LLM-forgiveness: expose `camera.target` as a Vector3 with auto-sync.
+  // The Three.js convention is `camera.lookAt(...)`, but LLMs frequently
+  // reach for `camera.target.set(...)` (the OrbitControls convention).
+  // Make both work — patch .set() and .copy() to trigger lookAt automatically.
+  const targetVec = new THREE.Vector3(target[0], target[1], target[2]);
+  const _origSet = targetVec.set.bind(targetVec);
+  const _origCopy = targetVec.copy.bind(targetVec);
+  targetVec.set = function (x, y, z) {
+    _origSet(x, y, z);
+    cam.lookAt(targetVec);
+    return targetVec;
+  };
+  targetVec.copy = function (v) {
+    _origCopy(v);
+    cam.lookAt(targetVec);
+    return targetVec;
+  };
+  cam.target = targetVec;
+
+  // Engine extras (engine's preset camera modes read these)
   cam.userData.mode = mode;
-  cam.userData.target = new THREE.Vector3(target[0], target[1], target[2]);
+  cam.userData.target = targetVec;  // shared instance with cam.target
   cam.userData.fovy = fovy;
   return cam;
 }
