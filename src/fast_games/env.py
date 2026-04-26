@@ -1,10 +1,10 @@
 """Thin shim re-exporting node-gym, configured for this repo's games.
 
-The actual env implementation lives in the `node-gym` package. This module
-adapts it to fast-llm-games by pointing the games directory at our local
-`games/js/` instead of node-gym's bundled examples, and keeps the historical
+The actual env implementations live in the `node-gym` package. This module
+adapts both to fast-llm-games by pointing each at our local game directories
+(games/js/ for p5, games/threejs/ for Three.js v2), and keeps the historical
 names (`GameGymEnv`, `make_multigame_vec_env`) so existing call sites don't
-need to change.
+need to change. Adds `ThreeGameGymEnv` for the v2 path.
 """
 
 from __future__ import annotations
@@ -12,24 +12,39 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from node_gym import NodeGymEnv, SeedRangeWrapper
+from node_gym import NodeGymEnv, NodeGymThreeEnv, SeedRangeWrapper
 from node_gym import list_available_games as _node_gym_list
+from node_gym import list_available_threejs_games as _node_gym_three_list
 
 
-GAMES_DIR = Path(__file__).resolve().parents[2] / "games" / "js"
+GAMES_DIR        = Path(__file__).resolve().parents[2] / "games" / "js"
+THREEJS_GAMES_DIR = Path(__file__).resolve().parents[2] / "games" / "threejs"
 
 
 class GameGymEnv(NodeGymEnv):
-    """NodeGymEnv pinned to this repo's games/ directory."""
+    """NodeGymEnv (p5 path) pinned to this repo's games/js/ directory."""
 
     def __init__(self, *, game: str, **kwargs: Any) -> None:
         kwargs.setdefault("games_dir", GAMES_DIR)
         super().__init__(game=game, **kwargs)
 
 
+class ThreeGameGymEnv(NodeGymThreeEnv):
+    """NodeGymThreeEnv (Three.js v2 path) pinned to this repo's games/threejs/ directory."""
+
+    def __init__(self, *, game: str, **kwargs: Any) -> None:
+        kwargs.setdefault("games_dir", THREEJS_GAMES_DIR)
+        super().__init__(game=game, **kwargs)
+
+
 def list_available_games() -> list[str]:
-    """Sorted game names available in this repo's games/js/."""
+    """Sorted p5 game names available in this repo's games/js/."""
     return _node_gym_list(GAMES_DIR)
+
+
+def list_available_threejs_games() -> list[str]:
+    """Sorted Three.js v2 game names available in this repo's games/threejs/."""
+    return _node_gym_three_list(THREEJS_GAMES_DIR)
 
 
 def make_multigame_vec_env(
@@ -68,8 +83,11 @@ def make_multigame_vec_env(
 
 __all__ = [
     "GameGymEnv",
+    "ThreeGameGymEnv",
     "SeedRangeWrapper",
     "list_available_games",
+    "list_available_threejs_games",
     "make_multigame_vec_env",
     "GAMES_DIR",
+    "THREEJS_GAMES_DIR",
 ]
