@@ -370,16 +370,28 @@ PLAY_HTML = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>{name}</title>
 <style>
   :root {{ --game-scale: 1; }}
-  body {{ margin: 0; background: #000; color: #eee; font-family: monospace; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }}
-  canvas {{ display: block; transform: scale(var(--game-scale)); transform-origin: center center; transition: transform 140ms ease; }}
-  #hud {{ position: fixed; top: 6px; left: 8px; right: 8px; display: flex; justify-content: space-between; font-size: 11px; color: #888; pointer-events: none; z-index: 100; }}
-  #hud button {{ pointer-events: auto; background: #222; color: #aaa; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: 11px monospace; }}
-  #err {{ position: fixed; bottom: 8px; left: 8px; right: 8px; color: #e55; font-size: 11px; white-space: pre-wrap; z-index: 100; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; background: #000; color: #eee; font-family: monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }}
+  /* Header strip — fixed-height, in document flow (NOT overlay).
+     Content kept on the LEFT so the iframe's top-right stays clear for
+     the parent tester's Big Screen toggle button. */
+  #hud {{ flex-shrink: 0; padding: 6px 10px; background: #161616; border-bottom: 1px solid #2a2a2a;
+          display: flex; align-items: center; gap: 12px; font-size: 11px; color: #aaa; }}
+  #hud button {{ background: #222; color: #ccc; border: 1px solid #444; padding: 3px 12px; cursor: pointer; font: 11px monospace; border-radius: 3px; }}
+  #hud button:hover {{ background: #2a2a2a; border-color: #5a5a5a; }}
+  #hud #state {{ color: #888; font-variant-numeric: tabular-nums; }}
+  /* Stage — fills remaining vertical space, centers the canvas. */
+  #stage {{ flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px; }}
+  canvas {{ display: block; max-width: 100%; max-height: 100%; transform: scale(var(--game-scale)); transform-origin: center center; transition: transform 140ms ease; }}
+  /* Footer — only visible when there's an error message. */
+  #err {{ flex-shrink: 0; padding: 4px 10px; background: #200; color: #e55; font-size: 11px; white-space: pre-wrap; min-height: 0; }}
+  #err:empty {{ display: none; }}
 </style></head><body>
 <div id="hud">
-  <span id="state">loading...</span>
   <button id="reset-btn">Reset</button>
+  <span id="state">loading...</span>
 </div>
+<div id="stage"></div>
 <div id="err"></div>
 <script type="importmap">
 {{ "imports": {{ "three": "https://unpkg.com/three@0.161.0/build/three.module.js" }} }}
@@ -451,7 +463,7 @@ window.mulberry32 = function (seed) {{
 const W = 512, H = 512;
 const canvas = document.createElement('canvas');
 canvas.width = W; canvas.height = H;
-document.body.insertBefore(canvas, document.getElementById('err'));
+document.getElementById('stage').appendChild(canvas);
 const renderer = new THREE.WebGLRenderer({{ canvas, antialias: false }});
 renderer.setSize(W, H, false);
 window.renderer = renderer;
