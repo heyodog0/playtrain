@@ -35,7 +35,21 @@ DEFAULT_CATALOG = CATALOGS_DIR / "threejs_games.json"
 
 # Engine integration files (used when --no-engine is NOT set, i.e. by default).
 ENGINE_README = ROOT / "engine" / "three" / "README.md"
-ENGINE_REFERENCE_GAME = ROOT / "games" / "threejs" / "crossy_road_3d_v2.js"
+
+# Tier-specific reference games. The generator picks the right one based on
+# whether the catalog is simple or complex. If the complex-tier reference
+# doesn't exist yet, the simple one is used as a fallback (with a warning).
+ENGINE_REFERENCE_SIMPLE  = ROOT / "games" / "threejs" / "crossy_road_3d_v2.js"
+ENGINE_REFERENCE_COMPLEX = ROOT / "games" / "threejs" / "mario_3d_world_v2.js"
+
+def pick_reference_game(template_path: Path) -> Path:
+    """Pick the right reference game for the prompt based on template tier."""
+    if template_path == COMPLEX_TEMPLATE and ENGINE_REFERENCE_COMPLEX.exists():
+        return ENGINE_REFERENCE_COMPLEX
+    return ENGINE_REFERENCE_SIMPLE
+
+# Backwards-compat alias for the old constant name.
+ENGINE_REFERENCE_GAME = ENGINE_REFERENCE_SIMPLE
 
 
 def pick_template(catalog_path: Path, override: Path | None) -> Path:
@@ -47,11 +61,15 @@ def pick_template(catalog_path: Path, override: Path | None) -> Path:
     return SIMPLE_TEMPLATE
 
 
-def build_prompt(game: dict, template: str, ref_text: str, *, use_engine: bool = True) -> str:
+def build_prompt(game: dict, template: str, ref_text: str, *, use_engine: bool = True,
+                 reference_game_path: Path | None = None) -> str:
     """Build the LLM prompt. When use_engine=True (default), the engine README
     + a reference engine-using game are included, and the LLM is told to
     target the engine API. When use_engine=False, the older standalone
-    pattern is used (write everything from scratch)."""
+    pattern is used (write everything from scratch).
+
+    `reference_game_path` lets the caller pick a tier-appropriate reference
+    (simple vs complex). Defaults to ENGINE_REFERENCE_SIMPLE."""
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
@@ -66,7 +84,8 @@ Reference description of the original game:
     if use_engine:
         # Engine-using prompt: inject the engine README + a reference example.
         engine_readme = ENGINE_README.read_text() if ENGINE_README.exists() else ""
-        ref_game_src = ENGINE_REFERENCE_GAME.read_text() if ENGINE_REFERENCE_GAME.exists() else ""
+        ref_path = reference_game_path or ENGINE_REFERENCE_SIMPLE
+        ref_game_src = ref_path.read_text() if ref_path.exists() else ""
         engine_section = f"""
 ========================================================================
 THIS GAME MUST USE THE FAST-LLM-GAMES ENGINE.
@@ -82,7 +101,7 @@ Engine API reference (the LLM contract):
 
 ========================================================================
 Reference engine-using game (study this for idiomatic API usage):
-File: games/threejs/crossy_road_3d_v2.js
+File: games/threejs/{ref_path.name}
 
 ```javascript
 {ref_game_src}
@@ -163,7 +182,8 @@ Output ONLY the JavaScript code. No markdown fences, no explanation."""
 
 def generate_one(client: genai.Client, game: dict, template: str, model: str,
                  output_dir: Path, use_ref: bool, *, force: bool = False,
-                 suffix: str = "", use_engine: bool = True):
+                 suffix: str = "", use_engine: bool = True,
+                 reference_game_path: Path | None = None):
     name = game["name"]
     out_name = f"{name}{suffix}"
     out_path = output_dir / f"{out_name}.js"
@@ -181,7 +201,8 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str,
         print("fetching ref...", end=" ", flush=True)
         ref_text = fetch_ref(game["ref"])
 
-    prompt = build_prompt(game, template, ref_text, use_engine=use_engine)
+    prompt = build_prompt(game, template, ref_text, use_engine=use_engine,
+                          reference_game_path=reference_game_path)
 
     try:
         t0 = time.time()
@@ -261,10 +282,18 @@ def main():
     else:
         print("MODE: skip-if-exists (default). Use --force to overwrite or --suffix _v2 for versioned output.")
 
+    reference_game_path = pick_reference_game(template_path) if use_engine else None
     if use_engine:
         print(f"ENGINE: ON (default). Prompts include engine README ({ENGINE_README.name})")
-        if ENGINE_REFERENCE_GAME.exists():
-            print(f"        + reference game ({ENGINE_REFERENCE_GAME.name})")
+        if reference_game_path and reference_game_path.exists():
+            tier = "complex" if reference_game_path == ENGINE_REFERENCE_COMPLEX else "simple"
+            print(f"        + reference game ({reference_game_path.name}, {tier}-tier)")
+            # Warn loudly when complex-tier generation has to fall back to a simple-tier reference.
+            if template_path == COMPLEX_TEMPLATE and reference_game_path != ENGINE_REFERENCE_COMPLEX:
+                print(f"        ⚠ NOTE: complex template + simple reference. The complex-tier")
+                print(f"          reference ({ENGINE_REFERENCE_COMPLEX.name}) doesn't exist yet.")
+                print(f"          Hand-port a complex catalog game to fill this in for better")
+                print(f"          complex-tier output.")
         if not ENGINE_README.exists():
             print(f"        WARNING: {ENGINE_README} not found, prompt will be missing engine docs")
     else:
@@ -273,7 +302,8 @@ def main():
     n_generated = n_skipped = 0
     for i, game in enumerate(games):
         wrote = generate_one(client, game, template, model, args.output_dir, args.ref,
-                             force=args.force, suffix=args.suffix, use_engine=use_engine)
+                             force=args.force, suffix=args.suffix, use_engine=use_engine,
+                             reference_game_path=reference_game_path)
         if wrote: n_generated += 1
         else: n_skipped += 1
         if i < len(games) - 1 and wrote:
