@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import mmap
 import os
 import struct
 import subprocess
+import tempfile
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -71,6 +73,11 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
 
     metadata = {"render_modes": []}
     _HEADER_STRUCT = struct.Struct(">II")
+    # Binary step response — same format as the Three.js path.
+    _STEP_HEADER_STRUCT = struct.Struct(">fBBBBii")
+    _STEP_HEADER_SIZE = 16
+    _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT")
+    _MMAP_SENTINEL = 0xFFFFFFFF
 
     def __init__(
         self,
@@ -125,6 +132,30 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         )
 
         self._frames: deque[np.ndarray] = deque(maxlen=frame_stack)
+        self._last_seed: int | None = None
+
+        # mmap-shared obs file (same pattern as the Three.js env). Sized for
+        # 16-byte step header + max possible single-frame obs (RGB).
+        self._use_mmap = os.environ.get("NODE_GYM_P5_NO_MMAP") != "1"
+        self._mmap = None
+        self._mmap_file = None
+        self._mmap_path = None
+        single_frame_bytes = obs_size * obs_size * 3
+        self._mmap_size = self._STEP_HEADER_SIZE + single_frame_bytes
+        if self._use_mmap:
+            self._mmap_file = tempfile.NamedTemporaryFile(
+                prefix=f"node_gym_p5_{game}_",
+                suffix=".bin",
+                delete=False,
+            )
+            self._mmap_path = Path(self._mmap_file.name)
+            self._mmap_file.truncate(self._mmap_size)
+            self._mmap_file.flush()
+            self._mmap = mmap.mmap(
+                self._mmap_file.fileno(),
+                self._mmap_size,
+                access=mmap.ACCESS_READ,
+            )
 
         cmd = [
             node_bin,
@@ -136,6 +167,10 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         if needs_matter:
             cmd.append("--matter")
 
+        proc_env = os.environ.copy()
+        if self._mmap_path is not None:
+            proc_env["NODE_GYM_P5_MMAP_PATH"] = str(self._mmap_path)
+
         self._proc = subprocess.Popen(
             cmd,
             cwd=self._runtime_dir,
@@ -144,6 +179,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
             stderr=subprocess.PIPE,
             text=False,
             bufsize=0,
+            env=proc_env,
         )
 
         self._request({"cmd": "ping"})
@@ -169,6 +205,21 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
             remaining -= len(chunk)
         return b"".join(chunks)
 
+    def _build_step_message(self, reward, term, trunc, gs_idx, lives, score, steps) -> dict:
+        return {
+            "ok": True,
+            "reward": reward,
+            "terminated": bool(term),
+            "truncated": bool(trunc),
+            "info": {
+                "score": score,
+                "lives": lives,
+                "gameState": self._GS_NAMES[gs_idx] if gs_idx < len(self._GS_NAMES) else "UNKNOWN",
+                "episodeLength": steps,
+                "seed": self._last_seed,
+            },
+        }
+
     def _request(self, payload: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
         if self._closed:
             raise RuntimeError("NodeGymEnv is closed")
@@ -184,6 +235,22 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         meta_length, binary_length = self._HEADER_STRUCT.unpack(
             self._read_exact(self._HEADER_STRUCT.size)
         )
+
+        # Fastest path: mmap sentinel — worker wrote step header + obs into mmap.
+        if meta_length == self._MMAP_SENTINEL:
+            (reward, term, trunc, gs_idx, lives, score, steps) = self._STEP_HEADER_STRUCT.unpack_from(self._mmap, 0)
+            n_obs = binary_length if binary_length else (self._mmap_size - self._STEP_HEADER_SIZE)
+            obs = bytes(self._mmap[self._STEP_HEADER_SIZE:self._STEP_HEADER_SIZE + n_obs])
+            return self._build_step_message(reward, term, trunc, gs_idx, lives, score, steps), obs
+
+        # Fast path (no mmap): binary step header + obs in pipe.
+        if meta_length == 0 and binary_length >= self._STEP_HEADER_SIZE:
+            binary = self._read_exact(binary_length)
+            (reward, term, trunc, gs_idx, lives, score, steps) = self._STEP_HEADER_STRUCT.unpack_from(binary, 0)
+            obs = binary[self._STEP_HEADER_SIZE:]
+            return self._build_step_message(reward, term, trunc, gs_idx, lives, score, steps), obs
+
+        # Slow path (JSON) — used by reset/ping/close.
         message = json.loads(self._read_exact(meta_length).decode("utf-8"))
         binary = self._read_exact(binary_length) if binary_length else b""
         if not message.get("ok"):
@@ -218,6 +285,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         if options and "max_steps" in options:
             max_steps = int(options["max_steps"])
 
+        self._last_seed = seed
         response, observation = self._request(
             {"cmd": "reset", "seed": seed, "max_steps": max_steps}
         )
@@ -253,6 +321,19 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
             except subprocess.TimeoutExpired:
                 self._proc.kill()
                 self._proc.wait(timeout=5)
+        # Tear down mmap + tmp file
+        try:
+            if getattr(self, "_mmap", None) is not None:
+                self._mmap.close()
+        except Exception:
+            pass
+        try:
+            if getattr(self, "_mmap_file", None) is not None:
+                self._mmap_file.close()
+            if getattr(self, "_mmap_path", None) is not None:
+                self._mmap_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         self._closed = True
 
     def __del__(self) -> None:

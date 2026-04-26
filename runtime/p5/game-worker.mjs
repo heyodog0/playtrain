@@ -1,4 +1,53 @@
+import { openSync, writeSync } from 'fs';
 import { GameEnv } from './game-env.mjs';
+
+// mmap-shared obs file (optional; set by Python via env var)
+const MMAP_PATH = process.env.NODE_GYM_P5_MMAP_PATH || null;
+let MMAP_FD = null;
+if (MMAP_PATH) {
+  try {
+    MMAP_FD = openSync(MMAP_PATH, 'r+');
+  } catch (e) {
+    process.stderr.write(`Warning: failed to open mmap file ${MMAP_PATH}: ${e.message}\n`);
+    MMAP_FD = null;
+  }
+}
+const MMAP_SENTINEL = 0xFFFFFFFF;
+const STEP_HEADER_SIZE = 16;
+const GS_INDEX = { PLAYING: 0, WIN: 1, GAMEOVER: 2, EXIT: 3 };
+
+function packStepHeader({ reward, terminated, truncated, info }) {
+  const h = Buffer.alloc(STEP_HEADER_SIZE);
+  h.writeFloatBE(reward, 0);
+  h.writeUInt8(terminated ? 1 : 0, 4);
+  h.writeUInt8(truncated ? 1 : 0, 5);
+  h.writeUInt8(GS_INDEX[info.gameState] ?? 0, 6);
+  h.writeUInt8(Math.max(0, Math.min(255, info.lives | 0)), 7);
+  h.writeInt32BE(info.score | 0, 8);
+  h.writeInt32BE(info.episodeLength | 0, 12);
+  return h;
+}
+
+function sendBinaryStep(result) {
+  const stepHeader = packStepHeader(result);
+  if (MMAP_FD !== null) {
+    const obsBuf = Buffer.from(result.observation);
+    writeSync(MMAP_FD, stepHeader, 0, STEP_HEADER_SIZE, 0);
+    writeSync(MMAP_FD, obsBuf, 0, obsBuf.length, STEP_HEADER_SIZE);
+    const outerHeader = Buffer.alloc(8);
+    outerHeader.writeUInt32BE(MMAP_SENTINEL, 0);
+    outerHeader.writeUInt32BE(obsBuf.length, 4);
+    process.stdout.write(outerHeader);
+    return;
+  }
+  // Fallback: binary step + obs in pipe (mmap unavailable).
+  const obs = Buffer.from(result.observation);
+  const binary = Buffer.concat([stepHeader, obs]);
+  const outerHeader = Buffer.alloc(8);
+  outerHeader.writeUInt32BE(0, 0);
+  outerHeader.writeUInt32BE(binary.length, 4);
+  process.stdout.write(Buffer.concat([outerHeader, binary]));
+}
 
 // Parse CLI args: --game <path> [--obs-mode rgb|gray] [--obs-size 64] [--matter]
 function parseArgs() {
@@ -68,15 +117,17 @@ function handleRequest(request, binaryLength) {
 
   if (request.cmd === 'step') {
     const result = env.step(request.action);
-    ok(
-      {
+    if (process.env.NODE_GYM_P5_FORCE_JSON === '1') {
+      // Bench-only fallback: original JSON-meta + obs response.
+      ok({
         reward: result.reward,
         terminated: result.terminated,
         truncated: result.truncated,
         info: result.info,
-      },
-      Buffer.from(result.observation),
-    );
+      }, Buffer.from(result.observation));
+      return;
+    }
+    sendBinaryStep(result);
     return;
   }
 
