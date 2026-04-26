@@ -114,11 +114,20 @@ gen-game catalog name model="pro":
 gen-all model="pro":
     uv run python tools/generate.py --all --model {{model}}
 
-# Generate one Three.js (v2) game from the SIMPLE catalog
+# Generate one Three.js (v2) game. SKIPS if file exists — see gen-three-force / gen-three-v2.
 gen-three name model="pro":
     uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref
 
-# Generate every Three.js game in the SIMPLE catalog
+# Generate one Three.js (v2) game, FORCING overwrite (existing file is backed up to games/backups/ first).
+gen-three-force name model="pro":
+    uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref --force
+
+# Generate one Three.js (v2) game with _v2 suffix — original is preserved untouched.
+# Output goes to games/threejs/<name>_v2.js
+gen-three-v2 name model="pro":
+    uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref --suffix _v2
+
+# Generate every Three.js game in the SIMPLE catalog. Skips existing files by default.
 gen-three-all model="pro":
     uv run python tools/generate_threejs.py --model {{model}} --ref
 

@@ -91,10 +91,19 @@ Output ONLY the JavaScript code. No markdown fences, no explanation."""
     return prompt
 
 
-def generate_one(client: genai.Client, game: dict, template: str, model: str, output_dir: Path, use_ref: bool):
+def generate_one(client: genai.Client, game: dict, template: str, model: str,
+                 output_dir: Path, use_ref: bool, *, force: bool = False, suffix: str = ""):
     name = game["name"]
-    out_path = output_dir / f"{name}.js"
-    print(f"  Generating {name}...", end=" ", flush=True)
+    out_name = f"{name}{suffix}"
+    out_path = output_dir / f"{out_name}.js"
+
+    # Refuse-by-default if the file already exists. User must opt in via
+    # --force to replace, or via --suffix to write to a different filename.
+    if out_path.exists() and not force:
+        print(f"  SKIP {out_name}: already exists. Use --force to replace, or --suffix _v2 to write a versioned copy.")
+        return False
+
+    print(f"  Generating {out_name}...", end=" ", flush=True)
 
     ref_text = ""
     if use_ref and game.get("ref"):
@@ -111,13 +120,17 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str, ou
         raw_output = response.text
         code = strip_fences(raw_output)
 
-        backup_game(name, output_dir)
+        # Always back up before any overwrite (defense-in-depth even with --force).
+        if out_path.exists():
+            backup_game(out_name, output_dir)
         out_path.write_text(code)
 
-        save_log(name, model, prompt, raw_output, code, duration, "generate-threejs")
+        save_log(out_name, model, prompt, raw_output, code, duration, "generate-threejs")
         print(f"OK ({len(code)} bytes, {duration:.1f}s) -> {out_path}")
+        return True
     except Exception as e:
         print(f"FAILED: {e}")
+        return False
 
 
 def main():
@@ -132,6 +145,13 @@ def main():
     parser.add_argument("--template", type=Path, default=None,
                         help="Override template path. Defaults to simple template, or "
                              "complex template if catalog filename contains 'complex'.")
+    parser.add_argument("--force", action="store_true",
+                        help="Overwrite existing game files (a backup is still written to "
+                             "games/backups/ first). Default is to SKIP existing files.")
+    parser.add_argument("--suffix", default="",
+                        help="Append suffix to output filename (e.g. --suffix _v2 writes "
+                             "crossy_road_3d_v2.js instead of crossy_road_3d.js). Lets you "
+                             "keep the original alongside a regenerated version.")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -156,10 +176,22 @@ def main():
         print(f"  Game '{args.name}' not found in {args.catalog.name}")
         raise SystemExit(1)
 
+    if args.force:
+        print("MODE: --force enabled (existing files will be backed up + overwritten)")
+    elif args.suffix:
+        print(f"MODE: writing with suffix '{args.suffix}' (originals preserved at <name>.js)")
+    else:
+        print("MODE: skip-if-exists (default). Use --force to overwrite or --suffix _v2 for versioned output.")
+
+    n_generated = n_skipped = 0
     for i, game in enumerate(games):
-        generate_one(client, game, template, model, args.output_dir, args.ref)
-        if i < len(games) - 1:
+        wrote = generate_one(client, game, template, model, args.output_dir, args.ref,
+                             force=args.force, suffix=args.suffix)
+        if wrote: n_generated += 1
+        else: n_skipped += 1
+        if i < len(games) - 1 and wrote:
             time.sleep(2)
+    print(f"\nDone: {n_generated} generated, {n_skipped} skipped.")
 
 
 if __name__ == "__main__":
