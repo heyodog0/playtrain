@@ -134,38 +134,7 @@ just bench-three               # all three.js games
 just bench-one flappy_bird     # single game
 ```
 
-Per-env step throughput on M4 Pro (RGB obs, mmap IPC, 7-bit obs quantization for three.js):
-
-**p5 (mean 4273 FPS, 30 games)** — `obs_size=64`, `Discrete(8)`:
-
-| Game            | FPS  | | Game             | FPS  | | Game            | FPS  |
-|-----------------|-----:|-|------------------|-----:|-|-----------------|-----:|
-| jetpack_joyride | 5601 | | starpilot        | 4913 | | mario           | 4111 |
-| plunder         | 5544 | | space_invaders   | 4825 | | climber         | 3400 |
-| downwell        | 5419 | | leaper           | 4766 | | maze            | 3448 |
-| freeway         | 5318 | | crossy_road      | 4728 | | fruitbot        | 3155 |
-| flappy_bird     | 5304 | | sonic            | 4641 | | heist           | 2672 |
-| vvvvvv          | 5263 | | asteroids        | 4478 | | caveflyer       | 2616 |
-| ninja           | 5085 | | bigfish          | 4410 | | chaser          | 2023 |
-| frostbite       | 5056 | | bossfight        | 4375 | | miner           | 1130 |
-| suika           | 4990 | | angry_birds      | 4367 | | | |
-|                 |      | | breakout         | 4317 | | | |
-|                 |      | | dodgeball        | 4302 | | | |
-|                 |      | | jumper           | 3778 | | | |
-|                 |      | | coinrun          | 4165 | | | |
-
-**three.js (mean 1349 FPS, 16 games)** — `obs_size=84`, `Discrete(15)`, WebGPU/Dawn:
-
-| Game           | FPS  | | Game            | FPS  | | Game           | FPS  |
-|----------------|-----:|-|-----------------|-----:|-|----------------|-----:|
-| zelda_dungeon  | 1917 | | snake_3d        | 1726 | | runner_3d      | 1161 |
-| mario_64       | 1910 | | metroid_prime   | 1719 | | zelda_oot_world| 991 |
-| temple_run     | 1899 | | helix_jump      | 1480 | | stack_drop     | 958  |
-| ball_roller    | 1474 | | tile_2048       | 1480 | | megaman_3d     | 920  |
-| box_pusher     | 1364 | | mario_3d_world  | 912  | | crossy_road_3d | 916 |
-|                |      | | bomberman_3d    | 762  | | | |
-
-Numbers are single-env, no policy forward pass — true RL throughput is ~10–30% lower depending on policy size and `SubprocVecEnv` worker count, but scales near-linearly with N envs. See `outputs/bench/{p5,three}.json` for raw trial data.
+Per-env step throughput on an M4 Pro is roughly **mean ~4300 FPS for p5** (range 1100–5600) and **mean ~1300 FPS for three.js + WebGPU/Dawn** (range 750–1900). Numbers are single-env with no policy forward pass — true RL throughput is ~10–30% lower depending on policy size and `SubprocVecEnv` worker count, but scales near-linearly with N envs. Run `just bench` / `just bench-three` to see the full per-game numbers on your own hardware; results are written to `outputs/bench/{p5,three}.json`.
 
 ## How it works
 
