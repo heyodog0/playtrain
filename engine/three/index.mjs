@@ -86,91 +86,81 @@ export const CAMERA_FIXED_TOPDOWN = 5;  // our addition: static iso for grid gam
 export const CAMERA_FOLLOW_2D    = 6;   // our addition: 2D-style follow for runners
 
 /**
- * A Camera3D handle — close to raylib's Camera3D struct, but holds
- * a Three.js PerspectiveCamera underneath so it's directly usable.
+ * Create a Camera3D — returns a REAL `THREE.PerspectiveCamera` instance.
+ *
+ * Engine extras (mode, target, fovy) live on `camera.userData` so the rest
+ * of Three.js's API works as expected:
+ *   - camera.position.set(x, y, z)   ✓ (real Vector3)
+ *   - camera.position.y = 5          ✓
+ *   - camera.lookAt(x, y, z)         ✓ (real Three.js method)
+ *   - camera.rotation, camera.up,
+ *     camera.getWorldPosition(...)    ✓ (real Three.js methods)
+ *
+ * The engine's `updateCamera(camera, target, dt)` reads
+ * `camera.userData.mode` to decide preset behavior.
+ *
+ * Why a factory and not a class wrapper: any subclass-style wrapper would
+ * inevitably miss methods the LLM tries to call. By returning the real
+ * THREE.PerspectiveCamera, we avoid an entire class of "this method
+ * doesn't exist" surprises.
  */
-export class Camera3D {
-  constructor({ THREE, position = [0, 8, 8], target = [0, 0, 0], up = [0, 1, 0],
-                fovy = 60, aspect = 1, near = 0.1, far = 100, mode = CAMERA_CUSTOM } = {}) {
-    if (!THREE) throw new Error('Camera3D requires THREE');
-    this.THREE = THREE;
-    this.position = new THREE.Vector3(...position);
-    this.target = new THREE.Vector3(...target);
-    this.up = new THREE.Vector3(...up);
-    this.fovy = fovy;
-    this.mode = mode;
-    this._three = new THREE.PerspectiveCamera(fovy, aspect, near, far);
-    this._three.up.copy(this.up);
-    this._sync();
-  }
-  _sync() {
-    this._three.position.copy(this.position);
-    this._three.lookAt(this.target);
-  }
-  setPosition(x, y, z) {
-    this.position.set(x, y, z);
-    this._sync();
-  }
-  setTarget(x, y, z) {
-    this.target.set(x, y, z);
-    this._sync();
-  }
-  /** Three.js PerspectiveCamera handle for advanced use. */
-  get three() { return this._three; }
+export function createCamera({ THREE, position = [0, 8, 8], target = [0, 0, 0], up = [0, 1, 0],
+                               fovy = 60, aspect = 1, near = 0.1, far = 100, mode = CAMERA_CUSTOM } = {}) {
+  if (!THREE) throw new Error('createCamera requires THREE');
+  const cam = new THREE.PerspectiveCamera(fovy, aspect, near, far);
+  cam.position.set(position[0], position[1], position[2]);
+  cam.up.set(up[0], up[1], up[2]);
+  cam.lookAt(target[0], target[1], target[2]);
+  // Engine extras
+  cam.userData.mode = mode;
+  cam.userData.target = new THREE.Vector3(target[0], target[1], target[2]);
+  cam.userData.fovy = fovy;
+  return cam;
 }
 
+/** Backwards-compat alias. Camera3D(...) now returns a real PerspectiveCamera. */
+export const Camera3D = (opts) => createCamera(opts);
+
 /**
- * UpdateCamera(camera, mode) — port of raylib's preset camera modes.
- * For first-person/third-person/orbital, derives camera state from a `target`
- * (the entity to follow) and the current action. Smooth lerp by default.
+ * updateCamera(camera, target, dt, opts) — port of raylib's preset camera modes.
  *
- * NOTE: raylib's UpdateCamera reads keyboard/mouse directly. Ours reads from
- * an explicit `input` arg so games stay deterministic (the runtime injects
- * globalThis.currentAction; games pass it here).
+ * Camera is a real THREE.PerspectiveCamera; we mutate its position + lookAt
+ * each frame based on the mode (in camera.userData.mode) and the target entity.
+ * For CAMERA_FREE / CAMERA_CUSTOM, this is a no-op — the game manages the
+ * camera itself.
  */
 export function updateCamera(camera, target, dt, opts = {}) {
   const {
-    distance = 8,           // for follow/third-person
-    height = 4,             // for follow/third-person
-    smoothing = 8,          // lerp speed (higher = snappier)
-    mode = camera.mode,
+    distance = 8,
+    height = 4,
+    smoothing = 8,
+    mode = camera.userData?.mode ?? CAMERA_CUSTOM,
   } = opts;
 
+  const tx = target.position?.x ?? target.x ?? 0;
+  const ty = target.position?.y ?? target.y ?? 0;
+  const tz = target.position?.z ?? target.z ?? 0;
+
   if (mode === CAMERA_THIRD_PERSON || mode === CAMERA_FOLLOW_2D) {
-    const tx = target.position?.x ?? target.x ?? 0;
-    const ty = target.position?.y ?? target.y ?? 0;
-    const tz = target.position?.z ?? target.z ?? 0;
-    const desiredX = tx;
-    const desiredY = ty + height;
-    const desiredZ = tz + distance;
     const k = Math.min(1, smoothing * dt);
-    camera.position.x = camera.position.x + (desiredX - camera.position.x) * k;
-    camera.position.y = camera.position.y + (desiredY - camera.position.y) * k;
-    camera.position.z = camera.position.z + (desiredZ - camera.position.z) * k;
-    camera.target.set(tx, ty + 0.5, tz);
-    camera._sync();
+    camera.position.x += (tx - camera.position.x) * k;
+    camera.position.y += ((ty + height) - camera.position.y) * k;
+    camera.position.z += ((tz + distance) - camera.position.z) * k;
+    camera.lookAt(tx, ty + 0.5, tz);
   } else if (mode === CAMERA_FIRST_PERSON) {
-    const tx = target.position?.x ?? target.x ?? 0;
-    const ty = target.position?.y ?? target.y ?? 0;
-    const tz = target.position?.z ?? target.z ?? 0;
     const yaw = target.yaw ?? 0;
     camera.position.set(tx, ty + 1.5, tz);
-    camera.target.set(tx - Math.sin(yaw), ty + 1.5, tz - Math.cos(yaw));
-    camera._sync();
-  } else if (mode === CAMERA_FIXED_TOPDOWN) {
-    // Static iso-ish camera — set once, doesn't follow.
-    camera._sync();
+    camera.lookAt(tx - Math.sin(yaw), ty + 1.5, tz - Math.cos(yaw));
   } else if (mode === CAMERA_ORBITAL) {
-    // Slowly orbit around target.
-    const angle = (opts.angle ?? 0);
-    const r = distance;
-    camera.position.x = (target.x ?? 0) + Math.cos(angle) * r;
-    camera.position.z = (target.z ?? 0) + Math.sin(angle) * r;
-    camera.position.y = height;
-    camera.target.set(target.x ?? 0, target.y ?? 0, target.z ?? 0);
-    camera._sync();
+    const angle = opts.angle ?? 0;
+    camera.position.x = tx + Math.cos(angle) * distance;
+    camera.position.z = tz + Math.sin(angle) * distance;
+    camera.position.y = ty + height;
+    camera.lookAt(tx, ty, tz);
+  } else if (mode === CAMERA_FIXED_TOPDOWN) {
+    camera.lookAt(tx, ty, tz);  // re-aim at target each frame, but don't move
   }
-  // CAMERA_FREE / CAMERA_CUSTOM: leave alone (game manages it explicitly).
+  // CAMERA_FREE / CAMERA_CUSTOM: leave camera alone.
 }
 
 // ============================================================================
@@ -438,7 +428,7 @@ export function endMode3D(world) {
 export function render(world, camera) {
   const cam = camera ?? world._activeCamera;
   if (!cam) throw new Error('render: no active camera (call beginMode3D(world, camera) first)');
-  world.renderer.render(world.scene, cam.three ?? cam);
+  world.renderer.render(world.scene, cam);
 }
 
 // ============================================================================
@@ -639,7 +629,7 @@ export function tickFlashes(world, meshes) {
  */
 export function setupGame({ THREE, renderer, width, height, cameraMode = CAMERA_THIRD_PERSON, cameraOpts = {} } = {}) {
   const world = initWorld({ THREE, renderer, width, height });
-  const camera = new Camera3D({
+  const camera = createCamera({
     THREE,
     aspect: width / height,
     fovy: cameraOpts.fovy ?? 60,
@@ -661,8 +651,8 @@ export default {
   // camera modes
   CAMERA_CUSTOM, CAMERA_FREE, CAMERA_ORBITAL, CAMERA_FIRST_PERSON,
   CAMERA_THIRD_PERSON, CAMERA_FIXED_TOPDOWN, CAMERA_FOLLOW_2D,
-  // classes
-  Camera3D,
+  // camera
+  Camera3D, createCamera,
   // world
   initWorld, setBackground, setupLighting, clearWorld,
   // drawing

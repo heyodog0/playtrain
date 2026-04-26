@@ -33,23 +33,11 @@ CATALOGS_DIR = GAMES_DIR / "catalogs"
 THREEJS_DIR = GAMES_DIR / "threejs"
 DEFAULT_CATALOG = CATALOGS_DIR / "threejs_games.json"
 
-# Engine integration files (used when --no-engine is NOT set, i.e. by default).
+# Engine integration: when --no-engine is NOT set (default), inject the
+# engine README into the prompt. We do NOT inject a full reference game —
+# the README + template + per-game ref text is enough context, and adding
+# a 9KB reference game per prompt was too much noise.
 ENGINE_README = ROOT / "engine" / "three" / "README.md"
-
-# Tier-specific reference games. The generator picks the right one based on
-# whether the catalog is simple or complex. If the complex-tier reference
-# doesn't exist yet, the simple one is used as a fallback (with a warning).
-ENGINE_REFERENCE_SIMPLE  = ROOT / "games" / "threejs" / "crossy_road_3d_v2.js"
-ENGINE_REFERENCE_COMPLEX = ROOT / "games" / "threejs" / "mario_3d_world_v2.js"
-
-def pick_reference_game(template_path: Path) -> Path:
-    """Pick the right reference game for the prompt based on template tier."""
-    if template_path == COMPLEX_TEMPLATE and ENGINE_REFERENCE_COMPLEX.exists():
-        return ENGINE_REFERENCE_COMPLEX
-    return ENGINE_REFERENCE_SIMPLE
-
-# Backwards-compat alias for the old constant name.
-ENGINE_REFERENCE_GAME = ENGINE_REFERENCE_SIMPLE
 
 
 def pick_template(catalog_path: Path, override: Path | None) -> Path:
@@ -61,15 +49,12 @@ def pick_template(catalog_path: Path, override: Path | None) -> Path:
     return SIMPLE_TEMPLATE
 
 
-def build_prompt(game: dict, template: str, ref_text: str, *, use_engine: bool = True,
-                 reference_game_path: Path | None = None) -> str:
+def build_prompt(game: dict, template: str, ref_text: str, *, use_engine: bool = True) -> str:
     """Build the LLM prompt. When use_engine=True (default), the engine README
-    + a reference engine-using game are included, and the LLM is told to
-    target the engine API. When use_engine=False, the older standalone
-    pattern is used (write everything from scratch).
-
-    `reference_game_path` lets the caller pick a tier-appropriate reference
-    (simple vs complex). Defaults to ENGINE_REFERENCE_SIMPLE."""
+    is injected and the LLM is told to target the engine API. When
+    use_engine=False, the older standalone pattern is used (write everything
+    from scratch). Reference game source is intentionally NOT injected —
+    README + template + per-game ref text is enough context."""
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
@@ -82,37 +67,19 @@ Reference description of the original game:
 """
 
     if use_engine:
-        # Engine-using prompt: inject the engine README + a reference example.
         engine_readme = ENGINE_README.read_text() if ENGINE_README.exists() else ""
-        ref_path = reference_game_path or ENGINE_REFERENCE_SIMPLE
-        ref_game_src = ref_path.read_text() if ref_path.exists() else ""
         engine_section = f"""
 ========================================================================
 THIS GAME MUST USE THE FAST-LLM-GAMES ENGINE.
 The runtime injects the engine as `globalThis.engine` before your file
-runs. You write a thin game ON TOP of the engine — do NOT reimplement
-the things the engine provides (camera setup, lighting, color palette,
-mulberry32, particles, etc.).
+runs. Use engine helpers (drawCube, drawSphere, palette colors,
+mulberry32, etc.) instead of reimplementing them.
 ========================================================================
 
-Engine API reference (the LLM contract):
+Engine API reference:
 
 {engine_readme}
 
-========================================================================
-Reference engine-using game (study this for idiomatic API usage):
-File: games/threejs/{ref_path.name}
-
-```javascript
-{ref_game_src}
-```
-
-Note in particular:
-  - Destructure helpers from `engine` at the top: `const {{ setupGame, drawCube, ... }} = engine;`
-  - Do NOT destructure `render` from engine (would shadow the local render fn)
-  - In your local render() function, call `engine.render(world)` explicitly
-  - Use `engine.palette.*` / saturated color constants for semantic meaning
-  - Use `engine.mulberry32(seed)` in resetGame to seed Math.random
 ========================================================================
 """
 
@@ -126,15 +93,14 @@ Actions this game should use: {actions}
 Critical requirements:
   - The lifecycle: setup({{ THREE, renderer, width, height }}), update(dt),
     render(), resetGame(seed), getGameState()
-  - Action space: Discrete(15). Read action via engine.getCurrentAction()
-    or globalThis.currentAction (integer 0..14)
+  - Action space: Discrete(15). Read via engine.getCurrentAction() or
+    globalThis.currentAction (integer 0..14)
   - Determinism: in resetGame, do `Math.random = engine.mulberry32(seed >>> 0)`
   - PER-SEED VARIATION: different seeds MUST produce visibly different
-    episodes (different obstacle layouts, enemy positions, level geometry,
-    etc.). All randomization belongs in resetGame() AFTER reseeding
-    Math.random.
-  - Use engine helpers wherever possible. Don't manually create THREE.Mesh
-    instances when drawCube/drawSphere/drawPlane will do.
+    episodes (level layout, enemy positions, etc.). All randomization
+    belongs in resetGame() AFTER reseeding Math.random.
+  - Use engine helpers wherever possible (drawCube/drawSphere/drawPlane
+    over manual `new THREE.Mesh(...)`).
   - Do NOT write `import * as THREE from 'three'` or any import statement.
   - Do NOT define mulberry32 yourself — use engine.mulberry32.
   - Do NOT destructure `render` from engine — call engine.render(world)
@@ -182,8 +148,7 @@ Output ONLY the JavaScript code. No markdown fences, no explanation."""
 
 def generate_one(client: genai.Client, game: dict, template: str, model: str,
                  output_dir: Path, use_ref: bool, *, force: bool = False,
-                 suffix: str = "", use_engine: bool = True,
-                 reference_game_path: Path | None = None):
+                 suffix: str = "", use_engine: bool = True):
     name = game["name"]
     out_name = f"{name}{suffix}"
     out_path = output_dir / f"{out_name}.js"
@@ -201,8 +166,7 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str,
         print("fetching ref...", end=" ", flush=True)
         ref_text = fetch_ref(game["ref"])
 
-    prompt = build_prompt(game, template, ref_text, use_engine=use_engine,
-                          reference_game_path=reference_game_path)
+    prompt = build_prompt(game, template, ref_text, use_engine=use_engine)
 
     try:
         t0 = time.time()
@@ -282,18 +246,8 @@ def main():
     else:
         print("MODE: skip-if-exists (default). Use --force to overwrite or --suffix _v2 for versioned output.")
 
-    reference_game_path = pick_reference_game(template_path) if use_engine else None
     if use_engine:
-        print(f"ENGINE: ON (default). Prompts include engine README ({ENGINE_README.name})")
-        if reference_game_path and reference_game_path.exists():
-            tier = "complex" if reference_game_path == ENGINE_REFERENCE_COMPLEX else "simple"
-            print(f"        + reference game ({reference_game_path.name}, {tier}-tier)")
-            # Warn loudly when complex-tier generation has to fall back to a simple-tier reference.
-            if template_path == COMPLEX_TEMPLATE and reference_game_path != ENGINE_REFERENCE_COMPLEX:
-                print(f"        ⚠ NOTE: complex template + simple reference. The complex-tier")
-                print(f"          reference ({ENGINE_REFERENCE_COMPLEX.name}) doesn't exist yet.")
-                print(f"          Hand-port a complex catalog game to fill this in for better")
-                print(f"          complex-tier output.")
+        print(f"ENGINE: ON (default). Prompt includes engine README ({ENGINE_README.name})")
         if not ENGINE_README.exists():
             print(f"        WARNING: {ENGINE_README} not found, prompt will be missing engine docs")
     else:
@@ -302,8 +256,7 @@ def main():
     n_generated = n_skipped = 0
     for i, game in enumerate(games):
         wrote = generate_one(client, game, template, model, args.output_dir, args.ref,
-                             force=args.force, suffix=args.suffix, use_engine=use_engine,
-                             reference_game_path=reference_game_path)
+                             force=args.force, suffix=args.suffix, use_engine=use_engine)
         if wrote: n_generated += 1
         else: n_skipped += 1
         if i < len(games) - 1 and wrote:
