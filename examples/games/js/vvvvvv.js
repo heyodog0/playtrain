@@ -171,10 +171,11 @@ function updateLogic() {
     }
   }
 
-  // Score reward for continuous progression
+  // Score reward for continuous progression (1 pt per 10 px, integer-only)
   if (player.x > maxReachedX) {
-    score += (player.x - maxReachedX) * 0.1;
+    const prev = Math.floor(maxReachedX * 0.1);
     maxReachedX = player.x;
+    score += Math.floor(maxReachedX * 0.1) - prev;
   }
 
   // Smooth camera following
