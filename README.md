@@ -1,9 +1,9 @@
-# browserless-game-RL
+# llm-gg
 
-Generate p5.js games via LLM and train RL agents on them at native speed — no browser.
+ProcGen-style RL benchmark with LLM-generated games. Built on [`node-gym`](https://github.com/heyodog0/node-gym) (the headless runtime); this repo adds the game catalog, multi-game PPO/DQN training, train/test seed splits, and SLURM-based sweep orchestration.
 
-- **Game generation**: Gemini generates p5.js games from a strict template with fixed Discrete(8) action space and 64×64 RGB observations (matching ProcGen)
-- **Headless runtime**: Games run in Node.js via a p5.js shim on `node-canvas` — no browser process, no DOM. Runtime lives in the sibling [`node-gym`](https://github.com/heyodog0/node-gym) repo.
+- **Game generation**: Gemini generates p5.js (Discrete(8), 64×64 RGB) and Three.js (Discrete(15), 84×84 RGB) games from strict templates
+- **Headless runtime**: Games run in Node.js via `node-canvas` (p5) or Dawn/WebGPU (three.js) — no browser. Runtime lives in the sibling [`node-gym`](https://github.com/heyodog0/node-gym) repo.
 - **RL training**: Python Gymnasium wrapper + PPO/DQN via SB3, validated against ProcGen-style criteria
 - **Multi-game training**: ProcGen-style single policy across all games with train/test seed splits
 - **Game tester**: Browser UI for playtesting + Gemini-powered refinement via feedback
@@ -13,8 +13,8 @@ Generate p5.js games via LLM and train RL agents on them at native speed — no 
 Requires Node.js 24+, Python 3.11+, [`uv`](https://docs.astral.sh/uv/), and [`just`](https://just.systems) (`brew install just`).
 
 ```bash
-git clone https://github.com/heyodog0/browserless-game-rl
-cd browserless-game-rl
+git clone https://github.com/heyodog0/llm-gg
+cd llm-gg
 just bootstrap   # clones sibling node-gym + installs deps in both repos
 ```
 
@@ -55,9 +55,9 @@ Add `--use-wandb` (or use the long form) for W&B logging — requires `uv sync -
 
 ## Games
 
-30 games across 4 catalogs in `games/js/`. All share Discrete(8) actions, 64×64 RGB observations, seeded determinism, and deterministic replay. Two use Matter.js physics (`angry_birds`, `suika`); the rest are pure p5.
+**p5 (30)** in `games/js/` — Discrete(8), 64×64 RGB, seeded determinism. Two use Matter.js physics (`angry_birds`, `suika`); the rest are pure p5. **Three.js (16)** in `games/threejs/` — Discrete(15), 84×84 RGB, Dawn/WebGPU.
 
-Generation pipeline writes to `games/js/`, with backups in `games/backups/` and Gemini logs in `games/logs/`. See `GAME_TEMPLATE.md` for the full per-game contract.
+Generation pipeline writes to `games/js/` and `games/threejs/`, with backups in `games/backups/` and Gemini logs in `games/logs/`. See `GAME_TEMPLATE.md` (p5) and `THREE_GAME_TEMPLATE.md` (three.js) for the per-game contracts.
 
 ## Notebooks
 

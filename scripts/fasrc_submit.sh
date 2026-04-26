@@ -1,5 +1,5 @@
 #!/bin/bash
-# Submit a fast-llm-games sweep to FASRC as a SLURM job array.
+# Submit a llm-gg sweep to FASRC as a SLURM job array.
 #
 # Usage (or via `just fasrc-submit`):
 #   scripts/fasrc_submit.sh --seeds 0 1 2 --games all --config configs/full_run.json

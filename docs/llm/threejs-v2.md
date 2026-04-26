@@ -34,13 +34,13 @@ The repo already contains a real WebGPU / Dawn foundation for this direction.
 
 ### Working now
 
-- [`poc/webgpu/smoke-dawn.mjs`](/Users/heyodogo/code/lab/fast-llm-games/poc/webgpu/smoke-dawn.mjs)
+- [`poc/webgpu/smoke-dawn.mjs`](/Users/heyodogo/code/lab/llm-gg/poc/webgpu/smoke-dawn.mjs)
   proves the Dawn WebGPU bindings work locally by creating a device, clearing a texture, and reading pixels back.
 
-- [`poc/webgpu/shims.mjs`](/Users/heyodogo/code/lab/fast-llm-games/poc/webgpu/shims.mjs)
+- [`poc/webgpu/shims.mjs`](/Users/heyodogo/code/lab/llm-gg/poc/webgpu/shims.mjs)
   sets up the fake browser environment needed for headless `Three.js` execution in Node.js.
 
-- [`poc/webgpu/poc.mjs`](/Users/heyodogo/code/lab/fast-llm-games/poc/webgpu/poc.mjs)
+- [`poc/webgpu/poc.mjs`](/Users/heyodogo/code/lab/llm-gg/poc/webgpu/poc.mjs)
   attempts a minimal headless `Three.js` render through `WebGPURenderer`, reads pixels back from the render texture, and checks for non-zero output.
 
 ### Meaning of the current state

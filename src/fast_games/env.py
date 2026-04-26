@@ -1,7 +1,7 @@
 """Thin shim re-exporting node-gym, configured for this repo's games.
 
 The actual env implementations live in the `node-gym` package. This module
-adapts both to fast-llm-games by pointing each at our local game directories
+adapts both to llm-gg by pointing each at our local game directories
 (games/js/ for p5, games/threejs/ for Three.js v2), and keeps the historical
 names (`GameGymEnv`, `make_multigame_vec_env`) so existing call sites don't
 need to change. Adds `ThreeGameGymEnv` for the v2 path.

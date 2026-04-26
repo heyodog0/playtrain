@@ -1,7 +1,7 @@
 [project]
 name = "fast-games"
 version = "0.1.0"
-description = "ProcGen-style RL benchmark on LLM-generated p5.js games — headless, no browser"
+description = "ProcGen-style RL benchmark on LLM-generated p5.js + Three.js games — headless, no browser"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,7 +14,7 @@ dependencies = [
 
 [tool.uv.sources]
 # node-gym lives in a sibling repo. Clone both side-by-side:
-#   <parent>/fast-llm-games   (this repo)
+#   <parent>/llm-gg           (this repo)
 #   <parent>/node-gym         (https://github.com/heyodog0/node-gym)
 node-gym = { path = "../node-gym", editable = true }
 
