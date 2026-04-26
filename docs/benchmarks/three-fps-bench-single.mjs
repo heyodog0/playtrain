@@ -46,6 +46,12 @@ function mulberry32(seed) {
 
 const THREE = await import('three/webgpu');
 
+// Inject the engine module as a global so engine-using games can access it
+// via `globalThis.engine` without an import statement (vm.runInThisContext
+// doesn't support ESM imports).
+const engine = await import('../../engine/three/index.mjs');
+globalThis.engine = engine;
+
 const bytesPerRow = Math.ceil((RENDER_W * 4) / 256) * 256;
 const bufferSize = bytesPerRow * RENDER_H;
 

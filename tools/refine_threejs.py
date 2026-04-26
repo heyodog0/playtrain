@@ -32,21 +32,66 @@ MODELS = {
 
 CLIENT = None
 
-REQUIRED_FUNCTIONS = ["setup", "update", "render", "resetGame", "getGameState", "mulberry32"]
+REQUIRED_FUNCTIONS = ["setup", "update", "render", "resetGame", "getGameState"]
+# mulberry32 is required IFF the game doesn't use the engine (engine provides it).
 
-REFINE_RULES = """Critical requirements:
+ENGINE_README_PATH = ROOT / "engine" / "three" / "README.md"
+
+# Base rules for ALL v2 games (engine-using or standalone).
+REFINE_RULES_BASE = """Critical requirements:
 - Keep the file as plain JavaScript for the Three.js v2 runtime. NO module imports — do NOT add `import * as THREE from 'three'` or any other import statement.
 - Use the THREE module argument passed to setup({ THREE, renderer, width, height }), not a top-level import.
-- Preserve these required functions: setup, update, render, resetGame, getGameState, mulberry32.
-- Read the action via globalThis.currentAction (an integer 0..7), NOT via keyIsDown / keyPressed.
+- Preserve these required functions: setup, update, render, resetGame, getGameState.
+- Action space: Discrete(15). Read the action via globalThis.currentAction (integer 0..14), NOT via keyIsDown / keyPressed.
 - Keep deterministic reset: seed Math.random in resetGame via mulberry32.
 - Preserve per-seed variation: different seeds must produce visibly different episodes (level layout, obstacle positions, etc.). Do not collapse to a fixed level when refining.
 - Keep score, lives, and gameState consistent with getGameState() — gameState ∈ {'PLAYING','GAMEOVER','WIN','EXIT'}.
-- Mutate scene state in update(dt); render() should only call renderer.render(scene, camera).
-- Use only primitive geometry, MeshBasic/Normal/Lambert materials, at most 1 AmbientLight + 1 DirectionalLight, no post-processing, no external assets.
+- Mutate scene state in update(dt); render() should only render the scene.
 - Do not change the file into TypeScript or add markdown fences/explanations.
 - Return valid JavaScript only when asked for code, and valid JSON only when asked for JSON.
 """
+
+# Additional rules ONLY for engine-using games.
+REFINE_RULES_ENGINE = """
+Engine-specific rules (this game uses the fast-llm-games engine via globalThis.engine):
+- Continue using the engine API. Prefer engine helpers (drawCube, drawSphere, palette colors, checkCollisionSpheres, mulberry32, updateCamera, etc.) over reimplementing them.
+- Do NOT destructure `render` from engine. The runtime auto-promotes the local name `render` to globalThis.render — destructuring `render` would shadow your local function and break rendering. Call `engine.render(world)` explicitly inside your local render() function.
+- The engine README (included below) is the authoritative API reference. Stick to documented functions and color constants.
+"""
+
+# Standalone-only rules (game does NOT use the engine).
+REFINE_RULES_STANDALONE = """
+Standalone-game rules (this game does NOT use the engine):
+- Define mulberry32 locally in the file.
+- Use only primitive geometry, MeshBasic/Normal/Lambert/Phong materials, up to 3 lights, no post-processing, no external assets.
+"""
+
+
+def uses_engine(code: str) -> bool:
+    """Detect whether a game uses the fast-llm-games engine."""
+    return ("globalThis.engine" in code) or ("= engine;" in code) or ("engine.render(" in code) or ("engine.drawCube(" in code)
+
+
+def build_refine_rules(code: str) -> str:
+    """Compose the right REFINE_RULES for this specific game (engine-aware)."""
+    if uses_engine(code):
+        return REFINE_RULES_BASE + REFINE_RULES_ENGINE
+    return REFINE_RULES_BASE + REFINE_RULES_STANDALONE
+
+
+def maybe_engine_context(code: str) -> str:
+    """Return the engine README as a fenced section IFF the game uses the engine."""
+    if not uses_engine(code):
+        return ""
+    if not ENGINE_README_PATH.exists():
+        return ""
+    readme = ENGINE_README_PATH.read_text()
+    return f"\n\nEngine API reference (this game uses these helpers via globalThis.engine):\n\n{readme}\n"
+
+
+# Kept for backwards compatibility with chunk-selection prompts that interpolate REFINE_RULES.
+# Per-call refinement uses build_refine_rules() with the actual game source.
+REFINE_RULES = REFINE_RULES_BASE + REFINE_RULES_ENGINE  # default to engine-aware
 
 
 def mask_api_key(value: str | None) -> str:
@@ -204,8 +249,10 @@ def complete_text(client, model: str, prompt: str, *, label: str) -> str:
     return response.text or ""
 
 
-def select_chunks(client, model: str, name: str, feedback: str, chunks: list[dict]) -> dict:
+def select_chunks(client, model: str, name: str, feedback: str, code: str, chunks: list[dict]) -> dict:
     catalog = "\n".join(f"- {summarize_chunk(chunk)}" for chunk in chunks)
+    rules = build_refine_rules(code)
+    engine_ctx = maybe_engine_context(code)
     prompt = f"""You are selecting the smallest set of code chunks to edit in a Three.js v2 game.
 
 Game: {name}
@@ -214,7 +261,7 @@ Player feedback: {feedback}
 Available chunks:
 {catalog}
 
-{REFINE_RULES}
+{rules}{engine_ctx}
 
 Return JSON only:
 {{
@@ -235,19 +282,21 @@ Prefer the minimal patch set otherwise."""
     return selection
 
 
-def build_patch_prompt(name: str, feedback: str, chunks: list[dict]) -> str:
+def build_patch_prompt(name: str, feedback: str, code: str, chunks: list[dict]) -> str:
     chunk_text = []
     for chunk in chunks:
         chunk_text.append(
             f"CHUNK {chunk['id']} ({chunk['kind']}, {chunk['label']}):\n```javascript\n{chunk['code']}\n```"
         )
     joined_chunks = "\n\n".join(chunk_text)
+    rules = build_refine_rules(code)
+    engine_ctx = maybe_engine_context(code)
     return f"""You are patching selected chunks in a Three.js v2 game.
 
 Game: {name}
 Player feedback: {feedback}
 
-{REFINE_RULES}
+{rules}{engine_ctx}
 
 Only modify the chunks provided below. Return JSON only:
 {{
@@ -305,12 +354,22 @@ def validate_refined_code(code: str):
     for name in REQUIRED_FUNCTIONS:
         if not re.search(rf"^function\s+{re.escape(name)}\s*\(", code, re.MULTILINE):
             raise ValueError(f"Missing required function: {name}")
+    # Standalone games must define mulberry32 locally; engine-using games get it from engine.
+    if not uses_engine(code):
+        if not re.search(r"^function\s+mulberry32\s*\(", code, re.MULTILINE) and "mulberry32" not in code:
+            raise ValueError("Standalone v2 game missing mulberry32 (engine games get it from engine)")
     # Catch the most common Three.js failure mode early.
     if re.search(r"^\s*import\s+", code, re.MULTILINE):
         raise ValueError("Refined code contains an import statement (THREE must come from setup args)")
+    # Engine-using games must NOT destructure `render` from engine (would shadow local render).
+    if uses_engine(code):
+        if re.search(r"\{[^}]*\brender\b[^}]*\}\s*=\s*engine", code):
+            raise ValueError("Engine-using game destructures `render` from engine — this shadows the required local render function. Use engine.render(world) explicitly instead.")
 
 
 def full_rewrite(client, model: str, name: str, feedback: str, code: str, *, on_chunk=None) -> tuple[str, str]:
+    rules = build_refine_rules(code)
+    engine_ctx = maybe_engine_context(code)
     prompt = f"""Here is the current game code:
 
 {code}
@@ -320,7 +379,7 @@ Player feedback:
 
 Rewrite the full file to address the feedback while preserving compatibility.
 
-{REFINE_RULES}
+{rules}{engine_ctx}
 
 Output ONLY the complete updated JavaScript code. No markdown fences, no explanation."""
     raw = stream_text(client, model, prompt, label="Falling back to full-file rewrite...", on_chunk=on_chunk)
@@ -348,7 +407,9 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True,
     started = time.time()
 
     emit("status", text="Selecting chunks to edit...")
-    selection = select_chunks(client, model, name, feedback, chunks)
+    if uses_engine(code):
+        emit("status", text="(engine-using game — engine README will be included in prompt)")
+    selection = select_chunks(client, model, name, feedback, code, chunks)
     chunk_ids = [chunk_id for chunk_id in selection["chunk_ids"] if chunk_id in {chunk["id"] for chunk in chunks}]
     print(f"  Selection mode: {selection['mode']}")
     if chunk_ids:
@@ -377,7 +438,7 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True,
             raise ValueError("Using full rewrite fallback")
 
         selected_chunks = [chunk for chunk in chunks if chunk["id"] in chunk_ids]
-        patch_prompt = build_patch_prompt(name, feedback, selected_chunks)
+        patch_prompt = build_patch_prompt(name, feedback, code, selected_chunks)
         emit("status", text="Generating targeted patch...")
         patch_raw = stream_text(client, model, patch_prompt, label="Generating targeted patch...",
                                 on_chunk=lambda t: emit("chunk", text=t))

@@ -13,11 +13,14 @@ A small, opinionated game-engine layer designed for **LLM-authored 3D RL games**
 ## Quickstart
 
 ```js
-const engine = await import('engine/three/index.mjs');
+// IMPORTANT: do NOT destructure `render` from engine. The runtime auto-promotes
+// the local name `render` to globalThis.render — if you destructure render from
+// engine, that shadows your local function and breaks the render call. Use
+// `engine.render(world)` explicitly inside your local render() function.
 const {
   setupGame, drawSphere, drawOctahedron, drawPlane, drawGrid,
   CAMERA_THIRD_PERSON, palette, BLUE, GOLD, DARKGRAY, LIGHTGRAY,
-  checkCollisionSpheres, mulberry32, getCurrentAction, render,
+  checkCollisionSpheres, mulberry32, getCurrentAction,
 } = engine;
 
 let world, camera, player, goal;
@@ -51,7 +54,7 @@ function update(dt) {
   }
 }
 
-function renderFn() { render(world); }
+function render() { engine.render(world); }   // call engine.render explicitly
 
 function resetGame(seed) {
   Math.random = mulberry32(seed >>> 0);
