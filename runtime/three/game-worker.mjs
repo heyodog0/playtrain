@@ -9,7 +9,23 @@
  * Driven by Python's NodeGymThreeEnv via stdin/stdout.
  */
 
+import { openSync, writeSync, closeSync } from 'fs';
 import { ThreeGameEnv } from './game-env.mjs';
+
+// If Python passed NODE_GYM_THREE_MMAP_PATH, open the shared file for fast
+// obs transfer. Worker writes step header + obs to this file; Python reads
+// from its mmap. Pipe carries only the 8-byte sync header.
+const MMAP_PATH = process.env.NODE_GYM_THREE_MMAP_PATH || null;
+let MMAP_FD = null;
+if (MMAP_PATH) {
+  try {
+    MMAP_FD = openSync(MMAP_PATH, 'r+');
+  } catch (e) {
+    process.stderr.write(`Warning: failed to open mmap file ${MMAP_PATH}: ${e.message}\n`);
+    MMAP_FD = null;
+  }
+}
+const MMAP_SENTINEL = 0xFFFFFFFF;
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -57,6 +73,51 @@ function ok(meta = {}, binary = Buffer.alloc(0), cb) {
   send({ ok: true, ...meta }, binary, cb);
 }
 
+// Binary step response — meta_length=0 in outer header signals to the Python
+// side to use the fast path (no JSON parse). Layout of the 16-byte step
+// header + obs follows. See protocol notes in python/node_gym/three.py.
+const STEP_HEADER_SIZE = 16;
+const GS_INDEX = { PLAYING: 0, WIN: 1, GAMEOVER: 2, EXIT: 3 };
+
+function packStepHeader({ reward, terminated, truncated, info }) {
+  const h = Buffer.alloc(STEP_HEADER_SIZE);
+  h.writeFloatBE(reward, 0);
+  h.writeUInt8(terminated ? 1 : 0, 4);
+  h.writeUInt8(truncated ? 1 : 0, 5);
+  h.writeUInt8(GS_INDEX[info.gameState] ?? 0, 6);
+  h.writeUInt8(Math.max(0, Math.min(255, info.lives | 0)), 7);
+  h.writeInt32BE(info.score | 0, 8);
+  h.writeInt32BE(info.episodeLength | 0, 12);
+  return h;
+}
+
+function sendBinaryStep(result) {
+  const stepHeader = packStepHeader(result);
+
+  if (MMAP_FD !== null) {
+    // Fastest path: write step header + obs into the shared mmap file,
+    // pipe carries only an 8-byte sync header (meta_length=SENTINEL,
+    // binary_length=obs_byte_length so Python knows how much to slice).
+    const obsBuf = Buffer.from(result.observation);
+    writeSync(MMAP_FD, stepHeader, 0, STEP_HEADER_SIZE, 0);
+    writeSync(MMAP_FD, obsBuf, 0, obsBuf.length, STEP_HEADER_SIZE);
+
+    const outerHeader = Buffer.alloc(8);
+    outerHeader.writeUInt32BE(MMAP_SENTINEL, 0);
+    outerHeader.writeUInt32BE(obsBuf.length, 4);
+    process.stdout.write(outerHeader);
+    return;
+  }
+
+  // Fallback (no mmap): obs goes through the pipe.
+  const obs = Buffer.from(result.observation);
+  const binary = Buffer.concat([stepHeader, obs]);
+  const outerHeader = Buffer.alloc(8);
+  outerHeader.writeUInt32BE(0, 0);
+  outerHeader.writeUInt32BE(binary.length, 4);
+  process.stdout.write(Buffer.concat([outerHeader, binary]));
+}
+
 function fail(error) {
   send({
     ok: false,
@@ -83,12 +144,16 @@ async function handleRequest(request, binaryLength) {
 
   if (request.cmd === 'step') {
     const result = await env.step(request.action);
-    return ok({
-      reward: result.reward,
-      terminated: result.terminated,
-      truncated: result.truncated,
-      info: result.info,
-    }, Buffer.from(result.observation));
+    if (process.env.NODE_GYM_THREE_FORCE_JSON === '1') {
+      // Bench-only fallback: send the original JSON-meta + obs response.
+      return ok({
+        reward: result.reward,
+        terminated: result.terminated,
+        truncated: result.truncated,
+        info: result.info,
+      }, Buffer.from(result.observation));
+    }
+    return sendBinaryStep(result);
   }
 
   if (request.cmd === 'close') {
