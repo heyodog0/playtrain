@@ -395,14 +395,11 @@ PLAY_HTML = """<!DOCTYPE html>
 <div id="err"></div>
 <script type="importmap">
 {{ "imports": {{
-  "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
-  "engine": "/api/engine"
+  "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
 }} }}
 </script>
 <script type="module">
 import * as THREE from 'three';
-import * as engine from 'engine';
-window.engine = engine;
 
 const errEl = document.getElementById('err');
 const stateEl = document.getElementById('state');
@@ -579,10 +576,6 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/games":
             return self._send(200, "application/json", json.dumps(list_games()))
-
-        if path == "/api/engine":
-            engine_path = ROOT / "engine" / "three" / "index.mjs"
-            return self._send(200, "application/javascript", engine_path.read_bytes())
 
         if path.startswith("/api/games/"):
             name = path.split("/api/games/")[1]
