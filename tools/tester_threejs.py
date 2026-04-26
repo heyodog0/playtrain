@@ -436,17 +436,35 @@ window.addEventListener('keydown', e => {{ keys.add(e.code); e.preventDefault();
 window.addEventListener('keyup',   e => {{ keys.delete(e.code); e.preventDefault(); }});
 
 function currentActionFromKeys() {{
+  // v2 uses Discrete(15) — see THREE_GAME_TEMPLATE.md "Action Space".
+  // Arrows = move, SPACE = A (primary), SHIFT = B (secondary).
   const left = keys.has('ArrowLeft'), right = keys.has('ArrowRight');
   const up = keys.has('ArrowUp'), down = keys.has('ArrowDown');
   const space = keys.has('Space');
-  if (left  && space) return 6;
-  if (right && space) return 7;
-  if (space) return 5;
+  const shift = keys.has('ShiftLeft') || keys.has('ShiftRight');
+
+  // Combos with A (SPACE) — move-and-fire patterns
+  if (space && left)  return 11;
+  if (space && right) return 12;
+  if (space && up)    return 13;
+  if (space && down)  return 14;
+  if (space) return 9;  // A alone
+
+  // B alone (SHIFT)
+  if (shift && !left && !right && !up && !down) return 10;
+
+  // Diagonals
+  if (up && left)   return 5;
+  if (up && right)  return 6;
+  if (down && left) return 7;
+  if (down && right) return 8;
+
+  // Cardinals
   if (left)  return 1;
   if (right) return 2;
   if (up)    return 3;
   if (down)  return 4;
-  return 0;
+  return 0; // NOOP
 }}
 
 // mulberry32 — exposed as a global so games can rely on it (template also defines it locally).

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "zelda_oot_world",
+    "ref": "https://en.wikipedia.org/wiki/The_Legend_of_Zelda:_Ocarina_of_Time",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Ocarina of Time (Nintendo, 1998): procedurally generated 3D overworld with 2-3 distinct zones (field, forest, dungeon entrance) connected by transitions. Third-person camera tracks the player. LEFT/RIGHT/UP/DOWN move (camera-relative), A swings sword (short forward arc), B uses shield (briefly invuln), combos move-and-attack. Procgen places enemies (red boxes patrolling), rupees (cyan octahedrons, collect for score), heart pickups (red octahedrons, restore HP). HP system: 3 hearts, lose on enemy contact. Win by reaching the dungeon-entrance pad. Multi-zone procgen + combat + collectibles + HP progression."
+  },
+  {
+    "name": "mario_3d_world",
+    "ref": "https://en.wikipedia.org/wiki/Super_Mario_3D_World",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Super Mario 3D World (Nintendo, 2013): linear-but-open 3D platformer level. Third-person camera tracks player along a procedurally generated path of platforms (5-8 distinct platform clusters). LEFT/RIGHT/UP/DOWN move, A jump, A combos for jump-while-moving (long jump). Coin pickups (gold cylinders) scatter on platforms, enemy 'goombas' (brown spheres) patrol some platforms (defeat by jumping on top), 1-up mushroom (green) spawns mid-level. Pit gaps cause death. Win by reaching the goal flag (tall green box) at level end. Procgen platform layout + enemy placement + collectibles + jump physics."
+  },
+  {
+    "name": "monster_hunter",
+    "ref": "https://en.wikipedia.org/wiki/Monster_Hunter_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Monster Hunter (Capcom, 2004): single large monster hunt in a circular arena. Third-person camera. LEFT/RIGHT/UP/DOWN move (camera-relative), A swings weapon, B dodge-rolls (brief invuln), A combos attack-while-moving. The monster (~5x player size, distinctive red glowing octahedron 'core' with surrounding box body parts) has procedurally chosen attack patterns: lunge, sweep, ranged spit. Player has stamina (depletes on dodge/attack, regens when idle). Monster has 100 HP, multi-stage (changes color as it loses HP — green→yellow→red). Win by depleting monster HP. Combat + stamina + dodge + multi-stage boss."
+  },
+  {
+    "name": "megaman_3d",
+    "ref": "https://en.wikipedia.org/wiki/Mega_Man_Legends",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Mega Man Legends (Capcom, 1997): third-person 3D run-and-gun in a procedurally generated city block. LEFT/RIGHT/UP/DOWN move (camera-relative), A fires arm cannon forward, B jumps, combos move-and-fire. Procgen city: street grid with destructible crates (drop scrap pickups), enemy mech-cubes patrol intersections, larger 'reaverbot' boss (multi-part) at the goal point. HP system, 3 lives. Score = enemies destroyed + scrap collected. Win by defeating the boss. Combat + procgen city + destructible objects + boss fight."
+  },
+  {
+    "name": "dark_souls_lite",
+    "ref": "https://en.wikipedia.org/wiki/Dark_Souls",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Dark Souls (FromSoftware, 2011): combat-focused dungeon room with a single tough enemy (skeleton-like, 50 HP). Third-person camera with lock-on. LEFT/RIGHT/UP/DOWN move (camera-relative), A attacks (consumes stamina), B dodge-roll (brief invuln, consumes stamina), A combos for moving-attack. Player: 5 HP, stamina bar (regenerates when not acting). Enemy uses telegraphed attacks (visible windup color flash) — player must dodge then punish. Death sends to a respawn point but reduces max HP by 1 (3 deaths = GAMEOVER). Win by killing the enemy. Stamina + dodge + telegraphed combat + permadeath-lite."
+  },
+  {
+    "name": "resident_evil_lite",
+    "ref": "https://en.wikipedia.org/wiki/Resident_Evil_(1996_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B"],
+    "mechanic": "inspired by Resident Evil (Capcom, 1996): fixed-camera survival horror. The camera is static at the corner of each room (changes when player crosses a door threshold to a new pre-positioned camera). LEFT/RIGHT turn (tank controls), UP/DOWN move forward/back, A interact (open doors / pick up items), B uses a held item (fires gun if equipped). Procgen mansion: 4 rooms connected by doors, 1 zombie (lurching dark green capsule) patrols 1 random room, 1 key item in another room. Find the key, reach the exit door. Pistol with 6 bullets pre-equipped. Win by exiting; lose if zombie catches you 3 times. Tank controls + fixed cameras + inventory + tension."
+  }
+]

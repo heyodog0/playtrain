@@ -114,13 +114,21 @@ gen-game catalog name model="pro":
 gen-all model="pro":
     uv run python tools/generate.py --all --model {{model}}
 
-# Generate one Three.js (v2) game (default catalog: threejs_games.json)
+# Generate one Three.js (v2) game from the SIMPLE catalog
 gen-three name model="pro":
     uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref
 
-# Generate every Three.js game in the v2 catalog
+# Generate every Three.js game in the SIMPLE catalog
 gen-three-all model="pro":
     uv run python tools/generate_threejs.py --model {{model}} --ref
+
+# Generate one Three.js (v2 complex tier) game (Zelda OoT, Mario 3D, Monster Hunter, etc.)
+gen-three-complex name model="pro":
+    uv run python tools/generate_threejs.py --catalog games/catalogs/threejs_complex_games.json --name {{name}} --model {{model}} --ref
+
+# Generate every Three.js game in the complex catalog
+gen-three-complex-all model="pro":
+    uv run python tools/generate_threejs.py --catalog games/catalogs/threejs_complex_games.json --model {{model}} --ref
 
 # Browser game-tester UI for p5 games (http://localhost:3000)
 tester:

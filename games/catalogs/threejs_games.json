@@ -118,5 +118,29 @@
     "ref": "https://en.wikipedia.org/wiki/2048_(video_game)",
     "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
     "mechanic": "inspired by 2048 (Cirulli, 2014): 4×4 grid of numbered tiles. LEFT/RIGHT/UP/DOWN slide all tiles in that direction; tiles with matching numbers merge into a higher value. New random tile (2 or 4) appears each move. Score = sum of merged values. Game over when grid is full and no merges possible. Color encodes value (cool blues for low, warm oranges/reds for high). Static top-down camera, pure BoxGeometry tiles with HSL palette."
+  },
+  {
+    "name": "doom_arena",
+    "ref": "https://en.wikipedia.org/wiki/Doom_(1993_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "UP+A", "LEFT+A", "RIGHT+A"],
+    "mechanic": "inspired by Doom (id Software, 1993): first-person arena combat. LEFT/RIGHT turn, UP/DOWN move forward/back, A fires forward, combos let player move-and-fire simultaneously. Procedurally placed enemy boxes (red) shamble toward the player; instant-kill on hit. Score per enemy destroyed. Use scene.fog for atmosphere, dim red/orange palette, single AmbientLight + DirectionalLight from above."
+  },
+  {
+    "name": "descent_tunnel",
+    "ref": "https://en.wikipedia.org/wiki/Descent_(1995_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "UP+A", "DOWN+A"],
+    "mechanic": "inspired by Descent (Parallax, 1995): 6DOF first-person flight through a procedural cylindrical tunnel. LEFT/RIGHT yaw, UP/DOWN pitch, A thrusts forward, A combos thrust-while-turning. Avoid wall obstacles (cube spikes), shoot small red orb targets for score. Tunnel built from extruded ring segments, scene.fog for depth. Camera is the player's POV inside the tunnel."
+  },
+  {
+    "name": "portal_chamber",
+    "ref": "https://en.wikipedia.org/wiki/Portal_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A", "B"],
+    "mechanic": "inspired by Portal (Valve, 2007): first-person puzzle chamber. LEFT/RIGHT turn, UP/DOWN move, A fires a blue portal at look target (snaps to wall surface), B fires an orange portal. Step into a portal to teleport to its pair. Goal: reach the exit pad on a wall you can't walk to without portals. Portals are flat colored discs (blue/orange Ring or Circle geometry); chamber is a box room with wall sections marked as 'portalable' (lighter color) vs not."
+  },
+  {
+    "name": "switch_hunt",
+    "ref": "https://en.wikipedia.org/wiki/System_Shock",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "A"],
+    "mechanic": "inspired by System Shock (Looking Glass, 1994): first-person nav exploration. LEFT/RIGHT turn, UP/DOWN move, A activates the nearest switch within range. 4 colored switches scattered in a procedural multi-room building; activate them in the correct order (shown by their pulse intensity) to reach the exit. Wrong order resets all switches. Cool teal/purple palette, fog, decorative columns."
   }
 ]

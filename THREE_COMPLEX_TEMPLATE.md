@@ -1,10 +1,17 @@
-# Three.js Game Template Specification (v2)
+# Three.js Complex Game Template (v2 — complex tier)
 
-Standard interface for LLM-generated **Three.js** games targeting headless RL training via WebGPU/Dawn. Parallel to the p5 `GAME_TEMPLATE.md` but **independent action space and observation contract** — v1 (p5) and v2 (Three.js) are separate benchmarks.
+Specification for LLM-generated **ambitious AAA-inspired Three.js games** — Zelda Ocarina of Time, Mario 64 / 3D World, Monster Hunter, Mega Man Legends, Dark Souls, Resident Evil, Skyrim. Same action/observation contract as the simple v2 template, but targets **larger multi-system games** (~600–1000 LOC, multiple gameplay subsystems coexisting).
 
-A single RL agent with a fixed CNN policy will train across all v2 games. The template guarantees a uniform action space, observation space, and game state interface. Anything game-specific lives inside `update(dt)` and `resetGame(seed)`.
+Use this template when the source game has:
+- **Procedurally generated 3D worlds** (multiple zones, rooms, or arenas — not just one space)
+- **Multiple coexisting gameplay systems** (combat + nav + inventory + dialogue + economy + progression)
+- **Multi-state-machine game flow** (overworld → dungeon → combat → menu → result)
+- **Persistent progression within an episode** (HP/MP scaling, item pickups, ability unlocks)
+- **15+ entity types** active in a typical scene
 
-> **Note**: For richer AAA-inspired games (Zelda OoT, Mario 3D, Monster Hunter, etc.), see `THREE_COMPLEX_TEMPLATE.md` — same action/observation contract, but targets larger multi-system games.
+For tighter, single-mechanic games (Stack, Crossy Road, Sokoban), use the simple `THREE_GAME_TEMPLATE.md` instead.
+
+A single RL agent eventually trains across all v2 games (simple + complex together) under the same Discrete(15) action space — they're merged at the benchmark level, just authored against different complexity templates.
 
 ---
 
@@ -265,19 +272,61 @@ These are the tools available to you. They look minimal, but the worked example 
 
 ---
 
-## Reference Game: `crossy_road_3d`
+## Reference Game: `crossy_road_3d` (use as STRUCTURAL reference, but scale UP)
 
-This is a complete, working v2 game that meets the bar. **Use it as your quality target.** Note in particular:
+The simple template's reference game is shown below at ~330 lines. **For a complex-tier game, scale this up 2-3× in scope:**
 
-- ~330 lines — that's the expected scale of a complete v2 game (not 80, not 500)
-- **5 entity types**: player, grass lanes, road lanes (cars), river lanes (logs), trees — each with distinct geometry/scale and a saturated color
-- **Color encodes function**: green grass (safe), gray road (hazard surface), blue river (instant-death), brown logs (rideable), red/blue/gold cars (hazards), green trees (blockers)
-- **Single dominant action loop** (hop one tile per discrete input) plus a sub-state (riding a log)
-- **Smooth 0.15s tween** on player movement via `THREE.MathUtils.lerp` plus a `Math.sin(t * Math.PI)` jump arc on the y axis — small touches that make discrete moves feel intentional
-- **Static-with-smooth-follow camera** (`camera.position.z` lerps toward `player.z + 6`) — never a chase cam through identical scenery
-- **Procedural variety per seed** in 4+ dimensions: lane type sequence, tree positions, car positions/speeds/directions, log positions/sizes/speeds
-- **Streaming world**: lanes generated ahead of player, removed behind — keeps memory flat for long episodes
-- **Sky-blue background** + **directional + ambient lighting** that makes primitives pop instead of looking like wireframes
+| Aspect            | Simple tier (crossy_road_3d) | Complex tier target           |
+|-------------------|------------------------------|-------------------------------|
+| Total LOC         | ~330                         | **~600–1000**                 |
+| Entity types      | 5                            | **15+**                       |
+| Game state machine| 1 (PLAYING / WIN / GAMEOVER) | **multi-phase** (overworld / combat / dialogue / inventory / result) |
+| Procgen dimensions| 4 (lane seq, trees, cars, logs) | **6+** (zones, enemies, items, layout, encounters, secrets) |
+| Subsystems coexisting | 1 (move + dodge) | **3+** (e.g., combat + nav + inventory; or platforming + collectibles + enemies) |
+| Distinct rooms/zones | 1 streaming world | **2–4 distinct areas** linked by transitions |
+| Camera modes      | 1 (smooth follow)            | **2+** (overworld vs combat vs menu)|
+
+The simple reference still applies for **structural patterns** (color semantics, smooth tweens, deterministic seeded RNG, scene streaming). But the COMPLEXITY ceiling is much higher.
+
+What the simple game does (study these patterns, apply at larger scale):
+
+- **5 entity types** with distinct geometry/scale and saturated colors
+- **Color encodes function** — green grass (safe), blue river (death), brown logs (rideable)
+- **Single dominant action loop** with a sub-state (riding a log)
+- **Smooth 0.15s tween** + `Math.sin(t * Math.PI)` jump arc — discrete moves feel intentional
+- **Static-with-smooth-follow camera** lerping toward player offset
+- **Procedural variety per seed** in 4+ dimensions
+- **Streaming world** (generated ahead, removed behind) — flat memory for long episodes
+- **Sky-blue background** + **directional + ambient lighting** that makes primitives pop
+
+Now scale that up. A complex-tier game should look more like:
+
+```
+// Pseudo-structure for a complex game (e.g. zelda_oot_world)
+function setup({ THREE, renderer, width, height }) {
+  initScene(); initLights(); initCameras();  // 2 cameras: overworld + combat
+  initGeometryPool();   // ~15 geo types: player, enemies, terrain, items, NPCs, props
+  initMaterialPalette(); // ~25 materials with semantic color groups
+}
+
+function update(dt) {
+  if (currentPhase === 'OVERWORLD') updateOverworld(dt);
+  else if (currentPhase === 'COMBAT') updateCombat(dt);
+  else if (currentPhase === 'INVENTORY') updateInventory(dt);
+  else if (currentPhase === 'DIALOGUE') updateDialogue(dt);
+  // ... triggers between phases
+}
+
+function resetGame(seed) {
+  Math.random = mulberry32(seed >>> 0);
+  resetProgression();         // HP, MP, items, abilities
+  generateOverworld();         // procgen: zones, enemies, items, NPCs
+  for (let zone of zones) generateZoneLayout(zone);  // procgen per-zone
+  enterPhase('OVERWORLD');
+}
+```
+
+Then the worked example below shows the structural pattern at simple scale:
 
 ```javascript
 let THREE, scene, camera, renderer;

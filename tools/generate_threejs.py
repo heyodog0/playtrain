@@ -1,10 +1,11 @@
 """Generate Three.js (v2) games from a JSON catalog using Gemini.
 
 Parallel to tools/generate.py, but:
-  - Uses THREE_GAME_TEMPLATE.md instead of GAME_TEMPLATE.md
+  - Two templates: THREE_GAME_TEMPLATE.md (simple) + THREE_COMPLEX_TEMPLATE.md (complex tier)
+  - Auto-picks template by catalog filename: threejs_complex_games.json -> complex template
+  - Override with --template
   - Targets games/threejs/ (separate from p5 games/js/)
   - Default catalog: games/catalogs/threejs_games.json
-  - Prompt explains the Three.js lifecycle + the THREE/renderer args to setup()
 """
 
 import argparse
@@ -25,11 +26,21 @@ from generate import (
 )
 
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_PATH = ROOT / "THREE_GAME_TEMPLATE.md"
+SIMPLE_TEMPLATE = ROOT / "THREE_GAME_TEMPLATE.md"
+COMPLEX_TEMPLATE = ROOT / "THREE_COMPLEX_TEMPLATE.md"
 GAMES_DIR = ROOT / "games"
 CATALOGS_DIR = GAMES_DIR / "catalogs"
 THREEJS_DIR = GAMES_DIR / "threejs"
 DEFAULT_CATALOG = CATALOGS_DIR / "threejs_games.json"
+
+
+def pick_template(catalog_path: Path, override: Path | None) -> Path:
+    """Auto-pick template based on catalog filename, unless overridden."""
+    if override is not None:
+        return override
+    if "complex" in catalog_path.stem.lower():
+        return COMPLEX_TEMPLATE
+    return SIMPLE_TEMPLATE
 
 
 def build_prompt(game: dict, template: str, ref_text: str) -> str:
@@ -54,16 +65,19 @@ template before writing — pay particular attention to:
 
   - The lifecycle: setup({{ THREE, renderer, width, height }}), update(dt),
     render(), resetGame(seed), getGameState()
-  - Reading the action via globalThis.currentAction (NOT keyIsDown)
+  - Action space: Discrete(15). Read globalThis.currentAction (integer 0..14)
+    in update(dt) — NOT keyIsDown. See the template's Action Space table for
+    the full mapping. Most games use a subset (4-9 actions); use what fits.
   - Determinism: seed Math.random in resetGame via the mulberry32 helper
   - PER-SEED VARIATION: different seeds MUST produce visibly different
     episodes (different obstacle layouts, enemy positions, level geometry,
     etc.). All randomization belongs in resetGame() AFTER reseeding
     Math.random — do NOT hardcode a fixed level. Train/test generalization
     eval depends on this.
-  - Rendering constraints: primitive geometry only, MeshBasic/Normal/Lambert
-    materials only, at most 1 AmbientLight + 1 DirectionalLight, no
-    post-processing, no external assets
+  - Rendering palette: primitive geometry, MeshBasic/Normal/Lambert/Phong
+    materials, up to 3 lights, optional fog/PointsMaterial/per-vertex colors
+    — see template "Rendering Palette" section. NO PBR, NO post-processing,
+    NO external assets, NO AnimationMixer.
   - Use the THREE module argument passed to setup() — do NOT write
     `import * as THREE from 'three'` at the top of the file
   - Define mulberry32 as a local function in the file (the runtime may also
@@ -115,6 +129,9 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=THREEJS_DIR)
     parser.add_argument("--ref", action="store_true",
                         help="Fetch ref URLs and include in prompt")
+    parser.add_argument("--template", type=Path, default=None,
+                        help="Override template path. Defaults to simple template, or "
+                             "complex template if catalog filename contains 'complex'.")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -124,7 +141,9 @@ def main():
 
     client = genai.Client(api_key=api_key)
     model = MODELS[args.model]
-    template = TEMPLATE_PATH.read_text()
+    template_path = pick_template(args.catalog, args.template)
+    template = template_path.read_text()
+    print(f"Template: {template_path.name}")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
