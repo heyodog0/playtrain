@@ -1,4 +1,4 @@
-# llm-gg
+# gym-gen
 
 ProcGen-style RL benchmark with LLM-generated games. Built on [`node-gym`](https://github.com/heyodog0/node-gym) (the headless runtime); this repo adds the game catalog, multi-game PPO/DQN training, train/test seed splits, and SLURM-based sweep orchestration.
 
@@ -13,8 +13,8 @@ ProcGen-style RL benchmark with LLM-generated games. Built on [`node-gym`](https
 Requires Node.js 24+, Python 3.11+, [`uv`](https://docs.astral.sh/uv/), and [`just`](https://just.systems) (`brew install just`).
 
 ```bash
-git clone https://github.com/heyodog0/llm-gg
-cd llm-gg
+git clone https://github.com/heyodog0/gym-gen
+cd gym-gen
 just bootstrap   # clones sibling node-gym + installs deps in both repos
 ```
 

@@ -442,7 +442,7 @@ def _(mo):
     The standard formalism is a **Markov Decision Process (MDP)**: \((\mathcal{S}, \mathcal{A}, P, R, \gamma)\).
     That sounds abstract, but here each piece is concrete:
 
-    | MDP piece | What it means in `llm-gg` breakout |
+    | MDP piece | What it means in `gym-gen` breakout |
     |---|---|
     | State `s_t` | The true hidden game state inside the JS runtime: ball position, velocity, paddle position, remaining bricks, score, lives, timers |
     | Observation `o_t` | The rendered `64x64x3` RGB image given to the CNN policy |
@@ -858,7 +858,7 @@ def _(mo):
 
     ## 3. What PPO Looks Like in This Repo's Code
 
-    The single-game training entry point is [`src/fast_games/train/ppo.py`](/Users/heyodogo/code/lab/llm-gg/src/fast_games/train/ppo.py).
+    The single-game training entry point is [`src/fast_games/train/ppo.py`](/Users/heyodogo/code/lab/gym-gen/src/fast_games/train/ppo.py).
     It does five operational things:
 
     1. create `n_envs` copies of `GameGymEnv`,

@@ -60,7 +60,7 @@ class _HTMLToText(HTMLParser):
         return re.sub(r"\s+", " ", raw).strip()
 
 
-HEADERS = {"User-Agent": "llm-gg/0.1 (game research project; contact@example.com)"}
+HEADERS = {"User-Agent": "gym-gen/0.1 (game research project; contact@example.com)"}
 
 
 def _fetch_wikipedia(url: str) -> str:

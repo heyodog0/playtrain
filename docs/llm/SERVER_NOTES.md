@@ -10,10 +10,10 @@ instructions further down are for a generic single-host server.
 
 ```bash
 # 1. From local — push code to FASRC ($HOME or $SCRATCH, your call)
-just push-code truongtruong@login.rc.fas.harvard.edu:/n/home??/truongtruong/llm-gg
+just push-code truongtruong@login.rc.fas.harvard.edu:/n/home??/truongtruong/gym-gen
 
 # 2. On FASRC login node
-cd ~/llm-gg
+cd ~/gym-gen
 
 # Smoke test (1 cell, ~1 h walltime) — confirms uv + node bootstrap, env spawn,
 # training loop, and figure pipeline all work on the cluster before the real
@@ -80,7 +80,7 @@ At 25M × ~750 FPS on `sapphire`, each cell is ~9 h (fits in the 12 h walltime).
 
 ```bash
 # On local
-just pull-results truongtruong@login.rc.fas.harvard.edu:/n/home??/truongtruong/llm-gg <sweep_id>
+just pull-results truongtruong@login.rc.fas.harvard.edu:/n/home??/truongtruong/gym-gen <sweep_id>
 just figures <sweep_id>      # figures/<sweep_id>/{fig2,fig3,fig4}.pdf
 ```
 
@@ -92,8 +92,8 @@ just figures <sweep_id>      # figures/<sweep_id>/{fig2,fig3,fig4}.pdf
 
 ```bash
 # on server
-git clone <repo> llm-gg  # or `just push-code` from local
-cd llm-gg
+git clone <repo> gym-gen  # or `just push-code` from local
+cd gym-gen
 just setup                          # npm install + uv sync
 uv sync --extra experiment          # adds tensorboard + wandb
 just validate                       # confirm 30/30 games pass
@@ -105,7 +105,7 @@ just baselines                      # ~10 min — needed for normalization
 From local:
 
 ```bash
-just push-code user@server:/path/to/llm-gg
+just push-code user@server:/path/to/gym-gen
 ```
 
 `outputs/`, `node_modules/`, `.venv/`, `.git/`, and `reference/` are excluded — the server has its own.
@@ -138,8 +138,8 @@ When the sweep finishes (or any time mid-run):
 
 ```bash
 # on local
-just pull-baselines user@server:/path/to/llm-gg
-just pull-results user@server:/path/to/llm-gg <sweep_id>
+just pull-baselines user@server:/path/to/gym-gen
+just pull-results user@server:/path/to/gym-gen <sweep_id>
 ```
 
 Then locally:

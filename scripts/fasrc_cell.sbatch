@@ -9,7 +9,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=truongtruong@g.harvard.edu
 
-# One array-task per (game, seed) cell in a llm-gg sweep.
+# One array-task per (game, seed) cell in a gym-gen sweep.
 # Submitted via scripts/fasrc_submit.sh or `just fasrc-submit`.
 #
 # Expected env (set by the submitter via sbatch --export):
@@ -27,7 +27,7 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
 mkdir -p logs/fasrc
 
-echo "=== llm-gg cell | sweep=${SWEEP_ID} array=${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID} ==="
+echo "=== gym-gen cell | sweep=${SWEEP_ID} array=${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID} ==="
 echo "Host: $(hostname)"
 echo "Date: $(date)"
 echo "PWD:  $(pwd)"

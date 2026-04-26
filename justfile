@@ -1,4 +1,4 @@
-# llm-gg — task runner
+# gym-gen — task runner
 #
 # Install just: `brew install just` (or see https://just.systems)
 # List recipes:  `just`           (or `just --list`)
@@ -35,7 +35,7 @@ setup:
     uv sync
 
 # Pull latest node-gym (sibling repo) + reinstall its node deps + uv sync here.
-# Run this after pulling llm-gg if node-gym may have changed too.
+# Run this after pulling gym-gen if node-gym may have changed too.
 sync-all:
     cd ../node-gym && git pull && pnpm install
     uv sync

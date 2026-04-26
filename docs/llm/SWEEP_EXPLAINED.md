@@ -277,7 +277,7 @@ figures without pulling 5 GB of model checkpoints.
 From your laptop:
 
 ```bash
-just pull-results truongtruong@login.rc.fas.harvard.edu:~/llm-gg <sweep_id>
+just pull-results truongtruong@login.rc.fas.harvard.edu:~/gym-gen <sweep_id>
 ```
 
 Expands to `rsync -avz <remote>/outputs/sweeps/<sweep_id>/ outputs/sweeps/<sweep_id>/`.
