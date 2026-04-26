@@ -1,14 +1,17 @@
 {
   "name": "node-gym",
   "version": "0.1.0",
-  "description": "Headless Node.js game environments for Python Gymnasium. Run JS games (p5.js, Matter.js) as RL envs without a browser.",
+  "description": "Headless Node.js game environments for Python Gymnasium. Run JS games (p5.js, Matter.js, Three.js + WebGPU/Dawn) as RL envs without a browser.",
   "type": "module",
   "main": "runtime/game-env.mjs",
   "exports": {
     ".": "./runtime/game-env.mjs",
     "./worker": "./runtime/game-worker.mjs",
     "./p5-shim": "./runtime/p5/p5-shim.mjs",
-    "./obs": "./runtime/p5/obs.mjs"
+    "./obs": "./runtime/p5/obs.mjs",
+    "./three": "./runtime/three/game-env.mjs",
+    "./three-worker": "./runtime/three/game-worker.mjs",
+    "./three-shims": "./runtime/three/shims.mjs"
   },
   "files": [
     "runtime",
@@ -24,6 +27,9 @@
     "headless",
     "p5",
     "matter-js",
+    "three.js",
+    "webgpu",
+    "dawn",
     "game",
     "benchmark"
   ],
@@ -42,6 +48,8 @@
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "canvas": "^3.2.3",
-    "matter-js": "^0.20.0"
+    "matter-js": "^0.20.0",
+    "three": "^0.184.0",
+    "webgpu": "^0.4.0"
   }
 }
