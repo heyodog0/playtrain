@@ -1,5 +1,4 @@
-// p5-shim.mjs — Minimal p5.js-compatible API on top of node-canvas
-// Only implements the subset needed by the kazuki game
+// p5-shim.mjs — Minimal p5.js-compatible API on top of node-canvas (cairo).
 
 import { createCanvas as createNodeCanvas } from 'canvas';
 
@@ -21,6 +20,8 @@ let _ellipseMode = 'center'; // 'center' or 'corner'
 
 // ---- Color helpers ----
 function colorArgs(args) {
+  // p5 accepts color arrays: fill([r,g,b]) or fill([r,g,b,a]). Unwrap.
+  if (args.length === 1 && Array.isArray(args[0])) args = args[0];
   if (args.length === 1 && typeof args[0] === 'string') return args[0];
   if (args.length === 1) return `rgba(${args[0]},${args[0]},${args[0]},1)`;
   if (args.length === 2) return `rgba(${args[0]},${args[0]},${args[0]},${args[1]/255})`;
