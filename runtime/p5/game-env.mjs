@@ -9,11 +9,11 @@ import {
   simulateKeyPress,
   tick,
   getPixelData,
-} from './p5/p5-shim.mjs';
+} from './p5-shim.mjs';
 import {
   preprocessObservationFromRGBA,
   preprocessObservationRGB,
-} from './p5/obs.mjs';
+} from './obs.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TERMINAL_STATES = new Set(['WIN', 'EXIT', 'GAMEOVER']);
@@ -57,7 +57,7 @@ function loadGame(gamePath, needsMatter) {
 
   if (needsMatter) {
     try {
-      const matterPath = join(__dirname, '..', 'node_modules', 'matter-js', 'build', 'matter.js');
+      const matterPath = join(__dirname, '..', '..', 'node_modules', 'matter-js', 'build', 'matter.js');
       const matterCode = readFileSync(matterPath, 'utf8');
       vm.runInThisContext(matterCode, { filename: 'matter.js' });
     } catch (err) {

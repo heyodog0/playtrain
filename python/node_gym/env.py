@@ -95,7 +95,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
 
         self._games_dir = _resolve_games_dir(games_dir)
         self._runtime_dir = _resolve_runtime_dir(runtime_dir)
-        self._worker_path = self._runtime_dir / "game-worker.mjs"
+        self._worker_path = self._runtime_dir / "p5" / "game-worker.mjs"
         self._game_path = self._games_dir / f"{game}.js"
 
         if not self._game_path.exists():
