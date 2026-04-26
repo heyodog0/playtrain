@@ -37,10 +37,34 @@ smoke:
 play game="":
     node tools/play.mjs {{game}}
 
-# Run the 5-check validation suite against all bundled games (~1 min)
+# Run the 5-check validation suite against all bundled p5 games (~1 min)
 validate:
     uv run python tools/validate.py --all
 
-# Validate a single game
+# Validate a single p5 game
 validate-one game:
     uv run python tools/validate.py --game {{game}}
+
+# Run the same 5-check suite against all bundled three.js games (slower; ~3 min)
+validate-three:
+    uv run python tools/validate_three.py --all
+
+# Validate a single three.js game
+validate-three-one game:
+    uv run python tools/validate_three.py --game {{game}}
+
+# Benchmark step throughput across all bundled p5 games (3 trials each)
+bench:
+    uv run python tools/bench.py --backend p5 --all
+
+# Benchmark a single p5 game
+bench-one game:
+    uv run python tools/bench.py --backend p5 --game {{game}}
+
+# Benchmark step throughput across all bundled three.js games (3 trials each)
+bench-three:
+    uv run python tools/bench.py --backend three --all
+
+# Benchmark a single three.js game
+bench-three-one game:
+    uv run python tools/bench.py --backend three --game {{game}}

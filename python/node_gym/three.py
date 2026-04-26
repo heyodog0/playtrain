@@ -102,6 +102,7 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         obs_size: int = 84,
         max_steps: int = 2000,
         node_bin: str = "node",
+        obs_quantize_bits: int = 7,
     ) -> None:
         super().__init__()
         self.game = game
@@ -109,6 +110,14 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         self.max_steps = max_steps
         self._closed = False
         self._last_seed: int | None = None
+        # Quantize obs to N bits/channel by zeroing low bits. Default 7-bit
+        # kills ~1-LSB Dawn/WebGPU rasterization jitter while staying visually
+        # identical. Set to 8 to disable.
+        if not (1 <= obs_quantize_bits <= 8):
+            raise ValueError(f"obs_quantize_bits must be in [1, 8], got {obs_quantize_bits}")
+        self._obs_quantize_mask = (
+            np.uint8((0xFF << (8 - obs_quantize_bits)) & 0xFF) if obs_quantize_bits < 8 else None
+        )
 
         self._games_dir = _resolve_games_dir(games_dir)
         self._runtime_dir = _resolve_runtime_dir(runtime_dir)
@@ -269,7 +278,10 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         return message, binary
 
     def _decode_obs(self, raw: bytes) -> np.ndarray:
-        return np.frombuffer(raw, dtype=np.uint8).reshape(self.obs_size, self.obs_size, 3)
+        obs = np.frombuffer(raw, dtype=np.uint8).reshape(self.obs_size, self.obs_size, 3)
+        if self._obs_quantize_mask is not None:
+            obs = obs & self._obs_quantize_mask
+        return obs
 
     def reset(
         self,

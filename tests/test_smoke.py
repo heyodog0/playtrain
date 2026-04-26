@@ -4,7 +4,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from node_gym import NodeGymEnv, list_available_games
+from node_gym import (
+    NodeGymEnv,
+    NodeGymThreeEnv,
+    list_available_games,
+    list_available_threejs_games,
+)
 
 
 @pytest.fixture
@@ -66,7 +71,7 @@ def test_frame_stack():
 
 @pytest.mark.parametrize("game", list_available_games())
 def test_every_bundled_game_boots(game):
-    """Each bundled game must reset + take 10 random steps without crashing."""
+    """Each bundled p5 game must reset + take 10 random steps without crashing."""
     env = NodeGymEnv(game=game, obs_size=64, obs_mode="rgb")
     try:
         obs, info = env.reset(seed=0)
@@ -75,6 +80,34 @@ def test_every_bundled_game_boots(game):
             action = int(env.action_space.sample())
             obs, reward, terminated, truncated, info = env.step(action)
             assert obs.shape == (64, 64, 3)
+            assert isinstance(reward, float)
+            if terminated or truncated:
+                env.reset(seed=0)
+    finally:
+        env.close()
+
+
+# ---------------------------------------------------------------------------
+# Three.js (NodeGymThreeEnv) smoke tests
+# ---------------------------------------------------------------------------
+
+def test_list_available_threejs_games_nonempty():
+    games = list_available_threejs_games()
+    assert len(games) >= 1
+
+
+@pytest.mark.parametrize("game", list_available_threejs_games())
+def test_every_bundled_threejs_game_boots(game):
+    """Each bundled three.js game must reset + take 5 random steps without crashing."""
+    env = NodeGymThreeEnv(game=game)
+    try:
+        obs, info = env.reset(seed=0)
+        assert obs.shape == (env.obs_size, env.obs_size, 3)
+        assert obs.dtype == np.uint8
+        for _ in range(5):
+            action = int(env.action_space.sample())
+            obs, reward, terminated, truncated, info = env.step(action)
+            assert obs.shape == (env.obs_size, env.obs_size, 3)
             assert isinstance(reward, float)
             if terminated or truncated:
                 env.reset(seed=0)
