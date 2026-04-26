@@ -10,7 +10,7 @@
     "canvas": "^3.2.3",
     "matter-js": "^0.20.0",
     "playwright-core": "^1.59.1",
-    "three": "^0.183.2",
+    "three": "^0.184.0",
     "webgpu": "^0.4.0"
   }
 }
