@@ -45,13 +45,22 @@ install: setup
 
 # === validation ===
 
-# Run the 5-check ProcGen-style validation suite (default: all games)
+# Run the 5-check ProcGen-style validation suite on p5 games (default: all)
 validate game="--all":
     #!/usr/bin/env bash
     if [ "{{game}}" = "--all" ]; then
         uv run fast-games-validate --all
     else
         uv run fast-games-validate --game {{game}}
+    fi
+
+# Run the same suite against bundled three.js games (default: all)
+validate-three game="--all":
+    #!/usr/bin/env bash
+    if [ "{{game}}" = "--all" ]; then
+        uv run fast-games-validate-three --all
+    else
+        uv run fast-games-validate-three --game {{game}}
     fi
 
 # Benchmark step throughput (FPS) per game (default: all games)
