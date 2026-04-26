@@ -198,9 +198,9 @@ export class ThreeGameEnv {
 
     globalThis.currentAction = 0;
     globalThis.resetGame(this.seed);
-    // Render once so the first frame's pixels are ready.
+    // Render once so the first frame's pixels are ready. (No explicit
+    // GPU wait — readPixelsRGB below mapAsync's, which waits for us.)
     globalThis.render();
-    await device.queue.onSubmittedWorkDone();
 
     const state = this._getState();
     this.lastScore = state.score;
@@ -218,7 +218,9 @@ export class ThreeGameEnv {
     } catch (e) {
       throw new Error(`Game update/render threw: ${e.message}`);
     }
-    await device.queue.onSubmittedWorkDone();
+    // NOTE: don't await device.queue.onSubmittedWorkDone() here — readPixelsRGB
+    // below calls mapAsync, which already waits for all prior GPU work.
+    // The extra await was a redundant GPU sync costing ~400μs/step.
 
     const state = this._getState();
     const reward = state.score - this.lastScore;
