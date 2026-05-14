@@ -76,3 +76,7 @@ profile game="flappy_bird":
 # Same, but also writes a V8 .cpuprofile under outputs/profile/ for Chrome DevTools
 profile-cpu game="flappy_bird":
     uv run python tools/profile.py --game {{game}} --cpu-prof
+
+# Render the newest .cpuprofile as a terminal table (Left Heavy view)
+profile-view by="self":
+    uv run python tools/profile_view.py --by {{by}}

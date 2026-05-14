@@ -28,6 +28,37 @@ let _keysDown = new Set();
 let _rectMode = 'corner'; // 'corner' or 'center'
 let _ellipseMode = 'center'; // 'center' or 'corner'
 
+// Cache the last value we actually assigned to _ctx.{fillStyle,strokeStyle,
+// lineWidth}. Each assignment makes Cairo re-parse the rgba string, which the
+// V8 profile showed as ~30% of step time on draw-heavy games (mario, breakout)
+// because many adjacent primitives share the same color. Skip the assignment
+// when unchanged; invalidate on save/restore since those swap the whole state.
+let _ctxFill = null;
+let _ctxStroke = null;
+let _ctxLineW = null;
+
+function _applyFill() {
+  if (_ctxFill !== _fillStyle) {
+    _ctx.fillStyle = _fillStyle;
+    _ctxFill = _fillStyle;
+  }
+}
+function _applyStroke() {
+  if (_ctxStroke !== _strokeStyle) {
+    _ctx.strokeStyle = _strokeStyle;
+    _ctxStroke = _strokeStyle;
+  }
+  if (_ctxLineW !== _strokeW) {
+    _ctx.lineWidth = _strokeW;
+    _ctxLineW = _strokeW;
+  }
+}
+function _invalidateStyleCache() {
+  _ctxFill = null;
+  _ctxStroke = null;
+  _ctxLineW = null;
+}
+
 // ---- Color helpers ----
 function colorArgs(args) {
   // p5 accepts color arrays: fill([r,g,b]) or fill([r,g,b,a]). Unwrap.
@@ -53,14 +84,10 @@ function createCanvas(w, h) {
 function background(...args) {
   _ctx.save();
   _ctx.resetTransform();
-  if (args.length >= 2 && args.length <= 2) {
-    // background(gray, alpha) used for overlays
-    _ctx.fillStyle = colorArgs(args);
-  } else {
-    _ctx.fillStyle = colorArgs(args);
-  }
+  _ctx.fillStyle = colorArgs(args);
   _ctx.fillRect(0, 0, _width, _height);
   _ctx.restore();
+  _invalidateStyleCache(); // save/restore reset context state outside our cache
 }
 
 function fill(...args) {
@@ -75,15 +102,15 @@ function rectMode(mode) {
 function rect(x, y, w, h, r) {
   let dx = x, dy = y;
   if (_rectMode === 'center') { dx = x - w / 2; dy = y - h / 2; }
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   if (r && r > 0) {
     _ctx.beginPath();
     _ctx.roundRect(dx, dy, w, h, r);
     _ctx.fill();
-    if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+    if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
   } else {
     _ctx.fillRect(dx, dy, w, h);
-    if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.strokeRect(dx, dy, w, h); }
+    if (_strokeEnabled) { _applyStroke(); _ctx.strokeRect(dx, dy, w, h); }
   }
 }
 
@@ -96,26 +123,26 @@ function ellipse(x, y, w, h) {
   if (h === undefined) h = w;
   let cx = x, cy = y;
   if (_ellipseMode === 'corner') { cx = x + w / 2; cy = y + h / 2; }
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   _ctx.beginPath();
   _ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
   _ctx.fill();
-  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+  if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
 }
 
 function triangle(x1, y1, x2, y2, x3, y3) {
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   _ctx.beginPath();
   _ctx.moveTo(x1, y1);
   _ctx.lineTo(x2, y2);
   _ctx.lineTo(x3, y3);
   _ctx.closePath();
   _ctx.fill();
-  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+  if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
 }
 
 function quad(x1, y1, x2, y2, x3, y3, x4, y4) {
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   _ctx.beginPath();
   _ctx.moveTo(x1, y1);
   _ctx.lineTo(x2, y2);
@@ -123,7 +150,7 @@ function quad(x1, y1, x2, y2, x3, y3, x4, y4) {
   _ctx.lineTo(x4, y4);
   _ctx.closePath();
   _ctx.fill();
-  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+  if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
 }
 
 function circle(x, y, d) {
@@ -140,8 +167,7 @@ function noSmooth() {
 }
 
 function line(x1, y1, x2, y2) {
-  _ctx.strokeStyle = _strokeStyle;
-  _ctx.lineWidth = _strokeW;
+  _applyStroke();
   _ctx.beginPath();
   _ctx.moveTo(x1, y1);
   _ctx.lineTo(x2, y2);
@@ -176,7 +202,7 @@ function textFont(f) {
 }
 
 function text(str, x, y) {
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   _ctx.font = `${_textSz}px ${_textFontFamily}`;
   _ctx.textAlign = _textAlignH;
   _ctx.fillText(String(str), x, y);
@@ -184,7 +210,7 @@ function text(str, x, y) {
 
 // ---- Transform stack ----
 function push() { _ctx.save(); }
-function pop() { _ctx.restore(); }
+function pop() { _ctx.restore(); _invalidateStyleCache(); }
 function translate(x, y) { _ctx.translate(x, y); }
 function rotate(a) { _ctx.rotate(a); }
 function scale(sx, sy) { if (sy === undefined) sy = sx; _ctx.scale(sx, sy); }
@@ -195,13 +221,13 @@ function beginShape() { _shapeVerts = []; }
 function vertex(x, y) { _shapeVerts.push([x, y]); }
 function endShape(mode) {
   if (_shapeVerts.length < 2) return;
-  _ctx.fillStyle = _fillStyle;
+  _applyFill();
   _ctx.beginPath();
   _ctx.moveTo(_shapeVerts[0][0], _shapeVerts[0][1]);
   for (let i = 1; i < _shapeVerts.length; i++) _ctx.lineTo(_shapeVerts[i][0], _shapeVerts[i][1]);
   if (mode === CLOSE) _ctx.closePath();
   _ctx.fill();
-  if (_strokeEnabled) { _ctx.strokeStyle = _strokeStyle; _ctx.lineWidth = _strokeW; _ctx.stroke(); }
+  if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
 }
 
 // ---- Math helpers ----
