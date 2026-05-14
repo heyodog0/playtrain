@@ -95,6 +95,9 @@ ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/buil
   #topbar strong { color: #ddd; font-weight: normal; justify-self: center; }
   #state { font-size: 12px; color: #888; margin-bottom: 6px; min-height: 18px; }
   canvas { background: #000; image-rendering: pixelated; box-shadow: 0 0 0 1px #222; }
+  #stage { display: flex; gap: 24px; align-items: flex-start; }
+  #stage .col { display: flex; flex-direction: column; align-items: center; }
+  #stage .label { color: #777; font-size: 11px; margin-bottom: 4px; }
   #reset-row { margin-top: 12px; }
   #help { margin-top: 6px; color: #555; font-size: 11px; text-align: center; }
 </style></head><body>
@@ -104,6 +107,17 @@ ${needsMatter ? '<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/buil
 </div>
 
 <div id="state"></div>
+
+<div id="stage">
+  <div class="col">
+    <div class="label">native</div>
+    <div id="native-slot"></div>
+  </div>
+  <div class="col">
+    <div class="label">agent obs (64×64, what the policy sees)</div>
+    <canvas id="obs-preview" width="64" height="64" style="width: 256px; height: 256px;"></canvas>
+  </div>
+</div>
 
 <script>
 // Stop the browser from scrolling / activating buttons on game keys.
@@ -127,6 +141,11 @@ const _origSetup = typeof setup === 'function' ? setup : function(){};
 setup = function() {
   _origSetup();
   if (typeof resetGame === 'function') resetGame(Date.now() >>> 0);
+  // Move p5's auto-appended canvas into the layout slot so it sits beside
+  // the obs preview rather than wherever p5 stuck it.
+  const slot = document.getElementById('native-slot');
+  const game = document.querySelector('canvas.p5Canvas') || document.querySelector('canvas');
+  if (slot && game && game.id !== 'obs-preview') slot.appendChild(game);
 };
 
 // Live state overlay (polls getGameState() if the game exposes one).
@@ -142,6 +161,28 @@ setInterval(() => {
     } catch (e) {}
   }
 }, 200);
+
+// Mirror the game canvas into the 64x64 obs preview on every animation
+// frame. drawImage with imageSmoothingEnabled=false uses nearest-neighbor
+// for downsampling, which closely matches node-gym's obs.mjs algorithm.
+// Result: a live preview of what the trained policy would see if you
+// recorded the current frame.
+(function mirrorObs() {
+  const obs = document.getElementById('obs-preview');
+  if (!obs) return;
+  const octx = obs.getContext('2d', { willReadFrequently: false });
+  octx.imageSmoothingEnabled = false;
+  function tick() {
+    const game = document.querySelector('canvas.p5Canvas') || document.querySelector('canvas');
+    if (game && game.id !== 'obs-preview' && game.width > 0) {
+      try {
+        octx.drawImage(game, 0, 0, obs.width, obs.height);
+      } catch (e) { /* canvas may not be ready */ }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
 </script>
 
 <div id="reset-row"><button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button></div>
