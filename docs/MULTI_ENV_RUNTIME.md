@@ -1,12 +1,11 @@
 # Multi-Env Runtime — Design + Investigation
 
-**Status**: **Two viable architectures, decision pending implementation choice.**
-The N-API-frequency diagnosis (commit `c5d0a01`) and the Cairo + path-batched
-draws result (job 12899297, commit `b5c922f`) together establish that Worker
-Threads + Cairo + `ctx.beginPath()/rect()/fill()` batching achieves ~104 μs/step
-at N=16 — competitive with DirectVecEnv's projected ~90–110 μs/step. The
-architecture choice is now driven by **implementation cost and paper narrative**,
-not by throughput. Decision to be made before Phase 1.
+**Status**: **Architecture C₁ chosen** (Worker Threads + Cairo + path-batched draws).
+Phase 0.5 high-N scaling probe (job 12929486, commit `89f49c6`) showed
+`path2d_per_color` peaks at **N=24 with 203k iters/s aggregate** — 3.8×
+unbatched Cairo, 50% the memory of `SubprocVecEnv` at equivalent
+parallelism. C₁ wins decisively on per-step throughput AND memory AND
+peak aggregate. Phase 1 starts next: the p5-shim deferred-batch refactor.
 **Branch**: `dev/worker-threads-multi-env`.
 **Target**: aggregate training throughput parity with (or beyond) ALE on
 matched PPO settings, plus aggregate-throughput wins for non-training
@@ -529,7 +528,8 @@ unless the data supports it.
 | 7 | **Skia (`@napi-rs/canvas`) multi-env** | `3b60a6c` (probe + SBATCH) | **12893502** | At N=16: slowest 299 μs/iter, **46% efficiency** (vs Cairo's 29%), aggregate 51k iters/s. Skia scales noticeably better per-thread than Cairo (17-point efficiency gap is real). But Skia's single-thread baseline is ~1.7× slower than Cairo's (136 vs 81 μs/iter), so aggregate throughput at N=16 is **within 5%** between the two libraries. Initial conclusion (later revised — see row 8): library swap doesn't change the architecture answer. |
 | 8 | **Skia configuration tuning** | `c5d0a01` (probe + SBATCH) | **12895792** | Six Skia variants at N=1/8/16. Five variants (default, no_aa, read_freq, same_color, getimg_readback) all show 30–43% efficiency at N=16 — consistent with the row-7 conclusion. **`path2d_batch` is the outlier**: baseline 112 μs, **N=16 slowest 118 μs (95% efficiency)**, **aggregate 111k iters/s = 2.1× Cairo at N=16**. The variant uses 1 Path2D + 1 `fill()` per iter (~4 native calls) instead of 50 separate `fillRect()` calls (~52 native calls). **Compared with `same_color` (also one color, but 50 separate fillRects) which scales at only 30% — the difference between the two variants is N-API call count, not color complexity.** This reframes the entire diagnosis: **the per-thread contention is dominantly N-API call frequency, not Cairo/Skia internal locks or hardware-level resource contention.** With batched native calls, Worker Threads becomes viable. Caveat: `path2d_batch` loses per-rect color variation; needs Approach A (Path2D-per-color) or Approach B (native draw-list addon) to handle real workloads. Also: `getimg_readback` OOMed at N=16 — Skia's getImageData allocates fresh buffers per call that don't GC quickly under high parallelism. |
 | 9 | **Skia tuning + multi-color batching** | `0dee9bb` (added path2d_per_color + path2d_50_per_iter) | **12897259** | Two new variants confirm the N-API-frequency diagnosis with surgical precision: **`path2d_per_color`** (50 multi-color rects grouped into ~9 Path2Ds → ~9 native fills/iter): baseline 159 μs, **N=16 slowest 172 μs, 93% efficiency, aggregate 76k iters/s**. Multi-color is preserved AND scaling is near-linear — the batching principle survives realistic workloads. **`path2d_50_per_iter`** (50 individual Path2Ds, 50 native fills, same call count as default): baseline 426 μs, **N=16 slowest 425 μs, 100% efficiency**. The 100% efficiency despite 50 native calls is striking — it means `fillRect()` specifically hits a lock that `fill(Path2D)` doesn't. Even at high call count, the path-based render avoids the contention. **Net architecture math**: Worker Threads + Skia path2d_per_color = ~182 μs/step at N=16, slightly worse than current SubprocVecEnv (~173). Cairo's faster baseline could close that gap (see Phase 0.5 follow-up #2, row 10). |
-| 10 | **Cairo tuning + multi-color batching** ⭐ | `b5c922f` (probe + SBATCH) | **12899297** | Seven Cairo variants using `ctx.beginPath()/rect()/fill()` (node-canvas doesn't export `Path2D`; the path-builder API achieves the same batching). Headline result: **`path2d_per_color` baseline 62 μs, N=16 slowest 93.9 μs, 66% efficiency, aggregate 134k iters/s**. Cairo's faster baseline (2.5× Skia's) more than compensates for its lower scaling efficiency (66% vs Skia's 93%). The 32 μs absolute slowdown at N=16 is meaningfully more than Skia's 13 μs, but still small in absolute terms. **`path2d_batch` (single color, single fill)**: baseline 63 μs, N=16 99 μs, 63%, aggregate 122k iters/s — also strong. **Architecture math**: Worker Threads + Cairo + path2d_per_color = **~104 μs/step at N=16**, decisively beating current SubprocVecEnv (173) and matching DirectVecEnv's projected ~90–110 μs/step. **Worker Threads is now legitimately competitive with DirectVecEnv.** The decision becomes implementation-cost / paper-narrative driven rather than throughput-driven. Non-batched Cairo variants (default, no_aa, read_freq, same_color) show 18–31% efficiency at N=16 — consistent with prior probes confirming `fillRect()` is the contention point. |
+| 10 | **Cairo tuning + multi-color batching** ⭐ | `b5c922f` (probe + SBATCH) | **12899297** | Seven Cairo variants using `ctx.beginPath()/rect()/fill()` (node-canvas doesn't export `Path2D`; the path-builder API achieves the same batching). Headline result: **`path2d_per_color` baseline 62 μs, N=16 slowest 93.9 μs, 66% efficiency, aggregate 134k iters/s**. Cairo's faster baseline (2.5× Skia's) more than compensates for its lower scaling efficiency (66% vs Skia's 93%). The 32 μs absolute slowdown at N=16 is meaningfully more than Skia's 13 μs, but still small in absolute terms. **`path2d_batch` (single color, single fill)**: baseline 63 μs, N=16 99 μs, 63%, aggregate 122k iters/s — also strong. **Architecture math**: Worker Threads + Cairo + path2d_per_color = **~104 μs/step at N=16**, decisively beating current SubprocVecEnv (173) and matching DirectVecEnv's projected ~90–110 μs/step. **Worker Threads is now legitimately competitive with DirectVecEnv.** Non-batched Cairo variants (default, no_aa, read_freq, same_color) show 18–31% efficiency at N=16 — consistent with prior probes confirming `fillRect()` is the contention point. |
+| 11 | **Cairo high-N scaling** ⭐⭐ | `89f49c6` (probe + SBATCH) | **12929486** | path2d_per_color and path2d_batch swept at N=8/16/24/32, --iters 5000, -c 32 (one Worker per physical core).<br><br>`path2d_per_color` full curve: N=8 71 μs (85%), N=16 78.8 μs (77%), **N=24 104 μs (58%, peak 203k iters/s)**, N=32 148 μs (41%, declining to 190k). Optimal operating point is N=24.<br><br>`path2d_batch` full curve: N=8 65 μs (91%), N=16 65.6 μs (90%), N=24 67.6 μs (87%), **N=32 82 μs (72%, still climbing to 310k iters/s)**. Single-color upper bound shows the architecture can scale further if batching is even more aggressive.<br><br>**Architecture decision**: C₁ wins. Worker Threads + path2d_per_color at N=24 = ~114 μs/step (1.5× faster than current SubprocVecEnv 173). Aggregate 203k iters/s at N=24 is 3.8× the original Cairo default and ~70% more memory-efficient than DirectVecEnv at the same parallelism (1 process × ~600 MB vs 24 processes × ~50 MB). |
 
 ### 10.5 Decomposing the per-thread slowdown at N=16
 
@@ -709,7 +709,124 @@ receipt trail spans 12+ commits and 5 FASRC SLURM jobs.
 
 ---
 
-## 11. Appendix: Worker Threads design (for reference)
+## 11. Phase 1: implementation plan for Architecture C₁
+
+Investigation closed. Implementation begins. Five sub-phases, ~2–3
+calendar weeks total.
+
+### 11.1 Phase 1a: Deferred-batch shim refactor (3–4 days)
+
+The win in Job 12929486 was achieved by replacing 50 separate
+`ctx.fillRect()` calls with ~9 `ctx.beginPath() + rect() × N + fill()`
+groups. Games must NOT have to do this manually — the shim batches
+transparently.
+
+**Changes to `runtime/p5/p5-shim.mjs`**:
+- Replace immediate `_ctx.fillRect()` in `rect()` with a deferred-add
+  to per-color buckets keyed by `_fillStyle`.
+- Same for `ellipse()` (uses `ctx.ellipse`), `triangle()`, `quad()`,
+  `circle()`, `endShape()`.
+- Add explicit `_flushBatch()` that emits one `beginPath/path-ops/fill`
+  group per accumulated color, then clears the buckets.
+- Auto-flush before any operation that can't be safely batched:
+  - `text()` (text rendering paints onto the surface immediately)
+  - `getImageData()` / `toBuffer()` (readback would see stale buffer
+    without flush)
+  - `save()` / `restore()` (state changes invalidate per-color batches)
+  - `translate()` / `rotate()` / `scale()` (transforms change what
+    coordinates mean)
+  - End of `draw()` callback (caller expects committed pixels)
+- Stroke handling: per-color stroke batches are a second pass after
+  fill batches. Most games don't use stroke; can be lazy.
+
+**Critical correctness concern**: batching by color reorders the
+draw order across primitives. If game A draws a green rect at (10,10)
+then a red rect at (10,10), the red should appear on top. With
+batching by color, all greens are drawn first, then all reds — same
+visual result if reds are drawn AFTER greens. **Preserving relative
+order within color groups is essential.** The shim's batch buffers
+must be FIFO per color.
+
+**Cross-color reordering** is the real correctness risk. Most games
+don't have overlapping rects of different colors, but some do.
+Three options:
+- (a) Accept the reordering and document the constraint (games must
+      not overlap different-color primitives expecting Z-order).
+- (b) Flush whenever a primitive's bounding box overlaps a pending
+      batched primitive of a different color (expensive bookkeeping).
+- (c) Hybrid: batch only consecutive same-color runs (no
+      reordering). Reduces batching opportunity when colors interleave
+      but preserves Z-order strictly.
+
+**Recommendation**: ship (c) first. Most batching wins come from
+naturally-clustered same-color sequences (tile maps, sprite groups).
+(c) is the safest and most predictable.
+
+### 11.2 Phase 1b: validate.py determinism check (1 day)
+
+Run `validate.py --all` on a build that includes the Phase 1a shim
+changes. All 39 bundled games must still pass strict byte-equality
+across replays. If any game fails:
+- Either the batching reorders Z-order in a way that game cares about
+- Or there's a missed auto-flush point
+
+Trace the failing game, find the missed flush trigger, add it,
+re-validate.
+
+### 11.3 Phase 1c: Bench batched-shim under SubprocVecEnv (0.5 day)
+
+Before introducing Worker Threads at all, measure whether the new
+shim alone improves throughput under the current architecture. Run
+`tools/bench.py --all` against both:
+- main (no batching)
+- dev (with deferred-batch shim, single Node process per env as today)
+
+Expected: meaningful per-env speedup (Cairo path2d_per_color was
+60 μs/iter vs 86 μs for default) — maybe 30% on FPS for draw-heavy
+games. This is a paper-worthy intermediate result independent of
+the multi-env story.
+
+### 11.4 Phase 1d: Worker Threads scaffold (4–5 days)
+
+Per the Architecture A design from §3.1 / §11 appendix (now
+re-promoted since the contention analysis cleared the way):
+
+- New file `runtime/p5/multi-env-worker.mjs` (dispatcher in main thread)
+- New file `runtime/p5/env-thread.mjs` (per-env thread)
+- Per-thread: own `vm.Context`, own `p5-shim` realm (module-level globals
+  isolated per thread automatically), own `canvas` instance
+- Shared: `SharedArrayBuffer` layout per §11.2 of the appendix
+- Synchronization: `Atomics.wait`/`Atomics.notify` per §11.3 of the appendix
+- Python-side: new `python/node_gym/vec_env.py` containing `NodeVecEnv`
+- Default cap: N=24 (matches the measured throughput peak from job 12929486)
+
+### 11.5 Phase 1e: A/B vs analogen's training loop (2 days)
+
+Replace `SubprocVecEnv` with `NodeVecEnv` in
+`analogen/src/analogen/train_ppo_clean.py` (single-line change behind
+a config flag for safety). Run a 1M-step PPO training and compare
+sps against the SubprocVecEnv baseline.
+
+Acceptance: ≥1.5× training sps improvement at n_envs=16 (since env
+work is ~26% of step time and we'd reduce that by ~5×, net ~20–25%
+overall improvement is realistic and meaningful).
+
+### 11.6 Validation criteria (re-stated for the chosen architecture)
+
+1. `validate.py`-equivalent strict byte-equality across replays, all
+   39 bundled games, N=8 homogeneous batches.
+2. At N=24 on FASRC, aggregate sps ≥ 1.5× current
+   `SubprocVecEnv([NodeGymEnv]*16)` baseline (set the bar by the
+   measured Job 12929486 peak).
+3. No regression: single-env `NodeGymEnv` path unchanged, its bench
+   numbers don't move.
+4. Crash isolation: one game throwing in a Worker Thread surfaces a
+   clean Python error, doesn't deadlock the other Workers.
+5. `venv.close()` terminates within 2s in all conditions.
+
+---
+
+## 12. Appendix: Worker Threads design (for reference)
 
 The original Worker Threads architecture in full detail, preserved here
 because the receipts in §4 reference its phased plan. If the contention
