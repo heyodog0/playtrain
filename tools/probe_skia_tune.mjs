@@ -81,22 +81,51 @@ function build(variant) {
   // reuse it across iters since rect positions change with k, so we rebuild
   // each iter — but using a single Path2D + one fill is still cheaper than
   // 50 fillRect calls in some implementations.
+  const P2D = SkiaPath2D || globalThis.Path2D;
   const drawRects = (k) => {
     if (variant === 'path2d_batch') {
-      // Path2D isn't a Node global; pull it from the canvas lib. Some
-      // canvas libs export it, some require global injection — fall back
-      // gracefully if it's not present.
-      const P2D = SkiaPath2D || globalThis.Path2D;
       if (!P2D) throw new Error('Path2D not available; skip this variant');
       const path = new P2D();
       for (let i = 0; i < 50; i++) {
         path.rect((i * 31 + k) % 440, (i * 17 + k * 3) % 320, 24, 24);
       }
-      // Path2D + single fill loses per-rect color variation. For this variant
-      // we accept the simplification (all rects same color, fillStyle set
-      // once outside the loop).
+      // Single color (Path2D + fill can't mid-fill change color). Establishes
+      // the "few native calls" upper bound.
       ctx.fillStyle = PALETTE[k % PALETTE.length];
       ctx.fill(path);
+      return;
+    }
+    if (variant === 'path2d_per_color') {
+      // Group rects by palette color. One Path2D per color → 9 native fills
+      // per iter. Preserves the multi-color rendering the real workload
+      // needs, while batching native calls. The critical experiment for
+      // production viability of Worker Threads.
+      if (!P2D) throw new Error('Path2D not available; skip this variant');
+      const buckets = new Array(PALETTE.length);
+      for (let c = 0; c < PALETTE.length; c++) buckets[c] = new P2D();
+      for (let i = 0; i < 50; i++) {
+        const c = (i + k) % PALETTE.length;
+        buckets[c].rect((i * 31 + k) % 440, (i * 17 + k * 3) % 320, 24, 24);
+      }
+      for (let c = 0; c < PALETTE.length; c++) {
+        ctx.fillStyle = PALETTE[c];
+        ctx.fill(buckets[c]);
+      }
+      return;
+    }
+    if (variant === 'path2d_50_per_iter') {
+      // Sanity check: one Path2D per rect (50 path-fills per iter). Same
+      // native-call count as default, but using fill(Path2D) instead of
+      // fillRect. If this scales as badly as `same_color` (30%) the
+      // batching win is purely about native-call count, not about
+      // fillRect-vs-Path2D differences.
+      if (!P2D) throw new Error('Path2D not available; skip this variant');
+      for (let i = 0; i < 50; i++) {
+        const p = new P2D();
+        p.rect((i * 31 + k) % 440, (i * 17 + k * 3) % 320, 24, 24);
+        ctx.fillStyle = PALETTE[(i + k) % PALETTE.length];
+        ctx.fill(p);
+      }
       return;
     }
     if (variant === 'same_color') {
@@ -137,7 +166,12 @@ function runWorkload(iters, variant) {
   };
 }
 
-const VARIANTS = ['default', 'no_aa', 'read_freq', 'path2d_batch', 'same_color', 'getimg_readback'];
+const VARIANTS = [
+  'default', 'no_aa', 'read_freq', 'path2d_batch', 'same_color', 'getimg_readback',
+  // Phase 0.5 follow-up (after job 12895792 showed path2d_batch scales at 95%):
+  'path2d_per_color',     // 50 rects grouped by color → ~9 Path2Ds + ~9 native fills per iter
+  'path2d_50_per_iter',   // 50 separate Path2Ds, one rect each → 50 native fills per iter
+];
 
 if (!isMainThread) {
   const { iters, variant } = workerData;

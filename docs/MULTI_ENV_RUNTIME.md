@@ -1,10 +1,14 @@
 # Multi-Env Runtime — Design + Investigation
 
-**Status**: **DirectVecEnv (Architecture B) chosen.** Phase 0.5
-investigation complete — Worker Threads ruled out via systematic
-probes including a definitive Skia-vs-Cairo multi-thread comparison
-(job 12893502, commit `3b60a6c`). Phase 1 of DirectVecEnv not yet
-started.
+**Status**: **Architecture decision REOPENED.** Phase 0.5 follow-up
+(Skia tuning, job 12895792, commit `c5d0a01`) revealed that
+`path2d_batch` — one Path2D + one `fill()` per iter instead of 50
+separate `fillRect()` calls — **scales at 95% efficiency at N=16**,
+2.1× Cairo's aggregate throughput. This contradicts the earlier
+"contention is library-level" diagnosis: the contention is actually
+**N-API call frequency**. With batched native calls, Worker Threads
+becomes viable. Currently re-evaluating Worker Threads + native
+draw-list batching (Architecture C) vs DirectVecEnv (Architecture B).
 **Branch**: `dev/worker-threads-multi-env`.
 **Target**: aggregate training throughput parity with (or beyond) ALE on
 matched PPO settings, plus aggregate-throughput wins for non-training
@@ -524,7 +528,8 @@ unless the data supports it.
 | 4 | Worker `.cpuprofile`s | `7c1f7ce` (SBATCH) | **12891926** | All 16 Worker profiles show the same pattern: **97.4–97.5% of self-time in `full`** (the JS function that calls fillRect/drawImage/toBuffer). GC: <1%. (program): <1%. No JS-side bottleneck. V8 profiler cannot see past N-API boundary, so all native time gets credited to the calling JS frame. **Workers are on-CPU inside Cairo, not blocked or idle.** Main thread (thread 0): 75.6% (idle), 21.1% `full` — confirms dispatcher just waits for Workers each iter. |
 | 5 | Raw N-API | _deferred — investigation has enough evidence to decide_ | — | — |
 | 6 | ALE multi-env compare | _deferred — see Option 3 in §10.6_ | _pending if pursued_ | _pending_ |
-| 7 | **Skia (`@napi-rs/canvas`) multi-env** | `3b60a6c` (probe + SBATCH) | **12893502** | At N=16: slowest 299 μs/iter, **46% efficiency** (vs Cairo's 29%), aggregate 51k iters/s. Skia scales noticeably better per-thread than Cairo (17-point efficiency gap is real). But Skia's single-thread baseline is ~1.7× slower than Cairo's (136 vs 81 μs/iter), so aggregate throughput at N=16 is **within 5%** between the two libraries. **Library swap doesn't change the architecture answer**: Worker Threads + Skia (309 μs/step) still loses to current SubprocVecEnv + Cairo (~173 μs/step). The 46% efficiency confirms Cairo carries some library-specific lock contention, but the bulk of the slowdown is library-independent (hardware-level), as predicted in §10.5. |
+| 7 | **Skia (`@napi-rs/canvas`) multi-env** | `3b60a6c` (probe + SBATCH) | **12893502** | At N=16: slowest 299 μs/iter, **46% efficiency** (vs Cairo's 29%), aggregate 51k iters/s. Skia scales noticeably better per-thread than Cairo (17-point efficiency gap is real). But Skia's single-thread baseline is ~1.7× slower than Cairo's (136 vs 81 μs/iter), so aggregate throughput at N=16 is **within 5%** between the two libraries. Initial conclusion (later revised — see row 8): library swap doesn't change the architecture answer. |
+| 8 | **Skia configuration tuning** | `c5d0a01` (probe + SBATCH) | **12895792** | Six Skia variants at N=1/8/16. Five variants (default, no_aa, read_freq, same_color, getimg_readback) all show 30–43% efficiency at N=16 — consistent with the row-7 conclusion. **`path2d_batch` is the outlier**: baseline 112 μs, **N=16 slowest 118 μs (95% efficiency)**, **aggregate 111k iters/s = 2.1× Cairo at N=16**. The variant uses 1 Path2D + 1 `fill()` per iter (~4 native calls) instead of 50 separate `fillRect()` calls (~52 native calls). **Compared with `same_color` (also one color, but 50 separate fillRects) which scales at only 30% — the difference between the two variants is N-API call count, not color complexity.** This reframes the entire diagnosis: **the per-thread contention is dominantly N-API call frequency, not Cairo/Skia internal locks or hardware-level resource contention.** With batched native calls, Worker Threads becomes viable. Caveat: `path2d_batch` loses per-rect color variation; needs Approach A (Path2D-per-color) or Approach B (native draw-list addon) to handle real workloads. Also: `getimg_readback` OOMed at N=16 — Skia's getImageData allocates fresh buffers per call that don't GC quickly under high parallelism. |
 
 ### 10.5 Decomposing the per-thread slowdown at N=16
 
@@ -593,7 +598,69 @@ The investigation has searched the practically-fixable space
 that beats DirectVecEnv. The Skia experiment was the final check;
 its result confirms the diagnosis.
 
-### 10.7 Decision: DirectVecEnv (Phase 0.5 investigation complete)
+### 10.8 Revised diagnosis: contention is N-API call frequency
+
+The Skia tuning sweep (row 8 of §10.4) overturns the earlier
+"library-level contention" diagnosis. The relevant comparison:
+
+| variant | native calls per iter | baseline μs | N=16 slowest μs | N=16 efficiency |
+|---|---|---|---|---|
+| `same_color` (Skia, all 50 rects same color) | ~52 | 96.7 | 325.2 | 30% |
+| `path2d_batch` (Skia, 50 rects via 1 Path2D) | **~4** | 112.4 | **118.4** | **95%** |
+
+Both variants paint the same pixels with the same colors. The only
+material difference is **how many N-API boundary crossings happen
+per iter**. The variant with ~4 native calls scales near-linearly;
+the variant with ~52 calls degrades 3.3×.
+
+This means the strace decomposition from job 12891926 ("15% futex,
+85% non-syscall") should be re-interpreted: the per-N-API-call
+coordination overhead in V8 produces both kinds of slowdown — futex
+waits (for inter-isolate locks during native calls) and on-CPU
+slowdown (cache-line bouncing on N-API thread-safety scaffolding
+that runs on every call).
+
+**The contention is fixable** if we can reduce the number of native
+calls per env step.
+
+### 10.9 Two contingent architectures unlocked by the new diagnosis
+
+**Architecture C₁: Worker Threads + Path2D-per-color batching.**
+Group draw operations by color JS-side, build ~9 Path2Ds per iter
+(one per palette color), one native fill per Path2D. Goes from ~50
+native calls/iter to ~9 + a few. Cheap to implement (JS-side
+refactor in p5-shim), preserves arbitrary color/state changes.
+Expected scaling efficiency: **somewhere between 30% (50 calls) and
+95% (4 calls)** — needs to be measured.
+
+**Architecture C₂: Worker Threads + native draw-list addon.**
+A slim N-API addon that takes a typed array of opcodes + args
+(rect, fillStyle, drawImage, readback) and dispatches them inside
+one native call. Goes to ~1–2 native calls/iter regardless of how
+many primitives. ~1–2 weeks of native code; gives the strongest
+possible scaling. The principled architecture that the data now
+supports.
+
+### 10.10 Decision deferred — two probes remain
+
+The Skia-tuning result is decisive enough to reopen the
+architecture question. Two more probes will determine whether
+Worker Threads is genuinely viable for production:
+
+1. **`path2d_per_color` variant**: 50 rects grouped into ~9
+   Path2Ds, ~9 native fills per iter. Real-color rendering, but
+   batched. Tells us how much of the 95% scaling survives at
+   "intermediate" native-call counts.
+2. **`path2d_50_per_iter` variant** (sanity check): one Path2D
+   per rect, 50 path-fills per iter. If this scales as badly as
+   `same_color`, the batching win is purely about reducing
+   native-call count. If it scales partway between, there's per-call
+   overhead that grows linearly with call count regardless.
+
+Both variants slot into the existing `probe_skia_tune.mjs` framework.
+One more FASRC submission, ~half day to run + interpret.
+
+### 10.11 Decision: DirectVecEnv (Phase 0.5 investigation complete) — SUPERSEDED, see §10.8 above
 
 After running Option 1 (Skia multi-env, job 12893502, commit
 `3b60a6c`), the data is decisive. **DirectVecEnv is the chosen

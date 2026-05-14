@@ -110,7 +110,7 @@ else:
 PY
 }
 
-for v in default no_aa read_freq path2d_batch same_color getimg_readback; do
+for v in default no_aa read_freq path2d_batch same_color getimg_readback path2d_per_color path2d_50_per_iter; do
   run_variant "$v"
 done
 
