@@ -9,11 +9,15 @@ import {
   simulateKeyPress,
   tick,
   getPixelData,
+  getObsBuffer,
 } from './p5-shim.mjs';
 import {
   preprocessObservationFromRGBA,
   preprocessObservationRGB,
+  bgraBufferToRGB,
 } from './obs.mjs';
+
+const FAST_OBS = process.env.NODE_GYM_P5_FAST_OBS !== '0';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TERMINAL_STATES = new Set(['WIN', 'EXIT', 'GAMEOVER']);
@@ -116,6 +120,10 @@ export class GameEnv {
   }
 
   _getObservation() {
+    if (FAST_OBS && this.obsMode === 'rgb') {
+      const buf = getObsBuffer(this.obsWidth, this.obsHeight);
+      return bgraBufferToRGB(buf, this.obsWidth, this.obsHeight);
+    }
     const frame = getPixelData();
     if (this.obsMode === 'rgb') {
       return preprocessObservationRGB(frame.data, frame.width, frame.height, this.obsWidth, this.obsHeight);

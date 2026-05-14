@@ -16,6 +16,19 @@ export function preprocessObservationFromRGBA(rgba, width, height, obsWidth = 84
   return out;
 }
 
+// Fast path: input is already obs-sized BGRA from Cairo (toBuffer('raw') on LE).
+// Just swap channels and drop alpha. Assumes opaque pixels (premul == straight).
+export function bgraBufferToRGB(buf, obsWidth, obsHeight) {
+  const out = new Uint8Array(obsWidth * obsHeight * 3);
+  const n = obsWidth * obsHeight;
+  for (let i = 0, s = 0, d = 0; i < n; i++, s += 4, d += 3) {
+    out[d]     = buf[s + 2]; // R
+    out[d + 1] = buf[s + 1]; // G
+    out[d + 2] = buf[s];     // B
+  }
+  return out;
+}
+
 export function preprocessObservationRGB(rgba, width, height, obsWidth = 64, obsHeight = 64) {
   const out = new Uint8Array(obsWidth * obsHeight * 3);
 

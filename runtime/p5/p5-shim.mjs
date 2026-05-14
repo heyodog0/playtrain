@@ -1,11 +1,21 @@
 // p5-shim.mjs — Minimal p5.js-compatible API on top of node-canvas (cairo).
 
 import { createCanvas as createNodeCanvas } from 'canvas';
+import { endianness } from 'os';
+
+// toBuffer('raw') hands back Cairo's native ARGB32 surface — byte order is
+// BGRA on LE, ARGB on BE. The fast obs path assumes BGRA. Fail loudly on BE
+// rather than silently corrupting channels.
+const _IS_LE = endianness() === 'LE';
 
 let _canvas = null;
 let _ctx = null;
 let _width = 0;
 let _height = 0;
+let _obsCanvas = null;
+let _obsCtx = null;
+let _obsW = 0;
+let _obsH = 0;
 let _frameCount = 0;
 let _fillStyle = 'rgba(255,255,255,1)';
 let _strokeEnabled = true;
@@ -243,6 +253,24 @@ function getCanvasBuffer() {
   return _canvas.toBuffer('raw');
 }
 
+// Cairo-side downsample + raw readback. Returns the offscreen canvas' native
+// buffer (BGRA on LE, premultiplied). Skips getImageData's full-surface
+// unpremul + RGBA repack, and skips the JS resample loop entirely.
+function getObsBuffer(obsW, obsH) {
+  if (!_IS_LE) {
+    throw new Error('getObsBuffer assumes little-endian (BGRA byte order from Cairo). Set NODE_GYM_P5_FAST_OBS=0 on big-endian hosts.');
+  }
+  if (_obsCanvas === null || _obsW !== obsW || _obsH !== obsH) {
+    _obsCanvas = createNodeCanvas(obsW, obsH);
+    _obsCtx = _obsCanvas.getContext('2d');
+    _obsCtx.imageSmoothingEnabled = false; // nearest-neighbor, deterministic
+    _obsW = obsW;
+    _obsH = obsH;
+  }
+  _obsCtx.drawImage(_canvas, 0, 0, obsW, obsH);
+  return _obsCanvas.toBuffer('raw');
+}
+
 // ---- Tick (advance one frame) ----
 function tick() {
   if (!_looping) return false;
@@ -304,4 +332,5 @@ export {
   isLooping,
   getPixelData,
   getCanvasBuffer,
+  getObsBuffer,
 };
