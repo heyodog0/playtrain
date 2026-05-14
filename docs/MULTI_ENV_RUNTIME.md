@@ -522,12 +522,35 @@ unless the data supports it.
 
 | # | Experiment | Commit | FASRC job | Finding |
 |---|---|---|---|---|
-| 1 | `perf record` | _pending_ | _pending_ | _pending_ |
-| 2 | `strace -c` | _pending_ | _pending_ | _pending_ |
-| 3 | Lib versions | _pending_ | _pending_ | _pending_ |
+| 1 | `perf record` | `f43a67b` (SBATCH) | 12891628 (aborted; bug) → resubmit pending | Job aborted at the ldd stage due to a SIGPIPE+`set -e` interaction in the script; environment log got partway through. **Real perf+strace data pending after bug fix.** |
+| 2 | `strace -c` | (same SBATCH) | (same; aborted before strace ran) | _pending_ |
+| 3 | **Lib versions** | (partial from job 12891628 env log) | 12891628 | **node-canvas 3.2.3 bundles its own native libraries inside `node_modules/.pnpm/canvas@3.2.3/.../build/Release/`** — not loaded from system. Versions: **libpixman 0.38.4** (released 2019; current upstream is 0.44+), **libcairo 1.15.12** (a 2017-era dev snapshot; current stable is 1.18.x). These vendored versions cannot be upgraded without rebuilding `canvas` from source against system libraries. **Plausible primary cause of the per-canvas-call contention** — pixman 0.38 predates substantial multi-thread work in the project. |
 | 4 | Micro-probes | _pending_ | _pending_ | _pending_ |
 | 5 | Raw N-API | _deferred unless 1–4 inconclusive_ | — | — |
 | 6 | ALE compare | _pending_ | _pending_ | _pending_ |
+
+### 10.5 Pivot in direction based on §10.4 partial finding
+
+The vendored-library finding from job 12891628 (even though the rest
+of that job aborted) is significant: it suggests a concrete fix path
+that doesn't require pivoting away from Worker Threads.
+
+**Architecture A' (contingent on perf confirmation)**: rebuild
+node-canvas from source on FASRC, linking against modern system
+libpixman and libcairo. If post-2020 pixman improvements include the
+critical multi-thread paths, per-thread efficiency at N=16 should
+improve substantially — possibly to the linear-scaling target.
+
+Action sequence:
+1. Fix the SBATCH bug, re-run perf to confirm pixman/cairo are
+   where time is actually spent (closes the loop on attribution).
+2. If confirmed: rebuild node-canvas with `--build-from-source` on
+   FASRC after installing/loading modern cairo/pixman modules. Re-run
+   the Worker-Threads probe at N=16; check whether per-thread time
+   drops materially.
+3. If the rebuilt canvas scales: Worker Threads becomes viable;
+   document the build prerequisite in `setup_fasrc.sh`.
+4. If not: continue ruling out per the §10.2 decision tree.
 
 ---
 

@@ -26,7 +26,15 @@
 #   sbatch tools/probe_perf.sbatch
 #   sbatch tools/probe_perf.sbatch --threads 16 --iters 8000
 
-set -euo pipefail
+# NOTE: deliberately NOT using `set -e` / `pipefail` here. This script
+# composes lots of best-effort diagnostic commands (ldd | head, strace,
+# perf record, version probes) that occasionally exit non-zero or
+# trigger SIGPIPE on inner pipe stages. With `set -e`, those abort the
+# whole job silently — exactly the bug that made job 12891628 produce
+# a truncated environment log and nothing else. Failures are
+# individually tolerated; the script's invariant is "do as many
+# experiments as we can, log what happened for each".
+set -u
 cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 mkdir -p logs
 
@@ -77,7 +85,10 @@ ENV_LOG="logs/perf_probe_${JOB_TAG}_environment.txt"
   find node_modules -name '*.node' 2>/dev/null | while read -r f; do
     echo "  $f"
     if command -v ldd >/dev/null 2>&1; then
-      ldd "$f" 2>/dev/null | sed 's/^/    /' | head -25
+      # awk-based line limit: reads full stdin so upstream ldd doesn't
+      # get SIGPIPE (a previous `| head -25` aborted the whole script
+      # under set -e — see job 12891628).
+      ldd "$f" 2>/dev/null | sed 's/^/    /' | awk 'NR<=30'
     fi
   done
   echo
@@ -141,8 +152,9 @@ if command -v perf >/dev/null 2>&1 && [ "$PARANOID" -le 2 ]; then
 
   if [ -f "$PERF_DATA" ]; then
     echo "→ Top symbols by self-time (perf report --stdio):"
+    # awk NR<=80 instead of `head -80` for the same SIGPIPE reason above.
     perf report -i "$PERF_DATA" --stdio --no-children --percent-limit 0.5 \
-      2>/dev/null | head -80 | tee "$PERF_REPORT"
+      2>/dev/null | awk 'NR<=80' | tee "$PERF_REPORT"
 
     # Folded stacks for FlameGraph rendering. flamegraph.pl is small enough
     # to vendor in tools/ if not installed; here we just produce the folded
