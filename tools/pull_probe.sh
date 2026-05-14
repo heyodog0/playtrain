@@ -3,16 +3,18 @@
 # Mirrors the pattern in analogen/pull_results.sh.
 #
 # Usage:
-#   ./tools/pull_probe.sh                    # pull all logs/wt_probe_*
+#   ./tools/pull_probe.sh                    # pull all wt_probe_* + alloc_*
 #   ./tools/pull_probe.sh <jobid>            # pull only that job's files
-#   ./tools/pull_probe.sh latest             # pull only the newest probe (single job)
+#   ./tools/pull_probe.sh latest             # pull only the newest probe job
+#   ./tools/pull_probe.sh alloc              # only allocator-sweep results
+#   ./tools/pull_probe.sh wt                 # only Worker-Threads probe results
 #
 # Override host or path (matches analogen's pattern):
 #   FASRC_HOST=user@host ./tools/pull_probe.sh
 #   FASRC_PATH=/some/other/path ./tools/pull_probe.sh
 #
-# Assumes the FASRC-side path is the node-gym-dev worktree where the SBATCH
-# script wrote logs/wt_probe_<jobid>.{out,err,log}.
+# Assumes the FASRC-side path is the node-gym-dev worktree where SBATCH
+# scripts wrote logs/{wt_probe,alloc_sweep,alloc_probe}_<jobid>.*
 
 set -euo pipefail
 cd "$(dirname "$0")/.."   # cd to repo root so logs/ is at the right level
@@ -21,49 +23,88 @@ FASRC_HOST="${FASRC_HOST:-truong@login.rc.fas.harvard.edu}"
 FASRC_PATH="${FASRC_PATH:-/n/holylabs/gershman_lab/Users/rtruong/node-gym-dev}"
 FILTER="${1:-all}"
 
+# Collect glob patterns based on the filter. We pass multiple patterns to
+# rsync as separate source args (rsync expands each remote-side).
+PATTERNS=()
 case "$FILTER" in
   all)
-    PATTERN="logs/wt_probe_*"
+    PATTERNS=(
+      "logs/wt_probe_*"
+      "logs/alloc_sweep_*"
+      "logs/alloc_probe_*"
+    )
+    ;;
+  wt)
+    PATTERNS=("logs/wt_probe_*")
+    ;;
+  alloc)
+    PATTERNS=("logs/alloc_sweep_*" "logs/alloc_probe_*")
     ;;
   latest)
-    # Resolve the newest jobid on the FASRC side, then pull just that.
-    echo "==> Resolving latest probe on $FASRC_HOST…"
-    NEWEST=$(ssh "$FASRC_HOST" \
-      "ls -t ${FASRC_PATH}/logs/wt_probe_*.log 2>/dev/null | head -1 | xargs -n1 basename" \
-      | sed -E 's/^wt_probe_([0-9]+|local)\.log$/\1/')
+    # Resolve the newest jobid (across BOTH probe kinds) on the FASRC side.
+    echo "==> Resolving latest probe job on $FASRC_HOST…"
+    NEWEST=$(ssh "$FASRC_HOST" "
+      ls -t ${FASRC_PATH}/logs/wt_probe_*.log ${FASRC_PATH}/logs/alloc_sweep_*.out 2>/dev/null \
+        | head -1 \
+        | xargs -n1 basename \
+        | sed -E 's/^(wt_probe|alloc_sweep)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
+    ")
     if [ -z "${NEWEST:-}" ]; then
-      echo "ERROR: no wt_probe_*.log found under ${FASRC_PATH}/logs/ on $FASRC_HOST" >&2
+      echo "ERROR: no probe logs found under ${FASRC_PATH}/logs/ on $FASRC_HOST" >&2
       exit 1
     fi
     echo "    newest jobid: $NEWEST"
-    PATTERN="logs/wt_probe_${NEWEST}*"
+    PATTERNS=(
+      "logs/wt_probe_${NEWEST}*"
+      "logs/alloc_sweep_${NEWEST}*"
+      "logs/alloc_probe_${NEWEST}_*"
+    )
     ;;
   *)
-    # Numeric jobid (or "local" for interactive runs)
-    PATTERN="logs/wt_probe_${FILTER}*"
+    # Numeric jobid (or "local"). Pull anything matching that jobid.
+    PATTERNS=(
+      "logs/wt_probe_${FILTER}*"
+      "logs/alloc_sweep_${FILTER}*"
+      "logs/alloc_probe_${FILTER}_*"
+    )
     ;;
 esac
 
 mkdir -p logs
 echo "Pulling from ${FASRC_HOST}:${FASRC_PATH}"
-echo "  pattern: $PATTERN"
+for p in "${PATTERNS[@]}"; do echo "  pattern: $p"; done
 echo
 
-# -a archive (preserve perms/mtimes), -v verbose, -z compress, --partial
-# resume interrupted transfers. Files are tiny (KB), so this is fast.
-rsync -avz --partial \
-  "${FASRC_HOST}:${FASRC_PATH}/${PATTERN}" logs/ 2>/dev/null \
+# Build the rsync source list. Each pattern becomes its own arg; rsync
+# silently skips non-matching ones, so we won't error if e.g. alloc_*
+# doesn't exist yet for this jobid.
+SOURCES=()
+for p in "${PATTERNS[@]}"; do SOURCES+=("${FASRC_HOST}:${FASRC_PATH}/${p}"); done
+
+# -a archive, -v verbose, -z compress, --partial resume; files are tiny.
+rsync -avz --partial "${SOURCES[@]}" logs/ 2>/dev/null \
   || { echo "WARN: nothing pulled (no match, or ssh failure)" >&2; exit 1; }
 
 echo
-echo "Done. Newest local probe files:"
-ls -lt logs/wt_probe_* 2>/dev/null | head -6
+echo "Done. Newest local files:"
+ls -lt logs/wt_probe_* logs/alloc_sweep_* logs/alloc_probe_* 2>/dev/null | head -10
 
-# If we just pulled a single jobid's results, print the table immediately —
-# saves the user a step.
+# If we just pulled an allocator sweep, print the summary TSV first
+# (that's the headline result). Then print the most-recent .log too.
 echo
+LATEST_TSV=$(ls -t logs/alloc_sweep_*.tsv 2>/dev/null | head -1 || true)
+if [ -n "${LATEST_TSV:-}" ]; then
+  echo "=== $LATEST_TSV ==="
+  if command -v column >/dev/null 2>&1; then
+    column -t -s $'\t' "$LATEST_TSV"
+  else
+    cat "$LATEST_TSV"
+  fi
+  echo
+fi
+
 LATEST_LOG=$(ls -t logs/wt_probe_*.log 2>/dev/null | head -1 || true)
-if [ -n "$LATEST_LOG" ]; then
+if [ -n "${LATEST_LOG:-}" ]; then
   echo "=== $LATEST_LOG ==="
   cat "$LATEST_LOG"
 fi
