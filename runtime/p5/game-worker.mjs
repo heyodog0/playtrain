@@ -1,5 +1,9 @@
 import { openSync, writeSync } from 'fs';
-import { GameEnv } from './game-env.mjs';
+import { GameEnv, _profileTimings } from './game-env.mjs';
+
+const PROFILE = process.env.NODE_GYM_P5_PROFILE === '1';
+const _framingNs = { ns: 0n, n: 0 };
+const _hrtime = process.hrtime.bigint;
 
 // mmap-shared obs file (optional; set by Python via env var)
 const MMAP_PATH = process.env.NODE_GYM_P5_MMAP_PATH || null;
@@ -47,6 +51,28 @@ function sendBinaryStep(result) {
   outerHeader.writeUInt32BE(0, 0);
   outerHeader.writeUInt32BE(binary.length, 4);
   process.stdout.write(Buffer.concat([outerHeader, binary]));
+}
+
+function printProfileSummary() {
+  const n = _profileTimings.n;
+  if (n === 0) return;
+  const nBig = BigInt(n);
+  const us = (x) => (Number(x / nBig) / 1000).toFixed(2);
+  const totalNs = _profileTimings.draw + _profileTimings.downsample
+                + _profileTimings.swap + _profileTimings.info + _framingNs.ns;
+  const pct = (x) => ((Number(x) / Number(totalNs)) * 100).toFixed(1);
+  const lines = [
+    `\n=== p5 profile (${n} steps) ===`,
+    `  draw         ${us(_profileTimings.draw).padStart(7)} μs/step  (${pct(_profileTimings.draw).padStart(4)}%)`,
+    `  downsample   ${us(_profileTimings.downsample).padStart(7)} μs/step  (${pct(_profileTimings.downsample).padStart(4)}%)`,
+    `  swap         ${us(_profileTimings.swap).padStart(7)} μs/step  (${pct(_profileTimings.swap).padStart(4)}%)`,
+    `  info         ${us(_profileTimings.info).padStart(7)} μs/step  (${pct(_profileTimings.info).padStart(4)}%)`,
+    `  framing      ${us(_framingNs.ns).padStart(7)} μs/step  (${pct(_framingNs.ns).padStart(4)}%)`,
+    `  ─────────────────────────────────`,
+    `  sum          ${us(totalNs).padStart(7)} μs/step  (${(1e9 / (Number(totalNs) / Number(nBig))).toFixed(0)} steps/s in-worker)`,
+    '',
+  ];
+  process.stderr.write(lines.join('\n'));
 }
 
 // Parse CLI args: --game <path> [--obs-mode rgb|gray] [--obs-size 64] [--matter]
@@ -127,6 +153,13 @@ function handleRequest(request, binaryLength) {
       }, Buffer.from(result.observation));
       return;
     }
+    if (PROFILE) {
+      const tA = _hrtime();
+      sendBinaryStep(result);
+      _framingNs.ns += _hrtime() - tA;
+      _framingNs.n += 1;
+      return;
+    }
     sendBinaryStep(result);
     return;
   }
@@ -134,6 +167,7 @@ function handleRequest(request, binaryLength) {
   if (request.cmd === 'close') {
     shuttingDown = true;
     env.close();
+    if (PROFILE) printProfileSummary();
     ok({ closed: true }, Buffer.alloc(0), () => {
       process.stdin.pause();
       process.exit(0);

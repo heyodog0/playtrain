@@ -18,6 +18,18 @@ import {
 } from './obs.mjs';
 
 const FAST_OBS = process.env.NODE_GYM_P5_FAST_OBS !== '0';
+const PROFILE = process.env.NODE_GYM_P5_PROFILE === '1';
+
+// Per-phase wall-clock accumulators (BigInt nanoseconds). Only written when
+// PROFILE is on. Summary is printed on env.close() to stderr.
+export const _profileTimings = {
+  draw: 0n,       // tick() — game's draw() function
+  downsample: 0n, // getObsBuffer — drawImage + toBuffer (or full getImageData on slow path)
+  swap: 0n,       // BGRA->RGB swap (fast path) or JS nearest-neighbor resample (slow path)
+  info: 0n,       // _getState + reward math + _buildInfo
+  n: 0,
+};
+const _hrtime = process.hrtime.bigint;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TERMINAL_STATES = new Set(['WIN', 'EXIT', 'GAMEOVER']);
@@ -131,6 +143,32 @@ export class GameEnv {
     return preprocessObservationFromRGBA(frame.data, frame.width, frame.height, this.obsWidth, this.obsHeight);
   }
 
+  // Profile-instrumented variant of _getObservation: splits downsample vs swap.
+  _getObservationProfiled() {
+    if (FAST_OBS && this.obsMode === 'rgb') {
+      const tA = _hrtime();
+      const buf = getObsBuffer(this.obsWidth, this.obsHeight);
+      const tB = _hrtime();
+      const obs = bgraBufferToRGB(buf, this.obsWidth, this.obsHeight);
+      const tC = _hrtime();
+      _profileTimings.downsample += tB - tA;
+      _profileTimings.swap += tC - tB;
+      return obs;
+    }
+    // Slow path: getImageData is the "downsample" cost (full-canvas readback);
+    // preprocess* is the "swap" cost (resample + repack).
+    const tA = _hrtime();
+    const frame = getPixelData();
+    const tB = _hrtime();
+    const obs = this.obsMode === 'rgb'
+      ? preprocessObservationRGB(frame.data, frame.width, frame.height, this.obsWidth, this.obsHeight)
+      : preprocessObservationFromRGBA(frame.data, frame.width, frame.height, this.obsWidth, this.obsHeight);
+    const tC = _hrtime();
+    _profileTimings.downsample += tB - tA;
+    _profileTimings.swap += tC - tB;
+    return obs;
+  }
+
   _buildInfo() {
     const state = this._getState();
     return {
@@ -167,24 +205,44 @@ export class GameEnv {
     const action = ACTIONS[actionIndex] ?? ACTIONS[0];
     setKeysDown(action.held);
     if (action.press !== null) simulateKeyPress(action.press);
-    tick();
 
+    if (!PROFILE) {
+      tick();
+      const state = this._getState();
+      const reward = state.score - this.lastScore;
+      this.lastScore = state.score;
+      this.steps += 1;
+      this.episodeReturn += reward;
+      const terminated = TERMINAL_STATES.has(state.gameState);
+      const truncated = !terminated && this.steps >= this.maxSteps;
+      return {
+        observation: this._getObservation(),
+        reward,
+        terminated,
+        truncated,
+        info: this._buildInfo(),
+      };
+    }
+
+    const t0 = _hrtime();
+    tick();
+    const t1 = _hrtime();
+    const observation = this._getObservationProfiled();
+    const t2 = _hrtime();
     const state = this._getState();
     const reward = state.score - this.lastScore;
     this.lastScore = state.score;
     this.steps += 1;
     this.episodeReturn += reward;
-
     const terminated = TERMINAL_STATES.has(state.gameState);
     const truncated = !terminated && this.steps >= this.maxSteps;
+    const info = this._buildInfo();
+    const t3 = _hrtime();
+    _profileTimings.draw += t1 - t0;
+    _profileTimings.info += t3 - t2;
+    _profileTimings.n += 1;
 
-    return {
-      observation: this._getObservation(),
-      reward,
-      terminated,
-      truncated,
-      info: this._buildInfo(),
-    };
+    return { observation, reward, terminated, truncated, info };
   }
 
   close() {

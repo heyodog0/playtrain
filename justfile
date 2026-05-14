@@ -68,3 +68,11 @@ bench-three:
 # Benchmark a single three.js game
 bench-three-one game:
     uv run python tools/bench.py --backend three --game {{game}}
+
+# Per-phase step profile for one p5 game (draw / downsample / swap / info / framing)
+profile game="flappy_bird":
+    uv run python tools/profile.py --game {{game}}
+
+# Same, but also writes a V8 .cpuprofile under outputs/profile/ for Chrome DevTools
+profile-cpu game="flappy_bird":
+    uv run python tools/profile.py --game {{game}} --cpu-prof

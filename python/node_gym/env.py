@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import mmap
 import os
+import shlex
 import struct
 import subprocess
+import sys
 import tempfile
 from collections import deque
 from pathlib import Path
@@ -157,8 +159,13 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
                 access=mmap.ACCESS_READ,
             )
 
+        # NODE_GYM_NODE_FLAGS lets callers inject `node` flags (e.g.
+        # "--cpu-prof --cpu-prof-dir=/abs/path"). Splice between binary
+        # and script so the flags apply to the worker process itself.
+        node_flags = shlex.split(os.environ.get("NODE_GYM_NODE_FLAGS", ""))
         cmd = [
             node_bin,
+            *node_flags,
             str(self._worker_path),
             "--game", str(self._game_path),
             "--obs-mode", obs_mode,
@@ -314,13 +321,28 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
             self._request({"cmd": "close"})
         except Exception:
             pass
-        if self._proc.poll() is None:
+        # After the worker acks `close` it calls process.exit(0). Wait for that
+        # natural exit (V8's --cpu-prof flush happens here) before resorting to
+        # signals. Without this, a SIGTERM races ahead of the profile flush and
+        # the .cpuprofile file is never written.
+        try:
+            self._proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
             self._proc.terminate()
             try:
                 self._proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._proc.kill()
                 self._proc.wait(timeout=5)
+        # If the worker printed a profile summary to stderr (only when
+        # NODE_GYM_P5_PROFILE=1), surface it so the caller can see it.
+        if os.environ.get("NODE_GYM_P5_PROFILE") == "1" and self._proc.stderr is not None:
+            try:
+                tail = self._proc.stderr.read()
+                if tail:
+                    sys.stderr.write(tail.decode(errors="replace"))
+            except Exception:
+                pass
         # Tear down mmap + tmp file
         try:
             if getattr(self, "_mmap", None) is not None:
