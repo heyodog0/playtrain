@@ -80,8 +80,12 @@ if (!isMainThread) {
   // ─── Main thread ─────────────────────────────────────────────────────
   const args = process.argv.slice(2);
   let ITERS = 1500;
+  let THREAD_LIST = [1, 2, 3, 4, 6, 8, 12];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--iters' && args[i + 1]) ITERS = parseInt(args[++i], 10);
+    else if (args[i] === '--threads' && args[i + 1]) {
+      THREAD_LIST = args[++i].split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
+    }
   }
 
   function spawnAndRun(nThreads, iters) {
@@ -111,7 +115,9 @@ if (!isMainThread) {
 
   console.log(`Phase 0 probe: node-canvas thread-safety + Worker-Thread scaling`);
   console.log(`  iters/thread: ${ITERS}`);
+  console.log(`  thread list:  ${THREAD_LIST.join(', ')}`);
   console.log(`  workload per iter: 50 fillRects on 480×352 canvas + drawImage to 64×64 + toBuffer('raw')`);
+  console.log(`  node: ${process.version}  platform: ${process.platform} ${process.arch}`);
   console.log('');
 
   // Single-thread baseline first (main-thread, no Worker overhead at all).
@@ -127,7 +133,7 @@ if (!isMainThread) {
   console.log(header);
   console.log('  ' + '─'.repeat(header.length - 2));
 
-  for (const N of [1, 2, 3, 4, 6, 8, 12]) {
+  for (const N of THREAD_LIST) {
     const { wallMs, results } = await spawnAndRun(N, ITERS);
     const slowestUs = Math.max(...results.map(r => r.perIterUs));
     const aggIps = (ITERS * N) / (wallMs / 1000);
