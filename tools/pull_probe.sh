@@ -32,6 +32,7 @@ case "$FILTER" in
       "logs/wt_probe_*"
       "logs/alloc_sweep_*" "logs/alloc_probe_*"
       "logs/workload_sweep_*" "logs/workload_probe_*"
+      "logs/perf_probe_*" "logs/cpuprof_*"
     )
     ;;
   wt)
@@ -43,16 +44,20 @@ case "$FILTER" in
   workload)
     PATTERNS=("logs/workload_sweep_*" "logs/workload_probe_*")
     ;;
+  perf)
+    PATTERNS=("logs/perf_probe_*" "logs/cpuprof_*")
+    ;;
   latest)
     # Resolve the newest jobid (across ALL probe kinds) on the FASRC side.
     echo "==> Resolving latest probe job on $FASRC_HOST…"
     NEWEST=$(ssh "$FASRC_HOST" "
       ls -t ${FASRC_PATH}/logs/wt_probe_*.log \
             ${FASRC_PATH}/logs/alloc_sweep_*.out \
-            ${FASRC_PATH}/logs/workload_sweep_*.out 2>/dev/null \
+            ${FASRC_PATH}/logs/workload_sweep_*.out \
+            ${FASRC_PATH}/logs/perf_probe_*.out 2>/dev/null \
         | head -1 \
         | xargs -n1 basename \
-        | sed -E 's/^(wt_probe|alloc_sweep|workload_sweep)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
+        | sed -E 's/^(wt_probe|alloc_sweep|workload_sweep|perf_probe)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
     ")
     if [ -z "${NEWEST:-}" ]; then
       echo "ERROR: no probe logs found under ${FASRC_PATH}/logs/ on $FASRC_HOST" >&2
@@ -63,6 +68,7 @@ case "$FILTER" in
       "logs/wt_probe_${NEWEST}*"
       "logs/alloc_sweep_${NEWEST}*"     "logs/alloc_probe_${NEWEST}_*"
       "logs/workload_sweep_${NEWEST}*"  "logs/workload_probe_${NEWEST}_*"
+      "logs/perf_probe_${NEWEST}*"      "logs/cpuprof_${NEWEST}/"
     )
     ;;
   *)
@@ -71,6 +77,7 @@ case "$FILTER" in
       "logs/wt_probe_${FILTER}*"
       "logs/alloc_sweep_${FILTER}*"     "logs/alloc_probe_${FILTER}_*"
       "logs/workload_sweep_${FILTER}*"  "logs/workload_probe_${FILTER}_*"
+      "logs/perf_probe_${FILTER}*"      "logs/cpuprof_${FILTER}/"
     )
     ;;
 esac

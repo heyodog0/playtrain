@@ -1,9 +1,11 @@
 # Multi-Env Runtime — Design + Investigation
 
-**Status**: DirectVecEnv (Architecture B) chosen, Phase 1 not yet started.
-**Branch**: `dev/worker-threads-multi-env` (historical name — covers both
-architectures considered; Worker Threads was investigated first, rejected
-on data, DirectVecEnv emerged as the right fit).
+**Status**: Phase 0.5 investigation in progress. Worker Threads
+contention has been characterized in shape but not yet attributed to a
+specific symbol/library. DirectVecEnv is a candidate fallback if the
+investigation confirms Cairo contention is fundamental. No
+implementation committed yet either way.
+**Branch**: `dev/worker-threads-multi-env`.
 **Target**: aggregate training throughput parity with (or beyond) ALE on
 matched PPO settings, plus aggregate-throughput wins for non-training
 workloads (bench, eval, LLM-game validation), while preserving the
@@ -14,25 +16,32 @@ existing observation/reward semantics.
 
 ## 0. TL;DR
 
-After ruling out two architectures via systematic probes, the chosen
-runtime is **DirectVecEnv**: one Python process talks directly to N
-separate Node subprocesses (skipping `SubprocVecEnv`'s pickle layer).
+Two architectures under consideration, evidence below. Investigation
+is **not yet concluded**.
 
-We initially proposed and prototyped a **Worker Threads** runtime
-(one Node process, N threads sharing memory). Phase 0 probes showed
-per-thread time at N=16 degrades 3.4× under node-canvas / Cairo
-contention; an allocator sweep ruled out glibc malloc; a workload
-sweep localized the contention to canvas C-level libraries; and a
-prior Skia-canvas experiment showed Skia is also slower (i.e. swapping
-rasterizers doesn't escape the bottleneck). Linear-scaling Worker
-Threads is therefore not reachable with current libraries.
+**Architecture A: Worker Threads** — one Node process, N threads
+sharing memory. Phase 0 probes characterized the contention shape:
+per-thread time degrades 3.4× at N=16 on FASRC; allocator and
+bandwidth ruled out; contention scales per-canvas-call, not per-pixel;
+prior Skia swap was slower (so the issue is not Cairo-specific).
+**The investigation has characterized the contention's behavior but
+has NOT yet attributed it to a specific symbol/library.** Phase 0.5
+(below, §11) is going to attribute it definitively via perf profiling,
+pixman/cairo version inspection, and isolated micro-probes.
 
-DirectVecEnv preserves the per-process rasterization parallelism that
-*does* scale linearly (~99% efficiency in Phase 0 single-Worker tests)
-and removes only the layer we know is wasteful: SubprocVecEnv's
-Python-to-Python pickle of obs every step. **Strictly an improvement
-over the current state**, with a smaller best-case win than Worker
-Threads but no architectural risk.
+**Architecture B: DirectVecEnv** — one Python process, N Node
+subprocesses (skipping SubprocVecEnv's pickle layer). Preserves the
+per-process rasterization parallelism that probes show *does* scale
+linearly. Strictly an improvement over the current state; smaller
+best-case ceiling than Worker Threads. **Candidate fallback** if
+Phase 0.5 concludes the canvas-library contention is fundamental and
+not fixable.
+
+**Decision is deferred to after Phase 0.5.** If Phase 0.5 finds a
+specific bottleneck that can be eliminated (e.g., a pixman version
+upgrade, a config flag, an LD_PRELOAD), Worker Threads goes back on
+the table. If the contention is confirmed deep and unfixable, we
+pivot to DirectVecEnv with paper-quality evidence for why.
 
 ---
 
@@ -133,7 +142,7 @@ swap to skia-canvas (tried in prior work) does not resolve the
 contention. Worker Threads is therefore not the right architecture
 given current C-level library constraints.
 
-### 3.2 Architecture B: DirectVecEnv (CHOSEN)
+### 3.2 Architecture B: DirectVecEnv (CANDIDATE FALLBACK)
 
 ```
 Python (main process)
@@ -446,14 +455,90 @@ The new runtime is acceptable for merging to main iff:
 
 ---
 
-## 10. Appendix: Worker Threads design (for reference)
+## 10. Phase 0.5: deeper contention investigation (IN PROGRESS)
+
+The investigation so far has characterized the contention's *behavior*
+(it scales per-canvas-call, in C-level libraries, not bandwidth-bound,
+not glibc-malloc). It has NOT attributed it to a specific
+symbol/library. Phase 0.5 closes that gap.
+
+For a TMLR paper, this matters: "we ruled out Worker Threads because
+Cairo contends" is a much weaker design-tradeoffs claim than
+"`perf` on FASRC shows 42% of self-time at N=16 in
+`pixman_image_composite32`, which holds a global SIMD-dispatch mutex
+(see [link to pixman issue tracker])." Phase 0.5 aims for the latter.
+
+### 10.1 Planned experiments
+
+| # | Experiment | What it tells us | Cost |
+|---|---|---|---|
+| 1 | **`perf record` + flame graph** on the probe at N=16 | Direct attribution of wait time to specific C symbols. Definitive if perf is allowed on FASRC compute nodes. | 1 day |
+| 2 | **`strace -c -f`** on the worker process | Counts futex (lock-wait) calls. Lock-call rate growth with N is direct evidence of locking. Always available; weaker than perf but free. | 2 hours |
+| 3 | **Library version inspection** (`ldd`, `pkg-config`, `nm`) | Confirms which libpixman / libcairo versions FASRC's node-canvas links against. Old pixman has known threading issues. | 30 min |
+| 4 | **Micro-probe variants** (`single_fillrect`, `text_only`, `create_destroy`) | Narrows the contention to specific Cairo call paths. If `single_fillrect` scales but `full` doesn't, the issue is one specific primitive. | 4 hours |
+| 5 | **Minimal raw N-API addon** (no node-canvas, just direct Cairo calls) | Distinguishes node-canvas binding contention from underlying Cairo/pixman contention. | 1–2 days |
+| 6 | **Compare against ALE multi-env** at N=16 on FASRC | If ALE *also* caps at ~4× aggregate, the issue is Python/Linux pipeline, not anything node-gym. | 2 hours |
+
+Experiments 1–4 are high-info, low-cost; do those first. Experiment 5
+is heavier but definitive if 1–4 don't conclude. Experiment 6 is a
+sanity check on whether *anything* multi-env scales past 4× on this
+hardware.
+
+### 10.2 Decision tree after Phase 0.5
+
+```
+Phase 0.5 result                         → Architecture decision
+─────────────────────────────────────────────────────────────────
+Bottleneck is a fixable config /         → Worker Threads revives;
+upgrade (pixman version, flag, env)        Phase 1 proceeds as
+                                           originally designed
+─────────────────────────────────────────────────────────────────
+Bottleneck is in node-canvas's           → Write a slim native addon
+binding layer, not in pixman/Cairo         (Architecture C, below);
+                                           Phase 1 wraps it
+─────────────────────────────────────────────────────────────────
+Bottleneck is genuinely deep             → DirectVecEnv (Architecture
+(pixman global state, kernel-level         B), with paper-quality
+mmap_sem, etc.), unfixable from            evidence for why
+node-gym's side
+─────────────────────────────────────────────────────────────────
+ALE also caps at ~4× on same             → Issue is below node-gym
+hardware                                   entirely; both architectures
+                                           hit the same wall;
+                                           DirectVecEnv is still right
+                                           but framing changes
+```
+
+### 10.3 Architecture C (contingent): slim native addon
+
+Only viable if Phase 0.5 (experiment 5) shows node-canvas's binding
+layer is the bottleneck and underlying Cairo is fine. A minimal
+N-API addon would expose just the operations node-gym needs (init
+surface, fillRect, drawImage, toBuffer raw) without node-canvas's
+full API. ~1–2 weeks of work; we don't commit to this until and
+unless the data supports it.
+
+### 10.4 Phase 0.5 receipts (will fill in as experiments complete)
+
+| # | Experiment | Commit | FASRC job | Finding |
+|---|---|---|---|---|
+| 1 | `perf record` | _pending_ | _pending_ | _pending_ |
+| 2 | `strace -c` | _pending_ | _pending_ | _pending_ |
+| 3 | Lib versions | _pending_ | _pending_ | _pending_ |
+| 4 | Micro-probes | _pending_ | _pending_ | _pending_ |
+| 5 | Raw N-API | _deferred unless 1–4 inconclusive_ | — | — |
+| 6 | ALE compare | _pending_ | _pending_ | _pending_ |
+
+---
+
+## 11. Appendix: Worker Threads design (for reference)
 
 The original Worker Threads architecture in full detail, preserved here
 because the receipts in §4 reference its phased plan. If the contention
 landscape changes (Cairo update, skia threadpool change, etc.), this
 appendix has the implementation map ready to revive.
 
-### 10.1 Per-env state isolation
+### 11.1 Per-env state isolation
 
 Two strategies were considered:
 
@@ -466,7 +551,7 @@ Two strategies were considered:
   process, N contexts, sequential per step. Loses the parallelism
   the design depended on. Rejected.
 
-### 10.2 SharedArrayBuffer layout
+### 11.2 SharedArrayBuffer layout
 
 ```
 offset  size          contents
@@ -482,7 +567,7 @@ last 4  control word  (Atomics.wait/notify target)
 
 For N=16, 64×64 RGB: ~196 KB.
 
-### 10.3 Synchronization
+### 11.3 Synchronization
 
 Two layers:
 
@@ -492,7 +577,7 @@ Two layers:
 - **Node main thread ↔ Worker Threads**: `Atomics.notify` +
   `Atomics.wait` on Int32Array views of the shared buffer.
 
-### 10.4 Why this didn't work
+### 11.4 Why this didn't work (without Phase 0.5 attribution)
 
 Per §4 above: at N=16 on FASRC Linux, the per-thread Cairo contention
 overhead (3.4× slowdown) ate more than the SubprocVecEnv pickle
