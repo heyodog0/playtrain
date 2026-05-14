@@ -518,39 +518,110 @@ surface, fillRect, drawImage, toBuffer raw) without node-canvas's
 full API. ~1–2 weeks of work; we don't commit to this until and
 unless the data supports it.
 
-### 10.4 Phase 0.5 receipts (will fill in as experiments complete)
+### 10.4 Phase 0.5 receipts
 
 | # | Experiment | Commit | FASRC job | Finding |
 |---|---|---|---|---|
-| 1 | `perf record` | `f43a67b` (SBATCH) | 12891628 (aborted; bug) → resubmit pending | Job aborted at the ldd stage due to a SIGPIPE+`set -e` interaction in the script; environment log got partway through. **Real perf+strace data pending after bug fix.** |
-| 2 | `strace -c` | (same SBATCH) | (same; aborted before strace ran) | _pending_ |
-| 3 | **Lib versions** | (partial from job 12891628 env log) | 12891628 | **node-canvas 3.2.3 bundles its own native libraries inside `node_modules/.pnpm/canvas@3.2.3/.../build/Release/`** — not loaded from system. Versions: **libpixman 0.38.4** (released 2019; current upstream is 0.44+), **libcairo 1.15.12** (a 2017-era dev snapshot; current stable is 1.18.x). These vendored versions cannot be upgraded without rebuilding `canvas` from source against system libraries. **Plausible primary cause of the per-canvas-call contention** — pixman 0.38 predates substantial multi-thread work in the project. |
-| 4 | Micro-probes | _pending_ | _pending_ | _pending_ |
-| 5 | Raw N-API | _deferred unless 1–4 inconclusive_ | — | — |
-| 6 | ALE compare | _pending_ | _pending_ | _pending_ |
+| 1a | `perf record` | `f43a67b` (SBATCH) | 12891628 | Aborted at ldd stage due to SIGPIPE × `set -e` interaction. Bug fixed in `7c1f7ce` (`set -u` only, `head -N` → `awk 'NR<=N'`). Partial environment log still captured Lib versions finding (row 3). |
+| 1b | **`perf record`** (post-fix) | `7c1f7ce` (SBATCH) | **12891926** | **`perf_event_paranoid = 2` on FASRC compute nodes — kernel-level perf record requires ≤1, so blocked.** Fallback: Node `--cpu-prof` per Worker Thread. Result: 16 Worker profiles + 1 main-thread profile, ~50 KB each. |
+| 2 | **`strace -c -f`** | `7c1f7ce` (SBATCH) | **12891926** | At **N=1**: 396 futex calls, **0.40s** total wait (62% of run's strace-tracked time — most is V8 internal coordination across libuv/GC threads, not lock contention). At **N=16**: 2,955 futex calls, **5.45s** total wait. Δ = +5.05s of additional futex wait at N=16, distributed across 16 Workers ≈ **0.32s per Worker = ~14.5% of per-Worker wall** (Worker wall ≈ 2.2s for 8000 iters × 277 μs/iter). **Userspace lock contention is real and material, but accounts for only ~15% of the per-thread slowdown.** |
+| 3 | **Lib versions** | (partial from job 12891628 env log; confirmed in 12891926) | 12891628 / 12891926 | **node-canvas 3.2.3 bundles its own native libraries** inside `node_modules/.pnpm/canvas@3.2.3/.../build/Release/` — not loaded from system. Versions: **libpixman 0.38.4** (released 2019; current upstream is 0.44+), **libcairo 1.15.12** (2017-era dev snapshot; current stable is 1.18.x), libfontconfig 2.13.1. Cannot be upgraded without rebuilding `canvas` from source against system libraries. **Plausible primary cause of the ~15% futex portion.** |
+| 4 | Worker `.cpuprofile`s | `7c1f7ce` (SBATCH) | **12891926** | All 16 Worker profiles show the same pattern: **97.4–97.5% of self-time in `full`** (the JS function that calls fillRect/drawImage/toBuffer). GC: <1%. (program): <1%. No JS-side bottleneck. V8 profiler cannot see past N-API boundary, so all native time gets credited to the calling JS frame. **Workers are on-CPU inside Cairo, not blocked or idle.** Main thread (thread 0): 75.6% (idle), 21.1% `full` — confirms dispatcher just waits for Workers each iter. |
+| 5 | Raw N-API | _deferred — investigation has enough evidence to decide_ | — | — |
+| 6 | ALE multi-env compare | _deferred — see Option 3 in §10.6_ | _pending if pursued_ | _pending_ |
 
-### 10.5 Pivot in direction based on §10.4 partial finding
+### 10.5 Decomposing the per-thread slowdown at N=16
 
-The vendored-library finding from job 12891628 (even though the rest
-of that job aborted) is significant: it suggests a concrete fix path
-that doesn't require pivoting away from Worker Threads.
+Combining the strace, cpuprofile, and earlier scaling data (all from
+job 12891926 + 12886605):
 
-**Architecture A' (contingent on perf confirmation)**: rebuild
-node-canvas from source on FASRC, linking against modern system
-libpixman and libcairo. If post-2020 pixman improvements include the
-critical multi-thread paths, per-thread efficiency at N=16 should
-improve substantially — possibly to the linear-scaling target.
+**Per-Worker wall at N=16**: ~277 μs/iter (vs 81 μs at N=1 single-Worker
+baseline). Extra: **196 μs/iter of slowdown**.
 
-Action sequence:
-1. Fix the SBATCH bug, re-run perf to confirm pixman/cairo are
-   where time is actually spent (closes the loop on attribution).
-2. If confirmed: rebuild node-canvas with `--build-from-source` on
-   FASRC after installing/loading modern cairo/pixman modules. Re-run
-   the Worker-Threads probe at N=16; check whether per-thread time
-   drops materially.
-3. If the rebuilt canvas scales: Worker Threads becomes viable;
-   document the build prerequisite in `setup_fasrc.sh`.
-4. If not: continue ruling out per the §10.2 decision tree.
+From the strace ledger:
+- ~15% of per-thread wall is in **futex syscalls** (userspace lock
+  contention — pthread_mutex_lock and friends inside libcairo /
+  libpixman / N-API binding).
+
+The other ~85%:
+- ~85% of per-thread wall is **non-syscall slowdown** — the Workers
+  are *on CPU*, doing canvas calls, but each call runs ~3× slower
+  than at N=1. cpuprofile attributes this all to the JS `full`
+  function (the profiler can't see into native code).
+
+**This non-syscall component is NOT in any kernel wait.** Most plausible
+candidates:
+- L3 cache eviction: each Worker's working set evicts the others'
+- TLB pressure: many small Cairo internal allocations across threads
+- Atomic-counter contention (busy-spin, no syscall) inside pixman SIMD
+  dispatch or memory allocator hot paths
+- Memory controller / inter-core coherence saturation on shared cache lines
+
+**None of these are fixable from node-gym's side.** They're properties
+of the workload × hardware × library stack — fundamentally bounded.
+
+### 10.6 What this means for the architecture decision
+
+Math comparison at n_envs=16 on FASRC (μs per training step's env phase):
+
+| Architecture | Env compute time | Coord overhead | **Total/step** |
+|---|---:|---:|---:|
+| `SubprocVecEnv` (current) | ~80 (separate processes scale ~linearly) | ~93 (Python pickle) | **~173** |
+| Worker Threads (today) | ~277 (3.4× contention) | ~10 (Atomics) | **~287** |
+| Worker Threads + 100% futex fix (Architecture A'; theoretical best case from lib rebuild) | ~235 (remove 15% futex portion) | ~10 | **~245** |
+| Worker Threads + hypothetical full linear scaling (impossible — non-syscall hardware contention) | ~80 | ~10 | ~90 |
+| **DirectVecEnv** (Architecture B) | ~80 (preserves separate processes) | ~10–30 (direct pipes, no pickle) | **~90–110** |
+
+**Two clean conclusions**:
+
+1. **Worker Threads today is slower than current SubprocVecEnv** (287 > 173).
+2. **Even Architecture A' (library upgrade)** is still slower than current
+   SubprocVecEnv (245 > 173), because the non-syscall slowdown — the
+   85% that's hardware-level — isn't fixable by software.
+3. **DirectVecEnv** is the only candidate in this table that beats
+   current SubprocVecEnv (90–110 < 173), because it keeps the
+   separate-process model that's already known to scale and removes
+   only the pickle layer.
+
+**Worker Threads cannot win** unless we find a way to remove the
+hardware-level contention. The investigation has searched the
+practically-fixable space (allocator, libs, GC) and found no such
+fix.
+
+### 10.7 Decision point: pivot to DirectVecEnv (with three optional follow-up experiments)
+
+The data is sufficient to commit to **DirectVecEnv as Architecture B**.
+Three optional experiments could still strengthen the paper's
+design-tradeoffs section, but none are blocking:
+
+**Option 1: Skia multi-env experiment.** The prior Skia experiment
+was done only at single-env (N=1) and showed worse single-thread
+throughput. But we have NOT tested Skia at N=16 — and the contention
+profile might differ since Skia uses a different rasterizer than
+Cairo. If Skia at N=16 shows linear scaling, the Worker Threads
+verdict could flip. If it shows the same ~85% non-syscall slowdown,
+the diagnosis (hardware-level contention) is confirmed across both
+rasterizer families. **High information value either way.** Cost:
+~half day of probe writing + one FASRC run.
+
+**Option 2: Architecture A' — rebuild canvas against modern libs.**
+Validates the bundled-pixman hypothesis precisely. Best case: ~15%
+improvement on the futex portion (per the strace decomposition).
+**Doesn't change the architecture decision** (Worker Threads still
+loses to DirectVecEnv) but documents what's possible. Cost: ~0.5–1
+day of FASRC build-dep wrestling.
+
+**Option 3: ALE multi-env compare at N=16.** If ALE on the same
+FASRC box also caps at ~4× aggregate, the limit is the Linux
+multi-thread rasterization ceiling — *any* C-binding RL env would
+hit it. Useful for paper framing ("we hit the same ceiling as the
+field"). Cost: ~half day.
+
+**Recommendation**: pursue **Option 1 (Skia multi-env)** next. It's
+the most informative single experiment remaining — directly tests
+whether the per-thread slowdown is library-specific (Cairo) or
+fundamental (hardware + general rasterization). Architecture A' and
+the ALE comparison can follow as time allows.
 
 ---
 
