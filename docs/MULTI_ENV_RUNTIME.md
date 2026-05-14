@@ -1,0 +1,503 @@
+# Multi-Env Runtime — Design + Investigation
+
+**Status**: DirectVecEnv (Architecture B) chosen, Phase 1 not yet started.
+**Branch**: `dev/worker-threads-multi-env` (historical name — covers both
+architectures considered; Worker Threads was investigated first, rejected
+on data, DirectVecEnv emerged as the right fit).
+**Target**: aggregate training throughput parity with (or beyond) ALE on
+matched PPO settings, plus aggregate-throughput wins for non-training
+workloads (bench, eval, LLM-game validation), while preserving the
+"write games in idiomatic p5.js / three.js" developer experience and
+existing observation/reward semantics.
+
+---
+
+## 0. TL;DR
+
+After ruling out two architectures via systematic probes, the chosen
+runtime is **DirectVecEnv**: one Python process talks directly to N
+separate Node subprocesses (skipping `SubprocVecEnv`'s pickle layer).
+
+We initially proposed and prototyped a **Worker Threads** runtime
+(one Node process, N threads sharing memory). Phase 0 probes showed
+per-thread time at N=16 degrades 3.4× under node-canvas / Cairo
+contention; an allocator sweep ruled out glibc malloc; a workload
+sweep localized the contention to canvas C-level libraries; and a
+prior Skia-canvas experiment showed Skia is also slower (i.e. swapping
+rasterizers doesn't escape the bottleneck). Linear-scaling Worker
+Threads is therefore not reachable with current libraries.
+
+DirectVecEnv preserves the per-process rasterization parallelism that
+*does* scale linearly (~99% efficiency in Phase 0 single-Worker tests)
+and removes only the layer we know is wasteful: SubprocVecEnv's
+Python-to-Python pickle of obs every step. **Strictly an improvement
+over the current state**, with a smaller best-case win than Worker
+Threads but no architectural risk.
+
+---
+
+## 1. Motivation
+
+The current architecture spawns one Node subprocess per env via
+SB3's `SubprocVecEnv`. At n_envs=16 on a CUDA training box this gives
+node-gym ~74% of ALE's aggregate sps on matched PPO settings (analogen
+job 12720391: ALE 2064 / node-gym-grid 1522 sps). The 26% gap is paid
+in two places:
+
+1. **Per-env Node process overhead.** 16 separate V8 heaps, 16 GCs,
+   16 JIT warmups, 16 mmap regions, 16 stdio pipes. Per-process fixed
+   costs add up at startup but are amortized over training.
+2. **`SubprocVecEnv` Python-side coordination.** SB3 pickles per-env
+   obs returned from each child Python process to the main Python
+   process, on top of the Node→child-Python mmap path that node-gym
+   already provides. The double-pickle + 16 pipe round-trips per step
+   is the dominant component of the 26% gap.
+
+After this branch's earlier shipped work — Cairo-side obs downsample
+(commit `04f197a`, +1.75–3.10×) and fillStyle/strokeStyle caching
+(commit `4355541`, +3–9%) — per-env step time in node-gym is no longer
+the bottleneck. What remains is the coordination overhead above.
+
+### Non-goals
+
+- A C++ env runtime (EnvPool-style). EnvPool wraps existing C++ envs;
+  node-gym envs are JS, so wrapping V8 in C++ gives the maintenance
+  pain without the perf win.
+- Replacing the rendering backend. node-canvas / Cairo stays.
+- Changing per-env step semantics. Existing bundled games and any
+  future LLM-generated games must produce byte-identical observations
+  under the new runtime, modulo the determinism guarantees already in
+  `validate.py`.
+- A new Python protocol. Gymnasium API surface stays the same; only
+  the internal vec-env transport changes.
+
+---
+
+## 2. Current architecture (briefly)
+
+```
+Python (main process)
+  ├── SubprocVecEnv
+  │     ├── child Python 0 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 0
+  │     ├── child Python 1 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 1
+  │     ├── ...
+  │     └── child Python 15 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 15
+  └── PPO loop
+```
+
+Per training step:
+- 16 pickle ops in 16 separate child Python processes
+- 16 pipe round-trips to the parent Python process
+- 16 mmap reads (already efficient via current Node→Python path)
+- 16 V8 heaps each running their own game in parallel (this part is fine —
+  it's exactly the parallelism we want, and probes confirm it scales)
+
+The pickle + child-Python coordination is what DirectVecEnv removes.
+
+---
+
+## 3. Architectures considered
+
+### 3.1 Architecture A: Worker Threads multi-env (REJECTED — see §4 for evidence)
+
+```
+Python (main process)
+  └── one Node process
+        ├── main thread: dispatcher
+        ├── Worker Thread 0  → GameEnv 0 (own V8 isolate, own Cairo canvas)
+        ├── Worker Thread 1  → GameEnv 1
+        ├── ...
+        └── Worker Thread 15 → GameEnv 15
+        └── shared: SharedArrayBuffer (batched obs + actions + step headers)
+```
+
+**Premise**: one Node process, N Worker Threads (real OS threads in
+Node), one SharedArrayBuffer mapped to a single Python-side mmap. Per
+step: write N actions → signal threads via `Atomics.notify` → each
+thread steps its game and writes its obs slot → dispatcher gathers via
+`Atomics.wait` → return batched obs to Python. **One pipe round-trip
+per training step instead of N. Zero pickle. N real parallel threads
+instead of N processes coordinated through the kernel.**
+
+This was the original design (committed in `b33b218` on this branch).
+Full proposed design appears in the appendix (§10) for future
+reference. The phased plan called for a Phase 0 validation probe to
+confirm node-canvas was thread-safe before any implementation —
+**this gate is what produced the data that rejected the architecture.**
+
+**Verdict (data in §4)**: at N=16 on FASRC Linux, per-thread time
+degrades 3.4× under Cairo contention. Aggregate throughput peaks at
+~4× single-thread instead of the 8–16× linear scaling required for
+this design to clearly beat the current SubprocVecEnv pattern. Library
+swap to skia-canvas (tried in prior work) does not resolve the
+contention. Worker Threads is therefore not the right architecture
+given current C-level library constraints.
+
+### 3.2 Architecture B: DirectVecEnv (CHOSEN)
+
+```
+Python (main process)
+  ├── NodeVecEnv (this branch's new code)
+  │     ├── direct stdin/stdout pipe → Node worker 0 ──mmap── obs region 0
+  │     ├── direct stdin/stdout pipe → Node worker 1 ──mmap── obs region 1
+  │     ├── ...
+  │     └── direct stdin/stdout pipe → Node worker 15 ──mmap── obs region 15
+  └── PPO loop
+```
+
+**Premise**: keep the per-process rasterization parallelism that
+already scales linearly (probes confirm — see §4.2). Replace only the
+layer we know is wasteful: SubprocVecEnv's pickle of obs through
+N+1 Python processes.
+
+Per training step:
+- One Python process writes N action bytes to N stdin pipes
+- Each Node worker steps its game, writes its step header to stdout,
+  writes its obs to its existing mmap region (already happens today)
+- Python reads N step headers from N stdout pipes, reads obs from
+  N mmap regions
+
+**No pickle. No child Python processes. No SubprocVecEnv.** Same
+per-process parallelism as today (which is fine), minus the
+Python-side coordination overhead.
+
+#### What this buys vs current
+
+- Eliminates the per-env Python child process and its pickle round-trip
+- Single Python event loop coordinates all N workers (efficient with
+  `select.select()` or async I/O over N pipes)
+- No new contention introduced — each Node worker is still alone in
+  its process, just like today
+
+#### What this does NOT buy
+
+- The hoped-for 8–16× aggregate jump from collapsing into one Node
+  process. We don't get that because we're not collapsing — that's
+  exactly the change that creates Cairo contention.
+- Linear scaling beyond physical core count (same limit as today).
+
+#### Honest expected magnitude
+
+The 173 μs/step gap between ALE and node-gym (from analogen job
+12720391) decomposes roughly as:
+
+- ~80 μs: actual env compute (Cairo render + obs preprocess, confirmed
+  by FASRC Phase 0 probe — single-Worker baseline was 81 μs)
+- ~93 μs: SubprocVecEnv coordination overhead (the residual)
+
+DirectVecEnv targets that ~93 μs. **If we eliminate half of it,
+training sps goes from 1522 → ~1700 (+12%). If we eliminate most of
+it, 1522 → ~1850 (+22%).** These are estimates; the actual win is
+measured in Phase 4 of the plan below.
+
+For non-training workloads (bench, eval, dataset gen, LLM-game
+validation) the win is the same magnitude as for training, since the
+same coordination overhead applies. Not the multi-X factor we'd
+hoped for, but a clean, bounded engineering improvement.
+
+---
+
+## 4. Phase 0 investigation receipts
+
+Every finding below is reproducible from this branch. Each row cites
+the git commit that introduced the probe and (where applicable) the
+FASRC SLURM job id that produced the result data.
+
+### 4.1 Investigation timeline
+
+| Phase | Commit | FASRC job | Finding |
+|---|---|---|---|
+| Initial design | `b33b218` | — | Worker Threads architecture proposed |
+| Probe scaffold | `c145ecd` | local (Mac) | At N=2 on Mac: **91% efficiency** — node-canvas IS thread-safe (no process-global Cairo lock). At N=8 on Mac: 23% efficiency (P/E-core spillover). Mac-only data; FASRC needed for paper-quality numbers. |
+| SBATCH + `--threads` | `34fbd11` | **12886605** | FASRC Linux x86, 24-core, default glibc: at N=2 → 81%, N=8 → 54%, N=16 → 29% efficiency. Per-thread time at N=16 = 277 μs vs 81 μs baseline (**3.4× slowdown**). Aggregate peaks at N=16 at ~7.4× single-thread. **Useful, but not the linear scaling needed.** |
+| `pull_probe.sh` | `e7c5f4a` | — | Result-pulling tooling. |
+| `pull_probe.sh` ext | `5425bfd` | — | Extended for allocator sweep results. |
+| Allocator sweep | `69d053e` | **12888423** | At N=16: default 309 μs, MALLOC_ARENA_MAX=1 282 μs, =4 298 μs, =24 314 μs. All within ~10%. **arena=1 is slightly *faster* than default** — definitive evidence malloc is not on the critical path. jemalloc/tcmalloc not installed on FASRC node, but the arena=1 result alone disproves the allocator hypothesis. |
+| Workload sweep | `71f9dc4` | **12889388** | At N=16: pure_js 44.5 μs (**64% efficiency**) — non-canvas workloads scale fine. Canvas variants (full, draw_only, readback_only, small) all collapse to 18–27% efficiency. `small` (1/14 the pixels) shows *worse* scaling than `full`, ruling out memory bandwidth / L3 cache. **Contention is per-canvas-call, in C-level libraries.** |
+| Skia-canvas swap | (prior work, predates this branch) | — | Swapping node-canvas → skia-canvas in earlier experimentation made things *slower*, not faster. Library swap is not a path forward — the contention is not Cairo-specific. |
+
+### 4.2 What we ruled out, definitively
+
+The investigation produced a set of negative findings strong enough to
+guide architecture:
+
+- **NOT Worker Threads / V8 / GC**: pure_js workload at N=16 hits 64%
+  efficiency (commit `71f9dc4`, job 12889388). Pure-JS Worker Threads
+  scale fine.
+- **NOT glibc malloc**: all four `MALLOC_ARENA_MAX` variants within
+  ~10% of each other; arena=1 (worst-case-malloc) is the *fastest*
+  variant by a small margin (commit `69d053e`, job 12888423).
+- **NOT memory bandwidth or L3 cache**: `small` (128×96, 1/14 pixel
+  count of full) shows 5.67× slowdown at N=16 vs full's 3.75×.
+  Smaller data makes scaling *worse*, not better — opposite of what
+  bandwidth-bound workloads show (commit `71f9dc4`, job 12889388).
+- **NOT Cairo-specifically (would have been fixed by Skia)**: prior
+  Skia experimentation showed worse, not better, throughput. The
+  bottleneck is shared by both rasterizers.
+
+### 4.3 What remains as the contention source
+
+Likely candidates (in order of plausibility), none of which we can
+practically fix from node-gym's side:
+
+- **libpixman shared SIMD-dispatch state or scan-converter caches**
+  (both Cairo and skia-canvas use pixman for some operations)
+- **Other glibc shared locks** (mmap-managed heap, vmap, dl resolution)
+- **Node N-API call coordination across isolates**
+- **Kernel-level resources** (`mmap_sem`, page-fault handler)
+
+The exact source matters for completeness but doesn't change the
+design conclusion: any architecture that runs N parallel rasterizing
+threads in one Linux process is capped at ~4× aggregate on this
+hardware. DirectVecEnv avoids the issue by keeping separate processes.
+
+### 4.4 What the investigation cost
+
+Total: ~2 days of work. ~3 FASRC SLURM jobs (cheap, all completed
+within 5–15 min wall). The dev branch has 7 commits' worth of
+reproducible probes plus this document.
+
+This is exactly the kind of pre-implementation gating that prevents
+weeks of engineering on the wrong architecture. We learned what we
+needed to learn at the cost of probes, not implementations.
+
+---
+
+## 5. DirectVecEnv design
+
+### 5.1 Process layout
+
+```
+Python (main)                                  Node worker 0
+  NodeVecEnv                                   ┌─────────────────┐
+    ├── pipe.stdin ────────────────────────────► action byte → step
+    ├── pipe.stdout ◄──────────────────────────── step header
+    └── mmap region 0 ◄──── obs write ──────────┤  (already exists today)
+                                                └─────────────────┘
+    ├── pipe.stdin ────────────────────────────► Node worker 1
+    ├── pipe.stdout ◄────────────────────────────
+    └── mmap region 1 ◄──── obs write ──────────
+    ├── ...
+    └── (× 16)
+```
+
+Implementation surface: **only Python-side new code** (`NodeVecEnv`
+class). The Node-side worker stays unchanged — it already writes obs
+to its mmap region and step headers to stdout. We're just reading them
+from a single Python process instead of from 16 child Python processes.
+
+### 5.2 Per-step protocol
+
+1. Python writes 1 byte (the action) to each of N stdin pipes
+2. Each Node worker reads the action, steps its game, writes:
+   - a fixed-size step header to stdout (already implemented in
+     `runtime/p5/game-worker.mjs`)
+   - the obs to its mmap region (already implemented)
+3. Python:
+   - reads N step headers from N stdout pipes (small, fixed size —
+     can use `select.select()` or batched non-blocking reads)
+   - reads obs from N mmap regions (zero-copy numpy views)
+   - assembles into `(N, H, W, C)` for the caller
+
+### 5.3 Python-side API
+
+`NodeVecEnv` mirrors Gymnasium's `VectorEnv`:
+
+```python
+from node_gym import NodeVecEnv
+
+venv = NodeVecEnv(games=["flappy_bird"] * 16,
+                  obs_size=64, obs_mode="rgb")
+obs, info = venv.reset(seeds=[0,1,...])
+obs, rewards, term, trunc, infos = venv.step(actions)
+venv.close()
+```
+
+Drop-in replacement for `SubprocVecEnv([NodeGymEnv(g) for g in games])`
+on the training side. `NodeGymEnv` (single env) stays available for
+single-env use cases (`tools/play.mjs`, `tools/rollout.py`, tests).
+
+### 5.4 Pipe-multiplexing strategy
+
+Three candidates, decide after measuring:
+
+- **`select.select()` over N stdout pipes.** Idiomatic, low overhead,
+  works on Linux + macOS. Probably the right default.
+- **One Python thread per worker** doing blocking reads. Pipe reads
+  release the GIL, so this can be efficient. More complex.
+- **asyncio with stream readers.** Modern, but the event-loop
+  overhead is unlikely to pay off at N=16.
+
+Recommended: start with `select.select()`, benchmark, switch if needed.
+
+### 5.5 Compatibility
+
+- `NodeGymEnv` (single env): unchanged.
+- `NodeVecEnv` (N envs): new.
+- Games: unchanged. Same `setup() / draw() / resetGame() / getGameState()`
+  contract in each Node worker.
+- analogen's `train_ppo_clean.py`: change one line — replace
+  `SubprocVecEnv([make_env(...) for _ in range(N)])` with
+  `NodeVecEnv(games=[cfg.game] * N, ...)`.
+
+---
+
+## 6. Phased implementation plan (DirectVecEnv)
+
+### Phase 1: Two-env prototype (2 days)
+
+- New file: `python/node_gym/vec_env.py` containing `NodeVecEnv`.
+- Hardcoded N=2, single game (flappy_bird × 2).
+- Spawn 2 Node workers directly from one Python process.
+- One round-trip step → batched (2, 64, 64, 3) obs.
+- A/B against `SubprocVecEnv([NodeGymEnv]*2)` on bench.
+- Determinism check: replay twice, byte-compare obs sequence.
+
+### Phase 2: General N + heterogeneous catalogs (2 days)
+
+- Parameterize N.
+- Support `NodeVecEnv(games=[...])` with arbitrary game list.
+- Validate.py-equivalent across all 39 bundled games, homogeneous
+  N=8 batches.
+
+### Phase 3: Error handling + lifecycle (1 day)
+
+- Node worker crash → clean Python-side error, not deadlock.
+- `venv.close()` cleanly terminates all workers in <2s.
+- Per-env auto-reset on done.
+
+### Phase 4: Performance pass (2 days)
+
+- Choose pipe-multiplexing strategy by measurement (`select` vs
+  threads vs asyncio).
+- A/B against `SubprocVecEnv([NodeGymEnv]*16)` on analogen
+  `train_ppo_clean.py` — full PPO training step, measure sps delta.
+- Acceptance: ≥10% sps improvement over current SubprocVecEnv at
+  n_envs=16.
+
+### Phase 5: Integration (1 day)
+
+- Update `analogen/src/analogen/train_ppo_clean.py` to use
+  `NodeVecEnv` (behind a config flag for A/B safety).
+- Documentation pass (`README.md`, `docs/PROTOCOL.md`).
+- Merge to main.
+
+**Total: ~8 working days.** Smaller than the Worker Threads phased
+plan because we're touching less infrastructure (no SharedArrayBuffer,
+no Worker Threads coordination, no per-thread state isolation).
+
+---
+
+## 7. Validation criteria
+
+The new runtime is acceptable for merging to main iff:
+
+1. **Determinism**: `validate.py`-equivalent strict byte-equality
+   across replays, on all 39 bundled games, N=8 homogeneous batches.
+2. **Throughput**: at N=16 on a CUDA training box (FASRC), aggregate
+   sps ≥ 1.10× the current `SubprocVecEnv([NodeGymEnv]*16)` baseline
+   on analogen's grid envs. (Acceptance bar set deliberately lower
+   than Worker Threads' would have been, since the architectural
+   ceiling is also lower.)
+3. **No regression**: single-env `NodeGymEnv` path is unchanged and
+   its bench numbers don't move.
+4. **Crash isolation**: a deliberately-throwing game in slot 7 doesn't
+   hang or crash the other 15 envs; surfaces a clean Python error.
+5. **Lifecycle**: `venv.close()` terminates within 2s in all
+   conditions, including mid-step.
+
+---
+
+## 8. Out of scope (for this design)
+
+- **Worker Threads architecture.** Documented above (§3.1, §4, §10) as
+  a considered-and-rejected alternative. Could become viable in the
+  future if Cairo/Skia/pixman gain process-level thread-friendliness.
+- **three.js multi-env.** Different bottleneck (GPU readback, not env
+  compute) and a different optimization story (GPU-batched rendering
+  across envs). Separate design doc when we get to it.
+- **Native draw-list addon.** Would shave another 5–10% on draw-heavy
+  games per the mario CPU profile (recorded in commit `b6baad2`). Not
+  multi-env-related; evaluate as a separate effort post Phase 5.
+- **Skia-canvas swap.** Tried in prior work, slower than node-canvas
+  in our use case. Out of consideration unless Skia's per-call
+  overhead changes substantively upstream.
+- **EnvPool-style C++ runtime.** Wraps existing C++ envs in C++; our
+  envs are JS, so the architecture doesn't apply.
+- **Distribution / prebuilt binaries.** Real DX issue (node-canvas
+  needs native build) but unrelated to runtime; address as part of
+  pre-publish.
+
+---
+
+## 9. Open decisions
+
+- [ ] Pipe-multiplexing strategy: `select` vs threads vs asyncio.
+      **Defer to Phase 4 measurement.**
+- [ ] Default N upper bound. Probably 32 — bench scaling beyond that
+      is bounded by host core count.
+- [ ] Heterogeneous catalogs in N=16 batch: support from Phase 2 or
+      defer to a follow-up release? **Lean toward Phase 2 since it's
+      a small API decision now and a bigger rewrite later.**
+- [ ] Frame stacking: stay Python-side (current) or move into Node
+      worker? **Stay Python-side; one less thing to change.**
+- [ ] Action space heterogeneity: support games with different
+      `n_actions` in one batch? **Defer; current usage is uniform.**
+
+---
+
+## 10. Appendix: Worker Threads design (for reference)
+
+The original Worker Threads architecture in full detail, preserved here
+because the receipts in §4 reference its phased plan. If the contention
+landscape changes (Cairo update, skia threadpool change, etc.), this
+appendix has the implementation map ready to revive.
+
+### 10.1 Per-env state isolation
+
+Two strategies were considered:
+
+- **Strategy A (one Worker Thread per env, separate module load)**:
+  each thread imports `p5-shim.mjs` independently. ES modules have
+  per-realm state, so module-level globals are naturally per-thread.
+  Memory cost: ~10–20 MB per V8 isolate at N=32 (~480 MB). Cleanest
+  isolation. Was the recommended approach.
+- **Strategy B (one thread, N `vm.Context`s)**: single-threaded
+  process, N contexts, sequential per step. Loses the parallelism
+  the design depended on. Rejected.
+
+### 10.2 SharedArrayBuffer layout
+
+```
+offset  size          contents
+0       4             header magic (uint32)
+4       4             N (uint32)
+8       N*1           actions (uint8 per env)
+8+N     N*16          per-env step headers (reward f32, terminated u8,
+                      truncated u8, gameState u8, lives u8, score i32,
+                      episodeLength i32)
+8+17N   N*H*W*C       obs bytes
+last 4  control word  (Atomics.wait/notify target)
+```
+
+For N=16, 64×64 RGB: ~196 KB.
+
+### 10.3 Synchronization
+
+Two layers:
+
+- **Python ↔ Node main thread**: existing stdin/stdout framing
+  protocol from `game-worker.mjs`. One request/response per training
+  step.
+- **Node main thread ↔ Worker Threads**: `Atomics.notify` +
+  `Atomics.wait` on Int32Array views of the shared buffer.
+
+### 10.4 Why this didn't work
+
+Per §4 above: at N=16 on FASRC Linux, the per-thread Cairo contention
+overhead (3.4× slowdown) ate more than the SubprocVecEnv pickle
+overhead saved. Aggregate throughput would have been comparable to or
+slightly worse than current SubprocVecEnv.
+
+The architecture is sound. It's the underlying library stack that
+isn't thread-friendly. Revisit if that changes.
