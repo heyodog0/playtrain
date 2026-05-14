@@ -30,8 +30,8 @@ case "$FILTER" in
   all)
     PATTERNS=(
       "logs/wt_probe_*"
-      "logs/alloc_sweep_*"
-      "logs/alloc_probe_*"
+      "logs/alloc_sweep_*" "logs/alloc_probe_*"
+      "logs/workload_sweep_*" "logs/workload_probe_*"
     )
     ;;
   wt)
@@ -40,14 +40,19 @@ case "$FILTER" in
   alloc)
     PATTERNS=("logs/alloc_sweep_*" "logs/alloc_probe_*")
     ;;
+  workload)
+    PATTERNS=("logs/workload_sweep_*" "logs/workload_probe_*")
+    ;;
   latest)
-    # Resolve the newest jobid (across BOTH probe kinds) on the FASRC side.
+    # Resolve the newest jobid (across ALL probe kinds) on the FASRC side.
     echo "==> Resolving latest probe job on $FASRC_HOST…"
     NEWEST=$(ssh "$FASRC_HOST" "
-      ls -t ${FASRC_PATH}/logs/wt_probe_*.log ${FASRC_PATH}/logs/alloc_sweep_*.out 2>/dev/null \
+      ls -t ${FASRC_PATH}/logs/wt_probe_*.log \
+            ${FASRC_PATH}/logs/alloc_sweep_*.out \
+            ${FASRC_PATH}/logs/workload_sweep_*.out 2>/dev/null \
         | head -1 \
         | xargs -n1 basename \
-        | sed -E 's/^(wt_probe|alloc_sweep)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
+        | sed -E 's/^(wt_probe|alloc_sweep|workload_sweep)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
     ")
     if [ -z "${NEWEST:-}" ]; then
       echo "ERROR: no probe logs found under ${FASRC_PATH}/logs/ on $FASRC_HOST" >&2
@@ -56,16 +61,16 @@ case "$FILTER" in
     echo "    newest jobid: $NEWEST"
     PATTERNS=(
       "logs/wt_probe_${NEWEST}*"
-      "logs/alloc_sweep_${NEWEST}*"
-      "logs/alloc_probe_${NEWEST}_*"
+      "logs/alloc_sweep_${NEWEST}*"     "logs/alloc_probe_${NEWEST}_*"
+      "logs/workload_sweep_${NEWEST}*"  "logs/workload_probe_${NEWEST}_*"
     )
     ;;
   *)
     # Numeric jobid (or "local"). Pull anything matching that jobid.
     PATTERNS=(
       "logs/wt_probe_${FILTER}*"
-      "logs/alloc_sweep_${FILTER}*"
-      "logs/alloc_probe_${FILTER}_*"
+      "logs/alloc_sweep_${FILTER}*"     "logs/alloc_probe_${FILTER}_*"
+      "logs/workload_sweep_${FILTER}*"  "logs/workload_probe_${FILTER}_*"
     )
     ;;
 esac
@@ -87,21 +92,18 @@ rsync -avz --partial "${SOURCES[@]}" logs/ 2>/dev/null \
 
 echo
 echo "Done. Newest local files:"
-ls -lt logs/wt_probe_* logs/alloc_sweep_* logs/alloc_probe_* 2>/dev/null | head -10
+ls -lt logs/wt_probe_* logs/alloc_sweep_* logs/alloc_probe_* \
+       logs/workload_sweep_* logs/workload_probe_* 2>/dev/null | head -12
 
-# If we just pulled an allocator sweep, print the summary TSV first
-# (that's the headline result). Then print the most-recent .log too.
+# Print any summary TSVs first (the headline tables). Sweep TSVs are the
+# concise digest of each multi-variant run.
 echo
-LATEST_TSV=$(ls -t logs/alloc_sweep_*.tsv 2>/dev/null | head -1 || true)
-if [ -n "${LATEST_TSV:-}" ]; then
-  echo "=== $LATEST_TSV ==="
-  if command -v column >/dev/null 2>&1; then
-    column -t -s $'\t' "$LATEST_TSV"
-  else
-    cat "$LATEST_TSV"
-  fi
+for tsv in $(ls -t logs/workload_sweep_*.tsv logs/alloc_sweep_*.tsv 2>/dev/null | head -2); do
+  echo "=== $tsv ==="
+  if command -v column >/dev/null 2>&1; then column -t -s $'\t' "$tsv"
+  else cat "$tsv"; fi
   echo
-fi
+done
 
 LATEST_LOG=$(ls -t logs/wt_probe_*.log 2>/dev/null | head -1 || true)
 if [ -n "${LATEST_LOG:-}" ]; then
