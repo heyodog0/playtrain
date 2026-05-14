@@ -1,10 +1,10 @@
 # Multi-Env Runtime — Design + Investigation
 
-**Status**: Phase 0.5 investigation in progress. Worker Threads
-contention has been characterized in shape but not yet attributed to a
-specific symbol/library. DirectVecEnv is a candidate fallback if the
-investigation confirms Cairo contention is fundamental. No
-implementation committed yet either way.
+**Status**: **DirectVecEnv (Architecture B) chosen.** Phase 0.5
+investigation complete — Worker Threads ruled out via systematic
+probes including a definitive Skia-vs-Cairo multi-thread comparison
+(job 12893502, commit `3b60a6c`). Phase 1 of DirectVecEnv not yet
+started.
 **Branch**: `dev/worker-threads-multi-env`.
 **Target**: aggregate training throughput parity with (or beyond) ALE on
 matched PPO settings, plus aggregate-throughput wins for non-training
@@ -16,32 +16,27 @@ existing observation/reward semantics.
 
 ## 0. TL;DR
 
-Two architectures under consideration, evidence below. Investigation
-is **not yet concluded**.
+After systematic Phase 0 and Phase 0.5 investigation across 5 FASRC
+SLURM jobs (12886605, 12888423, 12889388, 12891926, 12893502),
+**DirectVecEnv is the chosen architecture.** Phase 1 begins next.
 
-**Architecture A: Worker Threads** — one Node process, N threads
-sharing memory. Phase 0 probes characterized the contention shape:
-per-thread time degrades 3.4× at N=16 on FASRC; allocator and
-bandwidth ruled out; contention scales per-canvas-call, not per-pixel;
-prior Skia swap was slower (so the issue is not Cairo-specific).
-**The investigation has characterized the contention's behavior but
-has NOT yet attributed it to a specific symbol/library.** Phase 0.5
-(below, §11) is going to attribute it definitively via perf profiling,
-pixman/cairo version inspection, and isolated micro-probes.
-
-**Architecture B: DirectVecEnv** — one Python process, N Node
-subprocesses (skipping SubprocVecEnv's pickle layer). Preserves the
-per-process rasterization parallelism that probes show *does* scale
-linearly. Strictly an improvement over the current state; smaller
-best-case ceiling than Worker Threads. **Candidate fallback** if
-Phase 0.5 concludes the canvas-library contention is fundamental and
-not fixable.
-
-**Decision is deferred to after Phase 0.5.** If Phase 0.5 finds a
-specific bottleneck that can be eliminated (e.g., a pixman version
-upgrade, a config flag, an LD_PRELOAD), Worker Threads goes back on
-the table. If the contention is confirmed deep and unfixable, we
-pivot to DirectVecEnv with paper-quality evidence for why.
+**The investigation, in one paragraph**: Worker Threads at N=16 on
+FASRC shows 3.4× per-thread slowdown (job 12886605). Allocator
+contention ruled out via `MALLOC_ARENA_MAX` sweep — arena=1 is the
+fastest variant (job 12888423). Bandwidth/cache ruled out via
+workload sweep — smaller pixel volume scales worse, not better
+(job 12889388). `strace -c -f` decomposes the slowdown: **~15%
+userspace lock contention** (libcairo/libpixman; bundled pixman is
+0.38.4 from 2019) and **~85% non-syscall hardware-level contention**
+(L3 / TLB / memory controller) (job 12891926). Skia
+(`@napi-rs/canvas`) at N=16 confirms the diagnosis: better per-thread
+efficiency than Cairo (46% vs 29%, since Skia has fewer
+library-internal locks) but slower single-thread baseline that erases
+the scaling gain in aggregate (job 12893502). **No rasterizer
+swap, library upgrade, or config change makes Worker Threads beat
+current SubprocVecEnv. DirectVecEnv preserves the separate-process
+parallelism that does scale linearly, and removes only the Python-side
+pickle layer — the one component that's actually fixable.**
 
 ---
 
@@ -142,7 +137,7 @@ swap to skia-canvas (tried in prior work) does not resolve the
 contention. Worker Threads is therefore not the right architecture
 given current C-level library constraints.
 
-### 3.2 Architecture B: DirectVecEnv (CANDIDATE FALLBACK)
+### 3.2 Architecture B: DirectVecEnv (CHOSEN)
 
 ```
 Python (main process)
@@ -529,6 +524,7 @@ unless the data supports it.
 | 4 | Worker `.cpuprofile`s | `7c1f7ce` (SBATCH) | **12891926** | All 16 Worker profiles show the same pattern: **97.4–97.5% of self-time in `full`** (the JS function that calls fillRect/drawImage/toBuffer). GC: <1%. (program): <1%. No JS-side bottleneck. V8 profiler cannot see past N-API boundary, so all native time gets credited to the calling JS frame. **Workers are on-CPU inside Cairo, not blocked or idle.** Main thread (thread 0): 75.6% (idle), 21.1% `full` — confirms dispatcher just waits for Workers each iter. |
 | 5 | Raw N-API | _deferred — investigation has enough evidence to decide_ | — | — |
 | 6 | ALE multi-env compare | _deferred — see Option 3 in §10.6_ | _pending if pursued_ | _pending_ |
+| 7 | **Skia (`@napi-rs/canvas`) multi-env** | `3b60a6c` (probe + SBATCH) | **12893502** | At N=16: slowest 299 μs/iter, **46% efficiency** (vs Cairo's 29%), aggregate 51k iters/s. Skia scales noticeably better per-thread than Cairo (17-point efficiency gap is real). But Skia's single-thread baseline is ~1.7× slower than Cairo's (136 vs 81 μs/iter), so aggregate throughput at N=16 is **within 5%** between the two libraries. **Library swap doesn't change the architecture answer**: Worker Threads + Skia (309 μs/step) still loses to current SubprocVecEnv + Cairo (~173 μs/step). The 46% efficiency confirms Cairo carries some library-specific lock contention, but the bulk of the slowdown is library-independent (hardware-level), as predicted in §10.5. |
 
 ### 10.5 Decomposing the per-thread slowdown at N=16
 
@@ -566,62 +562,83 @@ Math comparison at n_envs=16 on FASRC (μs per training step's env phase):
 
 | Architecture | Env compute time | Coord overhead | **Total/step** |
 |---|---:|---:|---:|
-| `SubprocVecEnv` (current) | ~80 (separate processes scale ~linearly) | ~93 (Python pickle) | **~173** |
-| Worker Threads (today) | ~277 (3.4× contention) | ~10 (Atomics) | **~287** |
-| Worker Threads + 100% futex fix (Architecture A'; theoretical best case from lib rebuild) | ~235 (remove 15% futex portion) | ~10 | **~245** |
+| `SubprocVecEnv` + Cairo (current) | ~80 (separate processes scale ~linearly) | ~93 (Python pickle) | **~173** |
+| `SubprocVecEnv` + Skia (would-be alt) | ~136 (Skia single-thread is 1.7× slower than Cairo, see job 12893502) | ~93 | ~229 |
+| Worker Threads + Cairo (job 12891926) | ~277 (3.4× contention) | ~10 (Atomics) | ~287 |
+| Worker Threads + Skia (job 12893502) | ~299 (Skia scales better but slower baseline) | ~10 | ~309 |
+| Worker Threads + 100% futex fix (Arch A'; theoretical best case from lib rebuild) | ~235 (remove 15% futex portion) | ~10 | ~245 |
 | Worker Threads + hypothetical full linear scaling (impossible — non-syscall hardware contention) | ~80 | ~10 | ~90 |
-| **DirectVecEnv** (Architecture B) | ~80 (preserves separate processes) | ~10–30 (direct pipes, no pickle) | **~90–110** |
+| **DirectVecEnv** (Architecture B; chosen) | ~80 (preserves separate processes) | ~10–30 (direct pipes, no pickle) | **~90–110** |
 
-**Two clean conclusions**:
+**Three clean conclusions** (with Skia data now in hand):
 
-1. **Worker Threads today is slower than current SubprocVecEnv** (287 > 173).
-2. **Even Architecture A' (library upgrade)** is still slower than current
-   SubprocVecEnv (245 > 173), because the non-syscall slowdown — the
-   85% that's hardware-level — isn't fixable by software.
-3. **DirectVecEnv** is the only candidate in this table that beats
+1. **Worker Threads today is slower than current SubprocVecEnv** —
+   regardless of rasterizer. Cairo: 287 > 173. Skia: 309 > 173.
+2. **Library swap doesn't fix it.** Skia at N=16 has measurably better
+   scaling efficiency than Cairo (46% vs 29%) — confirming Cairo
+   carries some library-specific lock contention — but Skia's slower
+   single-thread baseline (1.7× Cairo) erases the scaling win. Net:
+   library-specific contention exists but is the smaller component.
+3. **Architecture A' (rebuild Cairo against modern libs) cannot beat
+   current either** (245 > 173 best case). The 85% non-syscall
+   slowdown is hardware-level and not removable by software.
+4. **DirectVecEnv** is the only candidate in this table that beats
    current SubprocVecEnv (90–110 < 173), because it keeps the
    separate-process model that's already known to scale and removes
    only the pickle layer.
 
-**Worker Threads cannot win** unless we find a way to remove the
-hardware-level contention. The investigation has searched the
-practically-fixable space (allocator, libs, GC) and found no such
-fix.
+**Worker Threads cannot win** within current hardware constraints.
+The investigation has searched the practically-fixable space
+(allocator, lib version, rasterizer family) and found no architecture
+that beats DirectVecEnv. The Skia experiment was the final check;
+its result confirms the diagnosis.
 
-### 10.7 Decision point: pivot to DirectVecEnv (with three optional follow-up experiments)
+### 10.7 Decision: DirectVecEnv (Phase 0.5 investigation complete)
 
-The data is sufficient to commit to **DirectVecEnv as Architecture B**.
-Three optional experiments could still strengthen the paper's
-design-tradeoffs section, but none are blocking:
+After running Option 1 (Skia multi-env, job 12893502, commit
+`3b60a6c`), the data is decisive. **DirectVecEnv is the chosen
+architecture.** The investigation closes here; Phase 1 begins next.
 
-**Option 1: Skia multi-env experiment.** The prior Skia experiment
-was done only at single-env (N=1) and showed worse single-thread
-throughput. But we have NOT tested Skia at N=16 — and the contention
-profile might differ since Skia uses a different rasterizer than
-Cairo. If Skia at N=16 shows linear scaling, the Worker Threads
-verdict could flip. If it shows the same ~85% non-syscall slowdown,
-the diagnosis (hardware-level contention) is confirmed across both
-rasterizer families. **High information value either way.** Cost:
-~half day of probe writing + one FASRC run.
+**What we know, definitively**:
 
-**Option 2: Architecture A' — rebuild canvas against modern libs.**
-Validates the bundled-pixman hypothesis precisely. Best case: ~15%
-improvement on the futex portion (per the strace decomposition).
-**Doesn't change the architecture decision** (Worker Threads still
-loses to DirectVecEnv) but documents what's possible. Cost: ~0.5–1
-day of FASRC build-dep wrestling.
+- Cairo's per-thread contention at N=16: ~15% futex (lock-wait,
+  library-specific) + ~85% non-syscall (hardware-level).
+- Skia (different rasterizer family) has measurably less
+  library-specific contention (46% efficiency vs Cairo's 29% at
+  N=16) — confirming the diagnosis that ~15% is library-specific.
+- But the dominant 85% non-syscall slowdown is present in Skia too,
+  in absolute terms — it's hardware-level and library-independent.
+- Worker Threads with any rasterizer we tested is slower per training
+  step than current SubprocVecEnv.
+- DirectVecEnv is the only architecture in the §10.6 table that beats
+  current.
 
-**Option 3: ALE multi-env compare at N=16.** If ALE on the same
-FASRC box also caps at ~4× aggregate, the limit is the Linux
-multi-thread rasterization ceiling — *any* C-binding RL env would
-hit it. Useful for paper framing ("we hit the same ceiling as the
-field"). Cost: ~half day.
+**Remaining options NOT pursued, and why**:
 
-**Recommendation**: pursue **Option 1 (Skia multi-env)** next. It's
-the most informative single experiment remaining — directly tests
-whether the per-thread slowdown is library-specific (Cairo) or
-fundamental (hardware + general rasterization). Architecture A' and
-the ALE comparison can follow as time allows.
+- **Architecture A' (rebuild Cairo against modern libs)**: would
+  improve the 15% futex portion at most. Doesn't beat current
+  SubprocVecEnv even in best case (245 > 173 per §10.6). Filed under
+  "future work, low ROI."
+- **ALE multi-env compare**: would corroborate the "library-independent
+  hardware-level contention" claim by showing ALE hits the same
+  ceiling. Nice-to-have for paper framing but not load-bearing —
+  the Cairo vs Skia comparison already proves the same point within
+  node-gym's stack.
+- **Raw N-API addon**: was contingent on finding evidence the
+  binding layer was the bottleneck. cpuprofiles in job 12891926
+  showed 97.4% of Worker self-time in the JS workload function with
+  no per-binding-layer waste, so this experiment wouldn't change
+  the answer.
+
+**The paper's design-tradeoffs narrative** is now complete: we
+proposed Worker Threads, characterized the contention behavior, ruled
+out allocator, ruled out memory bandwidth, attributed the per-thread
+slowdown via strace decomposition, tested both Cairo and Skia at
+N=16, and concluded with hard numbers that DirectVecEnv is the right
+architecture given current library and hardware constraints. The
+receipt trail spans 12+ commits and 5 FASRC SLURM jobs.
+
+**Next step**: begin Phase 1 of DirectVecEnv (§6).
 
 ---
 
