@@ -34,7 +34,7 @@ case "$FILTER" in
       "logs/workload_sweep_*" "logs/workload_probe_*"
       "logs/perf_probe_*" "logs/cpuprof_*"
       "logs/skia_probe_*" "logs/skia_tune_*"
-      "logs/cairo_tune_*"
+      "logs/cairo_tune_*" "logs/cairo_high_n_*"
     )
     ;;
   wt)
@@ -53,7 +53,7 @@ case "$FILTER" in
     PATTERNS=("logs/skia_probe_*" "logs/skia_tune_*")
     ;;
   cairo)
-    PATTERNS=("logs/cairo_tune_*")
+    PATTERNS=("logs/cairo_tune_*" "logs/cairo_high_n_*")
     ;;
   latest)
     # Resolve the newest jobid (across ALL probe kinds) on the FASRC side.
@@ -65,10 +65,11 @@ case "$FILTER" in
             ${FASRC_PATH}/logs/perf_probe_*.out \
             ${FASRC_PATH}/logs/skia_probe_*.out \
             ${FASRC_PATH}/logs/skia_tune_*.out \
-            ${FASRC_PATH}/logs/cairo_tune_*.out 2>/dev/null \
+            ${FASRC_PATH}/logs/cairo_tune_*.out \
+            ${FASRC_PATH}/logs/cairo_high_n_*.out 2>/dev/null \
         | head -1 \
         | xargs -n1 basename \
-        | sed -E 's/^(wt_probe|alloc_sweep|workload_sweep|perf_probe|skia_probe|skia_tune|cairo_tune)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
+        | sed -E 's/^(wt_probe|alloc_sweep|workload_sweep|perf_probe|skia_probe|skia_tune|cairo_tune|cairo_high_n)_([0-9]+|local)\.(log|out|err|tsv)$/\2/'
     ")
     if [ -z "${NEWEST:-}" ]; then
       echo "ERROR: no probe logs found under ${FASRC_PATH}/logs/ on $FASRC_HOST" >&2
@@ -81,7 +82,7 @@ case "$FILTER" in
       "logs/workload_sweep_${NEWEST}*"  "logs/workload_probe_${NEWEST}_*"
       "logs/perf_probe_${NEWEST}*"      "logs/cpuprof_${NEWEST}/"
       "logs/skia_probe_${NEWEST}*"      "logs/skia_tune_${NEWEST}*"
-      "logs/cairo_tune_${NEWEST}*"
+      "logs/cairo_tune_${NEWEST}*"      "logs/cairo_high_n_${NEWEST}*"
     )
     ;;
   *)
@@ -92,7 +93,7 @@ case "$FILTER" in
       "logs/workload_sweep_${FILTER}*"  "logs/workload_probe_${FILTER}_*"
       "logs/perf_probe_${FILTER}*"      "logs/cpuprof_${FILTER}/"
       "logs/skia_probe_${FILTER}*"      "logs/skia_tune_${FILTER}*"
-      "logs/cairo_tune_${FILTER}*"
+      "logs/cairo_tune_${FILTER}*"      "logs/cairo_high_n_${FILTER}*"
     )
     ;;
 esac
