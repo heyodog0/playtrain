@@ -709,6 +709,54 @@ receipt trail spans 12+ commits and 5 FASRC SLURM jobs.
 
 ---
 
+## 10.12 Expected impact on training workloads (vs framework-bench numbers)
+
+The 134k → 203k iters/s improvement at N=24 (Job 12929486) is the
+**framework throughput** number — what node-gym in isolation can do.
+For training workloads it must be discounted by the env-phase fraction
+of step time.
+
+From analogen's matched-throughput data (job 12720391, n_envs=8 on
+FASRC GPU): node-gym contributes ~173 μs/step out of ~657 μs total
+(~26%). PPO update + GPU forward + Python coordination owns the
+other 74%. Even making node-gym free saves at most 26% on training
+sps.
+
+Realistic impact on analogen training at their current `-c 8` SLURM
+allocation:
+
+| Build | env-phase μs/step | total step μs | total sps | Δ vs current |
+|---|---:|---:|---:|---:|
+| Current (`SubprocVecEnv` + unbatched Cairo) | ~115 | 657 | 1,522 | — |
+| Phase 1c (batched shim alone, no Worker Threads) | ~95 | ~637 | ~1,570 | **+3%** |
+| Phase 1d (Worker Threads + batched shim, n=8) | ~81 | ~623 | ~1,605 | **+5%** |
+| Phase 1d at n=16 (requires `-c 16` bump in run.sh) | ~89 | ~573 | ~1,745 | **+15%** |
+| Phase 1d at n=24 (requires `-c 24` + n_envs=24 in config) | ~114 | ~598 | ~1,672 (×3 envs/update) | **+10% sps, 3× data** |
+
+**The framework-throughput win (3.8×) does NOT translate to training-sps
+linearly.** GPU work is the floor for training sps; env improvements
+are bounded by the env-phase fraction.
+
+For TMLR paper framing:
+- **Framework throughput table** (node-gym in isolation): cite the
+  203k iters/s at N=24 — that's a real, defensible number.
+- **End-to-end training throughput table** (analogen-style PPO loop):
+  cite the realistic 5–15% improvement depending on `-c` allocation.
+- These are different metrics measuring different things; both
+  belong in the paper, framed honestly.
+
+For non-PPO use cases where env stepping IS the bottleneck — offline
+data collection, behavior cloning, eval rollouts, LLM-game validation
+sweeps — the full 3.8× framework gain applies. C₁ is correspondingly
+more impactful for those use cases than for training.
+
+If maximizing analogen training sps specifically is the goal,
+`torch.compile(model)` in `train_ppo_clean.py:149` is plausibly a
+larger win (20–40% on CNN forward) for less engineering cost than
+the multi-env work — orthogonal to this branch, can ship in parallel.
+
+---
+
 ## 11. Phase 1: implementation plan for Architecture C₁
 
 Investigation closed. Implementation begins. Five sub-phases, ~2–3
