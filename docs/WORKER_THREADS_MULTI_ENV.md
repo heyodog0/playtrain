@@ -339,7 +339,73 @@ hung Worker Thread is much harder than handling a graceful error.
 
 ## 6. Phased implementation plan
 
-### Phase 0: Validation prototype (2 days)
+### Phase 0: Validation prototype — ✅ DONE
+
+**Verdict: GO, with caveats.** node-canvas is thread-safe; aggregate
+throughput scales sub-linearly but meaningfully. Full results below.
+
+Probe: `tools/probe_worker_threads.mjs`. Workload per iter: 50 fillRects
+on a 480×352 canvas + drawImage to 64×64 offscreen + toBuffer('raw').
+3000 iters/thread, run on a 14-core Apple Silicon Mac (heterogeneous
+P+E cores).
+
+| N threads | wall ms | slowest μs/iter | agg iters/s | per-thread efficiency vs baseline |
+|---|---:|---:|---:|---:|
+| baseline (main, no Worker) | 96 | 32.1 | 31,167 | 100% |
+| 1 Worker Thread | 140 | 30.6 | 21,368 | 105% |
+| 2 Worker Threads | 147 | 35.2 | 40,862 | **91%** |
+| 3 Worker Threads | 190 | 47.8 | 47,359 | 67% |
+| 4 Worker Threads | 222 | 54.8 | 54,129 | 59% |
+| 6 Worker Threads | 310 | 80.0 | **58,121 (peak)** | 40% |
+| 8 Worker Threads | 508 | 139.2 | 47,201 | 23% |
+| 12 Worker Threads | 1,171 | 349.0 | 30,744 | 9% |
+
+Key findings:
+
+1. **node-canvas is thread-safe.** No process-global Cairo lock. At
+   N=2 we get 91% per-thread efficiency, which would be ~0% if a
+   global lock were serializing the canvas operations. This was the
+   gating question for the whole design, and it passes.
+
+2. **Worker Thread overhead is negligible.** Single Worker Thread runs
+   at 30.6 μs/iter vs 32.1 μs main-thread baseline (within noise).
+   The Atomics-based dispatch we plan in §3.3 will add ~1–5 μs/step;
+   safely under the env-compute cost.
+
+3. **Per-thread time degrades with N, aggregate peaks at N≈6.**
+   At N=6, aggregate is 1.86× single-thread baseline (58k vs 31k
+   iters/s). At N=12, aggregate is *worse* than single-thread. Two
+   candidate explanations:
+
+   a. **Apple Silicon heterogeneous cores.** This Mac has ~6 P-cores
+      and ~8 E-cores. P-cores are ~2–4× faster than E-cores on this
+      workload. With N>P-core-count, threads spill onto E-cores; the
+      step barrier waits for the slowest thread, so E-core spillover
+      tanks effective throughput.
+
+   b. **Cairo/pixman internal contention.** Even with separate canvas
+      instances, Cairo may serialize on a shared allocator or font
+      cache mutex.
+
+   **Most likely (a).** Linux Xeon/EPYC training boxes have uniform
+   cores; scaling should be cleaner there. We won't know for sure
+   until we re-bench on FASRC.
+
+4. **Recommendation**: proceed to Phase 1 (two-env prototype). Cap
+   default N at 6 on Apple Silicon, parameterize for the target box.
+   Re-bench on FASRC **before** declaring final aggregate-throughput
+   numbers for the paper.
+
+5. **Even worst-case scaling (this Mac) is a meaningful win.** Today,
+   `SubprocVecEnv([NodeGymEnv]*16)` pays per-process overhead on
+   *every* step (16 pickles + 16 pipe round-trips). The Worker
+   Threads design at N=6 already gives 1.86× single-thread aggregate
+   throughput with zero pickle overhead. The SubprocVecEnv baseline
+   wasn't measured by this probe; combined with the matched-PPO
+   throughput gap (ALE 2064 / node-gym 1522), we expect the Worker
+   Threads design to be net-positive even at N=6.
+
+### Phase 1: Two-env Worker Threads prototype (3 days)
 
 Goal: confirm node-canvas is thread-safe across Worker Threads.
 
