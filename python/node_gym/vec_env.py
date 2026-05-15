@@ -244,6 +244,14 @@ class NodeVecEnv(VectorEnv):
     autoreset_seed : int or None
         Seed for the internal RNG used to draw per-env reset seeds during
         autoreset. Set for reproducible autoreset trajectories.
+    fixed_env_seed : int or None
+        If set, every env reset (initial AND autoreset) uses exactly this seed
+        for the underlying game. Mirrors ``SeedRangeWrapper(env, N, N+1)``
+        behavior in single-env mode: the agent sees one fixed env instance
+        instead of the full procedural distribution. Useful for debugging /
+        memorize-one-instance sanity checks. None = default procedural
+        sampling (autoreset draws fresh seeds from the autoreset_seed RNG;
+        explicit ``reset(seed=...)`` calls behave normally).
     n_actions : int
         Size of the discrete action space. Defaults to 8 (matches NodeGymEnv).
 
@@ -269,6 +277,7 @@ class NodeVecEnv(VectorEnv):
         node_bin: str = "node",
         autoreset_mode: AutoresetMode | str | None = AutoresetMode.NEXT_STEP,
         autoreset_seed: int | None = None,
+        fixed_env_seed: int | None = None,
         n_actions: int = _DEFAULT_N_ACTIONS,
     ) -> None:
         self.games = list(games)
@@ -280,6 +289,7 @@ class NodeVecEnv(VectorEnv):
         self.max_steps = max_steps
         self.autoreset_mode = _coerce_autoreset(autoreset_mode)
         self._autoreset_rng = np.random.default_rng(autoreset_seed)
+        self.fixed_env_seed = fixed_env_seed
         self.n_actions = int(n_actions)
         if self.n_actions <= 0:
             raise ValueError(f"n_actions must be > 0, got {n_actions}")
@@ -375,7 +385,12 @@ class NodeVecEnv(VectorEnv):
             rng = np.random.default_rng(seed)
             seeds = [int(rng.integers(0, 2**31 - 1)) for _ in range(self.num_envs)]
         elif seed is None:
-            seeds = [None] * self.num_envs
+            # If fixed_env_seed is set and the caller didn't explicitly pass a
+            # seed, force every env to that seed (memorize-one-instance mode).
+            if self.fixed_env_seed is not None:
+                seeds = [int(self.fixed_env_seed)] * self.num_envs
+            else:
+                seeds = [None] * self.num_envs
         else:
             if len(seed) != self.num_envs:
                 raise ValueError(
@@ -486,7 +501,13 @@ class NodeVecEnv(VectorEnv):
             return
         max_steps = self.max_steps
         for i in indices:
-            seed = int(self._autoreset_rng.integers(0, 2**31 - 1))
+            # When fixed_env_seed is set, every reset (initial AND autoreset)
+            # uses that same seed — single-instance memorization mode.
+            # Otherwise draw a fresh seed from the autoreset RNG.
+            if self.fixed_env_seed is not None:
+                seed = int(self.fixed_env_seed)
+            else:
+                seed = int(self._autoreset_rng.integers(0, 2**31 - 1))
             payload = json.dumps(
                 {"cmd": "reset", "seed": seed, "max_steps": max_steps}
             ).encode("utf-8")

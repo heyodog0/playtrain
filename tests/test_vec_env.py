@@ -238,6 +238,63 @@ def test_next_step_autoreset_resets_on_subsequent_step():
 # ---------------------------------------------------------------------------
 
 
+def test_fixed_env_seed_makes_all_envs_identical():
+    """fixed_env_seed forces every env (and every autoreset) to the same seed,
+    so all N envs produce byte-identical obs sequences."""
+    venv = NodeVecEnv(games=["flappy_bird"] * 4, obs_size=64,
+                      autoreset_mode="same_step", autoreset_seed=0,
+                      fixed_env_seed=12345)
+    try:
+        obs, _ = venv.reset()
+        # All N envs reset to the same seed → all rows of the batch should match.
+        for i in range(1, 4):
+            assert (obs[0] == obs[i]).all(), \
+                f"env {i} obs differs from env 0 — fixed_env_seed not applied"
+        # Step a few times with same actions → still identical.
+        for _ in range(20):
+            obs, _, _, _, _ = venv.step([0, 0, 0, 0])
+            for i in range(1, 4):
+                assert (obs[0] == obs[i]).all(), \
+                    "envs diverged under same actions + fixed_env_seed"
+    finally:
+        venv.close()
+
+
+def test_fixed_env_seed_autoreset_keeps_seed():
+    """After an autoreset under fixed_env_seed, the new-episode obs should
+    match what we'd get from a fresh reset(seed=fixed_env_seed)."""
+    fes = 99
+    # Capture what a fresh reset with seed=fes looks like
+    venv1 = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+                      autoreset_mode="disabled", fixed_env_seed=fes)
+    try:
+        ref_obs, _ = venv1.reset()
+        ref_first_env = ref_obs[0].copy()
+    finally:
+        venv1.close()
+
+    # Now run with autoreset and force terminals; verify reset obs matches ref
+    venv2 = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+                      autoreset_mode="same_step", autoreset_seed=0,
+                      fixed_env_seed=fes)
+    try:
+        venv2.reset()
+        rng = np.random.default_rng(42)
+        for _ in range(2500):
+            obs, _, terms, truncs, info = venv2.step(rng.integers(0, 8, size=2))
+            done = terms | truncs
+            if done.any():
+                # SAME_STEP returned the new-episode (post-reset) obs for
+                # done envs. Those should match our reference (fixed seed).
+                for i in np.flatnonzero(done):
+                    assert (obs[i] == ref_first_env).all(), \
+                        f"env {i} autoreset obs doesn't match fresh reset(seed={fes})"
+                return
+        pytest.skip("no terminal hit in 2500 steps")
+    finally:
+        venv2.close()
+
+
 def test_n8_runs_without_errors():
     venv = NodeVecEnv(games=["flappy_bird"] * 8, obs_size=64,
                       autoreset_mode="same_step", autoreset_seed=0)
