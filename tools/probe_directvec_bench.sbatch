@@ -44,18 +44,27 @@ set -u
 cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 mkdir -p logs
 
-# ── Modules ────────────────────────────────────────────────────────────────
+# ── Node bringup (mirrors probe_cairo_high_n.sbatch) ──────────────────────
+# Try module load first; on the FASRC test partition the modules are often
+# missing, so $HOME/.local-node/bin is the real fallback that works.
 if ! command -v node >/dev/null 2>&1; then
   module load nodejs/22.9.0-fasrc01 2>/dev/null \
     || module load nodejs/20.10.0-fasrc01 2>/dev/null \
     || module load nodejs/18.18.2-fasrc01 2>/dev/null \
-    || module load nodejs 2>/dev/null \
-    || { echo "ERROR: no nodejs module found"; exit 1; }
+    || module load nodejs 2>/dev/null || true
+fi
+[ -d "$HOME/.local-node/bin" ] && export PATH="$HOME/.local-node/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+command -v node >/dev/null || { echo "ERROR: node not on PATH" >&2; exit 1; }
+echo "==> Using node: $(command -v node)  ($(node --version))"
+
+# node_modules — install if missing (matches probe_cairo_high_n.sbatch).
+if [ ! -d "node_modules/canvas" ]; then
+  command -v pnpm >/dev/null && pnpm install --prefer-offline || npm install
 fi
 
 # Python venv resolution. Prefer uv (matches analogen's throughput_compare.sh).
 # Fall back to .venv if present, then to system python3.
-[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 if command -v uv >/dev/null 2>&1; then
   # Make sure deps are present (numpy, gymnasium) — node-gym's pyproject covers it.
   uv sync 2>/dev/null || true
