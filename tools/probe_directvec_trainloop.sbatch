@@ -76,15 +76,19 @@ fi
 PY="${ANALOGEN_VENV}/bin/python"
 
 # Put node-gym-dev's python/ FIRST so we get this branch's NodeVecEnv,
-# not analogen's editable install of the older node-gym/. Do NOT add tools/
-# to PYTHONPATH — tools/profile.py would shadow stdlib 'profile' and break
-# torch._dynamo (which imports cProfile). The trainloop loads its sibling
-# bench module via importlib + an absolute path instead.
+# not analogen's editable install of the older node-gym/.
 DEV_ROOT="$(pwd)"
 export PYTHONPATH="${DEV_ROOT}/python${PYTHONPATH:+:$PYTHONPATH}"
 
+# PYTHONSAFEPATH=1 disables Python's auto-prepend of the script's directory
+# to sys.path. Without it, `python tools/probe_directvec_trainloop.py` puts
+# tools/ on sys.path, and tools/profile.py shadows stdlib 'profile' — which
+# torch._dynamo lazily imports via cProfile and crashes on. PEP 540 / py3.11+.
+export PYTHONSAFEPATH=1
+
 echo "==> Using Python: $PY"
 echo "==> PYTHONPATH (front): ${DEV_ROOT}/python"
+echo "==> PYTHONSAFEPATH=1 (prevents tools/profile.py shadowing stdlib)"
 $PY -c "
 import sys, node_gym, torch
 print(f'  node_gym from: {node_gym.__file__}')
