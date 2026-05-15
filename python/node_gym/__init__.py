@@ -7,12 +7,14 @@ Two backends:
 
 from .env import NodeGymEnv, SeedRangeWrapper, list_available_games
 from .three import NodeGymThreeEnv, list_available_threejs_games
+from .vec_env import NodeVecEnv
 
 __version__ = "0.2.0"
 
 __all__ = [
     "NodeGymEnv",
     "NodeGymThreeEnv",
+    "NodeVecEnv",
     "SeedRangeWrapper",
     "list_available_games",
     "list_available_threejs_games",
