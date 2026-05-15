@@ -166,8 +166,13 @@ class NodeVecEnv:
     """Vectorized node-gym env. One Python process, N Node workers, mmap obs.
 
     API mirrors Gymnasium's VectorEnv at the level analogen's training loop uses
-    (step / reset / close). Not a full ``gym.vector.VectorEnv`` subclass yet —
-    the goal of this prototype is to bench it against SubprocVecEnv first.
+    (step / reset / close). Not a full ``gym.vector.VectorEnv`` subclass yet.
+
+    Autoreset: SB3-compatible. When an env terminates or truncates, ``step()``
+    automatically issues a reset (using a seed drawn from the constructor's
+    ``autoreset_seed`` RNG), substitutes the new-episode obs into the returned
+    batch, and stashes the terminal obs in ``info["terminal_observation"]``.
+    Disable with ``autoreset=False`` if the caller wants explicit reset control.
     """
 
     def __init__(
@@ -180,12 +185,16 @@ class NodeVecEnv:
         obs_mode: str = "rgb",
         max_steps: int = 2000,
         node_bin: str = "node",
+        autoreset: bool = True,
+        autoreset_seed: int | None = None,
     ) -> None:
         self.games = list(games)
         self.num_envs = len(self.games)
         self.obs_size = obs_size
         self.obs_mode = obs_mode
         self.max_steps = max_steps
+        self.autoreset = autoreset
+        self._autoreset_rng = np.random.default_rng(autoreset_seed)
         self._closed = False
 
         games_root = _resolve_games_dir(games_dir)
@@ -276,10 +285,9 @@ class NodeVecEnv:
         for w in self.workers:
             w.flush_stdin()
         # Phase 3: drain N stdouts. Use select to pick up workers as they finish.
-        infos = [None] * self.num_envs
+        infos: list[dict] = [None] * self.num_envs  # type: ignore[list-item]
         remaining = set(range(self.num_envs))
         fd_to_idx = {w.stdout_fd: i for i, w in enumerate(self.workers)}
-        # Simple loop: select for ready FDs, read one full response from each
         while remaining:
             ready_fds, _, _ = select.select([self.workers[i].stdout_fd for i in remaining], [], [])
             for fd in ready_fds:
@@ -298,6 +306,41 @@ class NodeVecEnv:
                     "episodeLength": steps,
                 }
                 remaining.discard(i)
+
+        # Phase 4 (autoreset, SB3-style): for each terminated/truncated env,
+        # issue a reset in parallel, substitute new-episode obs into the batch,
+        # stash the terminal obs in info["terminal_observation"].
+        if self.autoreset:
+            done_idxs = [i for i in range(self.num_envs)
+                         if self._terms[i] or self._truncs[i]]
+            if done_idxs:
+                # Stash terminal obs (copies — we're about to overwrite the buffer slots)
+                for i in done_idxs:
+                    infos[i]["terminal_observation"] = self._obs_buf[i].copy()
+                # Phase 4a: write reset requests in parallel
+                ms = self.max_steps
+                for i in done_idxs:
+                    seed = int(self._autoreset_rng.integers(0, 2**31 - 1))
+                    payload = json.dumps({"cmd": "reset", "seed": seed,
+                                          "max_steps": ms}).encode("utf-8")
+                    self.workers[i].write_request(payload)
+                # Phase 4b: flush + drain in parallel
+                for i in done_idxs:
+                    self.workers[i].flush_stdin()
+                pending = set(done_idxs)
+                while pending:
+                    ready_fds, _, _ = select.select(
+                        [self.workers[i].stdout_fd for i in pending], [], [])
+                    for fd in ready_fds:
+                        i = fd_to_idx[fd]
+                        if i not in pending:
+                            continue
+                        meta, obs_bytes = self.workers[i].read_json_response()
+                        self._copy_obs_into_buf(i, obs_bytes)
+                        # Preserve original info dict; just attach reset metadata.
+                        infos[i]["reset_seed"] = meta.get("info", {}).get("seed")
+                        pending.discard(i)
+
         return self._obs_buf, self._rewards.copy(), self._terms.copy(), self._truncs.copy(), infos
 
     def _copy_obs_into_buf(self, i: int, raw: bytes) -> None:

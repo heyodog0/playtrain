@@ -15,26 +15,37 @@ from node_gym import NodeVecEnv
 
 
 def run_one_pass(*, n: int, game: str, steps: int, seed_base: int,
-                 actions_seed: int) -> list[str]:
-    venv = NodeVecEnv(games=[game] * n, obs_size=64, obs_mode="rgb")
+                 actions_seed: int, autoreset: bool,
+                 autoreset_seed: int | None) -> tuple[list[str], int]:
+    venv = NodeVecEnv(games=[game] * n, obs_size=64, obs_mode="rgb",
+                      autoreset=autoreset, autoreset_seed=autoreset_seed)
     rng = np.random.default_rng(actions_seed)
     hashes: list[str] = []
+    n_terminals = 0
     try:
         obs, _ = venv.reset(seeds=[seed_base + i for i in range(n)])
         hashes.append(hashlib.sha256(obs.tobytes()).hexdigest()[:16])
         for _ in range(steps):
             acts = rng.integers(0, 8, size=n).tolist()
-            obs, _, _, _, _ = venv.step(acts)
+            obs, _, terms, truncs, _ = venv.step(acts)
             hashes.append(hashlib.sha256(obs.tobytes()).hexdigest()[:16])
+            n_terminals += int(terms.sum() + truncs.sum())
     finally:
         venv.close()
-    return hashes
+    return hashes, n_terminals
 
 
-def main(n: int = 4, game: str = "flappy_bird", steps: int = 200) -> int:
-    print(f"Determinism: n={n} game={game} steps={steps}")
-    h1 = run_one_pass(n=n, game=game, steps=steps, seed_base=0, actions_seed=42)
-    h2 = run_one_pass(n=n, game=game, steps=steps, seed_base=0, actions_seed=42)
+def main(n: int = 4, game: str = "flappy_bird", steps: int = 200,
+         autoreset: bool = True, autoreset_seed: int = 7) -> int:
+    print(f"Determinism: n={n} game={game} steps={steps} "
+          f"autoreset={autoreset} autoreset_seed={autoreset_seed}")
+    h1, term1 = run_one_pass(n=n, game=game, steps=steps, seed_base=0,
+                             actions_seed=42, autoreset=autoreset,
+                             autoreset_seed=autoreset_seed)
+    h2, term2 = run_one_pass(n=n, game=game, steps=steps, seed_base=0,
+                             actions_seed=42, autoreset=autoreset,
+                             autoreset_seed=autoreset_seed)
+    print(f"  pass1 terminals={term1}, pass2 terminals={term2}")
     if h1 == h2:
         print(f"PASS — {len(h1)} hashes match (last={h1[-1]})")
         return 0
@@ -50,4 +61,6 @@ if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 4
     game = sys.argv[2] if len(sys.argv) > 2 else "flappy_bird"
     steps = int(sys.argv[3]) if len(sys.argv) > 3 else 200
-    sys.exit(main(n=n, game=game, steps=steps))
+    autoreset = (sys.argv[4].lower() in ("1", "true", "yes")
+                 if len(sys.argv) > 4 else True)
+    sys.exit(main(n=n, game=game, steps=steps, autoreset=autoreset))

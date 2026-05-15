@@ -31,18 +31,28 @@ import numpy as np
 
 
 def _subproc_worker(remote, parent_remote, game: str, obs_size: int,
-                    obs_mode: str, max_steps: int) -> None:
+                    obs_mode: str, max_steps: int, autoreset: bool,
+                    autoreset_seed: int | None) -> None:
     parent_remote.close()
     # Import inside child so the parent never imports node_gym (avoid double
     # mmap setup in parent on fork-based platforms).
     from node_gym import NodeGymEnv
     env = NodeGymEnv(game=game, obs_size=obs_size, obs_mode=obs_mode,
                      max_steps=max_steps)
+    rng = np.random.default_rng(autoreset_seed)
     try:
         while True:
             cmd, data = remote.recv()
             if cmd == "step":
                 obs, reward, term, trunc, info = env.step(int(data))
+                # SB3-style autoreset: do it in the child, just like SB3
+                # SubprocVecEnv. Parity with NodeVecEnv's autoreset for an
+                # honest A/B.
+                if autoreset and (term or trunc):
+                    info = dict(info) if not isinstance(info, dict) else info
+                    info["terminal_observation"] = obs
+                    seed = int(rng.integers(0, 2**31 - 1))
+                    obs, _ = env.reset(seed=seed)
                 remote.send((obs, float(reward), bool(term), bool(trunc), info))
             elif cmd == "reset":
                 obs, info = env.reset(seed=data)
@@ -62,14 +72,21 @@ class HandRolledSubprocVecEnv:
     """Minimal SB3-equivalent: N child Python processes, each owns one NodeGymEnv."""
 
     def __init__(self, *, games: list[str], obs_size: int = 64,
-                 obs_mode: str = "rgb", max_steps: int = 2000) -> None:
+                 obs_mode: str = "rgb", max_steps: int = 2000,
+                 autoreset: bool = True,
+                 autoreset_seed: int | None = None) -> None:
         self.num_envs = len(games)
         ctx = mp.get_context("spawn")
         self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(self.num_envs)])
         self.processes: list[mp.Process] = []
-        for game, work_remote, remote in zip(games, self.work_remotes, self.remotes):
+        # Per-env autoreset seed derived from the parent seed so different envs
+        # don't all reset to the same trajectory.
+        rng = np.random.default_rng(autoreset_seed)
+        for i, (game, work_remote, remote) in enumerate(zip(games, self.work_remotes, self.remotes)):
+            child_seed = int(rng.integers(0, 2**31 - 1))
             p = ctx.Process(target=_subproc_worker,
-                            args=(work_remote, remote, game, obs_size, obs_mode, max_steps),
+                            args=(work_remote, remote, game, obs_size, obs_mode,
+                                  max_steps, autoreset, child_seed),
                             daemon=True)
             p.start()
             work_remote.close()
