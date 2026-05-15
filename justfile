@@ -37,6 +37,23 @@ smoke:
 play game="":
     node tools/play.mjs {{game}}
 
+# Refresh the analogen_* games from the sibling ../analogen/games/js/ tree.
+# These used to be symlinks but had to become real files for Vercel deploys
+# (Vercel only checks out this repo, not the sibling). Run this after editing
+# the originals in ../analogen and before committing.
+sync-analogen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="../analogen/games/js"
+    if [ ! -d "$src" ]; then echo "missing: $src" >&2; exit 1; fi
+    n=0
+    for f in "$src"/analogen_*.js; do
+      cp "$f" "examples/games/js/$(basename "$f")"
+      n=$((n+1))
+    done
+    echo "synced $n files from $src"
+    git status --short examples/games/js/ | grep analogen_ || echo "(no changes)"
+
 # Build the shareable static playtest site into dist/pages/ (for Vercel).
 build-pages:
     node tools/build-pages.mjs
