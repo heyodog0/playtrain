@@ -38,6 +38,51 @@ env.close()
 
 `obs` is a `(64, 64, 3)` uint8 numpy array; `action` is a discrete int in `[0, 8)`.
 
+## Vectorised env (`NodeVecEnv`)
+
+For RL training, use `NodeVecEnv` instead of wrapping `NodeGymEnv` in
+`SubprocVecEnv`. One Python process drives N Node workers via direct
+stdin/stdout pipes + mmap obs (zero-copy into a pre-allocated batch).
+Eliminates the per-env child Python process and obs pickle round-trip.
+
+```python
+from node_gym import NodeVecEnv
+
+venv = NodeVecEnv(games=["flappy_bird"] * 8, obs_size=64,
+                  autoreset_mode="next_step")  # Gymnasium 1.0 default
+obs, info = venv.reset(seed=0)
+for _ in range(1000):
+    actions = venv.action_space.sample()
+    obs, rewards, terms, truncs, info = venv.step(actions)
+venv.close()
+```
+
+Subclasses `gymnasium.vector.VectorEnv` with all three Gymnasium 1.0
+autoreset modes:
+
+| `autoreset_mode=` | Behavior |
+|---|---|
+| `"next_step"` (default) | Gymnasium 1.0 spec — terminal obs returned this step; env reset before next step (the next step's action for that env is discarded) |
+| `"same_step"` | SB3-compatible — terminal obs stashed in `info["final_observation"]` (mask in `info["_final_observation"]`); reset obs returned this step |
+| `"disabled"` | Caller resets terminated envs explicitly |
+
+**Benchmarks (FASRC, job 12978195, real torch+cuda training-loop A/B):**
+
+| game | N | SubprocVecEnv | NodeVecEnv | Δ |
+|---|---|---|---|---|
+| flappy_bird | 8 | 6,171 sps | 7,267 sps | **+17.8%** |
+| analogen grid_v4 | 8 | 5,520 sps | 6,281 sps | **+13.8%** |
+| analogen grid_v4 | 16 | 5,402 sps | 6,133 sps | +13.5% |
+
+Pure env throughput is +71-121% (job 12972050); the +14% training-loop
+delta is what survives once GPU-side compute (~64% of per-update wall)
+is in the loop. See `docs/MULTI_ENV_RUNTIME.md` for the full design.
+
+**Limitations**: action space hardcoded to `Discrete(8)` (matches
+`NodeGymEnv`); not yet a drop-in for SB3's `VecEnvWrapper`-based
+trainers (use SAME_STEP mode + a thin shim if needed); single-game per
+worker (multi-game support exists but lightly tested).
+
 ## Using node-gym in another project
 
 `just install` only sets up node-gym's own venv. To consume from a different project:

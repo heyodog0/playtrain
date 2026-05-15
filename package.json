@@ -52,5 +52,8 @@
     "matter-js": "^0.20.0",
     "three": "^0.184.0",
     "webgpu": "^0.4.0"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.59"
   }
 }
