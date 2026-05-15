@@ -46,6 +46,9 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "build": "node tools/build-pages.mjs"
+  },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "canvas": "^3.2.3",

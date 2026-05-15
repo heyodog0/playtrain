@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node tools/build-pages.mjs",
+  "outputDirectory": "dist/pages",
+  "installCommand": "echo 'no install needed'",
+  "framework": null,
+  "trailingSlash": true,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet" }
+      ]
+    }
+  ]
+}

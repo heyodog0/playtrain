@@ -37,6 +37,14 @@ smoke:
 play game="":
     node tools/play.mjs {{game}}
 
+# Build the shareable static playtest site into dist/pages/ (for Vercel).
+build-pages:
+    node tools/build-pages.mjs
+
+# Preview the built static site locally on http://localhost:5051
+serve-pages: build-pages
+    cd dist/pages && python3 -m http.server 5051
+
 # Run the 5-check validation suite against all bundled p5 games (~1 min)
 validate:
     uv run python tools/validate.py --all
