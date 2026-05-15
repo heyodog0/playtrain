@@ -73,11 +73,19 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 uv sync 2>/dev/null || true
-# Install torch into the venv if missing. Use the index that matches the cuda
-# version available; pip will pick CPU wheels if no GPU drivers visible.
-if ! .venv/bin/python -c "import torch" 2>/dev/null; then
-  echo "==> Installing torch into .venv (no torch found)"
-  uv pip install torch 2>&1 | tail -10
+# Install torch into the venv if missing OR if the wheel is wrong CUDA version.
+# FASRC drivers are CUDA 12.9 — the default PyPI Linux wheel is cu130, which
+# needs driver >=13.0 and silently falls back to cpu. Force cu128 (works with
+# any driver >=12.8). Matches analogen/pyproject.toml's pytorch-cu128 index.
+TORCH_OK=0
+if .venv/bin/python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
+  TORCH_OK=1
+fi
+if [ "$TORCH_OK" -eq 0 ]; then
+  echo "==> Installing torch from cu128 index (FASRC driver = CUDA 12.9)"
+  uv pip install --index-url https://download.pytorch.org/whl/cu128 \
+    --extra-index-url https://pypi.org/simple/ \
+    torch 2>&1 | tail -5
 fi
 PY="uv run python"
 echo "==> torch version + cuda check:"
