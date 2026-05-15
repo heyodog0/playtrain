@@ -9,47 +9,46 @@
 #SBATCH -e logs/directvec_trainloop_%j.err
 # Training-loop A/B: NodeVecEnv vs SubprocVecEnv under realistic PPO timing.
 #
-# The pure-env bench (probe_directvec_bench.sbatch, job 12972050) showed +71%
-# aggregate sps for grid_v4 N=8 on FASRC. But that's env-only — the real
-# question is: how much of that survives once GPU updates are in the loop?
+# This SBATCH uses analogen's existing .venv directly instead of installing
+# torch into node-gym-dev's .venv. analogen already has torch 2.11.0+cu128
+# working with FASRC's CUDA 12.9 driver — no point paying the 30+ min torch
+# install in node-gym-dev's venv every time.
 #
-# This probe runs the actual rollout-then-update pattern with a small
-# IMPALA-shaped CNN on cuda. The only thing that changes between arms is
-# the VecEnv class. Both arms have SB3-style autoreset enabled.
+# Mechanism:
+#   - PY                = analogen's .venv/bin/python (has torch+cu128+gymnasium)
+#   - PYTHONPATH        = node-gym-dev/python  : node-gym-dev/tools  : (others)
+#     The dev path is FIRST so 'import node_gym' picks up dev's NodeVecEnv,
+#     not analogen's editable install of the older node-gym/. The tools dir
+#     is needed so the trainloop can do `from probe_directvec_bench import ...`.
 #
-# Mac sleep-mode reference (n_envs=8 n_steps=256 grid_v4 gpu_sim_ms=80):
-#   SubprocVecEnv : 4,704 sps  env 111.6 ms (25.6%) gpu 323.7 ms (74.4%)
-#   NodeVecEnv    : 5,198 sps  env  70.3 ms (17.8%) gpu 323.7 ms (82.1%)
-#   delta         : +10.5%
+# Verify the dev module wins:
+#   $PY -c "import node_gym; print(node_gym.__file__)"
+#   → should print .../node-gym-dev/python/node_gym/__init__.py
 #
-# FASRC torch-mode result is the number that actually predicts what analogen
-# would see if we patched train_ppo_clean.py to use NodeVecEnv.
+# Job 12973443 ran the same harness in sleep-mode (no cuda) and showed:
+#   game         N    SubprocVec  NodeVec   delta
+#   flappy_bird  8    6,232 sps   7,235 sps +16.1%
+#   grid_v4      8    5,518 sps   6,264 sps +13.5%
+#   grid_v4      16   8,040 sps   9,828 sps +22.2%
 #
-# Sweeps:
-#   - flappy_bird @ N=8 (light env baseline)
-#   - analogen_nomemory_grid_v4 @ N=8 (the chart's grid_v4 setting)
-#   - analogen_nomemory_grid_v4 @ N=16 (does the win get bigger? the env
-#     bench showed SubprocVec stops scaling past N=8 here)
-#
-# -c 16: enough cores for SubprocVecEnv N=16 without oversubscription.
-# --gres=gpu:1: real GPU for torch path.
-# -t 30min: 3 configs × ~30 updates ≈ <10 min real work.
+# This run uses real torch+cuda for honest training-loop numbers.
 #
 # Usage:
 #   sbatch tools/probe_directvec_trainloop.sbatch
-#   ANALOGEN_GAMES_DIR=/path/to/analogen/games/js \
-#     sbatch tools/probe_directvec_trainloop.sbatch
+#   ANALOGEN_VENV=/path/to/analogen/.venv sbatch tools/probe_directvec_trainloop.sbatch
+#   ANALOGEN_GAMES_DIR=/path/to/games/js  sbatch tools/probe_directvec_trainloop.sbatch
 
 set -u
 cd "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 mkdir -p logs
 
-# ── Modules ────────────────────────────────────────────────────────────────
+# ── CUDA module (so torch can find the driver libs at runtime) ────────────
 module load cuda/12.4.1-fasrc01 2>/dev/null \
   || module load cuda/12.2.0-fasrc01 2>/dev/null \
   || module load cuda 2>/dev/null \
   || echo "WARN: no cuda module loaded; relying on torch wheel-bundled libs"
 
+# ── Node bringup (mirrors probe_cairo_high_n.sbatch) ──────────────────────
 if ! command -v node >/dev/null 2>&1; then
   module load nodejs/22.9.0-fasrc01 2>/dev/null \
     || module load nodejs/20.10.0-fasrc01 2>/dev/null \
@@ -66,47 +65,47 @@ if [ ! -d "node_modules/canvas" ]; then
   command -v pnpm >/dev/null && pnpm install --prefer-offline || npm install
 fi
 
-# uv venv with torch. node-gym's pyproject doesn't list torch, so we need to
-# install it explicitly into the .venv. Prefer cuda wheels.
-if ! command -v uv >/dev/null 2>&1; then
-  echo "ERROR: uv not on PATH; trainloop needs uv-managed env for torch"
+# ── Use analogen's venv (already has torch+cu128+cuda working) ────────────
+DEFAULT_ANALOGEN_VENV="/n/holylabs/gershman_lab/Users/rtruong/analogen/.venv"
+ANALOGEN_VENV="${ANALOGEN_VENV:-$DEFAULT_ANALOGEN_VENV}"
+if [ ! -x "${ANALOGEN_VENV}/bin/python" ]; then
+  echo "ERROR: analogen venv not found at ${ANALOGEN_VENV}/bin/python"
+  echo "       Set ANALOGEN_VENV=/path/to/analogen/.venv and re-submit."
   exit 1
 fi
-uv sync 2>/dev/null || true
-# Install torch into the venv if missing OR if the wheel is wrong CUDA version.
-# FASRC drivers are CUDA 12.9 — the default PyPI Linux wheel is cu130, which
-# needs driver >=13.0 and silently falls back to cpu. Force cu128 (works with
-# any driver >=12.8). Matches analogen/pyproject.toml's pytorch-cu128 index.
-TORCH_OK=0
-if .venv/bin/python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
-  TORCH_OK=1
-fi
-if [ "$TORCH_OK" -eq 0 ]; then
-  echo "==> Installing torch from cu128 index (FASRC driver = CUDA 12.9)"
-  uv pip install --index-url https://download.pytorch.org/whl/cu128 \
-    --extra-index-url https://pypi.org/simple/ \
-    torch 2>&1 | tail -5
-fi
-PY="uv run python"
-echo "==> torch version + cuda check:"
-$PY -c "import torch; print(f'  torch={torch.__version__}, cuda_available={torch.cuda.is_available()}, device_count={torch.cuda.device_count()}')"
+PY="${ANALOGEN_VENV}/bin/python"
+
+# Put node-gym-dev's python/ FIRST so we get this branch's NodeVecEnv,
+# not analogen's editable install of the older node-gym/.
+DEV_ROOT="$(pwd)"
+export PYTHONPATH="${DEV_ROOT}/python:${DEV_ROOT}/tools${PYTHONPATH:+:$PYTHONPATH}"
+
+echo "==> Using Python: $PY"
+echo "==> PYTHONPATH (front): ${DEV_ROOT}/python : ${DEV_ROOT}/tools"
+$PY -c "
+import sys, node_gym, torch
+print(f'  node_gym from: {node_gym.__file__}')
+print(f'  has NodeVecEnv: {hasattr(node_gym, \"NodeVecEnv\")}')
+print(f'  torch={torch.__version__}, cuda_available={torch.cuda.is_available()}, '
+      f'device_count={torch.cuda.device_count()}')
+assert hasattr(node_gym, 'NodeVecEnv'), 'NodeVecEnv missing — wrong node_gym!'
+"
 
 JOB_TAG="${SLURM_JOB_ID:-local}"
 SUMMARY="logs/directvec_trainloop_summary_${JOB_TAG}.tsv"
-# Header is written by the harness on first append.
 
 DEFAULT_ANALOGEN_DIR="/n/holylabs/gershman_lab/Users/rtruong/analogen/games/js"
 ANALOGEN_GAMES_DIR="${ANALOGEN_GAMES_DIR:-$DEFAULT_ANALOGEN_DIR}"
 
-# Decide gpu_mode based on whether cuda is available. If yes → real torch.
+# Decide gpu_mode based on whether cuda is actually available.
 if $PY -c "import torch; exit(0 if torch.cuda.is_available() else 1)"; then
   GPU_MODE="torch"
-  DEVICE="cuda"
   EXTRA_ARGS=("--gpu-mode" "torch" "--device" "cuda" "--batch-size" "256" "--n-mini-epochs" "4")
+  echo "==> GPU mode: torch+cuda (real CNN forward+backward)"
 else
-  echo "WARN: cuda not available; falling back to sleep-mode (gpu_sim_ms=60)"
   GPU_MODE="sleep"
   EXTRA_ARGS=("--gpu-mode" "sleep" "--gpu-sim-ms" "60" "--n-mini-epochs" "4")
+  echo "==> GPU mode: sleep (cuda not available — falling back to time-modeled)"
 fi
 
 run_one () {
@@ -116,7 +115,7 @@ run_one () {
   echo "════════════════════════════════════════════════════════════════"
   echo " ${game}  N=${n}  n_steps=${n_steps}  gpu_mode=${GPU_MODE}"
   echo "════════════════════════════════════════════════════════════════"
-  NODE_GYM_GAMES_DIR="$games_dir" PYTHONPATH=tools \
+  NODE_GYM_GAMES_DIR="$games_dir" \
     $PY tools/probe_directvec_trainloop.py \
       --n-envs "$n" --n-steps "$n_steps" --n-updates 30 \
       --game "$game" "${EXTRA_ARGS[@]}" \
@@ -155,8 +154,11 @@ echo "  flappy_bird N=8 :  SubprocVecEnv 25,456 sps  →  NodeVecEnv 56,270 sps 
 echo "  grid_v4     N=8 :  SubprocVecEnv 12,791 sps  →  NodeVecEnv 21,846 sps  (+71%)"
 echo "  grid_v4     N=16:  SubprocVecEnv 11,922 sps  →  NodeVecEnv 18,797 sps  (+58%)"
 echo
-echo "Decision criterion (training-loop sps, what analogen would actually see):"
+echo "Sleep-mode trainloop reference (job 12973443, FASRC, 240ms fixed gpu):"
+echo "  flappy_bird N=8 :  6,232 → 7,235  (+16.1%)"
+echo "  grid_v4     N=8 :  5,518 → 6,264  (+13.5%)"
+echo "  grid_v4     N=16:  8,040 → 9,828  (+22.2%)"
+echo
+echo "Decision criterion:"
 echo "  - If grid_v4 N=8 trainloop delta >5% → patch analogen to use NodeVecEnv"
-echo "  - If <2%                              → SubprocVec env-side cost is fully"
-echo "                                          masked by GPU; not worth changing"
-echo "                                          API surface for analogen"
+echo "  - If <2%                              → keep SubprocVecEnv; not worth churn"
