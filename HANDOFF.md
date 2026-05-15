@@ -2,25 +2,43 @@
 
 **Branch**: `dev/worker-threads-multi-env`
 **Full design doc**: `docs/MULTI_ENV_RUNTIME.md` (12 sections, all claims cited)
-**Status**: investigation complete, architecture decided, Phase 1 not started.
+**Status**: `NodeVecEnv` (Architecture B / DirectVecEnv) productionized,
+ready to merge to main. C₁ (Worker Threads) deferred — not needed at
+analogen's n_envs=8 setting.
 
 ---
 
 ## TL;DR
 
-Worker Threads multi-env runtime is the chosen architecture
-(C₁: WT + Cairo + draw-call batching). 19 commits, 9 SLURM jobs of
-investigation produced two key results:
+`NodeVecEnv` is implemented, FASRC-validated, and productionized for
+merge. Single Python process drives N Node workers via direct
+stdin/stdout pipes + mmap obs. Drop-in replacement for
+`SubprocVecEnv([NodeGymEnv]*N)` with measured wins:
 
-- **Framework throughput at N=24**: 203k iters/s (3.8× unbatched Cairo,
-  1.7× over best-pre-batching). Job 12929486.
-- **Training-loop sps impact on analogen**: +16% from C₁ alone, **+48%
-  when stacked with `torch.compile`** (the two stack multiplicatively).
+- **Pure env throughput** (FASRC, job 12972050): +71% on grid_v4 N=8,
+  +121% on flappy_bird N=8.
+- **Training-loop sps under real torch+cuda** (FASRC, job 12978195):
+  **+13.8% on grid_v4 N=8**, +17.8% on flappy_bird N=8 — should lift
+  analogen grid_v4 from 1903 → ~2160 sps, putting it above ALE Pong
+  (2078) on the chart.
 
-The investigation overturned an earlier "library-locks are
-fundamental" diagnosis. Real bottleneck is **N-API call frequency**;
-batching draws into ~9 native fills/iter (via `ctx.beginPath/rect/fill`)
-preserves multi-color rendering AND gets 66% scaling efficiency at N=16.
+Productionization complete:
+- Subclasses `gymnasium.vector.VectorEnv` (Gymnasium 1.0 API)
+- All three autoreset modes: `next_step` (default), `same_step` (SB3
+  drop-in), `disabled`
+- Action validation, dict info shape, length-checked seeds
+- Background stderr drainage (workers can't deadlock on stderr writes)
+- 18 pytest tests covering API conformance, autoreset modes, determinism
+
+C₁ (Worker Threads) work is preserved in the design doc but not pursued
+— at n_envs=8 the gain over DirectVecEnv is negligible, and the
+implementation is ~3 weeks vs DirectVecEnv's 1 week.
+
+The original investigation overturned an earlier "library-locks are
+fundamental" diagnosis. Real bottleneck for C₁ would be **N-API call
+frequency**; batching draws into ~9 native fills/iter preserves
+multi-color rendering AND gets 66% scaling efficiency at N=16. That
+work is filed for future expansion to higher N.
 
 ---
 

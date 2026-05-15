@@ -14,7 +14,7 @@ def main(n: int = 2, game: str = "flappy_bird", steps: int = 10) -> int:
     print(f"NodeVecEnv smoke: n={n} game={game} steps={steps}")
     venv = NodeVecEnv(games=[game] * n, obs_size=64, obs_mode="rgb")
     try:
-        obs, infos = venv.reset(seeds=list(range(n)))
+        obs, infos = venv.reset(seed=list(range(n)))
         assert obs.shape == (n, 64, 64, 3), f"reset obs shape {obs.shape}"
         assert obs.dtype == np.uint8
         print(f"  reset ok — obs shape {obs.shape}, dtype {obs.dtype}, "
@@ -26,11 +26,12 @@ def main(n: int = 2, game: str = "flappy_bird", steps: int = 10) -> int:
             assert rewards.shape == (n,)
             assert terms.shape == (n,)
             assert truncs.shape == (n,)
-            assert len(infos) == n
+            # Gymnasium 1.0: info is a dict (vectorised, not list-of-dicts)
+            assert isinstance(infos, dict), f"infos type {type(infos)}"
         print(f"  stepped {steps} times — last rewards {rewards.tolist()} "
               f"terms {terms.tolist()} truncs {truncs.tolist()}")
         # Reset mid-life
-        obs, infos = venv.reset(seeds=[42 + i for i in range(n)])
+        obs, infos = venv.reset(seed=[42 + i for i in range(n)])
         assert obs.shape == (n, 64, 64, 3)
         print(f"  re-reset ok")
     finally:

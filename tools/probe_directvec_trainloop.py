@@ -131,7 +131,7 @@ def run_trainloop(arm_label: str, venv, *, n_envs: int, n_steps: int,
     if hasattr(venv, "reset"):
         # NodeVecEnv expects seeds kw; HandRolledSubprocVecEnv expects positional.
         try:
-            venv.reset(seeds=seeds)
+            venv.reset(seed=seeds)
         except TypeError:
             venv.reset(seeds)
 
@@ -257,7 +257,7 @@ def main() -> int:
     if not args.skip_direct:
         from node_gym import NodeVecEnv
         venv = NodeVecEnv(games=games, obs_size=args.obs_size,
-                          autoreset=True, autoreset_seed=42)
+                          autoreset_mode="same_step", autoreset_seed=42)
         try:
             r = run_trainloop("NodeVecEnv", venv,
                               n_envs=args.n_envs, n_steps=args.n_steps,

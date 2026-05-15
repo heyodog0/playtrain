@@ -17,13 +17,16 @@ from node_gym import NodeVecEnv
 def run_one_pass(*, n: int, game: str, steps: int, seed_base: int,
                  actions_seed: int, autoreset: bool,
                  autoreset_seed: int | None) -> tuple[list[str], int]:
+    # Use SAME_STEP autoreset (SB3-compatible) so the determinism check verifies
+    # the substituted-obs path that the bench A/B uses.
     venv = NodeVecEnv(games=[game] * n, obs_size=64, obs_mode="rgb",
-                      autoreset=autoreset, autoreset_seed=autoreset_seed)
+                      autoreset_mode="same_step" if autoreset else "disabled",
+                      autoreset_seed=autoreset_seed)
     rng = np.random.default_rng(actions_seed)
     hashes: list[str] = []
     n_terminals = 0
     try:
-        obs, _ = venv.reset(seeds=[seed_base + i for i in range(n)])
+        obs, _ = venv.reset(seed=[seed_base + i for i in range(n)])
         hashes.append(hashlib.sha256(obs.tobytes()).hexdigest()[:16])
         for _ in range(steps):
             acts = rng.integers(0, 8, size=n).tolist()
