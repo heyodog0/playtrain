@@ -238,7 +238,7 @@ def main() -> int:
           f"gpu_mode={args.gpu_mode} ===")
 
     if not args.skip_subproc:
-        from probe_directvec_bench import HandRolledSubprocVecEnv
+        from node_gym._subproc_vec_env import HandRolledSubprocVecEnv
         venv = HandRolledSubprocVecEnv(games=games, obs_size=args.obs_size,
                                        autoreset=True, autoreset_seed=42)
         try:
