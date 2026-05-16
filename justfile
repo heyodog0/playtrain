@@ -48,7 +48,12 @@ sync-analogen:
     if [ ! -d "$src" ]; then echo "missing: $src" >&2; exit 1; fi
     n=0
     for f in "$src"/analogen_*.js; do
-      cp "$f" "examples/games/js/$(basename "$f")"
+      dest="examples/games/js/$(basename "$f")"
+      # `rm -f` first so this works whether the destination is a stale
+      # symlink (resolves to $f, would trip macOS cp's same-inode guard),
+      # a regular file, or missing entirely.
+      rm -f "$dest"
+      cp "$f" "$dest"
       n=$((n+1))
     done
     echo "synced $n files from $src"
