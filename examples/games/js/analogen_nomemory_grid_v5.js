@@ -2,9 +2,12 @@
 // Same 8x8 layout/puzzle as v4 with two role-binding changes:
 //   - RED KEY / RED DOOR replaced by HAT / SUNBEAM. The hat sits on top
 //     of the avatar's head (parallel to BOOTS at the bottom). The sunbeam
-//     is a vertical yellow beam through a tile; entering it consumes the
-//     hat and dissolves the beam (+1000), same mechanic as the doors in
-//     v4 — the obstacle is just visually different.
+//     is a vertical yellow beam through a tile. Mirrors the laser/boots
+//     pair: sunbeam is lethal without HAT, deactivated (safe + grayed
+//     visually) when HAT is in inventory. HAT is retained, no +1000.
+//   - SWORD is now the only enemy killer. BOOTS no longer kills enemies;
+//     each sword is consumed on enemy contact (2 swords per seed pairs
+//     with the 2 enemies on the map).
 //   - BOOTS no longer recolor the legs. Instead, two small boot rects
 //     are drawn below the legs when boots are equipped. The leg color
 //     stays default red. This makes the boots unambiguously a "bottom
@@ -33,7 +36,8 @@
 // Inventory cap stays at 2.
 //
 // Score deltas: +500 pickup, +1000 reward, -1000 curse, +1000 enemy kill,
-//   +1000 door open (NEW), -5000 death, +50000 + lives*10000 win.
+//   +1000 blue-door open, -5000 death, +50000 + lives*10000 win.
+//   (v5: sunbeam is now a hazard like the laser — no reward for passing.)
 //
 // ----- original v2 header -----
 // Minor-tweak variant of analogen_nomemory_grid_v1. Same overall feel
@@ -267,10 +271,7 @@ function updateGame() {
             }
             e.r = nr;
             if (e.r === player.r && e.c === player.c) {
-                if (hasItem(ROLE_BOOTS)) {
-                    score += 1000;
-                    enemies.splice(i, 1);
-                } else if (hasItem(ROLE_SWORD)) {
+                if (hasItem(ROLE_SWORD)) {
                     consumeItem(ROLE_SWORD);
                     score += 1000;
                     enemies.splice(i, 1);
@@ -302,10 +303,6 @@ function tryMove(nc, nr) {
 
     if (tile === 1) return;
 
-    if (tile === 4) {
-        if (hasItem(ROLE_HAT))  { consumeItem(ROLE_HAT);  clearDoor(4); score += 1000; }
-        else return;
-    }
     if (tile === 5) {
         if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(5); score += 1000; }
         else return;
@@ -313,9 +310,7 @@ function tryMove(nc, nr) {
 
     const enemyIdx = enemies.findIndex(e => e.c === nc && e.r === nr);
     if (enemyIdx !== -1) {
-        if (hasItem(ROLE_BOOTS)) {
-            score += 1000; enemies.splice(enemyIdx, 1);
-        } else if (hasItem(ROLE_SWORD)) {
+        if (hasItem(ROLE_SWORD)) {
             consumeItem(ROLE_SWORD); score += 1000; enemies.splice(enemyIdx, 1);
         } else {
             die(); return;
@@ -344,6 +339,10 @@ function tryMove(nc, nr) {
     if (here === 10) {
         // Always-active: lethal without boots, safe with boots. No timing cycle.
         if (!hasItem(ROLE_BOOTS)) { die(); return; }
+    }
+    if (here === 4) {
+        // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
+        if (!hasItem(ROLE_HAT)) { die(); return; }
     }
     if (here === 11) { handleVictory(); return; }
 
@@ -410,11 +409,15 @@ function drawTile(x, y, type) {
     if (type === 1) {
         fill(80, 40, 0); rect(x, y, 32, 32);
     } else if (type === 4) {
-        // Sunbeam: vertical yellow beam through the tile. Outer halo +
-        // bright core so the obstacle reads clearly at 64x64 downsample.
-        // Lethal-without-hat (handled in tryMove), consumed-on-entry-with-hat.
-        fill(255, 220, 80);  rect(x + 10, y, 12, 32);
-        fill(255, 255, 200); rect(x + 14, y, 4, 32);
+        // Sunbeam: vertical yellow beam. Lethal without hat, deactivated
+        // (grayed) when HAT in inventory — mirror of the laser/boots cue.
+        if (hasItem(ROLE_HAT)) {
+            fill(80);            rect(x + 10, y, 12, 32);
+            fill(120);           rect(x + 14, y, 4, 32);
+        } else {
+            fill(255, 220, 80);  rect(x + 10, y, 12, 32);
+            fill(255, 255, 200); rect(x + 14, y, 4, 32);
+        }
     } else if (type === 5) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
