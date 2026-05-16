@@ -433,7 +433,12 @@ function drawTile(x, y, type) {
 }
 
 function getItemColor(vid) {
-    if (vid === 6)  return color(255, 0, 0);
+    // v5: id 6 is the hat (was the red key in v4). Magenta picked so the hat
+    // doesn't blend with the peach face (~55 RGB from white), red legs, or
+    // anything else in the palette. RGB distance to face ≈ 220, to background
+    // ≈ 318, to purple boots ≈ 213 — all comfortably distinct after 64x64
+    // downsample + adaptive palette.
+    if (vid === 6)  return color(255, 50, 180);
     if (vid === 7)  return color(0, 150, 255);
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
