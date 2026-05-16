@@ -433,12 +433,12 @@ function drawTile(x, y, type) {
 }
 
 function getItemColor(vid) {
-    // v5: id 6 is the hat (was the red key in v4). Magenta picked so the hat
-    // doesn't blend with the peach face (~55 RGB from white), red legs, or
-    // anything else in the palette. RGB distance to face ≈ 220, to background
-    // ≈ 318, to purple boots ≈ 213 — all comfortably distinct after 64x64
-    // downsample + adaptive palette.
-    if (vid === 6)  return color(255, 50, 180);
+    // v5: id 6 is the hat (was the red key in v4). Bright "hot pink" —
+    // pushed away from purple boots (150,0,255) into the pink end of the
+    // spectrum (less B, more G). RGB distances: face (255,224,189) ≈ 128,
+    // purple boots ≈ 158, red legs (200,0,0) ≈ 235, background ≈ 333.
+    // Brightness chosen to be unambiguously "pink" not "magenta" at 64x64.
+    if (vid === 6)  return color(255, 100, 200);
     if (vid === 7)  return color(0, 150, 255);
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
@@ -449,10 +449,13 @@ function getItemColor(vid) {
 function drawToolVisual(id, x, y) {
     let c = getItemColor(id); fill(c);
     if (id === 6) {
-        // Hat: wide brim + crown rect. id 6 was the red key in v4; in v5
-        // it's the hat that pairs with the sunbeam (tile type 4).
-        rect(x - 8, y + 2, 16, 3);   // brim
-        rect(x - 5, y - 6, 10, 8);   // crown
+        // Hat: monochrome in the role color (pink). Enlarged vs the
+        // initial v5: 20x5 brim + 12x10 crown so the hat survives the
+        // 4:1 downsample with ~5 obs px to spare. Keeping it monochrome
+        // means future hat variants (other seeds, other colors) all share
+        // the same brim+crown silhouette but get a unique color signal.
+        rect(x - 10, y + 2, 20, 5);   // brim
+        rect(x - 6, y - 8, 12, 10);   // crown
     } else if (id === 7 || id === 17) {
         ellipse(x, y - 4, 10);
         rect(x - 2, y - 4, 4, 12);
@@ -507,9 +510,13 @@ function drawPlayer(x, y) {
     // Drawn above the hair when equipped; uses the hat item's color.
     const hat = inventoryQueue.find(it => it.role === ROLE_HAT);
     if (hat) {
+        // Monochrome hat in the role color. Enlarged vs the initial v5:
+        // brim 26x5 (was 24x3) so it survives 4:1 downsample to ~1+ obs px;
+        // crown 16x8 (was 14x6) so the role-color block is ~2 obs px tall.
+        // Hat sits above the hair (-14..-8); brim covers y=-18..-13.
         fill(getItemColor(hat.visualId));
-        rect(-12, -16, 24, 3);  // wide brim, sits on top of the hair row (-14..-8)
-        rect(-7, -22, 14, 6);   // crown, sits directly on the brim
+        rect(-13, -18, 26, 5);  // brim
+        rect(-8, -26, 16, 8);   // crown
     }
 
     // Boots at the feet. Two small rects below the legs, colored by the
