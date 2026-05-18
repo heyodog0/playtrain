@@ -117,11 +117,11 @@ aggregate:
 
 # Generate one Gemini-built game from a catalog
 gen-game catalog name model="pro":
-    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}}
+    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}} --ref
 
 # Generate every game across every catalog
 gen-all model="pro":
-    uv run python tools/generate.py --all --model {{model}}
+    uv run python tools/generate.py --all --model {{model}} --ref
 
 # Generate one Three.js game. SKIPS if file exists — see gen-three-force.
 gen-three name model="pro":

@@ -148,5 +148,11 @@
     "ref": "https://ale.farama.org/environments/venture/",
     "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
     "mechanic": "dungeon rooms, shoot monsters + collect treasure"
+  },
+  {
+    "name": "qbert",
+    "ref": "https://ale.farama.org/environments/qbert/",
+    "actions_used": ["UP", "DOWN", "LEFT", "RIGHT"],
+    "mechanic": "diagonal-hop pyramid, flip all cube tops to target color, avoid enemies"
   }
 ]
