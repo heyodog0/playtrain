@@ -10,15 +10,11 @@ function setup() {
 
 function draw() {
   if (gameState !== 'PLAYING') {
+    // GAME OVER state — render black screen only. Text rendering omitted
+    // because node-gym's p5 shim lacks several text-related constants (TOP)
+    // and the agent never reads pixel text anyway. Episode termination is
+    // driven by getGameState().gameState, not by what's drawn here.
     background(0);
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(32);
-    if (gameState === 'GAMEOVER') {
-      text("GAME OVER", 200, 180);
-      textSize(16);
-      text("Score: " + score, 200, 220);
-    }
     return;
   }
 
@@ -313,14 +309,8 @@ function drawGame() {
   fill(100, 220, 255);
   rect(pp.x, pp.y - 5, psz * 0.4, psz * 0.4, 2);
   
-  // HUD
-  fill(255);
-  textSize(14);
-  textAlign(LEFT, TOP);
-  text("Score: " + score, 10, 10);
-  text("Lives: " + lives, 10, 25);
-  
-  // Life icons
+  // Life icons (HUD text omitted — node-gym's p5 shim lacks TOP constant
+  // and the agent doesn't read text anyway).
   fill(0, 255, 0);
   for (let i = 0; i < lives; i++) {
     rect(380 - i * 15, 20, 10, 10);
