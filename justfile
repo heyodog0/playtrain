@@ -37,27 +37,44 @@ smoke:
 play game="":
     node tools/play.mjs {{game}}
 
-# Refresh the analogen_* games from the sibling ../analogen/games/js/ tree.
+# Refresh the analogen-tree games from the sibling ../analogen/games/js/.
 # These used to be symlinks but had to become real files for Vercel deploys
 # (Vercel only checks out this repo, not the sibling). Run this after editing
 # the originals in ../analogen and before committing.
+#
+# Two groups are synced:
+#   (1) analogen_*.js — the AnaloGen role-binding envs (glob-matched).
+#   (2) The JS-Atari-6 clones (pong, breakout, beam_rider, space_invaders,
+#       qbert, seaquest) used by validate_jsatari.sh. These don't carry the
+#       analogen_ prefix, so they're enumerated explicitly rather than
+#       globbed — that keeps the sync from quietly grabbing every new
+#       top-level .js someone drops in ../analogen/games/js/.
 sync-analogen:
     #!/usr/bin/env bash
     set -euo pipefail
     src="../analogen/games/js"
     if [ ! -d "$src" ]; then echo "missing: $src" >&2; exit 1; fi
     n=0
-    for f in "$src"/analogen_*.js; do
-      dest="examples/games/js/$(basename "$f")"
+    copy_one() {
+      local f="$1"
+      local dest="examples/games/js/$(basename "$f")"
       # `rm -f` first so this works whether the destination is a stale
       # symlink (resolves to $f, would trip macOS cp's same-inode guard),
       # a regular file, or missing entirely.
       rm -f "$dest"
       cp "$f" "$dest"
       n=$((n+1))
+    }
+    for f in "$src"/analogen_*.js; do
+      copy_one "$f"
+    done
+    for g in pong breakout beam_rider space_invaders qbert seaquest; do
+      f="$src/$g.js"
+      if [ ! -f "$f" ]; then echo "missing: $f" >&2; exit 1; fi
+      copy_one "$f"
     done
     echo "synced $n files from $src"
-    git status --short examples/games/js/ | grep analogen_ || echo "(no changes)"
+    git status --short examples/games/js/ || echo "(no changes)"
 
 # Build the shareable static playtest site into dist/pages/ (for Vercel).
 build-pages:
