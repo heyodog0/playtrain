@@ -102,9 +102,17 @@ function draw() {
     });
   }
 
-  // Handle Enemy Animation & Movement
+  // Handle Enemy Animation & Movement.
+  // checkCollisions() inside this loop can call die(), which on respawn
+  // reassigns `enemies = []`. Snapshot the array ref so we can detect
+  // that reassignment and bail instead of indexing the new empty array
+  // (which would surface as "Cannot read properties of undefined
+  // (reading 'animProgress')" and kill the worker).
+  const enemiesRef = enemies;
   for (let i = enemies.length - 1; i >= 0; i--) {
+    if (enemies !== enemiesRef) break;
     let e = enemies[i];
+    if (!e) continue;
     if (e.animProgress < 1.0 || e.falling) {
       if (e.falling && e.animProgress >= 1.0) {
         e.animProgress += 0.05;
