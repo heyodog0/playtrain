@@ -38,6 +38,18 @@ Games read input through `keyIsDown(code)` and the `keyPressed()` callback — s
 
 Key codes: LEFT_ARROW=37, UP_ARROW=38, RIGHT_ARROW=39, DOWN_ARROW=40, SPACE=32.
 
+**FIRE / action 5 contract:** Actions 5/6/7 deliver SPACE as a one-frame
+press. Both detection patterns work — use whichever fits the game:
+
+- `keyIsDown(32)` returns `true` for exactly one frame per press (idiomatic
+  for arcade shoot loops, e.g. `if (keyIsDown(32) && cooldown === 0) fire()`).
+- `keyPressed()` is also invoked once per press with `keyCode === 32`
+  (idiomatic for one-shot menu/launch logic).
+
+Do **not** assume SPACE is held across multiple frames the way arrow keys
+are while their action is selected — each "press" is a discrete one-frame
+event regardless of how many consecutive steps choose action 5.
+
 **Runtime action mapping (for reference):**
 
 ```javascript
