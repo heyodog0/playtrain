@@ -256,8 +256,15 @@ function max(...args) { return Math.max(...(args.length === 1 && Array.isArray(a
 function keyIsDown(code) { return _keysDown.has(code); }
 function setKeysDown(keys) { _keysDown = new Set(keys); }
 function simulateKeyPress(code) {
-  // Sets keyCode global and triggers the game's keyPressed() if defined
+  // Sets keyCode global, marks the key as held for the current frame, and
+  // triggers the game's keyPressed() if defined. Adding to _keysDown lets
+  // games that poll via keyIsDown(code) (idiomatic p5.js for continuous
+  // fire/shoot loops) see the press alongside event-driven keyPressed()
+  // handlers. setKeysDown(action.held) runs at the start of the next step
+  // and replaces the set, so the held-ness is exactly one frame — matching
+  // the "press" semantics in game-env.mjs.
   globalThis.keyCode = code;
+  _keysDown.add(code);
   if (typeof globalThis.keyPressed === 'function') globalThis.keyPressed();
 }
 
