@@ -48,14 +48,19 @@ function resetGame(seed) {
   eBullets = [];
   enemies = [];
 
+  // ALE-aligned: fleet speed, shoot rate, and fleet size are now deterministic.
+  // The original per-episode randomization (4x range on speed/shoot, 28-45
+  // enemies) made each episode a different difficulty, capping JS-clone
+  // learning at ~score 450 because no single policy worked across the
+  // difficulty distribution. ALE Space Invaders has fixed 5x6 = 30 invaders.
   fleetX = 0;
   fleetY = 0;
   fleetDir = 1;
-  fleetSpeed = 0.5 + rng() * 1.5;
-  enemyShootChance = 0.01 + rng() * 0.03;
+  fleetSpeed = 1.0;
+  enemyShootChance = 0.02;
 
-  let rows = 4 + Math.floor(rng() * 2);
-  let cols = 7 + Math.floor(rng() * 3);
+  let rows = 5;
+  let cols = 6;
 
   let gridWidth = cols * 32;
   let startX = (400 - gridWidth) / 2 + 16;
@@ -166,13 +171,14 @@ function draw() {
       b.y += 5;
       
       if (Math.abs(b.x - player.x) < (b.w + player.w) / 2 && Math.abs(b.y - player.y) < (b.h + player.h) / 2) {
+        // ALE-aligned: no death penalty. Reward fires only on alien kills /
+        // wave-clear bonus. Getting hit just consumes a life.
         lives--;
-        score -= 20;
-        eBullets = []; 
+        eBullets = [];
         if (lives <= 0) {
           gameState = 'GAMEOVER';
         }
-        break; 
+        break;
       } else if (b.y > height) {
         eBullets.splice(i, 1);
       }

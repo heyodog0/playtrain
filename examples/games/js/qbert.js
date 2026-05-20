@@ -172,9 +172,10 @@ function checkCollisions() {
 }
 
 function die() {
+  // ALE-aligned: no death penalty. Reward fires only on positive scoring events
+  // (cube visits, full clear). Death just consumes a life.
   lives--;
-  score = Math.max(0, score - 5); 
-  
+
   if (lives <= 0) {
     gameState = 'GAMEOVER';
   } else {

@@ -141,14 +141,18 @@ function updateGameLogic() {
     if (gridZs[i] > 1) gridZs[i] = 0;
   }
 
-  // Spawn Enemies
-  let spawnRate = Math.max(15, 45 - Math.floor(score / 100));
+  // Spawn Enemies. Spawn rate and descent speed are fixed — ALE BeamRider
+  // bounds difficulty per-sector, not as continuous score-driven escalation.
+  // The original `45 - score/100` spawn ramp and `0.01 + score/2000` speed
+  // ramp made the game unplayable past ~score 200, which capped JS-clone
+  // learning at ~20 kills (job 13861957 vs ALE 13838787 in the validation sweep).
+  let spawnRate = 45;
   if (frameCountRL % spawnRate === 0) {
     let laneIdx = Math.floor(rng() * LANES);
     enemies.push({
       wx: BEAM_X_COORDS[laneIdx],
       wz: 0,
-      vz: 0.01 + (score / 2000),
+      vz: 0.01,
       sideDir: rng() > 0.5 ? 1 : -1,
       movePhase: rng() * PI * 2,
       type: rng() > 0.2 ? 'SHIP' : 'DEBRIS'

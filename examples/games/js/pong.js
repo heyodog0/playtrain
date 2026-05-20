@@ -1,7 +1,11 @@
+// ALE-aligned scoring: first side to 21 points wins. `lives` and `cpuLives`
+// count down points-remaining (start at 21, hit 0 to lose). Reward fires only
+// on completed-point events (matches ALE pong's ±1 per scored point semantics;
+// magnitude is irrelevant under reward_clip=sign). No per-paddle-hit shaping.
 let score = 0;
-let lives = 5;
+let lives = 21;
 let gameState = 'PLAYING';
-let cpuLives = 5;
+let cpuLives = 21;
 
 let player = { x: 0, y: 0, w: 16, h: 60, speed: 8 };
 let cpu = { x: 0, y: 0, w: 16, h: 60, speed: 5 };
@@ -26,8 +30,8 @@ function setup() {
 function resetGame(seed) {
   rng = mulberry32(seed);
   score = 0;
-  lives = 5;
-  cpuLives = 5;
+  lives = 21;
+  cpuLives = 21;
   gameState = 'PLAYING';
 
   player.x = width - 20;
@@ -111,7 +115,6 @@ function draw() {
         if (ball.vx < -16) ball.vx = -16;
         let hitFactor = (ball.y - player.y) / (player.h / 2);
         ball.vy = hitFactor * 9;
-        score += 1;
       }
 
       if (ball.vx < 0 &&
@@ -153,14 +156,12 @@ function draw() {
   fill(255, 255, 0);
   rect(ball.x, ball.y, ball.size, ball.size);
 
+  // Score bars: width proportional to points scored (out of 21). Bars rather
+  // than discrete pips because 21 pips would clutter the 400-px canvas.
   rectMode(CORNER);
   fill(0, 150, 255);
-  for (let i = 0; i < (5 - cpuLives); i++) {
-    rect(width / 2 + 15 + i * 15, 15, 10, 10);
-  }
+  rect(width / 2 + 15, 15, (21 - cpuLives) * 5, 10);
 
   fill(255, 50, 0);
-  for (let i = 0; i < lives; i++) {
-    rect(width / 2 - 25 - i * 15, 15, 10, 10);
-  }
+  rect(width / 2 - 15 - (21 - lives) * 5, 15, (21 - lives) * 5, 10);
 }

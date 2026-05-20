@@ -22,10 +22,25 @@ function setup() {
   createCanvas(400, 400);
 }
 
+// ALE-aligned: fixed 6-row brick wall with fixed per-row colors (red/orange/
+// yellow/green/aqua/blue, matching ALE Breakout's row palette). No random
+// rows, no random gaps, no random colors — those previously made the wall
+// geometry/appearance change every episode, which capped JS-clone learning
+// at ~score 250 because the CNN couldn't bind brick layout to score.
+// Lives: 5 (was 3) to match ALE's per-episode score ceiling.
+const ROW_COLORS = [
+  [200, 72, 72],    // row 0 — top, red
+  [198, 108, 58],   // row 1 — orange
+  [180, 122, 48],   // row 2 — amber
+  [162, 162, 42],   // row 3 — yellow
+  [72, 160, 72],    // row 4 — green
+  [66, 72, 200],    // row 5 — bottom, blue
+];
+
 function resetGame(seed) {
   rng = mulberry32(seed);
   score = 0;
-  lives = 3;
+  lives = 5;
   gameState = 'PLAYING';
 
   paddle = {
@@ -39,28 +54,22 @@ function resetGame(seed) {
   resetBall();
 
   bricks = [];
-  let rows = 4 + Math.floor(rng() * 4);
+  let rows = 6;
   let cols = 8;
   let bw = 400 / cols;
   let bh = 20;
 
   for (let r = 0; r < rows; r++) {
-    let rColor = [
-      50 + Math.floor(rng() * 205),
-      50 + Math.floor(rng() * 205),
-      50 + Math.floor(rng() * 205)
-    ];
+    let rColor = ROW_COLORS[r];
     for (let c = 0; c < cols; c++) {
-      if (rng() > 0.1) {
-        bricks.push({
-          x: c * bw + 2,
-          y: r * bh + 30,
-          w: bw - 4,
-          h: bh - 4,
-          active: true,
-          color: rColor
-        });
-      }
+      bricks.push({
+        x: c * bw + 2,
+        y: r * bh + 30,
+        w: bw - 4,
+        h: bh - 4,
+        active: true,
+        color: rColor
+      });
     }
   }
 }

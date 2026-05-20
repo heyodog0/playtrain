@@ -294,8 +294,9 @@ function spawnEntities() {
 }
 
 function loseLife() {
+  // ALE-aligned: no death penalty. Reward fires only on positive scoring events
+  // (kills, diver pickups, surfacing). Death just consumes a life.
   lives--;
-  score = Math.max(0, score - 50); // Penalty for dying
   if (lives <= 0) {
     gameState = 'GAMEOVER';
   } else {
