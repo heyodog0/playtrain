@@ -1,14 +1,12 @@
 [project]
-name = "fast-games"
+name = "gym-gen"
 version = "0.1.0"
-description = "ProcGen-style RL benchmark on LLM-generated p5.js + Three.js games — headless, no browser"
+description = "LLM-driven generation and natural-language modification of p5.js and Three.js RL environments."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "google-genai>=1.72.0",
-  "gymnasium>=1.1.1",
   "numpy>=2.2.0",
-  "stable-baselines3>=2.7.0",
   "node-gym",
 ]
 
@@ -18,32 +16,14 @@ dependencies = [
 #   <parent>/node-gym         (https://github.com/heyodog0/node-gym)
 node-gym = { path = "../node-gym", editable = true }
 
-[project.optional-dependencies]
-notebook = [
-  "marimo>=0.13.0",
-  "matplotlib>=3.9.0",
-]
-experiment = [
-  "wandb>=0.18.0",
-  "tensorboard>=2.18.0",
-]
-
 [project.scripts]
-fast-games-train = "fast_games.train.ppo:main"
-fast-games-train-dqn = "fast_games.train.dqn:main"
-fast-games-train-multi = "fast_games.train.multigame:main"
-fast-games-eval = "fast_games.eval.evaluate:main"
-fast-games-baselines = "fast_games.eval.baselines:main"
-fast-games-aggregate = "fast_games.eval.aggregate:main"
-fast-games-validate = "fast_games.validate.validate:main"
-fast-games-validate-three = "fast_games.validate.validate_three:main"
-fast-games-bench = "fast_games.validate.bench:main"
-fast-games-sweep = "fast_games.sweep:main"
-fast-games-figures = "fast_games.figures:main"
+gym-gen-validate       = "gym_gen.validate.validate:main"
+gym-gen-validate-three = "gym_gen.validate.validate_three:main"
+gym-gen-bench          = "gym_gen.validate.bench:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fast_games"]
+packages = ["src/gym_gen"]

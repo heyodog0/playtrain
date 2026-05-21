@@ -16,3 +16,6 @@ outputs/kazuki-benchmark-*.md
 outputs/kazuki_gym_benchmark_*.json
 outputs/verify-*.png
 outputs/verify-*.json
+
+# External reference clones (not part of this repo)
+reference/bigger_better_faster_repo/

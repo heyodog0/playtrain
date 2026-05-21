@@ -23,7 +23,7 @@ The environment runs a p5.js browser game headlessly via node-canvas. We need to
 ## Running
 
 ```bash
-uv run python -m fast_games.validate.validate --all
+uv run python -m gym_gen.validate.validate --all
 ```
 
 All checks pass/fail to stdout. Exit code 0 if all pass, 1 otherwise.

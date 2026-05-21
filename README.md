@@ -1,12 +1,13 @@
 # gym-gen
 
-ProcGen-style RL benchmark with LLM-generated games. Built on [`node-gym`](https://github.com/heyodog0/node-gym) (the headless runtime); this repo adds the game catalog, multi-game PPO/DQN training, train/test seed splits, and SLURM-based sweep orchestration.
+LLM-driven generation and natural-language modification of p5.js / Three.js RL environments. Built on [`node-gym`](https://github.com/heyodog0/node-gym) (the headless runtime); this repo owns the game catalog, the generation pipeline, and the ProcGen-style validation harness that gates which generated games ship.
 
 - **Game generation**: Gemini generates p5.js (Discrete(8), 64×64 RGB) and Three.js (Discrete(15), 84×84 RGB) games from strict templates
 - **Headless runtime**: Games run in Node.js via `node-canvas` (p5) or Dawn/WebGPU (three.js) — no browser. Runtime lives in the sibling [`node-gym`](https://github.com/heyodog0/node-gym) repo.
-- **RL training**: Python Gymnasium wrapper + PPO/DQN via SB3, validated against ProcGen-style criteria
-- **Multi-game training**: ProcGen-style single policy across all games with train/test seed splits
-- **Game tester**: Browser UI for playtesting + Gemini-powered refinement via feedback
+- **Validation harness**: 5-check ProcGen-style suite (shape, action-space, determinism, throughput, episode bounds) — generated games must pass before being added to the catalog.
+- **Game tester**: Browser UI for playtesting + Gemini-powered refinement via feedback.
+
+> Training, evaluation, and figure generation for the paper live in the sibling `paper/` repo (`gym-gen-experiments`). gym-gen itself stays focused on generation + the contract its games must satisfy. The pre-refactor snapshot with training code inline is preserved at the `v0.1-paper-submission` tag.
 
 ## Setup
 
