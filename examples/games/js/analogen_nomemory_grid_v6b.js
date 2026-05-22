@@ -1,52 +1,41 @@
-// analogen_nomemory_grid_v5_2rooms_doorgoal
-// Variant where opening the KEY-locked door IS the win condition.
-// The separate +50000 goal tile at (7,0) is removed — agent only needs
-// to identify the BLUE_KEY-bound icon and walk it onto the door cell.
-// The empty right room is preserved structurally (obs distribution
-// stays close to v5_2rooms) but plays no scoring role.
+// analogen_nomemory_grid_v6b
+// Successor to v6 — GOAL at (1,4), directly left of the BLUE door at (1,5).
 //
-// Hypothesis: this strips the v5_2rooms task to the minimum possible
-// binding test — "pick the right icon, walk to the door, win." If PPO
-// still plateaus here, the bottleneck is binding-from-pixels itself,
-// not exploration or the punishment cliff. If it solves, then
-// v5_2rooms_door (door + reward, goal still required) isolates
-// exploration as the remaining blocker.
+// Rationale: v6 (goal at (2,4)) plateaued at ~4500 with the agent
+// oscillating LEFT_D/RIGHT_D in the post-door corridor and never taking
+// the DOWN step to (2,4). Decoded rollouts show action=DOWN at <2% of
+// post-harvest steps — PPO never reinforced "drop down to win" because
+// it never observed the +60k from doing so. The v4-policy-on-v6 test
+// confirmed even the working 6500 v4 policy doesn't navigate to (2,4):
+// it goes UP after harvest (its v4 habit), never DOWN.
 //
-// Vs v5_2rooms_door:
-//   - Goal tile 11 at (7,0) removed (replaced with floor).
-//   - Opening the key-door triggers handleVictory() directly
-//     (score += 50000 + lives*10000, gameState = 'WIN'). No separate
-//     +1000 — the door-open IS the win event.
+// v6b removes the post-door navigation gap. The goal sits in the same
+// corridor the agent enters after opening BLUE door:
+//   (1,7) -> (1,6) -> (1,5)[door, consume key] -> (1,4)[GOAL, +60k].
+// Random-init exploration that opens the door and continues LEFT
+// immediately triggers the win, so PPO can observe the +60k early and
+// reinforce it before harvest dynamics dominate the gradient.
 //
-// Forced path: items -> DOOR(3,4) with BLUE_KEY -> WIN.
+// Changes vs v6:
+//   - Goal moved (2,4) -> (1,4), directly left of BLUE door at (1,5).
+//     (2,4) is now floor. Everything else (laser, doors, enemy, BOOTS
+//     semantics, role pool) identical to v6.
 //
-// Vs v5: only ONE obstacle (laser) and ONE binding to identify (BOOTS).
-// BLUE_KEY, SWORD, and HAT roles still appear in the shuffle pool but
-// bind to no-op distractor items (no blue door, no enemy, no sunbeam).
-// This isolates the single role-binding test that defines AnaloGen
-// while leaving the spatial-exploration component roughly intact.
-//
-// All other v5 mechanics preserved: inventory cap 2, drops, curses,
-// sword consumption (no enemy → swords are pure distractors here),
-// score deltas, 8x8 canvas / 64x64 obs downsample geometry.
-//
-// ----- original v5 header -----
-// Same 8x8 layout/puzzle as v4 with two role-binding changes:
-//   - RED KEY / RED DOOR replaced by HAT / SUNBEAM. The hat sits on top
-//     of the avatar's head (parallel to BOOTS at the bottom). The sunbeam
-//     is a vertical yellow beam through a tile. Mirrors the laser/boots
-//     pair: sunbeam is lethal without HAT, deactivated (safe + grayed
-//     visually) when HAT is in inventory. HAT is retained, no +1000.
-//   - SWORD is now the only enemy killer. BOOTS no longer kills enemies;
-//     each sword is consumed on enemy contact (2 swords per seed pairs
-//     with the 2 enemies on the map).
-//   - BOOTS no longer recolor the legs. Instead, two small boot rects
-//     are drawn below the legs when boots are equipped. The leg color
-//     stays default red. This makes the boots unambiguously a "bottom
-//     of avatar" signal, paired symmetrically with the hat on top.
-// Blue key / blue door / sword / enemy / laser all unchanged.
+// Changes vs v4 (inherited from v6):
+//   - Goal moved (0,0) -> (1,4). Old (0,0) becomes floor. The patrolling
+//     enemy that previously occupied (4,2) is removed entirely (no enemy
+//     spawns in the middle-top room; the patrol loop still exists but
+//     has no `patrol: true` enemies to iterate).
+//   - BOOTS no longer kill enemies (mirrors v5). SWORD is the only
+//     enemy killer; consumed on contact. The only enemy in v6 is the
+//     stationary one at (3,6) in the bottom room, killable with SWORD.
+//   - BOOTS visual: small purple boot rects below the legs (mirrors v5);
+//     legs always render default red instead of being recolored.
+//   - Red door / red key path still exists but is now BEYOND the goal
+//     (post-win), so effectively a distractor + a +500 pickup.
 //
 // ----- original v4 header -----
+// analogen_nomemory_grid_v4
 // 8x8 successor to v3. Same puzzle logic, smaller and cleaner-downsampling.
 // Changes vs v3:
 //   (1) 8x8 grid (was 11x11). Canvas 256x256 (8 tiles x 32px), downsamples
@@ -68,8 +57,7 @@
 // Inventory cap stays at 2.
 //
 // Score deltas: +500 pickup, +1000 reward, -1000 curse, +1000 enemy kill,
-//   +1000 blue-door open, -5000 death, +50000 + lives*10000 win.
-//   (v5: sunbeam is now a hazard like the laser — no reward for passing.)
+//   +1000 door open (NEW), -5000 death, +50000 + lives*10000 win.
 //
 // ----- original v2 header -----
 // Minor-tweak variant of analogen_nomemory_grid_v1. Same overall feel
@@ -81,7 +69,7 @@
 //       Closes the v1 failure mode where BOOTS / BLUE_KEY could spawn
 //       behind their own gate.
 //   (2) The path from the bottom room to the goal is now a forced
-//       sequence: LASER -> BLUE DOOR -> SUNBEAM -> GOAL. No bypass path,
+//       sequence: LASER -> BLUE DOOR -> RED DOOR -> GOAL. No bypass path,
 //       no parallel routes. Mirrors the platformer's design while keeping
 //       grid mechanics.
 //
@@ -89,7 +77,7 @@
 //
 //   .................   r0  outer wall
 //   . . .G . . . . .    r1  top-LEFT room with GOAL at (3,1)
-//   . . . . R . . . .   r2  SUNBEAM at (5,2) between top-left and top-middle (R=sunbeam tile, kept from v4 layout for path symmetry)
+//   . . . . R . . . .   r2  RED DOOR at (5,2) between top-left and top-middle
 //   . . . . . . . . .   r3  top-middle / top-right corridor
 //   . . . . . . E . B   r4  enemy at (7,4); BLUE DOOR at (10,2) above
 //   # # # # # # # # # L #  r5  WALL row with single laser passage at (11,5)
@@ -105,14 +93,14 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 8;  // v5_2rooms: 8x8, horizontal left/right split.
+const ROWS = 8;  // v4: 8x8 → canvas 256, downsamples to 64 at exact 4:1.
 const COLS = 8;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
 const MOVE_COOLDOWN = 6;
 const LASER_CYCLE = 120;
 
-const ROLE_HAT      = 'HAT';
+const ROLE_RED_KEY  = 'RED_KEY';
 const ROLE_BLUE_KEY = 'BLUE_KEY';
 const ROLE_SWORD    = 'SWORD';
 const ROLE_BOOTS    = 'BOOTS';
@@ -194,7 +182,7 @@ function resetGame(seed) {
 }
 
 function shuffleRoles() {
-    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_SWORD];
+    const toolRoles = [ROLE_RED_KEY, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
     TOOL_VISUAL_IDS.forEach((vid, i) => { toolMapping[vid] = toolRoles[i]; });
@@ -206,29 +194,49 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 2=key-door-AS-WIN (NEW). (4/5/10/11/13 unused.)
-    // 8x8, no outer-border walls. The right room is intentionally empty
-    // (no goal tile) — opening the key-door at (3,4) is the win event.
+    // 0=floor, 1=wall, 4=red door, 5=blue door, 10=laser, 11=goal, 13=enemy.
+    // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
+    // Top: 4 floor rows (0-3) split into 3 rooms by internal walls at
+    // cols 2 and 5. Doors at (2,1) RED and (5,1) BLUE. Goal at (0,0) —
+    // top-LEFT corner of top-left room. Middle-top room (cols 3-4 minus
+    // patrol pillars at (4,0) and (4,3)) has a patrolling enemy at (4,2)
+    // bouncing between (4,1) and (4,2). Main wall row 4 with laser at
+    // (7,4). Bottom: rows 5-7 (3 floor rows). Spawn at (1,7). Bottom
+    // enemy stationary at (3,6).
+    // Forced path:
+    //   LASER(7,4) -> top-right(6-7,0-3) -> BLUE_DOOR(5,1) ->
+    //   top-middle(3-4,0-3 minus pillars) -> RED_DOOR(2,1) ->
+    //   top-left(0-1,0-3) -> GOAL(0,0).
+    // v6b: GOAL at (1,4), directly left of BLUE door at (1,5).
+    //   Agent path: LASER(4,7) -> top-right -> through BLUE door at (1,5)
+    //   -> immediately step LEFT onto (1,4) = WIN. No post-door navigation.
     mapData = [
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,2,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
+        [0,0,1,0,1,1,0,0],
+        [0,0,4,0,11,5,0,0],   // GOAL at (1,4), directly left of BLUE door
+        [0,0,1,0,0,1,0,0],    // (2,4) is now floor (was v6's goal cell)
+        [0,0,1,0,1,1,0,0],
+        [1,1,1,1,1,1,1,10],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,13,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
     ];
     startCell = { c: 1, r: 7 };
 
-    // 8 pickup spots, randomized per seed across the left room (cols
-    // 0-2, all rows). Excludes the spawn cell and the 8 cells within
-    // Chebyshev distance 1 of the spawn — same buffer as v5 / v5_easy
-    // so the agent gets at least one free move before auto-pickup.
+    // 8 pickup spots, position randomized per seed. Enumerate all floor
+    // cells in the bottom area (rows 5-7 × cols 0-7), exclude:
+    //   - the spawn cell
+    //   - the 8 cells within Chebyshev distance 1 of the spawn (so the
+    //     agent always has at least 1 free move before auto-pickup kicks
+    //     in — otherwise a spawn-adjacent item forces a pickup on move 1,
+    //     turning the puzzle into "navigate the swap dance from a bad
+    //     starting inventory")
+    //   - the bottom enemy's cell
+    // Then shuffle and take the first 8.
     const candidates = [];
-    for (let r = 0; r <= 7; r++) {
-        for (let c = 0; c <= 2; c++) {
+    for (let r = 5; r <= 7; r++) {
+        for (let c = 0; c <= 7; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
+            if (c === 3 && r === 6) continue;  // bottom enemy spawn
             candidates.push({ c, r });
         }
     }
@@ -286,6 +294,7 @@ function updateGame() {
             }
             e.r = nr;
             if (e.r === player.r && e.c === player.c) {
+                // v6: BOOTS no longer kills enemies (mirrors v5). Only SWORD kills.
                 if (hasItem(ROLE_SWORD)) {
                     consumeItem(ROLE_SWORD);
                     score += 1000;
@@ -318,21 +327,18 @@ function tryMove(nc, nr) {
 
     if (tile === 1) return;
 
+    if (tile === 4) {
+        if (hasItem(ROLE_RED_KEY))  { consumeItem(ROLE_RED_KEY);  clearDoor(4); score += 1000; }
+        else return;
+    }
     if (tile === 5) {
         if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(5); score += 1000; }
         else return;
     }
 
-    // Key-door-AS-WIN: walking onto the door with BLUE_KEY consumes
-    // the key and triggers victory directly. No separate goal tile in
-    // this variant. Without BLUE_KEY the move is blocked (no death).
-    if (tile === 2) {
-        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); handleVictory(); return; }
-        else return;
-    }
-
     const enemyIdx = enemies.findIndex(e => e.c === nc && e.r === nr);
     if (enemyIdx !== -1) {
+        // v6: BOOTS no longer kills enemies. Only SWORD does, consumed on hit.
         if (hasItem(ROLE_SWORD)) {
             consumeItem(ROLE_SWORD); score += 1000; enemies.splice(enemyIdx, 1);
         } else {
@@ -359,12 +365,11 @@ function tryMove(nc, nr) {
         else                       { score -= 1000; penaltyTimer = 30; }
         return;
     }
-    // (laser tile 10 and goal tile 11 removed in v5_2rooms_doorgoal —
-    // the key-door at tile 2 is the only special tile, handled pre-move.)
-    if (here === 4) {
-        // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
-        if (!hasItem(ROLE_HAT)) { die(); return; }
+    if (here === 10) {
+        // Always-active: lethal without boots, safe with boots. No timing cycle.
+        if (!hasItem(ROLE_BOOTS)) { die(); return; }
     }
+    if (here === 11) { handleVictory(); return; }
 
     // Pick up a previously-dropped item if one is on this cell and its
     // re-pickup cooldown has elapsed. Mirrors the platformer's behavior.
@@ -429,38 +434,27 @@ function drawTile(x, y, type) {
     if (type === 1) {
         fill(80, 40, 0); rect(x, y, 32, 32);
     } else if (type === 4) {
-        // Sunbeam: vertical yellow beam. Lethal without hat, deactivated
-        // (grayed) when HAT in inventory — mirror of the laser/boots cue.
-        if (hasItem(ROLE_HAT)) {
-            fill(80);            rect(x + 10, y, 12, 32);
-            fill(120);           rect(x + 14, y, 4, 32);
-        } else {
-            fill(255, 220, 80);  rect(x + 10, y, 12, 32);
-            fill(255, 255, 200); rect(x + 14, y, 4, 32);
-        }
-    } else if (type === 5) {
-        fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
+        fill(200, 0, 0); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
-    } else if (type === 2) {
-        // Key-door-AS-WIN: blue panel matching canonical BLUE_KEY color
-        // (0,80,200). Same look as v5_2rooms_door so policies trained on
-        // one variant can be evaluated on the other without a re-encode.
+    } else if (type === 5) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (TOOL_VISUAL_IDS.includes(type)) {
         drawToolVisual(type, x + 16, y + 16);
     } else if (VALUE_VISUAL_IDS.includes(type)) {
         drawValueVisual(type, x + 16, y + 16);
+    } else if (type === 10) {
+        // Boots visibly disable the laser: yellow (lethal) without boots,
+        // gray (safe) with boots. Same render rect as v1.
+        fill(hasItem(ROLE_BOOTS) ? color(60) : color(255, 255, 0));
+        rect(x + 2, y + 14, 28, 4);
+    } else if (type === 11) {
+        fill(255, 215, 0); rect(x, y, 32, 32);
     }
 }
 
 function getItemColor(vid) {
-    // v5: id 6 is the hat (was the red key in v4). Bright "hot pink" —
-    // pushed away from purple boots (150,0,255) into the pink end of the
-    // spectrum (less B, more G). RGB distances: face (255,224,189) ≈ 128,
-    // purple boots ≈ 158, red legs (200,0,0) ≈ 235, background ≈ 333.
-    // Brightness chosen to be unambiguously "pink" not "magenta" at 64x64.
-    if (vid === 6)  return color(255, 100, 200);
+    if (vid === 6)  return color(255, 0, 0);
     if (vid === 7)  return color(0, 150, 255);
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
@@ -470,15 +464,7 @@ function getItemColor(vid) {
 
 function drawToolVisual(id, x, y) {
     let c = getItemColor(id); fill(c);
-    if (id === 6) {
-        // Hat: monochrome in the role color (pink). Enlarged vs the
-        // initial v5: 20x5 brim + 12x10 crown so the hat survives the
-        // 4:1 downsample with ~5 obs px to spare. Keeping it monochrome
-        // means future hat variants (other seeds, other colors) all share
-        // the same brim+crown silhouette but get a unique color signal.
-        rect(x - 10, y + 2, 20, 5);   // brim
-        rect(x - 6, y - 8, 12, 10);   // crown
-    } else if (id === 7 || id === 17) {
+    if (id === 6 || id === 7 || id === 17) {
         ellipse(x, y - 4, 10);
         rect(x - 2, y - 4, 4, 12);
     } else if (id === 12) {
@@ -526,24 +512,11 @@ function drawPlayer(x, y) {
 
     fill(cursed ? 100 : 255, cursed ? 100 : 200, 0); rect(-10, -14, 20, 6);   // hair
     fill(cursed ? 150 : 255, 224, 189); rect(-8, -8, 16, 8);                  // face
-    fill(200, 0, 0); rect(-10, 0, 20, 8);                                     // legs (always default red in v5)
+    fill(200, 0, 0); rect(-10, 0, 20, 8);                                     // legs (always default red in v6, like v5)
 
-    // Hat on top of head (replaces the v4 leg-recolor for the role item).
-    // Drawn above the hair when equipped; uses the hat item's color.
-    const hat = inventoryQueue.find(it => it.role === ROLE_HAT);
-    if (hat) {
-        // Monochrome hat in the role color. Enlarged vs the initial v5:
-        // brim 26x5 (was 24x3) so it survives 4:1 downsample to ~1+ obs px;
-        // crown 16x8 (was 14x6) so the role-color block is ~2 obs px tall.
-        // Hat sits above the hair (-14..-8); brim covers y=-18..-13.
-        fill(getItemColor(hat.visualId));
-        rect(-13, -18, 26, 5);  // brim
-        rect(-8, -26, 16, 8);   // crown
-    }
-
-    // Boots at the feet. Two small rects below the legs, colored by the
-    // equipped boots' visualId. v4 recolored the legs; v5 draws separate
-    // boots so the "bottom-of-avatar" signal is unambiguous.
+    // v6: BOOTS draw as small purple boot rects below the legs (mirrors v5).
+    // The leg color no longer recolors — the boots are a separate
+    // bottom-of-avatar signal paired symmetrically with other inventory.
     const boots = inventoryQueue.find(it => it.role === ROLE_BOOTS);
     if (boots) {
         fill(getItemColor(boots.visualId));
@@ -554,7 +527,7 @@ function drawPlayer(x, y) {
     inventoryQueue.forEach((item, idx) => {
         if (item.role === ROLE_SWORD) {
             push(); translate(12, 0); rotate(PI / 6); drawToolVisual(item.visualId, 0, 0); pop();
-        } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_HAT) {
+        } else if (item.role !== ROLE_BOOTS) {
             push(); scale(0.6); translate(-12 + idx * 10, 12); drawToolVisual(item.visualId, 0, 0); pop();
         }
     });

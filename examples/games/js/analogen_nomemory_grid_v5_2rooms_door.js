@@ -1,5 +1,5 @@
 // analogen_nomemory_grid_v5_2rooms_door
-// Variant of v5_2rooms that swaps the laser obstacle for a BOOTS-locked
+// Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
 // door at (3,4), and rewards opening that door with +1000. The +50000
 // goal at (7,0) is unchanged — agent must open the door AND reach the
 // goal to win.
@@ -13,14 +13,13 @@
 //
 // Vs v5_2rooms:
 //   - tile 10 (laser, lethal-without-boots) at (3,4) replaced with
-//     tile 2 (boots-door, blocks-without-boots) at (3,4).
-//   - Walking onto the door with BOOTS: opens it (clear all tile=2),
-//     score += 1000, BOOTS RETAINED (not consumed — matches the laser
-//     semantic where BOOTS persists past the obstacle).
-//   - Walking onto the door without BOOTS: blocked, no death.
+//     tile 2 (key-door, blocks-without-key) at (3,4).
+//   - Walking onto the door with BLUE_KEY: opens it (clear all tile=2),
+//     consumes the key, score += 1000.
+//   - Walking onto the door without BLUE_KEY: blocked, no death.
 //     Removes the laser's "punishment cliff" entirely.
 //
-// Forced path: items -> DOOR(3,4) with BOOTS -> right room -> GOAL(7,0).
+// Forced path: items -> DOOR(3,4) with BLUE_KEY -> right room -> GOAL(7,0).
 //
 // Vs v5: only ONE obstacle (laser) and ONE binding to identify (BOOTS).
 // BLUE_KEY, SWORD, and HAT roles still appear in the shuffle pool but
@@ -208,10 +207,10 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 2=boots-door (NEW), 11=goal. (4/5/10/13 unused.)
+    // 0=floor, 1=wall, 2=key-door (NEW), 11=goal. (4/5/10/13 unused.)
     // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
     // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
-    // with a single BOOTS-locked door at (3,4). Right room (cols 4-7):
+    // with a single KEY-locked door at (3,4). Right room (cols 4-7):
     // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
     mapData = [
         [0,0,0,1,0,0,0,11],
@@ -327,12 +326,11 @@ function tryMove(nc, nr) {
         else return;
     }
 
-    // Boots-locked door (NEW in v5_2rooms_door): opens with BOOTS held.
-    // BOOTS is NOT consumed (matches laser-with-boots semantics; BOOTS
-    // persists past the obstacle). Opening grants +1000 and clears all
-    // tile=2 cells. Without BOOTS the move is blocked (no death).
+    // Key-locked door: opens with BLUE_KEY held; key is consumed
+    // (matches v4 blue-door semantics). Opening grants +1000 and clears
+    // all tile=2 cells. Without BLUE_KEY the move is blocked (no death).
     if (tile === 2) {
-        if (hasItem(ROLE_BOOTS)) { clearDoor(2); score += 1000; }
+        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(2); score += 1000; }
         else return;
     }
 
@@ -364,7 +362,7 @@ function tryMove(nc, nr) {
         else                       { score -= 1000; penaltyTimer = 30; }
         return;
     }
-    // (laser tile 10 removed in v5_2rooms_door — replaced by boots-door
+    // (laser tile 10 removed in v5_2rooms_door — replaced by key-door
     // tile 2, handled pre-move above.)
     if (here === 4) {
         // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
@@ -448,10 +446,11 @@ function drawTile(x, y, type) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (type === 2) {
-        // Boots-door: purple panel echoing canonical BOOTS color
-        // (150,0,255). Distinct from the v5 blue door (0,80,200) so
-        // the agent learns a separate icon class for this obstacle.
-        fill(150, 0, 255); rect(x + 2, y + 2, 28, 28);
+        // Key-door: blue panel matching the canonical BLUE_KEY color
+        // (0,80,200) so the visual cue points at the correct binding.
+        // Identical render to tile 5 (v4 blue door); tile 5 is not
+        // placed on the 2rooms map, so there is no collision.
+        fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (TOOL_VISUAL_IDS.includes(type)) {
         drawToolVisual(type, x + 16, y + 16);
