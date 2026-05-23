@@ -562,15 +562,18 @@ function drawPlayer(x, y) {
     // (one fixed slot per role), instead of 60% scale at idx-dependent
     // positions. Each role gets a distinct anchor so the CNN sees a stable
     // visual cue regardless of inventory pickup order.
+    // Role inventory in v5_2rooms_door is {HAT, BLUE_KEY, SWORD, BOOTS,
+    // REWARD, CURSE}. HAT/BOOTS are rendered above by their dedicated
+    // hat-on-head / boots-at-feet code. SWORD keeps its rotated side render.
+    // BLUE_KEY gets a dedicated left-of-body slot. Anything else (REWARD,
+    // CURSE if they show up in inventory) falls into the below-feet catchall.
     inventoryQueue.forEach((item) => {
         if (item.role === ROLE_SWORD) {
             push(); translate(12, 0); rotate(PI / 6); drawToolVisual(item.visualId, 0, 0); pop();
         } else if (item.role === ROLE_BLUE_KEY) {
             push(); translate(-14, 4); drawToolVisual(item.visualId, 0, 0); pop();  // left of body, full scale
-        } else if (item.role === ROLE_RED_KEY) {
-            push(); translate(14, 4); drawToolVisual(item.visualId, 0, 0); pop();   // right of body, full scale
         } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_HAT) {
-            push(); translate(0, 14); drawToolVisual(item.visualId, 0, 0); pop();   // below avatar, full scale (catchall for other future roles)
+            push(); translate(0, 14); drawToolVisual(item.visualId, 0, 0); pop();   // below avatar, full scale (catchall)
         }
     });
 
