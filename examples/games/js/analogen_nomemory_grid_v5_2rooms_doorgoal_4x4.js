@@ -1,25 +1,24 @@
-// analogen_nomemory_grid_v5_2rooms_door_bigkey (same mechanics as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but renders all tool items in inventory at full scale at fixed body positions, instead of 60%-scaled at idx-dependent positions. Tests whether the small/position-variable rendering of BLUE_KEY at 64x64 obs is the bottleneck for PPO.)
-// Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
-// door at (3,4), and rewards opening that door with +1000. The +50000
-// goal at (7,0) is unchanged — agent must open the door AND reach the
-// goal to win.
+// analogen_nomemory_grid_v5_2rooms_doorgoal_4x4 (same mechanics as v5_2rooms_doorgoal — BLUE_KEY required to open door, door-open IS the terminal +50000 win — but shrunk to a 4x4 open corridor with the door spanning the entire rightmost column. Tests whether the doorgoal "no intermediate stepping-stone reward" failure mode can be overcome at trivial geometric scale.)
+// Variant where opening the KEY-locked door IS the win condition.
+// The separate +50000 goal tile at (7,0) is removed — agent only needs
+// to identify the BLUE_KEY-bound icon and walk it onto the door cell.
+// The empty right room is preserved structurally (obs distribution
+// stays close to v5_2rooms) but plays no scoring role.
 //
-// Hypothesis: in v5_2rooms the only signal teaching the BOOTS binding
-// was "absence of death at the laser tile" — a weak gradient. v4
-// taught each binding via a dedicated +1000 (sword→kill, blue_key→door,
-// boots→kill). This variant restores that dedicated signal for BOOTS
-// without restoring enemies. Opening the door is the BOOTS-binding
-// equivalent of v4's blue-door reward.
+// Hypothesis: this strips the v5_2rooms task to the minimum possible
+// binding test — "pick the right icon, walk to the door, win." If PPO
+// still plateaus here, the bottleneck is binding-from-pixels itself,
+// not exploration or the punishment cliff. If it solves, then
+// v5_2rooms_door (door + reward, goal still required) isolates
+// exploration as the remaining blocker.
 //
-// Vs v5_2rooms:
-//   - tile 10 (laser, lethal-without-boots) at (3,4) replaced with
-//     tile 2 (key-door, blocks-without-key) at (3,4).
-//   - Walking onto the door with BLUE_KEY: opens it (clear all tile=2),
-//     consumes the key, score += 1000.
-//   - Walking onto the door without BLUE_KEY: blocked, no death.
-//     Removes the laser's "punishment cliff" entirely.
+// Vs v5_2rooms_door:
+//   - Goal tile 11 at (7,0) removed (replaced with floor).
+//   - Opening the key-door triggers handleVictory() directly
+//     (score += 50000 + lives*10000, gameState = 'WIN'). No separate
+//     +1000 — the door-open IS the win event.
 //
-// Forced path: items -> DOOR(3,4) with BLUE_KEY -> right room -> GOAL(7,0).
+// Forced path: items -> DOOR(3,4) with BLUE_KEY -> WIN.
 //
 // Vs v5: only ONE obstacle (laser) and ONE binding to identify (BOOTS).
 // BLUE_KEY, SWORD, and HAT roles still appear in the shuffle pool but
@@ -106,8 +105,8 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 8;  // v5_2rooms: 8x8, horizontal left/right split.
-const COLS = 8;
+const ROWS = 4;  // v5_2rooms_doorgoal_4x4: shrunk from 8x8 to 4x4 corridor.
+const COLS = 4;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
 const MOVE_COOLDOWN = 6;
@@ -207,36 +206,33 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 2=key-door (NEW), 11=goal. (4/5/10/13 unused.)
-    // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
-    // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
-    // with a single KEY-locked door at (3,4). Right room (cols 4-7):
-    // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
+    // 0=floor, 1=wall, 2=key-door-AS-WIN (NEW). (4/5/10/11/13 unused.)
+    // 4x4 open corridor (no internal wall). Door spans the entire
+    // rightmost column (col=3, rows 0-3 = 4-cell door). Opening any
+    // door cell with BLUE_KEY triggers handleVictory() → terminal +50000.
+    // Min spawn->door distance: 3 steps. Random walk from (0,3) hits
+    // col=3 within ~3-5 steps with high probability.
     mapData = [
-        [0,0,0,1,0,0,0,11],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,2,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
+        [0,0,0,2],
+        [0,0,0,2],
+        [0,0,0,2],
+        [0,0,0,2],
     ];
-    startCell = { c: 1, r: 7 };
+    startCell = { c: 0, r: 3 };
 
-    // 8 pickup spots, randomized per seed across the left room (cols
-    // 0-2, all rows). Excludes the spawn cell and the 8 cells within
-    // Chebyshev distance 1 of the spawn — same buffer as v5 / v5_easy
-    // so the agent gets at least one free move before auto-pickup.
+    // 5 pickup spots (one per tool role) across cols 0-2 (the floor
+    // area before the door column). Excludes spawn cell and the 4 cells
+    // within Chebyshev distance 1 of the spawn. With 4 rows × 3 cols
+    // = 12 cells, minus ~4 spawn-buffer cells, leaves ~8 candidates.
     const candidates = [];
-    for (let r = 0; r <= 7; r++) {
+    for (let r = 0; r <= 3; r++) {
         for (let c = 0; c <= 2; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
             candidates.push({ c, r });
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 8);
+    const spots = candidates.slice(0, 5);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
@@ -326,11 +322,11 @@ function tryMove(nc, nr) {
         else return;
     }
 
-    // Key-locked door: opens with BLUE_KEY held; key is consumed
-    // (matches v4 blue-door semantics). Opening grants +1000 and clears
-    // all tile=2 cells. Without BLUE_KEY the move is blocked (no death).
+    // Key-door-AS-WIN: walking onto the door with BLUE_KEY consumes
+    // the key and triggers victory directly. No separate goal tile in
+    // this variant. Without BLUE_KEY the move is blocked (no death).
     if (tile === 2) {
-        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(2); score += 1000; }
+        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); handleVictory(); return; }
         else return;
     }
 
@@ -362,13 +358,12 @@ function tryMove(nc, nr) {
         else                       { score -= 1000; penaltyTimer = 30; }
         return;
     }
-    // (laser tile 10 removed in v5_2rooms_door — replaced by key-door
-    // tile 2, handled pre-move above.)
+    // (laser tile 10 and goal tile 11 removed in v5_2rooms_doorgoal —
+    // the key-door at tile 2 is the only special tile, handled pre-move.)
     if (here === 4) {
         // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
         if (!hasItem(ROLE_HAT)) { die(); return; }
     }
-    if (here === 11) { handleVictory(); return; }
 
     // Pick up a previously-dropped item if one is on this cell and its
     // re-pickup cooldown has elapsed. Mirrors the platformer's behavior.
@@ -446,18 +441,15 @@ function drawTile(x, y, type) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (type === 2) {
-        // Key-door: blue panel matching the canonical BLUE_KEY color
-        // (0,80,200) so the visual cue points at the correct binding.
-        // Identical render to tile 5 (v4 blue door); tile 5 is not
-        // placed on the 2rooms map, so there is no collision.
+        // Key-door-AS-WIN: blue panel matching canonical BLUE_KEY color
+        // (0,80,200). Same look as v5_2rooms_door so policies trained on
+        // one variant can be evaluated on the other without a re-encode.
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (TOOL_VISUAL_IDS.includes(type)) {
         drawToolVisual(type, x + 16, y + 16);
     } else if (VALUE_VISUAL_IDS.includes(type)) {
         drawValueVisual(type, x + 16, y + 16);
-    } else if (type === 11) {
-        fill(255, 215, 0); rect(x, y, 32, 32);
     }
 }
 
@@ -558,20 +550,11 @@ function drawPlayer(x, y) {
         rect(2, 8, 8, 4);       // right boot
     }
 
-    // bigkey variant: render tool items at FULL scale at FIXED body positions.
-    // Critically: BLUE_KEY is rendered CENTERED below the avatar so it stays
-    // at the same screen position regardless of facing direction. The
-    // surrounding push()/pop() block applies scale(-1, 1) when facing left,
-    // which mirrors everything horizontally — so any off-center placement
-    // causes the visual to JUMP positions between left- and right-facing
-    // frames. BOOTS doesn't have this issue because it's drawn as two
-    // symmetric rects (visually identical under flip). BLUE_KEY needs a
-    // centered single-sprite placement to avoid the same flip-jump problem.
-    inventoryQueue.forEach((item) => {
+    inventoryQueue.forEach((item, idx) => {
         if (item.role === ROLE_SWORD) {
             push(); translate(12, 0); rotate(PI / 6); drawToolVisual(item.visualId, 0, 0); pop();
-        } else if (item.role === ROLE_BLUE_KEY) {
-            push(); translate(0, 14); drawToolVisual(item.visualId, 0, 0); pop();   // centered below feet — symmetric under horizontal flip
+        } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_HAT) {
+            push(); scale(0.6); translate(-12 + idx * 10, 12); drawToolVisual(item.visualId, 0, 0); pop();
         }
     });
 

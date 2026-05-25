@@ -1,4 +1,4 @@
-// analogen_nomemory_grid_v5_2rooms_door_bigkey (same mechanics as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but renders all tool items in inventory at full scale at fixed body positions, instead of 60%-scaled at idx-dependent positions. Tests whether the small/position-variable rendering of BLUE_KEY at 64x64 obs is the bottleneck for PPO.)
+// analogen_nomemory_grid_v5_2rooms_door_6x6 (same mechanics + rendering as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but grid shrunk from 8x8 to 6x6 with smaller rooms and fewer pickup spots, to make the env easier without changing the research-relevant consumption mechanic.)
 // Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
 // door at (3,4), and rewards opening that door with +1000. The +50000
 // goal at (7,0) is unchanged — agent must open the door AND reach the
@@ -106,8 +106,8 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 8;  // v5_2rooms: 8x8, horizontal left/right split.
-const COLS = 8;
+const ROWS = 6;  // v5_2rooms_door_6x6: shrunk from 8x8 to 6x6.
+const COLS = 6;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
 const MOVE_COOLDOWN = 6;
@@ -212,31 +212,34 @@ function initRoom() {
     // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
     // with a single KEY-locked door at (3,4). Right room (cols 4-7):
     // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
+    // 6x6 layout: left room cols 0-1 (12 cells), wall at col 2 (full
+    // height), right room cols 3-5 (18 cells). Door at (col=2, row=2),
+    // goal at (col=5, row=0), spawn at (col=0, row=5). Min path length
+    // spawn->door->goal ~10 steps; 2000-step horizon gives 200x slack.
     mapData = [
-        [0,0,0,1,0,0,0,11],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,2,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
+        [0,0,1,0,0,11],
+        [0,0,1,0,0,0],
+        [0,0,2,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,1,0,0,0],
     ];
-    startCell = { c: 1, r: 7 };
+    startCell = { c: 0, r: 5 };
 
-    // 8 pickup spots, randomized per seed across the left room (cols
-    // 0-2, all rows). Excludes the spawn cell and the 8 cells within
-    // Chebyshev distance 1 of the spawn — same buffer as v5 / v5_easy
-    // so the agent gets at least one free move before auto-pickup.
+    // 5 pickup spots (one per tool role), randomized per seed across the
+    // left room (cols 0-1, all rows). Excludes the spawn cell and the
+    // 4 cells within Chebyshev distance 1 of the spawn — leaves ~8
+    // candidate cells for 5 pickups. No value-item distractors in 6x6
+    // (kept minimal vs 8x8's 5 tools + 3 values).
     const candidates = [];
-    for (let r = 0; r <= 7; r++) {
-        for (let c = 0; c <= 2; c++) {
+    for (let r = 0; r <= 5; r++) {
+        for (let c = 0; c <= 1; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
             candidates.push({ c, r });
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 8);
+    const spots = candidates.slice(0, 5);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
@@ -558,20 +561,11 @@ function drawPlayer(x, y) {
         rect(2, 8, 8, 4);       // right boot
     }
 
-    // bigkey variant: render tool items at FULL scale at FIXED body positions.
-    // Critically: BLUE_KEY is rendered CENTERED below the avatar so it stays
-    // at the same screen position regardless of facing direction. The
-    // surrounding push()/pop() block applies scale(-1, 1) when facing left,
-    // which mirrors everything horizontally — so any off-center placement
-    // causes the visual to JUMP positions between left- and right-facing
-    // frames. BOOTS doesn't have this issue because it's drawn as two
-    // symmetric rects (visually identical under flip). BLUE_KEY needs a
-    // centered single-sprite placement to avoid the same flip-jump problem.
-    inventoryQueue.forEach((item) => {
+    inventoryQueue.forEach((item, idx) => {
         if (item.role === ROLE_SWORD) {
             push(); translate(12, 0); rotate(PI / 6); drawToolVisual(item.visualId, 0, 0); pop();
-        } else if (item.role === ROLE_BLUE_KEY) {
-            push(); translate(0, 14); drawToolVisual(item.visualId, 0, 0); pop();   // centered below feet — symmetric under horizontal flip
+        } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_HAT) {
+            push(); scale(0.6); translate(-12 + idx * 10, 12); drawToolVisual(item.visualId, 0, 0); pop();
         }
     });
 
