@@ -27,6 +27,12 @@ let _textFontFamily = 'sans-serif';
 let _keysDown = new Set();
 let _rectMode = 'corner'; // 'corner' or 'center'
 let _ellipseMode = 'center'; // 'center' or 'corner'
+// p5's push()/pop() save & restore the full drawing state. _ctx.save()/restore()
+// only covers Cairo's own state (transform + its fill/stroke), NOT the shim-level
+// style vars above — so without this stack a stroke()/fill()/textSize() inside a
+// push()/pop() leaks out to every subsequent draw. (Symptom: black outlines
+// bleeding across entities in games that scope stroke() with push/pop.)
+let _styleStack = [];
 
 // Cache the last value we actually assigned to _ctx.{fillStyle,strokeStyle,
 // lineWidth}. Each assignment makes Cairo re-parse the rgba string, which the
@@ -209,8 +215,24 @@ function text(str, x, y) {
 }
 
 // ---- Transform stack ----
-function push() { _ctx.save(); }
-function pop() { _ctx.restore(); _invalidateStyleCache(); }
+function push() {
+  _ctx.save();
+  _styleStack.push({
+    fill: _fillStyle, strokeEnabled: _strokeEnabled, strokeStyle: _strokeStyle,
+    strokeW: _strokeW, textSz: _textSz, textAlignH: _textAlignH,
+    textFontFamily: _textFontFamily, rectMode: _rectMode, ellipseMode: _ellipseMode,
+  });
+}
+function pop() {
+  _ctx.restore();
+  const s = _styleStack.pop();
+  if (s) {
+    _fillStyle = s.fill; _strokeEnabled = s.strokeEnabled; _strokeStyle = s.strokeStyle;
+    _strokeW = s.strokeW; _textSz = s.textSz; _textAlignH = s.textAlignH;
+    _textFontFamily = s.textFontFamily; _rectMode = s.rectMode; _ellipseMode = s.ellipseMode;
+  }
+  _invalidateStyleCache(); // force next draw to re-apply restored fill/stroke to Cairo
+}
 function translate(x, y) { _ctx.translate(x, y); }
 function rotate(a) { _ctx.rotate(a); }
 function scale(sx, sy) { if (sy === undefined) sy = sx; _ctx.scale(sx, sy); }
