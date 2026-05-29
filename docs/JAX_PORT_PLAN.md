@@ -1,5 +1,11 @@
 # Verified Byte-Exact RL Pipeline: Plan
 
+> **Framing companion:** [`RESEARCH_THESIS.md`](./RESEARCH_THESIS.md) carries the *why* and the reviewer-facing positioning. This document carries the engineering schedule. Key reframes that doc establishes and this plan assumes:
+> - The deeper program is **env-as-generative-model for Bayesian inverse planning at GPU scale**; the RL-benchmark framing below is the substrate-and-throughput layer beneath it. The inference framework (GenJAX / NumPyro / hand-rolled SMC / plain RL) is **swappable** — the durable property is "the env is a scoreable, vmappable JAX function."
+> - **Byte-exactness is an inference-correctness condition** (the env is part of the likelihood density), not just reproducibility hygiene — a stronger motivation than the one stated below.
+> - **JS is the authoring/interaction substrate; JAX is the runtime; the verified bridge is the contribution.** JS does not win on runtime speed (the transpiled JAX does) — it wins on **corpus/LLM-fluency** and **browser single-source-of-truth**. Positioning must locate the advantage there, not in "JS is fast."
+> - Calibration: **Three.js + a deterministic JS/WASM physics engine (Rapier) = rigid-body control substrate**, *not* a MuJoCo replacement. **jax-js is a reach/distribution backend, not byte-exact** (WebGPU is f32-first). See `RESEARCH_THESIS.md` §4.
+
 ## Thesis
 
 `node-gym` + `gym-gen` already produce LLM-authored, browser-playtestable, headlessly-trainable RL environments at **EnvPool-class throughput for JS-based envs** via the C₁ multi-env runtime (Worker Threads + path-batched native dispatch — see `docs/MULTI_ENV_RUNTIME.md`[^multienv]). C₁ achieves 3.8× over unbatched Cairo, peaking at 203k iters/s at N=24, and closes the gap to ALE from 75% to 84% on end-to-end PPO. This makes node-gym competitive with established C/C++ env runtimes (EnvPool[^envpool]) at training-loop scale while preserving framework-agnostic researcher choice — essential for bespoke sequential models that JAX's functional idiom makes painful to express.
@@ -147,6 +153,8 @@ A subset of the gym-gen catalog is structurally tile-grid: every draw call paint
 
 Byte-exact 3D *pixel* equivalence is structurally hard: GPU rendering is non-deterministic across hardware. Isaac Lab concedes this in writing[^isaacrepro]; Madrona doesn't claim it[^madrona]. The SOTA workaround is state-vector observations (Brax, MuJoCo Playground, Isaac default).
 
+**Physics, not just rendering.** Three.js is a *renderer* with no physics engine; the 3D arm is "Three.js (rendering) **+ a deterministic JS/WASM rigid-body physics engine**." Rapier (Rust→WASM) is the natural choice — it advertises cross-platform determinism, which is exactly the property the byte-exact thesis needs, and pairs with the same Rust→WASM toolchain as the rasterizer. The honest scope is a **rigid-body control substrate** for locomotion / rigid manipulation tasks — *not* a MuJoCo replacement (MuJoCo's value is contact-rich articulated dynamics: tendons, soft contacts, solver fidelity). Frame as "rigid-body control substrate," not "MuJoCo replacement." See `RESEARCH_THESIS.md` §4.
+
 **Paper 2 scope: byte-exact at game-state level, deterministic-within-JAX for pixels.** This matches the field's current bar while improving on it (state-level byte-exact is stronger than Isaac's "bit-drift possible"). Software-rasterized byte-exact 3D is teased as **paper 3** future work, not in scope here.
 
 | Component | Strategy | Effort |
@@ -173,7 +181,7 @@ Byte-exact 3D *pixel* equivalence is structurally hard: GPU rendering is non-det
 | **Paper 2 writeup** | 45-52 | TMLR submission | Submitted |
 | Phase 7 (optional, paper 3) | 53-90+ | Software-rasterized byte-exact 3D RL via "Three.js-lite" shim | Open problem solved |
 
-[ekzhang/jax-js](https://github.com/ekzhang/jax-js) becomes relevant in paper 3 as a third backend (browser playtest of the JAX op-graph[^jaxjs]), enabling four-way equivalence (Rust-native ≡ WASM-in-Node ≡ WASM-in-browser ≡ JAX-Python ≡ jax-js-WebGPU).
+[ekzhang/jax-js](https://github.com/ekzhang/jax-js) becomes relevant as a **reach/distribution backend** — browser-side playtest of the compiled JAX op-graph[^jaxjs] — *not* a byte-exact member of the verified-equivalence core. WebGPU is f32-first with absent/spotty f64 support, and the byte-exact thesis rests on f64 geometry; jax-js-on-WebGPU will therefore not be bit-identical to the f64 CPU reference. The verified core stays **(WASM ≡ JAX-CPU) byte-exact; (JAX-GPU) deterministic-per-(GPU, XLA-version)**. jax-js is positioned as approximate client-side execution / demoability, which is genuinely valuable but distinct from the equivalence claim. See `RESEARCH_THESIS.md` §4.
 
 ## Compatibility With the Existing Catalog
 
