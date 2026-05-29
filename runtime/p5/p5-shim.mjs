@@ -1,12 +1,50 @@
-// p5-shim.mjs — Minimal p5.js-compatible API on top of node-canvas (cairo).
+// p5-shim.mjs — Minimal p5.js-compatible API on top of a pluggable 2D backend.
+// ISOMORPHIC: runs in Node (training/headless) AND the browser (online playtest). Node-only
+// modules (node-canvas, os, the wasm loader) are imported lazily/guarded, so the browser only
+// ever pulls the pure-JS rasterizer (raster.mjs). One shim, one rasterizer, everywhere.
 
-import { createCanvas as createNodeCanvas } from 'canvas';
-import { endianness } from 'os';
+import { createCanvas as createJsCanvas } from './raster.mjs'; // pure JS, browser-safe
 
-// toBuffer('raw') hands back Cairo's native ARGB32 surface — byte order is
-// BGRA on LE, ARGB on BE. The fast obs path assumes BGRA. Fail loudly on BE
-// rather than silently corrupting channels.
-const _IS_LE = endianness() === 'LE';
+const _IS_NODE = typeof process !== 'undefined' && !!(process.versions && process.versions.node);
+const _env = (k) => (_IS_NODE ? process.env[k] : undefined);
+
+// Endianness: Node exposes os.endianness(); browsers are effectively always little-endian.
+let _IS_LE = true;
+if (_IS_NODE) { _IS_LE = (await import('os')).endianness() === 'LE'; }
+
+// Backend: Node defaults to our wasm rasterizer (fast, bit-identical to js) with a js fallback;
+// the browser uses the pure-JS rasterizer. node-canvas (cairo) and the wasm loader are imported
+// LAZILY — so the browser never touches them, and the default Node path no longer loads
+// node-canvas at all (a step toward dropping that dependency).
+let _RASTERIZER = _env('NODE_GYM_RASTERIZER') || (_IS_NODE ? 'wasm' : 'js');
+let createNodeCanvas;
+if (_RASTERIZER === 'cairo') {
+  createNodeCanvas = (await import('canvas')).createCanvas;
+} else if (_RASTERIZER === 'wasm') {
+  const m = await import('./raster-wasm.mjs');
+  if (m.wasmAvailable) { createNodeCanvas = m.createCanvas; }
+  else { _RASTERIZER = 'js'; createNodeCanvas = createJsCanvas; }
+} else {
+  _RASTERIZER = 'js';
+  createNodeCanvas = createJsCanvas;
+}
+const _OWN_RASTER = _RASTERIZER === 'js' || _RASTERIZER === 'wasm';
+
+// Own rasterizer only: rasterize directly at this device resolution (e.g. 64) instead of the
+// game's logical canvas size (e.g. 400), then skip the downsample — 39x fewer pixels, the bulk
+// of the speedup. Precedence: explicit env override > programmatic (game-env sets it to the obs
+// size via setRasterRes) > null (full logical-res render, e.g. browser / full-frame capture).
+let _RASTER_RES = (_OWN_RASTER && _env('NODE_GYM_RASTER_RES'))
+  ? parseInt(_env('NODE_GYM_RASTER_RES'), 10) : null;
+const _RASTER_RES_FROM_ENV = _RASTER_RES !== null;
+// Called by game-env BEFORE the game's setup()/createCanvas with the observation size, so the
+// agent path renders directly at obs resolution by default. Env var still wins if set.
+function setRasterRes(n) {
+  if (_OWN_RASTER && !_RASTER_RES_FROM_ENV && Number.isFinite(n) && n > 0) _RASTER_RES = n | 0;
+}
+
+// (_IS_LE is computed above, guarded for browser. The fast obs path assumes BGRA byte order
+// from toBuffer('raw'); it fails loudly on big-endian rather than corrupting channels.)
 
 let _canvas = null;
 let _ctx = null;
@@ -81,7 +119,9 @@ function colorArgs(args) {
 function createCanvas(w, h) {
   _width = w;
   _height = h;
-  _canvas = createNodeCanvas(w, h);
+  _canvas = _RASTER_RES
+    ? createNodeCanvas(w, h, _RASTER_RES, _RASTER_RES)
+    : createNodeCanvas(w, h);
   _ctx = _canvas.getContext('2d');
   return { parent() {} };
 }
@@ -315,6 +355,11 @@ function getObsBuffer(obsW, obsH) {
   if (!_IS_LE) {
     throw new Error('getObsBuffer assumes little-endian (BGRA byte order from Cairo). Set NODE_GYM_P5_FAST_OBS=0 on big-endian hosts.');
   }
+  // js backend: when we already rasterized directly at the obs resolution, the main canvas
+  // IS the obs buffer — skip the offscreen canvas + drawImage downsample entirely.
+  if (_RASTER_RES === obsW && _RASTER_RES === obsH) {
+    return _canvas.toBuffer('raw');
+  }
   if (_obsCanvas === null || _obsW !== obsW || _obsH !== obsH) {
     _obsCanvas = createNodeCanvas(obsW, obsH);
     _obsCtx = _obsCanvas.getContext('2d');
@@ -381,6 +426,7 @@ function installGlobals() {
 
 export {
   installGlobals,
+  setRasterRes,
   setKeysDown,
   simulateKeyPress,
   tick,

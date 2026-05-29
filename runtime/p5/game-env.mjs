@@ -5,6 +5,7 @@ import vm from 'vm';
 
 import {
   installGlobals,
+  setRasterRes,
   setKeysDown,
   simulateKeyPress,
   tick,
@@ -105,7 +106,9 @@ function loadGame(gamePath, needsMatter) {
 export class GameEnv {
   constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
-    if (!gameLoaded) loadGame(gamePath, needsMatter);
+    // Render directly at obs resolution (our rasterizer's big speedup). Must run BEFORE
+    // loadGame, which executes the game's setup()/createCanvas. No-op for the cairo backend.
+    if (!gameLoaded) { setRasterRes(obsWidth); loadGame(gamePath, needsMatter); }
 
     this.obsWidth = obsWidth;
     this.obsHeight = obsHeight;

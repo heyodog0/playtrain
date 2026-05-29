@@ -14,3 +14,6 @@ dist/
 *.log
 outputs/
 logs/
+
+# Rust build artifacts (rasterizer crate); the built .wasm is committed at runtime/p5/
+target/
