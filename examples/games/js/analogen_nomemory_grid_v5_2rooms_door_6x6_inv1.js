@@ -1,3 +1,18 @@
+// analogen_nomemory_grid_v5_2rooms_door_6x6_inv1 (identical to
+// v5_2rooms_door_6x6 in every mechanic, layout, and render — BLUE_KEY-locked
+// door, key consumed on open, 6x6 two-room grid — EXCEPT the inventory cap is
+// 1 instead of 2. The avatar can hold only a single item: picking up a second
+// item immediately evicts (drops) the one currently held.)
+//
+// Why: with cap 2 the agent can grab a distractor and still keep BLUE_KEY, so
+// the binding test tolerates sloppy pickups. With cap 1 the forced path
+// (pick up BLUE_KEY -> open door -> goal) still needs only one item at a time
+// and stays solvable, but ANY wrong pickup after the key evicts it — the agent
+// must read the per-episode visual->role binding and pick up *only* BLUE_KEY.
+// A strictly harder single-binding test; everything else is held constant for
+// a clean A/B vs v5_2rooms_door_6x6. Only `MAX_INVENTORY` changed (2 -> 1).
+//
+// ----- original v5_2rooms_door_6x6 header -----
 // analogen_nomemory_grid_v5_2rooms_door_6x6 (same mechanics + rendering as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but grid shrunk from 8x8 to 6x6 with smaller rooms and fewer pickup spots, to make the env easier without changing the research-relevant consumption mechanic.)
 // Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
 // door at (3,4), and rewards opening that door with +1000. The +50000
@@ -27,7 +42,7 @@
 // This isolates the single role-binding test that defines AnaloGen
 // while leaving the spatial-exploration component roughly intact.
 //
-// All other v5 mechanics preserved: inventory cap 2, drops, curses,
+// All other v5 mechanics preserved: inventory cap 1 (see top header; v5 was 2), drops, curses,
 // sword consumption (no enemy → swords are pure distractors here),
 // score deltas, 8x8 canvas / 64x64 obs downsample geometry.
 //
@@ -66,7 +81,7 @@
 //   (7) Inherits v3's static laser w/ BOOTS-disables-it visual logic and
 //       +1000 door rewards.
 //
-// Inventory cap stays at 2.
+// Inventory cap is 1 in this inv1 variant (v4/v5 used 2).
 //
 // Score deltas: +500 pickup, +1000 reward, -1000 curse, +1000 enemy kill,
 //   +1000 blue-door open, -5000 death.
@@ -140,7 +155,7 @@ const ROLE_CURSE    = 'CURSE';
 
 const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17];
 const VALUE_VISUAL_IDS = [8, 15];
-const MAX_INVENTORY = 2;
+const MAX_INVENTORY = 1;  // inv1 variant: avatar holds only ONE item (was 2).
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
 
 let gameState = 'PLAYING';

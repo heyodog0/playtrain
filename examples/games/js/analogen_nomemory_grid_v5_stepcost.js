@@ -1,37 +1,17 @@
-// analogen_nomemory_grid_v5_2rooms_door_6x6 (same mechanics + rendering as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but grid shrunk from 8x8 to 6x6 with smaller rooms and fewer pickup spots, to make the env easier without changing the research-relevant consumption mechanic.)
-// Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
-// door at (3,4), and rewards opening that door with +1000. The +50000
-// goal at (7,0) is unchanged — agent must open the door AND reach the
-// goal to win.
+// analogen_nomemory_grid_v5_stepcost
+// Identical to analogen_nomemory_grid_v5 EXCEPT for a per-step living cost:
+// every frame the game is PLAYING, score is decremented by STEP_PENALTY (see
+// below). This is the env-side time penalty (MiniGrid-style "time is
+// expensive", encoded per-step rather than as a decayed terminal reward so it
+// also punishes idling on non-winning paths). It exists to kill the post-task
+// argmax oscillation seen on the abs_one v5 LSTM runs (jobs 18565971/18565989),
+// where the greedy policy farmed pickups then ping-ponged to the 2000-step
+// truncation. NOTE: STEP_PENALTY is sized for a symlog-transformed reward
+// (reward_clip="symlog"): symlog(x)~=x for small x, so the raw 0.005 lands at
+// ~0.005/step in the agent's symlog reward space (~ -10 over a full 2000-step
+// episode, roughly one symlog'd win). Under raw reward (reward_clip="none") it
+// would be negligible vs the +500..+50000 deltas and need to be ~1-10 instead.
 //
-// Hypothesis: in v5_2rooms the only signal teaching the BOOTS binding
-// was "absence of death at the laser tile" — a weak gradient. v4
-// taught each binding via a dedicated +1000 (sword→kill, blue_key→door,
-// boots→kill). This variant restores that dedicated signal for BOOTS
-// without restoring enemies. Opening the door is the BOOTS-binding
-// equivalent of v4's blue-door reward.
-//
-// Vs v5_2rooms:
-//   - tile 10 (laser, lethal-without-boots) at (3,4) replaced with
-//     tile 2 (key-door, blocks-without-key) at (3,4).
-//   - Walking onto the door with BLUE_KEY: opens it (clear all tile=2),
-//     consumes the key, score += 1000.
-//   - Walking onto the door without BLUE_KEY: blocked, no death.
-//     Removes the laser's "punishment cliff" entirely.
-//
-// Forced path: items -> DOOR(3,4) with BLUE_KEY -> right room -> GOAL(7,0).
-//
-// Vs v5: only ONE obstacle (laser) and ONE binding to identify (BOOTS).
-// BLUE_KEY, SWORD, and HAT roles still appear in the shuffle pool but
-// bind to no-op distractor items (no blue door, no enemy, no sunbeam).
-// This isolates the single role-binding test that defines AnaloGen
-// while leaving the spatial-exploration component roughly intact.
-//
-// All other v5 mechanics preserved: inventory cap 2, drops, curses,
-// sword consumption (no enemy → swords are pure distractors here),
-// score deltas, 8x8 canvas / 64x64 obs downsample geometry.
-//
-// ----- original v5 header -----
 // Same 8x8 layout/puzzle as v4 with two role-binding changes:
 //   - RED KEY / RED DOOR replaced by HAT / SUNBEAM. The hat sits on top
 //     of the avatar's head (parallel to BOOTS at the bottom). The sunbeam
@@ -69,17 +49,8 @@
 // Inventory cap stays at 2.
 //
 // Score deltas: +500 pickup, +1000 reward, -1000 curse, +1000 enemy kill,
-//   +1000 blue-door open, -5000 death.
+//   +1000 blue-door open, -5000 death, +50000 + lives*10000 win.
 //   (v5: sunbeam is now a hazard like the laser — no reward for passing.)
-//
-// Win reward (modified for exploration benchmark comparability with
-// MiniGrid): step-decay formula `WIN_REWARD_SCALE * (1 - 0.9 * frameCount
-// / MAX_STEPS)`, floored at 0.1. Faster wins → higher reward. MAX_STEPS
-// defaults to 2000 (node-gym episode budget). Failure (death, timeout)
-// gives whatever intermediate score was accumulated — typically near 0
-// if the agent doesn't reach late-game pickups. To make this a pure
-// MiniGrid-style sparse-reward game, also zero out the +500/+1000
-// intermediate deltas above.
 //
 // ----- original v2 header -----
 // Minor-tweak variant of analogen_nomemory_grid_v1. Same overall feel
@@ -115,21 +86,15 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 6;  // v5_2rooms_door_6x6: shrunk from 8x8 to 6x6.
-const COLS = 6;
+const ROWS = 8;  // v4: 8x8 → canvas 256, downsamples to 64 at exact 4:1.
+const COLS = 8;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
+// Per-frame living cost (see header). Subtracted from score every PLAYING
+// frame so idling/oscillating bleeds reward; sized for symlog downstream.
+const STEP_PENALTY = 0.005;
 const MOVE_COOLDOWN = 6;
 const LASER_CYCLE = 120;
-
-// MiniGrid-style step-decay win reward: faster wins → higher reward.
-// On success: WIN_REWARD_SCALE * (1 - 0.9 * (frameCount / MAX_STEPS)).
-// On failure (death, timeout): score stays at whatever intermediate
-// pickups/kills/curses accumulated (or 0 if you also zero those out).
-// MAX_STEPS should match the env-side truncation budget; node-gym's
-// default is 2000 frames per episode for these grid games.
-const MAX_STEPS = 2000;
-const WIN_REWARD_SCALE = 100000;  // keeps magnitude similar to old 50k-80k win bonus
 
 const ROLE_HAT      = 'HAT';
 const ROLE_BLUE_KEY = 'BLUE_KEY';
@@ -146,10 +111,6 @@ const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
 let gameState = 'PLAYING';
 let score = 0;
 let lives = 3;
-// Per-episode step counter (resets in resetGame). Distinct from p5's
-// `frameCount`, which is monotonic across the lifetime of the worker
-// and would degrade the step-decay reward after the first episode.
-let episodeSteps = 0;
 let inventoryQueue = [];
 let toolMapping = {};
 let valueMapping = {};
@@ -211,7 +172,6 @@ function resetGame(seed) {
     laserTimer = 0;
     enemies = [];
     gameState = 'PLAYING';
-    episodeSteps = 0;
     shuffleRoles();
     initRoom();
     resetPlayer();
@@ -230,39 +190,51 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 2=key-door (NEW), 11=goal. (4/5/10/13 unused.)
+    // 0=floor, 1=wall, 4=sunbeam, 5=blue door, 10=laser, 11=goal, 13=enemy.
     // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
-    // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
-    // with a single KEY-locked door at (3,4). Right room (cols 4-7):
-    // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
-    // 6x6 layout: left room cols 0-1 (12 cells), wall at col 2 (full
-    // height), right room cols 3-5 (18 cells). Door at (col=2, row=2),
-    // goal at (col=5, row=0), spawn at (col=0, row=5). Min path length
-    // spawn->door->goal ~10 steps; 2000-step horizon gives 200x slack.
+    // Top: 4 floor rows (0-3) split into 3 rooms by internal walls at
+    // cols 2 and 5. Doors at (2,1) RED and (5,1) BLUE. Goal at (0,0) —
+    // top-LEFT corner of top-left room. Middle-top room (cols 3-4 minus
+    // patrol pillars at (4,0) and (4,3)) has a patrolling enemy at (4,2)
+    // bouncing between (4,1) and (4,2). Main wall row 4 with laser at
+    // (7,4). Bottom: rows 5-7 (3 floor rows). Spawn at (1,7). Bottom
+    // enemy stationary at (3,6).
+    // Forced path:
+    //   LASER(7,4) -> top-right(6-7,0-3) -> BLUE_DOOR(5,1) ->
+    //   top-middle(3-4,0-3 minus pillars) -> SUNBEAM(2,1) ->
+    //   top-left(0-1,0-3) -> GOAL(0,0).
     mapData = [
-        [0,0,1,0,0,11],
-        [0,0,1,0,0,0],
-        [0,0,2,0,0,0],
-        [0,0,1,0,0,0],
-        [0,0,1,0,0,0],
-        [0,0,1,0,0,0],
+        [11,0,1,0,1,1,0,0],
+        [0,0,4,0,0,5,0,0],
+        [0,0,1,0,13,1,0,0],
+        [0,0,1,0,1,1,0,0],
+        [1,1,1,1,1,1,1,10],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,13,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
     ];
-    startCell = { c: 0, r: 5 };
+    startCell = { c: 1, r: 7 };
 
-    // 5 pickup spots (one per tool role), randomized per seed across the
-    // left room (cols 0-1, all rows). Excludes the spawn cell and the
-    // 4 cells within Chebyshev distance 1 of the spawn — leaves ~8
-    // candidate cells for 5 pickups. No value-item distractors in 6x6
-    // (kept minimal vs 8x8's 5 tools + 3 values).
+    // 8 pickup spots, position randomized per seed. Enumerate all floor
+    // cells in the bottom area (rows 5-7 × cols 0-7), exclude:
+    //   - the spawn cell
+    //   - the 8 cells within Chebyshev distance 1 of the spawn (so the
+    //     agent always has at least 1 free move before auto-pickup kicks
+    //     in — otherwise a spawn-adjacent item forces a pickup on move 1,
+    //     turning the puzzle into "navigate the swap dance from a bad
+    //     starting inventory")
+    //   - the bottom enemy's cell
+    // Then shuffle and take the first 8.
     const candidates = [];
-    for (let r = 0; r <= 5; r++) {
-        for (let c = 0; c <= 1; c++) {
+    for (let r = 5; r <= 7; r++) {
+        for (let c = 0; c <= 7; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
+            if (c === 3 && r === 6) continue;  // bottom enemy spawn
             candidates.push({ c, r });
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 5);
+    const spots = candidates.slice(0, 8);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
@@ -292,9 +264,13 @@ function resetPlayer() {
 }
 
 function updateGame() {
-    // Per-episode step counter; the win-reward step-decay reads this. One
-    // tick == one Python env.step (per runtime/p5/game-env.mjs).
-    episodeSteps++;
+    // Per-step living cost: every PLAYING frame bleeds STEP_PENALTY from score
+    // (emitted as part of the node-gym per-step reward delta). Applied before
+    // the moveCooldown early-return so it accrues on every frame, not just on
+    // move frames. Only winning (or dying) ends the bleed — this is what kills
+    // the argmax oscillation. The win/pickup deltas dwarf it, so it only
+    // dominates on zero-reward (idle/wander) steps.
+    score -= STEP_PENALTY;
     laserTimer = (laserTimer + 1) % LASER_CYCLE;
     if (penaltyTimer > 0) penaltyTimer--;
     for (const key in persistentDrops) {
@@ -355,14 +331,6 @@ function tryMove(nc, nr) {
         else return;
     }
 
-    // Key-locked door: opens with BLUE_KEY held; key is consumed
-    // (matches v4 blue-door semantics). Opening grants +1000 and clears
-    // all tile=2 cells. Without BLUE_KEY the move is blocked (no death).
-    if (tile === 2) {
-        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(2); score += 1000; }
-        else return;
-    }
-
     const enemyIdx = enemies.findIndex(e => e.c === nc && e.r === nr);
     if (enemyIdx !== -1) {
         if (hasItem(ROLE_SWORD)) {
@@ -391,8 +359,10 @@ function tryMove(nc, nr) {
         else                       { score -= 1000; penaltyTimer = 30; }
         return;
     }
-    // (laser tile 10 removed in v5_2rooms_door — replaced by key-door
-    // tile 2, handled pre-move above.)
+    if (here === 10) {
+        // Always-active: lethal without boots, safe with boots. No timing cycle.
+        if (!hasItem(ROLE_BOOTS)) { die(); return; }
+    }
     if (here === 4) {
         // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
         if (!hasItem(ROLE_HAT)) { die(); return; }
@@ -410,16 +380,7 @@ function tryMove(nc, nr) {
 }
 
 function handleVictory() {
-    // MiniGrid-style step-decay reward: linear from WIN_REWARD_SCALE * 1.0 at
-    // step 0 down to WIN_REWARD_SCALE * 0.1 at step MAX_STEPS. Faster wins
-    // are rewarded more, matching the standard exploration-benchmark recipe
-    // (RIDE, BeBold, NovelD all use this shape on MiniGrid-DoorKey-6x6).
-    // Uses `episodeSteps` (per-episode counter), NOT p5's monotonic
-    // `frameCount` — the latter never resets across episodes and would
-    // collapse the decay to its 0.1 floor after the first ~2000-frame
-    // milestone in the worker's lifetime.
-    const decay = Math.max(0.1, 1.0 - 0.9 * (episodeSteps / MAX_STEPS));
-    score += WIN_REWARD_SCALE * decay;
+    score += 50000 + lives * 10000;
     gameState = 'WIN';
 }
 
@@ -483,17 +444,15 @@ function drawTile(x, y, type) {
     } else if (type === 5) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
-    } else if (type === 2) {
-        // Key-door: blue panel matching the canonical BLUE_KEY color
-        // (0,80,200) so the visual cue points at the correct binding.
-        // Identical render to tile 5 (v4 blue door); tile 5 is not
-        // placed on the 2rooms map, so there is no collision.
-        fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
-        fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (TOOL_VISUAL_IDS.includes(type)) {
         drawToolVisual(type, x + 16, y + 16);
     } else if (VALUE_VISUAL_IDS.includes(type)) {
         drawValueVisual(type, x + 16, y + 16);
+    } else if (type === 10) {
+        // Boots visibly disable the laser: yellow (lethal) without boots,
+        // gray (safe) with boots. Same render rect as v1.
+        fill(hasItem(ROLE_BOOTS) ? color(60) : color(255, 255, 0));
+        rect(x + 2, y + 14, 28, 4);
     } else if (type === 11) {
         fill(255, 215, 0); rect(x, y, 32, 32);
     }

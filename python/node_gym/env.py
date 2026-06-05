@@ -90,6 +90,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         obs_size: int = 64,
         obs_mode: str = "rgb",
         frame_stack: int = 1,
+        frame_skip: int = 1,
         max_steps: int = 2000,
         node_bin: str = "node",
         require_matter: bool | None = None,
@@ -99,6 +100,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         self.obs_size = obs_size
         self.obs_mode = obs_mode
         self.frame_stack = frame_stack
+        self.frame_skip = max(1, int(frame_skip))
         self.max_steps = max_steps
         self._closed = False
 
@@ -170,6 +172,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
             "--game", str(self._game_path),
             "--obs-mode", obs_mode,
             "--obs-size", str(obs_size),
+            "--frame-skip", str(self.frame_skip),
         ]
         if needs_matter:
             cmd.append("--matter")

@@ -55,7 +55,8 @@ class _Worker:
 
     def __init__(self, *, idx: int, game: str, game_path: Path, worker_path: Path,
                  runtime_dir: Path, obs_size: int, obs_mode: str,
-                 needs_matter: bool, node_bin: str, node_flags: list[str]) -> None:
+                 needs_matter: bool, node_bin: str, node_flags: list[str],
+                 frame_skip: int = 1) -> None:
         self.idx = idx
         self.game = game
 
@@ -75,7 +76,8 @@ class _Worker:
         cmd = [node_bin, *node_flags, str(worker_path),
                "--game", str(game_path),
                "--obs-mode", obs_mode,
-               "--obs-size", str(obs_size)]
+               "--obs-size", str(obs_size),
+               "--frame-skip", str(max(1, int(frame_skip)))]
         if needs_matter:
             cmd.append("--matter")
         self.proc = subprocess.Popen(
@@ -274,6 +276,7 @@ class NodeVecEnv(VectorEnv):
         obs_size: int = 64,
         obs_mode: str = "rgb",
         max_steps: int = 2000,
+        frame_skip: int = 1,
         node_bin: str = "node",
         autoreset_mode: AutoresetMode | str | None = AutoresetMode.NEXT_STEP,
         autoreset_seed: int | None = None,
@@ -287,6 +290,7 @@ class NodeVecEnv(VectorEnv):
         self.obs_size = obs_size
         self.obs_mode = obs_mode
         self.max_steps = max_steps
+        self.frame_skip = max(1, int(frame_skip))
         self.autoreset_mode = _coerce_autoreset(autoreset_mode)
         self._autoreset_rng = np.random.default_rng(autoreset_seed)
         self.fixed_env_seed = fixed_env_seed
@@ -327,7 +331,8 @@ class NodeVecEnv(VectorEnv):
                 self.workers.append(_Worker(
                     idx=idx, game=game, game_path=game_path, worker_path=worker_path,
                     runtime_dir=runtime_root, obs_size=obs_size, obs_mode=obs_mode,
-                    needs_matter=needs_matter, node_bin=node_bin, node_flags=node_flags))
+                    needs_matter=needs_matter, node_bin=node_bin, node_flags=node_flags,
+                    frame_skip=self.frame_skip))
 
             # Ping each worker to ensure they're up before timing.
             ping = b'{"cmd":"ping"}'

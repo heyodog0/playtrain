@@ -78,11 +78,12 @@ function printProfileSummary() {
 // Parse CLI args: --game <path> [--obs-mode rgb|gray] [--obs-size 64] [--matter]
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { gamePath: null, obsMode: 'rgb', obsSize: 64, needsMatter: false };
+  const opts = { gamePath: null, obsMode: 'rgb', obsSize: 64, needsMatter: false, frameSkip: 1 };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--game' && args[i + 1]) opts.gamePath = args[++i];
     else if (args[i] === '--obs-mode' && args[i + 1]) opts.obsMode = args[++i];
     else if (args[i] === '--obs-size' && args[i + 1]) opts.obsSize = parseInt(args[++i], 10);
+    else if (args[i] === '--frame-skip' && args[i + 1]) opts.frameSkip = parseInt(args[++i], 10);
     else if (args[i] === '--matter') opts.needsMatter = true;
   }
   if (!opts.gamePath) {
@@ -99,6 +100,7 @@ const env = new GameEnv({
   obsHeight: opts.obsSize,
   obsMode: opts.obsMode,
   needsMatter: opts.needsMatter,
+  frameSkip: opts.frameSkip,
 });
 
 let pending = Buffer.alloc(0);

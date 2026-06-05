@@ -104,7 +104,7 @@ function loadGame(gamePath, needsMatter) {
 }
 
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1 } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
     // Render directly at obs resolution (our rasterizer's big speedup). Must run BEFORE
     // loadGame, which executes the game's setup()/createCanvas. No-op for the cairo backend.
@@ -114,6 +114,12 @@ export class GameEnv {
     this.obsHeight = obsHeight;
     this.obsMode = obsMode;
     this.maxSteps = maxSteps;
+    // Action-repeat: run `frameSkip` game ticks per env.step(), holding the
+    // same action across all of them and returning ONE decision. Reward is the
+    // summed score delta over the skip (computed once from lastScore, so it is
+    // automatically the sum). `steps`/`maxSteps` count FRAMES, so a budget and
+    // any per-frame penalties stay calibrated. frameSkip=1 == original behavior.
+    this.frameSkip = Math.max(1, frameSkip | 0);
     this.steps = 0;
     this.episodeReturn = 0;
     this.lastScore = 0;
@@ -210,14 +216,18 @@ export class GameEnv {
     if (action.press !== null) simulateKeyPress(action.press);
 
     if (!PROFILE) {
-      tick();
-      const state = this._getState();
-      const reward = state.score - this.lastScore;
+      let state, terminated = false, truncated = false;
+      for (let i = 0; i < this.frameSkip; i++) {
+        tick();
+        this.steps += 1;
+        state = this._getState();
+        terminated = TERMINAL_STATES.has(state.gameState);
+        truncated = !terminated && this.steps >= this.maxSteps;
+        if (terminated || truncated) break;  // stop ticking a finished episode
+      }
+      const reward = state.score - this.lastScore;  // summed delta over the skip
       this.lastScore = state.score;
-      this.steps += 1;
       this.episodeReturn += reward;
-      const terminated = TERMINAL_STATES.has(state.gameState);
-      const truncated = !terminated && this.steps >= this.maxSteps;
       return {
         observation: this._getObservation(),
         reward,
@@ -228,17 +238,21 @@ export class GameEnv {
     }
 
     const t0 = _hrtime();
-    tick();
+    let state, terminated = false, truncated = false;
+    for (let i = 0; i < this.frameSkip; i++) {
+      tick();
+      this.steps += 1;
+      state = this._getState();
+      terminated = TERMINAL_STATES.has(state.gameState);
+      truncated = !terminated && this.steps >= this.maxSteps;
+      if (terminated || truncated) break;
+    }
     const t1 = _hrtime();
     const observation = this._getObservationProfiled();
     const t2 = _hrtime();
-    const state = this._getState();
-    const reward = state.score - this.lastScore;
+    const reward = state.score - this.lastScore;  // summed delta over the skip
     this.lastScore = state.score;
-    this.steps += 1;
     this.episodeReturn += reward;
-    const terminated = TERMINAL_STATES.has(state.gameState);
-    const truncated = !terminated && this.steps >= this.maxSteps;
     const info = this._buildInfo();
     const t3 = _hrtime();
     _profileTimings.draw += t1 - t0;
