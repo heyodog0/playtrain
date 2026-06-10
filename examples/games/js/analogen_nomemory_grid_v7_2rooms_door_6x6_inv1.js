@@ -1,12 +1,20 @@
 // analogen_nomemory_grid_v7_2rooms_door_6x6_inv1
-// Copy of analogen_nomemory_grid_v5_2rooms_door_6x6_inv1 with ONE change: the
-// duplicate SWORD in the tool-role pool is replaced by ARMOR (the v7 torso
-// item), so the pool is [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR]. ARMOR is added
-// purely as a DISTRACTOR — there is NO spike tile and no armor-gated obstacle
-// (unlike v7, where ARMOR<->SPIKE is a consumable gate). The map, the
-// BLUE_KEY-locked door at (2,2), inventory cap 1, and every other mechanic are
-// identical to the inv1 base. ARMOR binds to one of the 5 shuffled visual ids
-// and, when held, renders as a chest plate over the torso (the v7
+// Copy of analogen_nomemory_grid_v5_2rooms_door_6x6_inv1 with two changes vs
+// that inv1 base:
+//   (1) The duplicate SWORD in the tool-role pool is replaced by ARMOR (the v7
+//       torso item). ARMOR is added purely as a DISTRACTOR — there is NO spike
+//       tile and no armor-gated obstacle (unlike v7, where ARMOR<->SPIKE is a
+//       consumable gate).
+//   (2) [6-item / 2-sword mod, mirrors v7.js change (5)] Item count goes
+//       5 -> 6. A 6th visual token (id 18, a teal breastplate icon) joins
+//       TOOL_VISUAL_IDS and the role pool gains a SECOND SWORD:
+//         [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD]  (6 roles, 5 distinct).
+//       Unlike v7 there is NO enemy on the 6x6 map, so BOTH swords (like ARMOR,
+//       HAT, BOOTS) are pure no-op distractors — one more wrong-binding trap on
+//       top of the single BLUE_KEY binding the locked door actually needs.
+// The map, the BLUE_KEY-locked door at (2,2), inventory cap 1, and every other
+// mechanic are identical to the inv1 base. ARMOR binds to one of the 6 shuffled
+// visual ids and, when held, renders as a chest plate over the torso (the v7
 // head/torso/feet = HAT/ARMOR/BOOTS body-region cue), but it gates nothing —
 // grabbing it instead of BLUE_KEY just wastes the single inventory slot, i.e.
 // one more wrong-binding trap on top of HAT/BOOTS/SWORD.
@@ -168,7 +176,7 @@ const ROLE_ARMOR    = 'ARMOR';  // v7 torso item; pure distractor here (no spike
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
-const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17];
+const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
 const VALUE_VISUAL_IDS = [8, 15];
 const MAX_INVENTORY = 1;  // inv1 variant: avatar holds only ONE item (was 2).
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
@@ -248,7 +256,10 @@ function resetGame(seed) {
 }
 
 function shuffleRoles() {
-    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR];
+    // 6-item mod (mirrors v7.js): 6 roles for the 6 visual tokens, 5 distinct.
+    // The 6th role is a SECOND SWORD; with no enemy on the 6x6 map both swords
+    // are pure distractors.
+    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
     TOOL_VISUAL_IDS.forEach((vid, i) => { toolMapping[vid] = toolRoles[i]; });
@@ -279,10 +290,10 @@ function initRoom() {
     ];
     startCell = { c: 0, r: 5 };
 
-    // 5 pickup spots (one per tool role), randomized per seed across the
+    // 6 pickup spots (one per tool role), randomized per seed across the
     // left room (cols 0-1, all rows). Excludes the spawn cell and the
     // 4 cells within Chebyshev distance 1 of the spawn — leaves ~8
-    // candidate cells for 5 pickups. No value-item distractors in 6x6
+    // candidate cells for 6 pickups. No value-item distractors in 6x6
     // (kept minimal vs 8x8's 5 tools + 3 values).
     const candidates = [];
     for (let r = 0; r <= 5; r++) {
@@ -292,7 +303,7 @@ function initRoom() {
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 5);
+    const spots = candidates.slice(0, 6);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
@@ -540,6 +551,10 @@ function getItemColor(vid) {
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
     if (vid === 14) return color(150, 0, 255);
+    // 6-item mod: teal breastplate token. Teal is the open hue in the palette
+    // (pink/blue/green/gray/purple already taken) and stays clear of the
+    // yellow/orange value icons.
+    if (vid === 18) return color(0, 200, 170);
     return color(255);
 }
 
@@ -565,6 +580,13 @@ function drawToolVisual(id, x, y) {
     } else if (id === 14) {
         rect(x - 8, y - 8, 12, 8, 2);
         rect(x - 8, y, 18, 6, 2);
+    } else if (id === 18) {
+        // Breastplate / cuirass: a torso plate flanked by two shoulder pauldrons.
+        // Distinct silhouette from the other tokens, sized to survive the 4:1
+        // downsample.
+        rect(x - 7, y - 5, 14, 13, 3);   // chest plate
+        rect(x - 11, y - 7, 6, 5, 2);    // left pauldron
+        rect(x + 5,  y - 7, 6, 5, 2);    // right pauldron
     }
 }
 

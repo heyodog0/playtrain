@@ -22,6 +22,17 @@
 //       (like the key, which shows its real icon rather than a key shape).
 //   (4) The cell directly below the laser, (7,5), never spawns a pickup.
 //
+//   (5) [6-item / 2-sword mod] Item count goes 5 -> 6. A 6th visual token
+//       (id 18, a teal breastplate icon) joins TOOL_VISUAL_IDS, and the role
+//       pool gains a SECOND SWORD:
+//         [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD]  (6 roles, 5 distinct).
+//       The duplicate SWORD is paired with a SECOND enemy: a stationary guard
+//       at (4,1), directly left of the BLUE DOOR. (4,1) is the only cell the
+//       door opens onto, i.e. the chokepoint into the top-middle room, so it is
+//       a FORCED sword gate on the door->sunbeam leg (mirrors v5's 2-sword /
+//       2-enemy pairing, but stationary — the v5 patrol stays retired). 6 tool
+//       tokens + 2 value tokens still fill the same 8 bottom-room pickup spots.
+//
 // ----- original v5_stepcost header -----
 // analogen_nomemory_grid_v5_stepcost
 // Identical to analogen_nomemory_grid_v5 EXCEPT for a per-step living cost:
@@ -129,7 +140,7 @@ const ROLE_ARMOR    = 'ARMOR';  // v7: replaces the duplicate SWORD; pairs with 
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
-const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17];
+const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
 const VALUE_VISUAL_IDS = [8, 15];
 const MAX_INVENTORY = 2;
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
@@ -204,7 +215,9 @@ function resetGame(seed) {
 }
 
 function shuffleRoles() {
-    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR];
+    // 6-item mod: 6 roles for the 6 visual tokens, 5 distinct. The 6th role is a
+    // SECOND SWORD (mirrors v5's duplicate SWORD), paired with the 2nd enemy.
+    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
     TOOL_VISUAL_IDS.forEach((vid, i) => { toolMapping[vid] = toolRoles[i]; });
@@ -229,14 +242,15 @@ function initRoom() {
     // up from the laser-entry row to the BLUE_DOOR row is through the spikes
     // (forced; engage with ARMOR to consume it and clear both). Main wall row
     // 4 with laser at (7,4). Bottom: rows 5-7 (3 floor rows). Spawn at (1,7).
-    // One stationary enemy at (3,6) (pairs with the single remaining SWORD).
+    // Two stationary enemies (6-item mod): one at (3,6) in the bottom room and
+    // one at (4,1) left of the BLUE_DOOR; the two pair with the two SWORD roles.
     // Forced path:
     //   LASER(7,4) -> (7,3)/(6,3) -> SPIKES(6,2)+(7,2) -> top-right ->
-    //   BLUE_DOOR(5,1) -> top-middle(3-4, now empty) -> SUNBEAM(2,1) ->
+    //   BLUE_DOOR(5,1) -> ENEMY(4,1) -> top-middle(3-4) -> SUNBEAM(2,1) ->
     //   top-left(0-1,0-3) -> GOAL(0,0).
     mapData = [
         [11,0,1,0,0,1,0,0],
-        [0,0,4,0,0,5,0,0],
+        [0,0,4,0,13,5,0,0],
         [0,0,1,0,0,1,9,9],
         [0,0,1,0,0,1,0,0],
         [1,1,1,1,1,1,1,10],
@@ -280,8 +294,10 @@ function initRoom() {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (mapData[r][c] === 13) {
-                // Middle-top room enemies patrol vertically; bottom enemies stay put.
-                const patrol = (r >= 0 && r <= 3 && c >= 3 && c <= 4);
+                // v7: all enemies are stationary. The v5 vertical patroller was
+                // retired in change (2); the 6-item mod's 2nd enemy is a fixed
+                // guard at (4,1) by the blue door, so nothing patrols.
+                const patrol = false;
                 enemies.push({ c, r, id: `${c}_${r}`, direction: 1, patrol });
                 mapData[r][c] = 0;
             }
@@ -522,6 +538,10 @@ function getItemColor(vid) {
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
     if (vid === 14) return color(150, 0, 255);
+    // 6-item mod: teal breastplate token. Teal is the open hue in the palette
+    // (pink/blue/green/gray/purple already taken) and stays clear of the
+    // yellow/orange value icons.
+    if (vid === 18) return color(0, 200, 170);
     return color(255);
 }
 
@@ -547,6 +567,13 @@ function drawToolVisual(id, x, y) {
     } else if (id === 14) {
         rect(x - 8, y - 8, 12, 8, 2);
         rect(x - 8, y, 18, 6, 2);
+    } else if (id === 18) {
+        // Breastplate / cuirass: a torso plate flanked by two shoulder pauldrons.
+        // Distinct silhouette from the other tokens, sized to survive the 4:1
+        // downsample.
+        rect(x - 7, y - 5, 14, 13, 3);   // chest plate
+        rect(x - 11, y - 7, 6, 5, 2);    // left pauldron
+        rect(x + 5,  y - 7, 6, 5, 2);    // right pauldron
     }
 }
 
