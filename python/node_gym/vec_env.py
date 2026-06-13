@@ -254,6 +254,13 @@ class NodeVecEnv(VectorEnv):
         memorize-one-instance sanity checks. None = default procedural
         sampling (autoreset draws fresh seeds from the autoreset_seed RNG;
         explicit ``reset(seed=...)`` calls behave normally).
+    seed_pool : sequence of int or None
+        If set, every reset that would otherwise draw a fresh procedural seed
+        (initial reset with ``seed=None`` and every autoreset) instead draws
+        uniformly from this finite pool, using the ``autoreset_seed`` RNG. This
+        is the ProcGen-style train-pool restriction: the agent only ever sees
+        the configs in the pool. Ignored when ``fixed_env_seed`` is set (that
+        takes precedence) or when an explicit ``reset(seed=...)`` is given.
     n_actions : int
         Size of the discrete action space. Defaults to 8 (matches NodeGymEnv).
 
@@ -281,6 +288,7 @@ class NodeVecEnv(VectorEnv):
         autoreset_mode: AutoresetMode | str | None = AutoresetMode.NEXT_STEP,
         autoreset_seed: int | None = None,
         fixed_env_seed: int | None = None,
+        seed_pool: Sequence[int] | None = None,
         n_actions: int = _DEFAULT_N_ACTIONS,
     ) -> None:
         self.games = list(games)
@@ -294,6 +302,9 @@ class NodeVecEnv(VectorEnv):
         self.autoreset_mode = _coerce_autoreset(autoreset_mode)
         self._autoreset_rng = np.random.default_rng(autoreset_seed)
         self.fixed_env_seed = fixed_env_seed
+        self.seed_pool = list(seed_pool) if seed_pool is not None else None
+        if self.seed_pool is not None and len(self.seed_pool) == 0:
+            raise ValueError("seed_pool must be non-empty when provided")
         self.n_actions = int(n_actions)
         if self.n_actions <= 0:
             raise ValueError(f"n_actions must be > 0, got {n_actions}")
@@ -392,8 +403,13 @@ class NodeVecEnv(VectorEnv):
         elif seed is None:
             # If fixed_env_seed is set and the caller didn't explicitly pass a
             # seed, force every env to that seed (memorize-one-instance mode).
+            # Else if a seed_pool is set, draw each env's seed from the pool
+            # (ProcGen-style train restriction). Else fully procedural.
             if self.fixed_env_seed is not None:
                 seeds = [int(self.fixed_env_seed)] * self.num_envs
+            elif self.seed_pool is not None:
+                seeds = [int(self._autoreset_rng.choice(self.seed_pool))
+                         for _ in range(self.num_envs)]
             else:
                 seeds = [None] * self.num_envs
         else:
@@ -507,10 +523,13 @@ class NodeVecEnv(VectorEnv):
         max_steps = self.max_steps
         for i in indices:
             # When fixed_env_seed is set, every reset (initial AND autoreset)
-            # uses that same seed — single-instance memorization mode.
+            # uses that same seed — single-instance memorization mode. When a
+            # seed_pool is set, draw from the pool (train-pool restriction).
             # Otherwise draw a fresh seed from the autoreset RNG.
             if self.fixed_env_seed is not None:
                 seed = int(self.fixed_env_seed)
+            elif self.seed_pool is not None:
+                seed = int(self._autoreset_rng.choice(self.seed_pool))
             else:
                 seed = int(self._autoreset_rng.integers(0, 2**31 - 1))
             payload = json.dumps(

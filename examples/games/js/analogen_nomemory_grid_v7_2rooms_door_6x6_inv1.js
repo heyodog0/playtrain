@@ -291,14 +291,18 @@ function initRoom() {
     startCell = { c: 0, r: 5 };
 
     // 6 pickup spots (one per tool role), randomized per seed across the
-    // left room (cols 0-1, all rows). Excludes the spawn cell and the
-    // 4 cells within Chebyshev distance 1 of the spawn — leaves ~8
-    // candidate cells for 6 pickups. No value-item distractors in 6x6
-    // (kept minimal vs 8x8's 5 tools + 3 values).
+    // left room (cols 0-1). Excludes the spawn cell + the 4 cells within
+    // Chebyshev distance 1 of the spawn, AND the door's row (row 2) so no
+    // item sits on the spawn->door crossing and can be grabbed incidentally.
+    // That leaves exactly 6 candidate cells (rows 0,1,3 x cols 0,1) for the
+    // 6 items, so every item is placed and only the visual->cell assignment
+    // varies per seed. No value-item distractors in 6x6.
+    const DOOR_ROW = 2;  // BLUE_KEY door is at (col 2, row 2)
     const candidates = [];
     for (let r = 0; r <= 5; r++) {
         for (let c = 0; c <= 1; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
+            if (r === DOOR_ROW) continue;  // keep the door's row clear of items
             candidates.push({ c, r });
         }
     }

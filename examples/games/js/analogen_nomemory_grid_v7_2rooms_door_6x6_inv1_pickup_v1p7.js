@@ -1,33 +1,89 @@
-// analogen_nomemory_grid_v7_2rooms_door_inv1
-// MODDED to v1.5 semantics:
-//   - DELIBERATE pickup: items are NOT auto-collected by walking over them; the
-//     agent must take a STANDALONE space press (pure-SPACE action; the move+space
-//     actions L+SP/R+SP do NOT pick up). The +500 pickup reward is KEPT (v1.5).
-//   - 6-item / 2-sword pool: a 6th visual token (id 18, teal breastplate) joins
-//     TOOL_VISUAL_IDS and the role pool gains a 2nd SWORD ->
-//     [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD] (6 tokens, 5 distinct roles).
-//   - Value items (coin REWARD id 8 / diamond CURSE id 15) REMOVED
-//     (VALUE_VISUAL_IDS empty) — restore later if needed.
-//   - No item spawns on the door's row (row 4, left of the door at (3,4)).
-//   Only BLUE_KEY->door is functional; every other item is a no-op distractor.
+// analogen_nomemory_grid_v7_2rooms_door_6x6_inv1_pickup_v1p7
+// "v1.7" = v1.6 with ONE change: the +500 pickup reward is REMOVED (like v2).
+//   This removes the incentive to grab items at all, so the only reward signal
+//   left is opening the BLUE_KEY door (+1000) and the step-decayed win bonus.
+//   The deliberate-pickup mechanic + cooldown are kept; the cooldown is bumped
+//   to PICKUP_COOLDOWN = 49 (= exactly 7 agent decisions at frame_skip 7, up
+//   from v1.6's 45 ~= 6.4). Motivation: v1.6 (with +500 kept) left a nonzero
+//   N=1 held-out floor (mean 0.032, 2 greenkey seeds at chance) — removing the
+//   grab reward should make incidental/binding-agnostic collect-all even less
+//   attractive, pushing the N=1 floor toward 0.
+//   Binding is tool-only (VALUE_VISUAL_IDS = []): 360 distinct, 60 held-out, 300 train.
 //
-// ----- original v7_2rooms_door_inv1 header -----
-// Copy of analogen_nomemory_grid_v5_2rooms_door with TWO changes: (1) the
-// duplicate SWORD in the tool-role pool is replaced by ARMOR (the v7 torso
-// item), so the pool is [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR]. ARMOR is added
-// purely as a DISTRACTOR — there is NO spike tile and no armor-gated obstacle
-// (unlike v7, where ARMOR<->SPIKE is a consumable gate). (2) the inventory cap
-// is 1 instead of 2, so the avatar holds a single item and grabbing any
-// distractor evicts the held one (a strictly harder single-slot binding test,
-// matching the *_inv1 variants). The 8x8 map and the BLUE_KEY-locked door at
-// (3,4) are otherwise identical to the v5_2rooms_door base (tiles 4/5/10/13
-// stay unused — no sunbeam/laser/enemies,
-// so HAT/BOOTS/SWORD/ARMOR are all no-op distractors and only BLUE_KEY->door is
-// functional). When held, ARMOR renders as a chest plate over the torso (the v7
-// head/torso/feet = HAT/ARMOR/BOOTS body-region cue) but it gates nothing.
+// ----- v1.6 header -----
+// "v1.6" = v1.5 + two changes:
+//   (1) PICKUP COOLDOWN: after grabbing an item you cannot grab again for
+//       PICKUP_COOLDOWN frames, so you can't rapidly cycle items at the door
+//       (throttles trial-and-error). +500 pickup reward is KEPT (still v1.5).
+//   (2) Value items removed (VALUE_VISUAL_IDS = []) -> a binding is tool-only:
+//       360 distinct, 60 held-out (sword=key), 300 train.
 //
-// ----- original v5_2rooms_door header -----
-// analogen_nomemory_grid_v5_2rooms_door
+// ----- v1.5 header -----
+// analogen_nomemory_grid_v7_2rooms_door_6x6_inv1_pickup_v1p5
+// "v1.5": the base (v1) env + a DELIBERATE standalone-space pickup, but KEEPING
+// v1's +500 pickup reward. It sits between v1 (walk-over, +500) and v2 (strict).
+// Changes vs the base v1:
+//   (1) Items are NOT auto-collected by walking onto them.
+//   (2) Pickup fires ONLY on a STANDALONE space press (the pure-SPACE action),
+//       not while a movement key is held (L+SP / R+SP do NOT pick up). Grabbing
+//       costs a dedicated turn — no grab-while-sweeping — so collecting an item
+//       is a deliberate choice.
+//   (3) The +500 pickup reward is RETAINED (unlike v2, which removes it). This
+//       isolates the "standalone deliberate pickup" mechanic from the "remove the
+//       grab incentive" change: v1.5 tests whether blocking move+grab alone is
+//       enough, while the +500 still rewards grabbing.
+// Everything else (binding/placement mapping, door-row-cleared spawns, inv cap 1)
+// is identical; the RNG draw order is unchanged.
+//
+// ----- _pickup header -----
+// DELIBERATE-PICKUP variant of analogen_nomemory_grid_v7_2rooms_door_6x6_inv1.
+// ONE mechanic change: items are NOT auto-collected by walking onto them. The
+// agent must take the explicit pickup action (which presses space, keycode 32 —
+// node-gym ACTIONS 5/6/7) while standing on an item's cell. This removes
+// "incidental" pickups, so collecting the key is a deliberate, binding-contingent
+// choice rather than a side effect of navigating to the door. Item spawns
+// (door row kept clear), the +500 pickup reward, the BLUE_KEY door, inventory
+// cap 1, and the seed->binding/placement mapping are identical to the base
+// 6x6 inv1 (the RNG draw order is unchanged — only tryMove/updateGame differ).
+//
+// ----- base header: analogen_nomemory_grid_v7_2rooms_door_6x6_inv1 -----
+// Copy of analogen_nomemory_grid_v5_2rooms_door_6x6_inv1 with two changes vs
+// that inv1 base:
+//   (1) The duplicate SWORD in the tool-role pool is replaced by ARMOR (the v7
+//       torso item). ARMOR is added purely as a DISTRACTOR — there is NO spike
+//       tile and no armor-gated obstacle (unlike v7, where ARMOR<->SPIKE is a
+//       consumable gate).
+//   (2) [6-item / 2-sword mod, mirrors v7.js change (5)] Item count goes
+//       5 -> 6. A 6th visual token (id 18, a teal breastplate icon) joins
+//       TOOL_VISUAL_IDS and the role pool gains a SECOND SWORD:
+//         [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD]  (6 roles, 5 distinct).
+//       Unlike v7 there is NO enemy on the 6x6 map, so BOTH swords (like ARMOR,
+//       HAT, BOOTS) are pure no-op distractors — one more wrong-binding trap on
+//       top of the single BLUE_KEY binding the locked door actually needs.
+// The map, the BLUE_KEY-locked door at (2,2), inventory cap 1, and every other
+// mechanic are identical to the inv1 base. ARMOR binds to one of the 6 shuffled
+// visual ids and, when held, renders as a chest plate over the torso (the v7
+// head/torso/feet = HAT/ARMOR/BOOTS body-region cue), but it gates nothing —
+// grabbing it instead of BLUE_KEY just wastes the single inventory slot, i.e.
+// one more wrong-binding trap on top of HAT/BOOTS/SWORD.
+//
+// ----- original v5_2rooms_door_6x6_inv1 header -----
+// analogen_nomemory_grid_v5_2rooms_door_6x6_inv1 (identical to
+// v5_2rooms_door_6x6 in every mechanic, layout, and render — BLUE_KEY-locked
+// door, key consumed on open, 6x6 two-room grid — EXCEPT the inventory cap is
+// 1 instead of 2. The avatar can hold only a single item: picking up a second
+// item immediately evicts (drops) the one currently held.)
+//
+// Why: with cap 2 the agent can grab a distractor and still keep BLUE_KEY, so
+// the binding test tolerates sloppy pickups. With cap 1 the forced path
+// (pick up BLUE_KEY -> open door -> goal) still needs only one item at a time
+// and stays solvable, but ANY wrong pickup after the key evicts it — the agent
+// must read the per-episode visual->role binding and pick up *only* BLUE_KEY.
+// A strictly harder single-binding test; everything else is held constant for
+// a clean A/B vs v5_2rooms_door_6x6. Only `MAX_INVENTORY` changed (2 -> 1).
+//
+// ----- original v5_2rooms_door_6x6 header -----
+// analogen_nomemory_grid_v5_2rooms_door_6x6 (same mechanics + rendering as v5_2rooms_door — BLUE_KEY-locked door, key consumed on open — but grid shrunk from 8x8 to 6x6 with smaller rooms and fewer pickup spots, to make the env easier without changing the research-relevant consumption mechanic.)
 // Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
 // door at (3,4), and rewards opening that door with +1000. The +50000
 // goal at (7,0) is unchanged — agent must open the door AND reach the
@@ -56,7 +112,7 @@
 // This isolates the single role-binding test that defines AnaloGen
 // while leaving the spatial-exploration component roughly intact.
 //
-// All other v5 mechanics preserved: inventory cap 2, drops, curses,
+// All other v5 mechanics preserved: inventory cap 1 (see top header; v5 was 2), drops, curses,
 // sword consumption (no enemy → swords are pure distractors here),
 // score deltas, 8x8 canvas / 64x64 obs downsample geometry.
 //
@@ -95,11 +151,20 @@
 //   (7) Inherits v3's static laser w/ BOOTS-disables-it visual logic and
 //       +1000 door rewards.
 //
-// Inventory cap stays at 2.
+// Inventory cap is 1 in this inv1 variant (v4/v5 used 2).
 //
 // Score deltas: +500 pickup, +1000 reward, -1000 curse, +1000 enemy kill,
-//   +1000 blue-door open, -5000 death, +50000 + lives*10000 win.
+//   +1000 blue-door open, -5000 death.
 //   (v5: sunbeam is now a hazard like the laser — no reward for passing.)
+//
+// Win reward (modified for exploration benchmark comparability with
+// MiniGrid): step-decay formula `WIN_REWARD_SCALE * (1 - 0.9 * frameCount
+// / MAX_STEPS)`, floored at 0.1. Faster wins → higher reward. MAX_STEPS
+// defaults to 2000 (node-gym episode budget). Failure (death, timeout)
+// gives whatever intermediate score was accumulated — typically near 0
+// if the agent doesn't reach late-game pickups. To make this a pure
+// MiniGrid-style sparse-reward game, also zero out the +500/+1000
+// intermediate deltas above.
 //
 // ----- original v2 header -----
 // Minor-tweak variant of analogen_nomemory_grid_v1. Same overall feel
@@ -135,12 +200,21 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 8;  // v5_2rooms: 8x8, horizontal left/right split.
-const COLS = 8;
+const ROWS = 6;  // v5_2rooms_door_6x6: shrunk from 8x8 to 6x6.
+const COLS = 6;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
 const MOVE_COOLDOWN = 6;
 const LASER_CYCLE = 120;
+
+// MiniGrid-style step-decay win reward: faster wins → higher reward.
+// On success: WIN_REWARD_SCALE * (1 - 0.9 * (frameCount / MAX_STEPS)).
+// On failure (death, timeout): score stays at whatever intermediate
+// pickups/kills/curses accumulated (or 0 if you also zero those out).
+// MAX_STEPS should match the env-side truncation budget; node-gym's
+// default is 2000 frames per episode for these grid games.
+const MAX_STEPS = 2000;
+const WIN_REWARD_SCALE = 100000;  // keeps magnitude similar to old 50k-80k win bonus
 
 const ROLE_HAT      = 'HAT';
 const ROLE_BLUE_KEY = 'BLUE_KEY';
@@ -150,19 +224,25 @@ const ROLE_ARMOR    = 'ARMOR';  // v7 torso item; pure distractor here (no spike
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
-const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate
-const VALUE_VISUAL_IDS = [];  // coin REWARD (8) / diamond CURSE (15) removed; restore later
-const MAX_INVENTORY = 1;  // 1-slot variant (was 2): holding the key leaves no room for a distractor
+const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
+const VALUE_VISUAL_IDS = [];  // v1.6: coin REWARD (8) / diamond CURSE (15) removed -> tool-only binding (360/60/300)
+const PICKUP_COOLDOWN = 49;   // v1.7: 49 frames = exactly 7 agent decisions at frame_skip 7 (was 45)
+const MAX_INVENTORY = 1;  // inv1 variant: avatar holds only ONE item (was 2).
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
 
 let gameState = 'PLAYING';
 let score = 0;
 let lives = 3;
+// Per-episode step counter (resets in resetGame). Distinct from p5's
+// `frameCount`, which is monotonic across the lifetime of the worker
+// and would degrade the step-decay reward after the first episode.
+let episodeSteps = 0;
 let inventoryQueue = [];
 let toolMapping = {};
 let valueMapping = {};
 let penaltyTimer = 0;
 let moveCooldown = 0;
+let pickupCooldown = 0;  // v1.6: frames remaining before the next pickup is allowed
 let laserTimer = 0;
 // Items dropped because inventory was full. Keyed by "c,r"; value is
 // { role, visualId, cooldown }. Matches the platformer's persistentDrops.
@@ -216,15 +296,20 @@ function resetGame(seed) {
     persistentDrops = {};
     penaltyTimer = 0;
     moveCooldown = 0;
+    pickupCooldown = 0;
     laserTimer = 0;
     enemies = [];
     gameState = 'PLAYING';
+    episodeSteps = 0;
     shuffleRoles();
     initRoom();
     resetPlayer();
 }
 
 function shuffleRoles() {
+    // 6-item mod (mirrors v7.js): 6 roles for the 6 visual tokens, 5 distinct.
+    // The 6th role is a SECOND SWORD; with no enemy on the 6x6 map both swords
+    // are pure distractors.
     const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
@@ -242,39 +327,47 @@ function initRoom() {
     // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
     // with a single KEY-locked door at (3,4). Right room (cols 4-7):
     // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
+    // 6x6 layout: left room cols 0-1 (12 cells), wall at col 2 (full
+    // height), right room cols 3-5 (18 cells). Door at (col=2, row=2),
+    // goal at (col=5, row=0), spawn at (col=0, row=5). Min path length
+    // spawn->door->goal ~10 steps; 2000-step horizon gives 200x slack.
     mapData = [
-        [0,0,0,1,0,0,0,11],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,2,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0],
+        [0,0,1,0,0,11],
+        [0,0,1,0,0,0],
+        [0,0,2,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,1,0,0,0],
     ];
-    startCell = { c: 1, r: 7 };
+    startCell = { c: 0, r: 5 };
 
-    // 8 pickup spots, randomized per seed across the left room (cols
-    // 0-2, all rows). Excludes the spawn cell and the 8 cells within
-    // Chebyshev distance 1 of the spawn — same buffer as v5 / v5_easy
-    // so the agent gets at least one free move before auto-pickup.
-    const DOOR_ROW = 4;  // BLUE_KEY door at (col 3, row 4)
+    // 6 pickup spots (one per tool role), randomized per seed across the
+    // left room (cols 0-1). Excludes the spawn cell + the 4 cells within
+    // Chebyshev distance 1 of the spawn, AND the door's row (row 2) so no
+    // item sits on the spawn->door crossing and can be grabbed incidentally.
+    // That leaves exactly 6 candidate cells (rows 0,1,3 x cols 0,1) for the
+    // 6 items, so every item is placed and only the visual->cell assignment
+    // varies per seed. No value-item distractors in 6x6.
+    const DOOR_ROW = 2;  // BLUE_KEY door is at (col 2, row 2)
     const candidates = [];
-    for (let r = 0; r <= 7; r++) {
-        for (let c = 0; c <= 2; c++) {
+    for (let r = 0; r <= 5; r++) {
+        for (let c = 0; c <= 1; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
-            if (r === DOOR_ROW) continue;  // no items on the door's row (left of the door)
+            if (r === DOOR_ROW) continue;  // keep the door's row clear of items
             candidates.push({ c, r });
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, TOOL_VISUAL_IDS.length);  // 6 tools, no value items
+    const spots = candidates.slice(0, 6);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
         mapData[s.r][s.c] = vid;
     });
-    // (value items removed — VALUE_VISUAL_IDS is empty, so no leftover spots to fill)
+    while (spots.length > 0) {
+        const s = spots.pop();
+        mapData[s.r][s.c] = VALUE_VISUAL_IDS[rng() > 0.5 ? 0 : 1];
+    }
 
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
@@ -295,6 +388,9 @@ function resetPlayer() {
 }
 
 function updateGame() {
+    // Per-episode step counter; the win-reward step-decay reads this. One
+    // tick == one Python env.step (per runtime/p5/game-env.mjs).
+    episodeSteps++;
     laserTimer = (laserTimer + 1) % LASER_CYCLE;
     if (penaltyTimer > 0) penaltyTimer--;
     for (const key in persistentDrops) {
@@ -329,10 +425,15 @@ function updateGame() {
         }
     }
 
-    // Deliberate pickup (v1.5): fires ONLY on a standalone space press (no
-    // movement key held), so move+space cannot grab and there is no walk-over.
-    if (keyIsDown(32) && !keyIsDown(LEFT_ARROW) && !keyIsDown(RIGHT_ARROW)
-        && !keyIsDown(UP_ARROW) && !keyIsDown(DOWN_ARROW)) {
+    if (pickupCooldown > 0) pickupCooldown--;  // v1.6: throttle between pickups
+
+    // Strict deliberate pickup: fires ONLY on a STANDALONE space press (the
+    // pure-SPACE action) — not while a movement key is held, so the move+SPACE
+    // actions (L+SP / R+SP) cannot grab. Grabbing costs a dedicated turn, which
+    // blocks the "sweep-and-grab" exploit. No walk-over pickup either. v1.6:
+    // also gated by the pickup cooldown so items can't be cycled rapidly.
+    if (pickupCooldown <= 0 && keyIsDown(32) && !keyIsDown(LEFT_ARROW)
+        && !keyIsDown(RIGHT_ARROW) && !keyIsDown(UP_ARROW) && !keyIsDown(DOWN_ARROW)) {
         tryPickup();
     }
 
@@ -383,26 +484,34 @@ function tryMove(nc, nr) {
     player.r = nr;
 
     // Deliberate-pickup variant: walking onto an item does NOT collect it.
-    // Items/drops are taken only via the explicit standalone pickup action
-    // (updateGame -> tryPickup). tryMove resolves movement, the door, and
-    // terminal tiles only.
+    // Items and evicted drops are only taken via the explicit pickup action
+    // (handled in updateGame -> tryPickup). tryMove resolves movement, the
+    // door (pre-move above), and terminal tiles only.
     const here = mapData[player.r][player.c];
     if (here === 4) {
-        // Sunbeam: lethal without hat (no sunbeam tile on this map; kept for parity).
+        // Sunbeam: lethal without hat (no sunbeam tile on the 6x6 map; kept for parity).
         if (!hasItem(ROLE_HAT)) { die(); return; }
     }
     if (here === 11) { handleVictory(); return; }
 }
 
-// Explicit pickup: collect a tool token (or an evicted drop) on the current
-// cell. +500 pickup reward retained (v1.5). Called only on a standalone space press.
+// Explicit pickup: collect a tool/value token or an evicted drop on the
+// player's current cell. Called only when the pickup action (space) is taken.
 function tryPickup() {
     const here = mapData[player.r][player.c];
     if (TOOL_VISUAL_IDS.includes(here)) {
         const role = toolMapping[here];
         mapData[player.r][player.c] = 0;
         addItem(role, here);
-        score += 500;
+        // v1.7: +500 pickup reward REMOVED (like v2) — no incentive to grab items.
+        pickupCooldown = PICKUP_COOLDOWN;  // v1.6: block re-pickup for a while
+        return;
+    }
+    if (VALUE_VISUAL_IDS.includes(here)) {
+        const role = valueMapping[here];
+        mapData[player.r][player.c] = 0;
+        if (role === ROLE_REWARD) { score += 1000; }
+        else                       { score -= 1000; penaltyTimer = 30; }
         return;
     }
     const dropKey = `${player.c},${player.r}`;
@@ -414,7 +523,16 @@ function tryPickup() {
 }
 
 function handleVictory() {
-    score += 50000 + lives * 10000;
+    // MiniGrid-style step-decay reward: linear from WIN_REWARD_SCALE * 1.0 at
+    // step 0 down to WIN_REWARD_SCALE * 0.1 at step MAX_STEPS. Faster wins
+    // are rewarded more, matching the standard exploration-benchmark recipe
+    // (RIDE, BeBold, NovelD all use this shape on MiniGrid-DoorKey-6x6).
+    // Uses `episodeSteps` (per-episode counter), NOT p5's monotonic
+    // `frameCount` — the latter never resets across episodes and would
+    // collapse the decay to its 0.1 floor after the first ~2000-frame
+    // milestone in the worker's lifetime.
+    const decay = Math.max(0.1, 1.0 - 0.9 * (episodeSteps / MAX_STEPS));
+    score += WIN_REWARD_SCALE * decay;
     gameState = 'WIN';
 }
 
@@ -505,7 +623,10 @@ function getItemColor(vid) {
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
     if (vid === 14) return color(150, 0, 255);
-    if (vid === 18) return color(0, 200, 170);  // 6-item mod: teal breastplate
+    // 6-item mod: teal breastplate token. Teal is the open hue in the palette
+    // (pink/blue/green/gray/purple already taken) and stays clear of the
+    // yellow/orange value icons.
+    if (vid === 18) return color(0, 200, 170);
     return color(255);
 }
 
@@ -532,10 +653,12 @@ function drawToolVisual(id, x, y) {
         rect(x - 8, y - 8, 12, 8, 2);
         rect(x - 8, y, 18, 6, 2);
     } else if (id === 18) {
-        // Breastplate / cuirass: chest plate + two shoulder pauldrons.
-        rect(x - 7, y - 5, 14, 13, 3);
-        rect(x - 11, y - 7, 6, 5, 2);
-        rect(x + 5,  y - 7, 6, 5, 2);
+        // Breastplate / cuirass: a torso plate flanked by two shoulder pauldrons.
+        // Distinct silhouette from the other tokens, sized to survive the 4:1
+        // downsample.
+        rect(x - 7, y - 5, 14, 13, 3);   // chest plate
+        rect(x - 11, y - 7, 6, 5, 2);    // left pauldron
+        rect(x + 5,  y - 7, 6, 5, 2);    // right pauldron
     }
 }
 

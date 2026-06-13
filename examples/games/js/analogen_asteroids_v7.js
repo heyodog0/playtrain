@@ -1,30 +1,37 @@
 // analogen_asteroids_v7
-// A NEW DOMAIN that derives the EXACT SAME binding principles as
-// analogen_nomemory_grid_v7, but with asteroids-style continuous physics
-// (rotate + thrust + momentum + drift) instead of grid movement.
+// A NEW DOMAIN that shares analogen_nomemory_grid_v7's per-episode binding
+// principle, but with asteroids-style continuous physics (rotate + thrust +
+// momentum + drift) AND a ranged-weapon dynamic the grid env cannot express.
 //
-// Same semantics as v7 (the research principle is identical):
-//   - 5 tool visual ids [6,7,12,14,17] are shuffled to 5 roles each episode
-//     (HAT, BLUE_KEY, BOOTS, SWORD, ARMOR) via the SAME mulberry32 + Fisher-Yates
-//     as v7. The agent must read the per-episode binding from pixels.
-//   - 2 PROTECTIVE hold-to-pass hazards (lethal unless the bound item is held):
-//       LASER band  <- BOOTS      RADIATION band <- HAT
-//   - 3 CONSUMABLE contact-gates (engage by contact, item consumed, +1000):
-//       FORCE-FIELD <- BLUE_KEY (blocked, no death, until opened)
-//       ASTEROIDS   <- ARMOR    (lethal without; cleared with)
-//       UFO enemy   <- SWORD    (lethal without; killed with)
-//   - Inventory cap 2 with drops, +500 pickup, +1000 gate/reward, -1000 curse,
-//     -5000 death, win = +50000 + lives*10000, per-frame living cost.
-//   - Forced path: collect items in the bottom field (managing the 2-slot
-//     inventory), then fly UP a walled channel through
-//     LASER -> ASTEROIDS -> FORCE-FIELD -> RADIATION -> GOAL.
-//   Solvable on cap 2 the same way v7 is: BOOTS persists (channel mouth),
-//   ARMOR/KEY are consumed one-and-done, HAT is held on the final approach.
+// Binding principle (same as v7): 5 tool visual ids [6,7,12,14,17] are shuffled
+// to 5 roles each episode via the SAME mulberry32 + Fisher-Yates as v7. The
+// agent must read the per-episode binding from pixels.
 //
-// Controls (asteroids): LEFT/RIGHT rotate, UP thrusts along heading, DOWN brakes;
-// momentum + drag. Interactions are by contact (ram a gate while holding the
-// matching item). The fire button is unused (collision-based, like v7's "walk
-// into it"). Canvas 256x256 -> 64x64 obs at the usual 4:1 downsample.
+// The 5 roles and the forced channel sequence (bottom -> top):
+//   LASER band     <- BOOTS    hold-to-pass (lethal without; gray when held)
+//   ROCK WALL      <- PIERCER  SHOOT to clear: piercer ammo breaks the rock
+//                              blocks; the wall is solid until cleared.
+//   FORCE-FIELD    <- BLUE_KEY consumable contact-gate (opens on contact)
+//   TURRET band    <- BLASTER  SHOOT to clear: blaster ammo kills the turret;
+//                              the band is lethal on contact until killed.
+//   RADIATION band <- HAT      hold-to-pass (lethal without; gray when held)
+//
+// AMMO-BY-BINDING (the new research wrinkle): firing emits a projectile whose
+// TYPE is the equipped gun (PIERCER or BLASTER), colored by its bound glyph.
+//   - piercer bolts break ROCK but are ABSORBED by the turret (no effect)
+//   - blaster bolts kill the TURRET but are ABSORBED by rock (no effect)
+// So the agent must read WHICH glyph is the wall-breaker vs the turret-killer
+// and bring/fire the right one. Wrong ammo is wasted. Inventory/held items
+// render on the ship, so the binding stays fully pixel-visible (Markov).
+//
+// Inventory cap 2 with drops, +500 pickup, +1000 gate/clear, -1000 curse,
+// -5000 death, win = +50000 + lives*10000, per-frame living cost. Solvable on
+// cap 2 the same way v7 is: BOOTS persists at the laser mouth, HAT is held on
+// the final approach, PIERCER/KEY/BLASTER are spent one-and-done in sequence.
+//
+// Controls: LEFT/RIGHT rotate, UP thrusts along heading, DOWN brakes; momentum
+// + drag. SPACE fires (Discrete(8) actions 5/6/7). Item/door/hazard contacts as
+// in v7. Canvas 256x256 -> 64x64 obs at the usual 4:1 downsample.
 
 const W = 256, H = 256;
 const SHIP_R = 9;
@@ -36,11 +43,22 @@ const DEATH_PENALTY = 5000;
 const STEP_PENALTY = 0.005; // per-frame living cost (sized for symlog, as in v7)
 const MAX_STEPS = 2000;
 
+// --- firing ---
+const BULLET_SPEED = 4.6;
+const BULLET_LIFE = 64;     // frames before a bolt expires
+const FIRE_COOLDOWN = 7;    // min frames between shots
+const ROCK_BLOCK_W = 13;    // width of one breakable rock block
+const TURRET_HP = 2;        // blaster hits to clear the turret band
+// Optional turret return-fire (a dodge challenge). Default OFF for trainability.
+const TURRET_FIRES = false;
+const TURRET_FIRE_PERIOD = 70;
+const TURRET_BULLET_SPEED = 2.2;
+
 const ROLE_HAT      = 'HAT';
 const ROLE_BLUE_KEY = 'BLUE_KEY';
-const ROLE_SWORD    = 'SWORD';
+const ROLE_BLASTER  = 'BLASTER';   // was SWORD: kills the TURRET band
 const ROLE_BOOTS    = 'BOOTS';
-const ROLE_ARMOR    = 'ARMOR';
+const ROLE_PIERCER  = 'PIERCER';   // was ARMOR: breaks the ROCK WALL
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
@@ -62,16 +80,18 @@ let inventoryQueue = [];
 let toolMapping = {};
 let valueMapping = {};
 let penaltyTimer = 0;
+let fireCooldown = 0;
 
 let ship = { x: 128, y: 224, vx: 0, vy: 0, angle: -Math.PI / 2 };
 let startPose = { x: 128, y: 224, angle: -Math.PI / 2 };
 
 let items = [];     // {x,y,r,kind:'tool'|'value', visualId, cooldown}
-let gates = [];     // {kind:'protect'|'door'|'asteroids', role, y, alive, rocks?}
-let enemies = [];   // {x,y,r,dir,role}
+let gates = [];     // {kind:'protect'|'door'|'wall'|'turret', role, y, alive, ...}
+let bullets = [];   // {x,y,vx,vy,life,role,visualId}   player bolts
+let turretBullets = []; // {x,y,vy,life}
 let walls = [];     // {x,y,w,h}
 let stars = [];     // {x,y,b}
-let goal = { x: 128, y: 26, r: 12 };
+let goal = { x: 128, y: 20, r: 12 };
 
 let rng = null;
 
@@ -114,15 +134,18 @@ function resetGame(seed) {
     lives = 3;
     inventoryQueue = [];
     penaltyTimer = 0;
+    fireCooldown = 0;
     episodeSteps = 0;
     gameState = 'PLAYING';
+    bullets = [];
+    turretBullets = [];
     shuffleRoles();
     initWorld();
     resetShip();
 }
 
 function shuffleRoles() {
-    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR];
+    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_BLASTER, ROLE_PIERCER];
     shuffleInPlace(toolRoles);
     toolMapping = {};
     TOOL_VISUAL_IDS.forEach((vid, i) => { toolMapping[vid] = toolRoles[i]; });
@@ -141,18 +164,18 @@ function initWorld() {
     ];
 
     // Forced sequence up the channel (bottom -> top):
-    //   LASER(boots) -> ASTEROIDS(armor) -> FORCE-FIELD(key) -> RADIATION(hat) -> GOAL
+    //   LASER(boots) -> ROCK WALL(piercer) -> FORCE-FIELD(key)
+    //               -> TURRET(blaster) -> RADIATION(hat) -> GOAL
     gates = [
-        { kind: 'protect',   role: ROLE_BOOTS,    y: 144 },
-        { kind: 'asteroids', role: ROLE_ARMOR,    y: 112, alive: true, rocks: makeRocks(112) },
-        { kind: 'door',      role: ROLE_BLUE_KEY, y: 82,  alive: true },
-        { kind: 'protect',   role: ROLE_HAT,      y: 50 },
+        { kind: 'protect', role: ROLE_BOOTS,    y: 140 },
+        { kind: 'wall',    role: ROLE_PIERCER,  y: 112, alive: true, blocks: makeRockBlocks(112) },
+        { kind: 'door',    role: ROLE_BLUE_KEY, y: 86,  alive: true },
+        { kind: 'turret',  role: ROLE_BLASTER,  y: 58,  alive: true, hp: TURRET_HP,
+                           tx: 128, dir: rng() > 0.5 ? 1 : -1, fireTimer: TURRET_FIRE_PERIOD },
+        { kind: 'protect', role: ROLE_HAT,      y: 34 },
     ];
 
-    // One UFO enemy patrolling the field (SWORD kills it; avoidable distractor).
-    enemies = [{ x: 70 + rng() * 116, y: 184, r: 10, dir: rng() > 0.5 ? 1 : -1, role: ROLE_SWORD }];
-
-    // Items scattered in the bottom field. 5 tool ids + the rest value items.
+    // Items scattered in the bottom field. 5 tool ids + a few value distractors.
     items = [];
     const placed = [];
     const tooClose = (x, y) => {
@@ -184,20 +207,20 @@ function initWorld() {
     for (let i = 0; i < 22; i++) stars.push({ x: rng() * W, y: rng() * H, b: 40 + rng() * 50 });
 }
 
-function makeRocks(yc) {
-    // A row of jagged asteroids spanning the channel = one ARMOR gate.
-    const rocks = [];
-    for (let cx = CH_L + 12; cx <= CH_R - 12; cx += 22) {
+function makeRockBlocks(yc) {
+    // A row of breakable rock blocks spanning the channel = the PIERCER wall.
+    const blocks = [];
+    for (let cx = CH_L + ROCK_BLOCK_W * 0.5 + 1; cx < CH_R - 1; cx += ROCK_BLOCK_W) {
         const verts = [];
         const n = 8;
         for (let k = 0; k < n; k++) {
             const a = (k / n) * Math.PI * 2;
-            const rr = 9 + rng() * 5;
+            const rr = 7 + rng() * 4;
             verts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
         }
-        rocks.push({ x: cx, y: yc, verts });
+        blocks.push({ x: cx, y: yc, alive: true, verts });
     }
-    return rocks;
+    return blocks;
 }
 
 function resetShip() {
@@ -209,13 +232,11 @@ function updateGame() {
     episodeSteps++;
     score -= STEP_PENALTY;
     if (penaltyTimer > 0) penaltyTimer--;
+    if (fireCooldown > 0) fireCooldown--;
     for (const it of items) if (it.cooldown > 0) it.cooldown--;
 
-    // --- enemy patrol (field) ---
-    for (const e of enemies) {
-        e.x += e.dir * 0.7;
-        if (e.x < 24 || e.x > W - 24) e.dir *= -1;
-    }
+    updateTurrets();
+    updateBullets();
 
     // --- ship physics ---
     if (keyIsDown(LEFT_ARROW))  ship.angle -= ROT_SPEED;
@@ -237,16 +258,110 @@ function updateGame() {
     resolveContacts();
 }
 
+function updateTurrets() {
+    for (const g of gates) {
+        if (g.kind !== 'turret' || !g.alive) continue;
+        g.tx += g.dir * 0.6;
+        if (g.tx < CH_L + 12 || g.tx > CH_R - 12) g.dir *= -1;
+        if (TURRET_FIRES) {
+            g.fireTimer--;
+            if (g.fireTimer <= 0) {
+                g.fireTimer = TURRET_FIRE_PERIOD;
+                turretBullets.push({ x: g.tx, y: g.y + BAND_H, vy: TURRET_BULLET_SPEED, life: 200 });
+            }
+        }
+    }
+    for (let i = turretBullets.length - 1; i >= 0; i--) {
+        const b = turretBullets[i];
+        b.y += b.vy; b.life--;
+        if (b.life <= 0 || b.y > H || blocked(b.x, b.y)) { turretBullets.splice(i, 1); continue; }
+        if (dist(b.x, b.y, ship.x, ship.y) < SHIP_R + 2) { turretBullets.splice(i, 1); die(); return; }
+    }
+}
+
+function updateBullets() {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx; b.y += b.vy; b.life--;
+        if (b.life <= 0 || b.x < 0 || b.x > W || b.y < 0 || b.y > H) { bullets.splice(i, 1); continue; }
+        if (hitsSolidWall(b.x, b.y)) { bullets.splice(i, 1); continue; }
+        if (resolveBulletGate(b)) { bullets.splice(i, 1); continue; }
+    }
+}
+
+// A bolt vs the channel gates. Returns true if the bolt should be consumed.
+// Ammo-by-binding: only the matching ammo type damages its gate; the wrong
+// ammo is still ABSORBED on contact (wasted), so mis-binding is punished.
+function resolveBulletGate(b) {
+    for (const g of gates) {
+        if (!g.alive) continue;
+        if (g.kind === 'wall') {
+            for (const blk of g.blocks) {
+                if (!blk.alive) continue;
+                if (Math.abs(b.x - blk.x) < ROCK_BLOCK_W * 0.5 + 1 && Math.abs(b.y - blk.y) < 10) {
+                    if (b.role === ROLE_PIERCER) {
+                        blk.alive = false;
+                        if (g.blocks.every(k => !k.alive)) { g.alive = false; consumeItem(ROLE_PIERCER); score += 1000; }
+                    }
+                    return true;  // absorbed either way
+                }
+            }
+        } else if (g.kind === 'turret') {
+            if (inChannel(b.x) && Math.abs(b.y - g.y) < BAND_H + 2) {
+                if (b.role === ROLE_BLASTER) {
+                    g.hp--;
+                    if (g.hp <= 0) { g.alive = false; consumeItem(ROLE_BLASTER); score += 1000; }
+                }
+                return true;  // absorbed either way
+            }
+        } else if (g.kind === 'door') {
+            // Locked force-field absorbs bolts; open door lets them pass.
+            if (inChannel(b.x) && Math.abs(b.y - g.y) < BAND_H + 2) return true;
+        }
+    }
+    return false;
+}
+
+// Fire the equipped gun. Called once per fire-action from keyPressed(), so it is
+// frame-skip independent (polling keyIsDown(32) would multi-fire under skip).
+function fireWeapon() {
+    if (gameState !== 'PLAYING' || fireCooldown > 0) return;
+    // Equipped gun = front-of-queue PIERCER/BLASTER (deterministic, mirrors drop order).
+    const gun = inventoryQueue.find(it => it.role === ROLE_PIERCER || it.role === ROLE_BLASTER);
+    if (!gun) return;
+    fireCooldown = FIRE_COOLDOWN;
+    const dx = Math.cos(ship.angle), dy = Math.sin(ship.angle);
+    bullets.push({
+        x: ship.x + dx * (SHIP_R + 4), y: ship.y + dy * (SHIP_R + 4),
+        vx: ship.vx * 0.3 + dx * BULLET_SPEED, vy: ship.vy * 0.3 + dy * BULLET_SPEED,
+        life: BULLET_LIFE, role: gun.role, visualId: gun.visualId,
+    });
+}
+
+// True if a point overlaps a channel wall or boundary (used for bolts).
+function hitsSolidWall(x, y) {
+    for (const wl of walls) {
+        if (x > wl.x && x < wl.x + wl.w && y > wl.y && y < wl.y + wl.h) return true;
+    }
+    return false;
+}
+
 // True if the ship circle at (x,y) overlaps a wall, a locked door, or a live
-// asteroid gate (these act as solid barriers).
+// rock wall (these act as solid barriers).
 function blocked(x, y) {
     for (const wl of walls) {
         if (x + SHIP_R > wl.x && x - SHIP_R < wl.x + wl.w &&
             y + SHIP_R > wl.y && y - SHIP_R < wl.y + wl.h) return true;
     }
     for (const g of gates) {
-        if (g.kind === 'door' && g.alive && inChannel(x) && Math.abs(y - g.y) < BAND_H + SHIP_R) {
+        if (!g.alive) continue;
+        if (g.kind === 'door' && inChannel(x) && Math.abs(y - g.y) < BAND_H + SHIP_R) {
             if (!hasItem(ROLE_BLUE_KEY)) return true;  // locked = solid; with key it opens on contact
+        } else if (g.kind === 'wall') {
+            for (const blk of g.blocks) {
+                if (blk.alive && Math.abs(x - blk.x) < ROCK_BLOCK_W * 0.5 + SHIP_R &&
+                    Math.abs(y - blk.y) < 9 + SHIP_R) return true;
+            }
         }
     }
     return false;
@@ -262,24 +377,14 @@ function resolveContacts() {
         const overlap = inChannel(x) && Math.abs(y - g.y) < BAND_H + SHIP_R;
         if (!overlap) continue;
         if (g.kind === 'protect') {
-            if (!hasItem(g.role)) { die(); return; }       // laser/radiation: lethal without item
-        } else if (g.kind === 'asteroids') {
-            if (!g.alive) continue;
-            if (hasItem(g.role)) { consumeItem(g.role); g.alive = false; score += 1000; }
-            else { die(); return; }
+            if (!hasItem(g.role)) { die(); return; }   // laser/radiation: lethal without item
+        } else if (g.kind === 'turret') {
+            if (g.alive) { die(); return; }            // lethal band until shot down
         } else if (g.kind === 'door') {
             if (g.alive && hasItem(g.role)) { consumeItem(g.role); g.alive = false; score += 1000; }
             // locked door without key is handled as solid in blocked(); no death.
         }
-    }
-
-    // --- enemies (UFOs) ---
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i];
-        if (dist(x, y, e.x, e.y) < SHIP_R + e.r) {
-            if (hasItem(e.role)) { consumeItem(e.role); score += 1000; enemies.splice(i, 1); }
-            else { die(); return; }
-        }
+        // 'wall' is purely a solid barrier (handled in blocked()); no contact effect.
     }
 
     // --- item pickups ---
@@ -312,6 +417,8 @@ function handleVictory() {
 function die() {
     score = Math.max(0, score - DEATH_PENALTY);
     lives--;
+    bullets = [];
+    turretBullets = [];
     if (lives <= 0) gameState = 'GAMEOVER';
     else            resetShip();
 }
@@ -360,7 +467,8 @@ function drawGame() {
         else drawValueVisual(it.visualId, it.x, it.y);
     }
 
-    for (const e of enemies) drawUFO(e.x, e.y);
+    for (const b of bullets) drawBullet(b);
+    for (const b of turretBullets) { fill(255, 80, 80); ellipse(b.x, b.y, 5); }
 
     drawShip();
 }
@@ -384,16 +492,28 @@ function drawGate(g) {
         // FORCE-FIELD: flat blue barrier + bright core line.
         fill(0, 110, 230); rect(CH_L, yTop, CH_R - CH_L, h);
         fill(150, 210, 255); rect(CH_L, g.y - 1, CH_R - CH_L, 3);
-    } else if (g.kind === 'asteroids') {
+    } else if (g.kind === 'wall') {
         if (!g.alive) return;
-        for (const rk of g.rocks) {
+        // ROCK WALL: jagged gray blocks; shoot with PIERCER ammo to break.
+        for (const blk of g.blocks) {
+            if (!blk.alive) continue;
             fill(120, 120, 138);
             beginShape();
-            for (const v of rk.verts) vertex(rk.x + v[0], rk.y + v[1]);
+            for (const v of blk.verts) vertex(blk.x + v[0], blk.y + v[1]);
             endShape(CLOSE);
             fill(78, 78, 96);
-            rect(rk.x - 4, rk.y - 2, 4, 4); rect(rk.x + 1, rk.y + 1, 3, 3);
+            rect(blk.x - 4, blk.y - 2, 4, 4); rect(blk.x + 1, blk.y + 1, 3, 3);
         }
+    } else if (g.kind === 'turret') {
+        if (!g.alive) return;
+        // TURRET band: lethal red emitter row + a tracking gun body. Shoot with
+        // BLASTER ammo to kill (band clears on death).
+        fill(150, 40, 40);
+        for (let xx = CH_L; xx < CH_R; xx += 8) rect(xx, g.y - 2, 5, 4);
+        fill(90, 95, 110); ellipse(g.tx, g.y, 16, 12);     // hull
+        fill(60, 65, 80);  rect(g.tx - 2, g.y + 2, 4, 8);  // downward barrel
+        fill(255, 90, 90);  ellipse(g.tx, g.y - 1, 5, 5);   // core (hp glow)
+        if (g.hp <= 1) { fill(255, 200, 80); ellipse(g.tx, g.y - 1, 2.5, 2.5); }
     }
 }
 
@@ -452,12 +572,21 @@ function drawValueVisual(id, x, y) {
     fill(c[0], c[1], c[2]); ellipse(x, y, 3);
 }
 
-function drawUFO(x, y) {
-    fill(150, 160, 180); ellipse(x, y + 2, 22, 8);     // saucer body
-    fill(120, 130, 150); ellipse(x, y, 12, 9);          // hull
-    fill(120, 255, 230); ellipse(x, y - 2, 8, 6);       // dome
-    fill(40, 60, 80);
-    for (let i = -1; i <= 1; i++) ellipse(x + i * 6, y + 3, 2.5);
+function drawBullet(b) {
+    const rgb = getItemColor(b.visualId);
+    push();
+    translate(b.x, b.y);
+    rotate(Math.atan2(b.vy, b.vx));
+    fill(rgb[0], rgb[1], rgb[2]);
+    if (b.role === ROLE_PIERCER) {
+        // piercing lance: thin and long
+        rect(-5, -1.5, 11, 3);
+    } else {
+        // blaster bolt: round pellet with a short tail
+        ellipse(0, 0, 5, 5);
+        fill(rgb[0], rgb[1], rgb[2], 140); rect(-5, -1, 4, 2);
+    }
+    pop();
 }
 
 function drawShip() {
@@ -466,42 +595,68 @@ function drawShip() {
     translate(ship.x, ship.y);
     rotate(ship.angle);   // ship points along +x in this frame
 
-    // BOOTS: rear thruster glow (drawn behind the hull, in role color).
+    // BOOTS: rear afterburner pod (drawn behind the hull, in role color).
     const boots = inventoryQueue.find(it => it.role === ROLE_BOOTS);
     if (boots) {
-        fill(getItemColor(boots.visualId));
-        triangle(-SHIP_R, -4, -SHIP_R, 4, -SHIP_R - 7, 0);
+        const c = getItemColor(boots.visualId);
+        const len = keyIsDown(UP_ARROW) ? 11 : 7;
+        fill(c[0], c[1], c[2]);
+        triangle(-SHIP_R + 1, -4, -SHIP_R + 1, 4, -SHIP_R - len, 0);
     } else if (keyIsDown(UP_ARROW)) {
-        fill(255, 160, 40); triangle(-SHIP_R, -3, -SHIP_R, 3, -SHIP_R - 6, 0);
+        fill(255, 160, 40); triangle(-SHIP_R + 1, -3, -SHIP_R + 1, 3, -SHIP_R - 6, 0);
     }
 
-    // Hull: flat-filled triangle (no outline).
-    fill(cursed ? [255, 90, 90] : [225, 235, 250]);
-    triangle(SHIP_R + 2, 0, -SHIP_R * 0.7, -SHIP_R * 0.8, -SHIP_R * 0.7, SHIP_R * 0.8);
+    // Rocket fuselage (flat-filled, no outline): tapered body + two tail fins.
+    fill(70, 80, 100);                       // fins (behind hull)
+    triangle(-SHIP_R + 2, -3, -SHIP_R - 2, -7, -2, -3);
+    triangle(-SHIP_R + 2,  3, -SHIP_R - 2,  7, -2,  3);
+    fill(cursed ? [255, 90, 90] : [225, 235, 250]);   // hull
+    beginShape();
+    vertex(SHIP_R + 3, 0);                   // nose tip
+    vertex(2, -SHIP_R * 0.62);
+    vertex(-SHIP_R + 2, -SHIP_R * 0.5);
+    vertex(-SHIP_R + 2,  SHIP_R * 0.5);
+    vertex(2,  SHIP_R * 0.62);
+    endShape(CLOSE);
+    fill(120, 150, 200);                     // cockpit canopy
+    ellipse(SHIP_R * 0.2, 0, 5, 4);
 
-    // ARMOR: flat hull plate band across the middle (torso), role color.
-    const armor = inventoryQueue.find(it => it.role === ROLE_ARMOR);
-    if (armor) {
-        fill(getItemColor(armor.visualId));
-        rect(-4, -SHIP_R * 0.65, 5, SHIP_R * 1.3);
+    // PIERCER: forward drill lance at the nose (role color) — the wall-breaker gun.
+    const piercer = inventoryQueue.find(it => it.role === ROLE_PIERCER);
+    if (piercer) {
+        const c = getItemColor(piercer.visualId);
+        fill(c[0], c[1], c[2]);
+        triangle(SHIP_R + 8, 0, SHIP_R - 1, -2.5, SHIP_R - 1, 2.5);
     }
 
-    // HAT: nose-cone at the front tip (head-equivalent), role color.
+    // BLASTER: side cannon barrels on the flanks (role color) — the turret-killer gun.
+    const blaster = inventoryQueue.find(it => it.role === ROLE_BLASTER);
+    if (blaster) {
+        const c = getItemColor(blaster.visualId);
+        fill(c[0], c[1], c[2]);
+        rect(0, -SHIP_R * 0.95, 7, 3);
+        rect(0,  SHIP_R * 0.95 - 3, 7, 3);
+    }
+
+    // HAT: canopy dome shield over the cockpit (role color) — radiation shield.
     const hat = inventoryQueue.find(it => it.role === ROLE_HAT);
     if (hat) {
-        fill(getItemColor(hat.visualId));
-        triangle(SHIP_R + 2, 0, SHIP_R - 4, -3, SHIP_R - 4, 3);
+        const c = getItemColor(hat.visualId);
+        fill(c[0], c[1], c[2]);
+        ellipse(SHIP_R * 0.2, 0, 7, 6);
     }
 
-    // Other held items (KEY/SWORD): flat square glyphs beside the hull (the "belt").
-    const carried = inventoryQueue.filter(it =>
-        it.role !== ROLE_BOOTS && it.role !== ROLE_ARMOR && it.role !== ROLE_HAT);
-    carried.forEach((it, i) => {
-        fill(getItemColor(it.visualId));
-        rect(-5, (i === 0 ? -1 : 1) * (SHIP_R + 1) - 2, 5, 5);
-    });
+    // BLUE_KEY: docking prong under the nose (role color).
+    const key = inventoryQueue.find(it => it.role === ROLE_BLUE_KEY);
+    if (key) {
+        const c = getItemColor(key.visualId);
+        fill(c[0], c[1], c[2]);
+        rect(SHIP_R - 3, 3, 4, 4);
+    }
 
     pop();
 }
 
-function keyPressed() {}
+function keyPressed() {
+    if (keyCode === 32) fireWeapon();   // SPACE = fire (Discrete(8) actions 5/6/7)
+}
