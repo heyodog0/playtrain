@@ -61,13 +61,13 @@ bench game="--all":
 
 # === game generation ===
 
-# Generate one Gemini-built game from a catalog
-gen-game catalog name model="pro":
-    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}} --ref
+# Generate one Gemini-built game from a catalog. Pass mechanic="no" to omit the catalog mechanic from the prompt.
+gen-game catalog name model="pro" mechanic="yes":
+    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
 
-# Generate every game across every catalog
-gen-all model="pro":
-    uv run python tools/generate.py --all --model {{model}} --ref
+# Generate every game across every catalog. Pass mechanic="no" to omit catalog mechanics from prompts.
+gen-all model="pro" mechanic="yes":
+    uv run python tools/generate.py --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
 
 # Generate one Three.js game. SKIPS if file exists — see gen-three-force.
 gen-three name model="pro":

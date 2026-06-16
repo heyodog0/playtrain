@@ -122,16 +122,10 @@ function draw() {
         }
         
         if (player.cooldown <= 0) {
-          // Fire twin lasers from boots
           bullets.push({ 
-            x: player.x + 2, 
+            x: player.x + player.w / 2 - 6, 
             y: player.y + player.h, 
-            w: 6, h: 30, vy: 20, active: true 
-          });
-          bullets.push({ 
-            x: player.x + player.w - 8, 
-            y: player.y + player.h, 
-            w: 6, h: 30, vy: 20, active: true 
+            w: 12, h: 20, vy: 16, active: true 
           });
           // Kickback effect: gives a small boost but prevents infinite flying 
           // because gravity + cooldown gap outweighs this upward push
@@ -247,26 +241,16 @@ function draw() {
     rect(e.x, e.y, e.w, e.h);
   }
 
-  // Bullets (Laser beams)
-  push();
-  noStroke();
+  // Bullets
+  fill(255, 255, 0); // Bright Yellow
   for (let b of bullets) {
-    fill(0, 255, 255, 100); // Cyan outer glow
-    rect(b.x - 3, b.y, b.w + 6, b.h);
-    fill(255); // White inner core
     rect(b.x, b.y, b.w, b.h);
   }
-  pop();
 
   // Player
   if (gameState !== 'PLAYING' || player.invuln % 10 < 5) {
-    fill(50, 150, 255); // Blue body
+    fill(50, 150, 255); // Blue
     rect(player.x, player.y, player.w, player.h);
-    
-    // Laser Boots on player
-    fill(0, 255, 255);
-    rect(player.x, player.y + player.h - 5, 8, 5);
-    rect(player.x + player.w - 8, player.y + player.h - 5, 8, 5);
   }
 
   pop();
@@ -279,7 +263,7 @@ function draw() {
   }
 
   // Ammo
-  fill(0, 255, 255); // Cyan laser batteries
+  fill(255, 255, 0);
   for (let i = 0; i < player.ammo; i++) {
     rect(375 - i * 15, 10, 10, 15);
   }

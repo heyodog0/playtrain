@@ -154,11 +154,13 @@ def load_source_context(name: str) -> str:
     return text
 
 
-def build_prompt(game: dict, template: str, ref_text: str, source_text: str) -> str:
+def build_prompt(game: dict, template: str, ref_text: str, source_text: str, include_mechanic: bool = True) -> str:
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
     physics = game.get("physics", "")
+
+    mechanic_line = f"Mechanic: {mechanic}\n" if include_mechanic and mechanic else ""
 
     ref_section = ""
     if ref_text:
@@ -178,8 +180,7 @@ Reference implementation source code:
 
     prompt = f"""Generate a p5.js game implementing "{name}".
 
-Mechanic: {mechanic}
-Actions this game should use: {actions}
+{mechanic_line}Actions this game should use: {actions}
 {"This game requires Matter.js physics (available as global `Matter`)." if physics else ""}
 {ref_section}
 {source_section}
@@ -227,7 +228,7 @@ def backup_game(name: str, output_dir: Path):
     dst.write_text(src.read_text())
 
 
-def generate_one(client: genai.Client, game: dict, template: str, model: str, output_dir: Path, use_ref: bool):
+def generate_one(client: genai.Client, game: dict, template: str, model: str, output_dir: Path, use_ref: bool, include_mechanic: bool = True):
     name = game["name"]
     out_path = output_dir / f"{name}.js"
     print(f"  Generating {name}...", end=" ", flush=True)
@@ -241,7 +242,7 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str, ou
     if source_text:
         print("using source...", end=" ", flush=True)
 
-    prompt = build_prompt(game, template, ref_text, source_text)
+    prompt = build_prompt(game, template, ref_text, source_text, include_mechanic)
 
     try:
         t0 = time.time()
@@ -268,6 +269,7 @@ def main():
     parser.add_argument("--model", choices=["flash", "pro"], default="pro")
     parser.add_argument("--output-dir", type=Path, default=JS_DIR)
     parser.add_argument("--ref", action="store_true", help="Fetch ref URLs and include in prompt")
+    parser.add_argument("--no-mechanic", action="store_true", help="Omit the catalog mechanic line from the prompt")
     args = parser.parse_args()
 
     if not args.catalog and not args.all:
@@ -294,7 +296,7 @@ def main():
             continue
 
         for i, game in enumerate(games):
-            generate_one(client, game, template, model, args.output_dir, args.ref)
+            generate_one(client, game, template, model, args.output_dir, args.ref, not args.no_mechanic)
             if i < len(games) - 1:
                 time.sleep(2)
 
