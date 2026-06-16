@@ -15,19 +15,24 @@ function makeEnv(){
     globalThis.__snap=function(){return {
       p:Object.assign({},player), hasKey, roomIndex, frame, score, lives, gameState, bestDist,
       visited:visited.slice(),
-      rooms:world.rooms.map(rm=>({u:rm.unlocked, j:rm.jewels.map(x=>x.taken),
-        sk:rm.hazards.map(h=>h.type==='skull'?{x:h.x,vx:h.vx}:0)}))};};
+      rooms:world.rooms.map(rm=>({u:rm.unlocked, le:rm.lastEnter, k:rm.key?rm.key.taken:false,
+        j:rm.jewels.map(x=>x.taken),
+        hz:rm.hazards.map(h=>({x:h.x,vx:h.vx,dead:!!h.dead}))}))};};
     globalThis.__restore=function(s){
       player=Object.assign({},s.p); hasKey=s.hasKey; roomIndex=s.roomIndex; frame=s.frame;
       score=s.score; lives=s.lives; gameState=s.gameState; bestDist=s.bestDist; visited=s.visited.slice();
-      world.rooms.forEach((rm,i)=>{rm.unlocked=s.rooms[i].u; rm.jewels.forEach((j,k)=>j.taken=s.rooms[i].j[k]);
-        rm.hazards.forEach((h,k)=>{if(h.type==='skull'){h.x=s.rooms[i].sk[k].x; h.vx=s.rooms[i].sk[k].vx;}});});
+      world.rooms.forEach((rm,i)=>{const r=s.rooms[i]; rm.unlocked=r.u; rm.lastEnter=r.le; if(rm.key)rm.key.taken=r.k;
+        rm.jewels.forEach((j,k)=>j.taken=r.j[k]);
+        rm.hazards.forEach((h,k)=>{if(h.type==='skull'){h.x=r.hz[k].x; h.vx=r.hz[k].vx;} h.dead=r.hz[k].dead;});});
       room=world.rooms[roomIndex];};
-    globalThis.__h=function(){return (hasKey?0:1000) + (isFinite(distToSubgoal())?distToSubgoal():500);};
+    globalThis.__h=function(){const hasDoor=world.rooms.some(r=>r.door);
+      const unlocked=!hasDoor||world.rooms.some(r=>r.door&&r.unlocked);
+      const keyGot=world.rooms.some(r=>r.key&&r.key.taken);
+      return (unlocked?0:1000)+(keyGot?0:1000)+(isFinite(distToSubgoal())?distToSubgoal():500);};
     globalThis.__key=function(){
-      return roomIndex+'|'+(hasKey?1:0)+'|'+Math.round(player.x/10)+'|'+Math.round(player.y/10)+'|'+
+      return roomIndex+'|'+(hasKey?1:0)+'|'+(room.unlocked?1:0)+'|'+Math.round(player.x/10)+'|'+Math.round(player.y/10)+'|'+
         Math.sign(player.vx)+'|'+Math.max(-1,Math.min(2,Math.round(player.vy/4)))+'|'+
-        (player.supported?1:0)+'|'+(player.climbing?1:0)+'|'+((room.hazards.some(h=>h.type==='laser')||(room.disappearing&&room.disappearing.length>0))?(frame%150):0);};
+        (player.supported?1:0)+'|'+(player.climbing?1:0)+'|'+(player.climbingRope?1:0)+'|'+(player.sinkT>0?Math.min(7,Math.round(player.sinkT/10)):0)+'|'+((room.hazards.some(h=>h.type==='laser')||(room.disappearing&&room.disappearing.length>0))?(frame%150):0);};
   `, s);
   return s;
 }
