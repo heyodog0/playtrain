@@ -1,0 +1,6 @@
+# climb capture: room 1 starts Joe on the platform above the central ladder
+NOOP 15
+DOWN 45     # climb down central ladder -> dy table
+NOOP 10
+UP 45       # climb back up
+NOOP 10

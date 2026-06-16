@@ -1,0 +1,34 @@
+{
+  "_comment": "Montezuma's Revenge (Atari 2600) RAM map. Addresses below are the COMMONLY CITED ones from the RL / Go-Explore literature. They are a STARTING POINT — every address has verify=false until you confirm it against your own ALE/BizHawk session (drive a known input and watch the byte move the way you expect). 2600 RAM is 128 bytes, addresses 0x00-0x7F (0-127).",
+
+  "fields": {
+    "room":  { "addr": 3,   "verify": false, "note": "current room id. CONSISTENT (stayed 1 in all captures) but UNCONFIRMED — Joe never left room 1, so a transition was never observed. Re-confirm by walking through a door." },
+    "x":     { "addr": 42,  "verify": true,  "note": "CONFIRMED. Panama Joe X. +1/frame under RIGHT, -1 under LEFT. RAM-x ≈ screen-x (scale≈1.0, offset≈-1)." },
+    "y":     { "addr": 43,  "verify": true,  "note": "CONFIRMED. Panama Joe Y, but INVERTED: RAM-y INCREASES upward (jump raised it 235->252). screen_y = C - ram_y; C still unpinned." },
+    "lives": { "addr": 58,  "verify": true,  "note": "CONFIRMED-ish. Decremented 5->4->3 as Joe died during random play. Value = spare lives remaining." },
+    "level": { "addr": 57,  "verify": false, "note": "level number (pyramid resets harder each level). CONFIRM." },
+    "items": { "addr": 65,  "verify": false, "note": "inventory bitmask (key/sword/torch/amulet). Pick up a key and watch a bit flip. CONFIRM." },
+    "orb_count_or_score_lo": { "addr": 25, "verify": false, "note": "score is BCD across a few bytes — CONFIRM range by scoring." }
+  },
+
+  "enemy_candidates": {
+    "_comment": "Enemies (skull, snakes, spiders, laser barriers) have position + an animation/movement timer byte each. These are UNKNOWN — find them by diffing RAM while only an enemy moves and the player stands still.",
+    "skull_x": { "addr": null, "verify": false },
+    "skull_timer": { "addr": null, "verify": false }
+  },
+
+  "calibration": {
+    "_comment": "Fill these after running the logger with --calibrate. Solve screen_px = scale*ram + offset per axis using two known reference positions (e.g. left wall, right wall).",
+    "x": { "ram_min": 63, "ram_max": 89, "px_min": 62, "px_max": 91, "scale": 1.0, "offset": -1, "note": "from walk capture + frame diff; RAM-x≈screen-x" },
+    "y": { "ram_min": 148, "ram_max": 252, "px_min": 89, "px_max": 122, "scale": -0.85, "offset": 287, "note": "PINNED: screen_row = 287 - 0.85*ram_y. Fitted from 6 walk frames. RAM-y inverted (up = larger) and ~1.18x finer than pixels." },
+    "native_frame": { "w": 160, "h": 210, "note": "ALE getScreenRGB() resolution. Author the gym-gen game in this space, then scale up uniformly." }
+  },
+
+  "ale_action_ids": {
+    "_comment": "ALE full action set (Discrete(18)) used to DRIVE capture. Distinct from the gym-gen Discrete(8) the final game exposes.",
+    "NOOP": 0, "FIRE": 1, "UP": 2, "RIGHT": 3, "LEFT": 4, "DOWN": 5,
+    "UPRIGHT": 6, "UPLEFT": 7, "DOWNRIGHT": 8, "DOWNLEFT": 9,
+    "UPFIRE": 10, "RIGHTFIRE": 11, "LEFTFIRE": 12, "DOWNFIRE": 13,
+    "UPRIGHTFIRE": 14, "UPLEFTFIRE": 15, "DOWNRIGHTFIRE": 16, "DOWNLEFTFIRE": 17
+  }
+}

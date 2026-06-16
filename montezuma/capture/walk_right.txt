@@ -1,0 +1,14 @@
+# Sample action script for movement-table capture.
+# Format: ACTION REPEAT   (ACTION = ram_map name or ALE id; REPEAT optional, default 1)
+# Run: python ale_ram_logger.py --script walk_right.txt --frames
+#
+# Goal: isolate one mechanic at a time so dx/dy in the CSV ARE the movement table.
+
+NOOP 20        # settle after reset
+RIGHT 40       # steady walk right -> per-frame dx = walk speed
+NOOP 10
+LEFT 40        # walk left -> confirm symmetric speed
+NOOP 10
+UPFIRE 1       # a single jump press...
+NOOP 30        # ...then watch the full jump/fall arc in dy
+NOOP 20
