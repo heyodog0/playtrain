@@ -84,14 +84,14 @@ function resetGame(seed) {
           else if (cx - a < b - cx) hi = Math.min(hi, a - h.w); else lo = Math.max(lo, b);   // straddles -> push to nearer side
         }
         h.lo = lo; h.hi = Math.max(lo, hi); h.x = Math.max(h.lo, Math.min(h.hi, h.x));
-      } else {   // snake or laser: a fixed x — slide it off any ladder column
+      } else {   // spider or laser: a fixed x — slide it off any ladder column
         let guard = 0;
         while (lad.some(([a, b]) => h.x + h.w > a && h.x < b) && guard++ < COLS) { h.x += cellW; if (h.x + h.w > (COLS - 1) * cellW) h.x = cellW; }
       }
     }
     // hard guarantee: drop anything (enemy OR laser) still overlapping a ladder after the shift
     rm.hazards = rm.hazards.filter((h) => !lad.some(([a, b]) => { const [s, e] = hspan(h); return e > a && s < b; }));
-    // no stacked items: drop jewels whose column overlaps a hazard (e.g. a jewel sitting on a snake)
+    // no stacked items: drop jewels whose column overlaps a hazard (e.g. a jewel sitting on a spider)
     rm.jewels = rm.jewels.filter((j) => !rm.hazards.some((h) => { const [a, b] = hspan(h); return j.x + j.w > a && j.x < b; }));
     // remove hazards whose column overlaps the goal, so nothing sits on the treasure
     if (rm.goal) rm.hazards = rm.hazards.filter((h) => { const [a, b] = hspan(h); return !(rm.goal.x + rm.goal.w > a && rm.goal.x < b); });
@@ -319,7 +319,7 @@ function buildRopeRoom(sides) {
   parsed.ropes.push({ x: rc * cellW, w: cellW, topY: cellH, botY: mrow * cellH - 6 });   // hangs over the gap, almost to the ground
   const r = baseRoom(parsed, openings);
   r.jewels = jewelsOnLedge(g, mrow, g1 + 1, COLS - 2, 1);    // reward on the far platform
-  if (rng() < 0.4) { const h = mkHazard('snake', g1 + 2, mrow); if (h) r.hazards.push(h); }
+  if (rng() < 0.4) { const h = mkHazard('spider', g1 + 2, mrow); if (h) r.hazards.push(h); }
   return r;
 }
 
@@ -433,10 +433,10 @@ function makeFloatSkull(loCol, hiCol, row) {
 function mkHazard(kind, col, row) {
   if (kind === 'laser') return { type: 'laser', x: col * cellW + cellW / 2 - 4, y: (row - 3) * cellH, w: 8, h: 3 * cellH, phase: 0, dead: false };
   if (kind === 'skull') return makeSkull(Math.max(1, col - 1), Math.min(COLS - 2, col + 2), row);
-  if (kind === 'snake') return { type: 'snake', x: (col + 0.5) * cellW - 9, y: row * cellH - 18, w: 18, h: 18, dead: false };
+  if (kind === 'spider') return { type: 'spider', x: (col + 0.5) * cellW - 10, y: row * cellH - 16, w: 20, h: 16, dead: false };
   return null;
 }
-function rollKind() { return ['laser', 'laser', 'skull', 'snake'][Math.floor(rng() * 4)]; }
+function rollKind() { return ['laser', 'laser', 'skull', 'spider'][Math.floor(rng() * 4)]; }
 
 // ============================================================
 // Room loading / transitions
@@ -496,8 +496,8 @@ function draw() {
   if (lf) player.facing = -1; else if (rt) player.facing = 1;
   const cols = activeBlocks();
 
-  // deliberate door interaction: stand at the locked door with the key and press UP
-  if (room.door && !room.unlocked && hasKey && up && player.supported && doorAdjacent()) {
+  // touch the locked door with the key in hand and it opens (consumes the key)
+  if (room.door && !room.unlocked && hasKey && doorAdjacent()) {
     room.unlocked = true; hasKey = false; score += UNLOCK_BONUS;
   }
 
@@ -566,7 +566,7 @@ function draw() {
     if (h.type === 'laser') { if (((frame + h.phase) % LASER_PERIOD) < LASER_ON && vuln && AABB(player, h)) loseLife(h); }
     else if (h.type === 'skull') { h.x += h.vx; if (h.x <= h.lo || h.x >= h.hi) { h.vx *= -1; h.x += h.vx; } if (vuln && AABB(player, h)) loseLife(h); }
     else if (h.type === 'floatskull') { h.x += h.vx; if (h.x <= h.lo || h.x >= h.hi) { h.vx *= -1; h.x += h.vx; } h.y += h.vy; if (h.y <= h.ylo || h.y >= h.yhi) { h.vy *= -1; h.y += h.vy; } if (vuln && AABB(player, h)) loseLife(h); }
-    else if (h.type === 'snake') { if (vuln && AABB(player, h)) loseLife(h); }
+    else if (h.type === 'spider') { if (vuln && AABB(player, h)) loseLife(h); }
     if (gameState !== 'PLAYING') return;
   }
 
@@ -606,7 +606,7 @@ function handleTransitions() {
 function loseLife(killer) {
   if (gameState !== 'PLAYING') return;
   lives -= 1; score -= DEATH_PENALTY;
-  if (killer && (killer.type === 'skull' || killer.type === 'floatskull' || killer.type === 'snake')) killer.dead = true;   // only enemies vanish (not lasers)
+  if (killer && (killer.type === 'skull' || killer.type === 'floatskull' || killer.type === 'spider')) killer.dead = true;   // only enemies vanish (not lasers)
   if (lives <= 0) { gameState = 'GAMEOVER'; return; }
   gotoRoom(roomIndex, room.lastEnter);                  // respawn in the SAME room
   player.invT = INVULN_FRAMES;                          // brief mercy invulnerability
@@ -633,7 +633,7 @@ const PAL = {
   door:   [150,  60, 220],   // locked door (purple)
   jewel:  [120, 200, 255],   // jewel
   goal:   [ 60, 230, 200],   // treasure (cyan)
-  snake:  [250, 160,  30],   // snake (orange)
+  spider: [110, 215,  95],   // spider (green)
   laser:  [255,  80, 180],   // laser gate (pink)
   dim:    [ 60,  60,  70],   // unvisited room marker
 };
@@ -694,18 +694,14 @@ function drawSkull(h) {
   fill(20, 20, 20); ellipse(cx - w * 0.2, cy - w * 0.02, w * 0.24, w * 0.28); ellipse(cx + w * 0.2, cy - w * 0.02, w * 0.24, w * 0.28); // eye sockets
   rect(cx - w * 0.07, cy + w * 0.12, w * 0.14, w * 0.12);   // nose
 }
-function drawSnake(h) {
+function drawSpider(h) {
   const cx = centerX(h), cy = centerY(h), w = h.w;
-  fillc(PAL.snake);
-  // low, slithering S-body: a chain of small overlapping segments
-  ellipse(cx - w * 0.4, cy + w * 0.22, w * 0.42, w * 0.4);
-  ellipse(cx - w * 0.14, cy + w * 0.06, w * 0.44, w * 0.42);
-  ellipse(cx + w * 0.12, cy + w * 0.2, w * 0.42, w * 0.4);
-  ellipse(cx + w * 0.34, cy + w * 0.02, w * 0.4, w * 0.4);
-  // small head lifted at the front + eye + forked tongue
-  ellipse(cx + w * 0.48, cy - w * 0.12, w * 0.34, w * 0.3);
-  fill(20, 20, 20); ellipse(cx + w * 0.54, cy - w * 0.15, w * 0.1, w * 0.1);
-  fill(220, 40, 40); rect(cx + w * 0.62, cy - w * 0.13, w * 0.24, 2);
+  fillc(PAL.spider);
+  // legs splayed out to both sides (drawn first, body sits on top)
+  for (let i = 0; i < 3; i++) { const ly = cy - h.h * 0.18 + i * h.h * 0.22; rect(cx - w * 0.5, ly, w * 0.42, 2); rect(cx + w * 0.08, ly, w * 0.42, 2); }
+  ellipse(cx, cy + h.h * 0.12, w * 0.5, h.h * 0.5);          // round abdomen
+  ellipse(cx, cy - h.h * 0.14, w * 0.32, h.h * 0.34);        // head
+  fill(20, 20, 20); ellipse(cx - w * 0.08, cy - h.h * 0.16, w * 0.08, w * 0.08); ellipse(cx + w * 0.08, cy - h.h * 0.16, w * 0.08, w * 0.08);   // eyes
 }
 function render() {
   background(PAL.bg[0], PAL.bg[1], PAL.bg[2]);
@@ -739,7 +735,7 @@ function render() {
     if (h.dead) continue;
     if (h.type === 'laser') { if (((frame + h.phase) % LASER_PERIOD) < LASER_ON) { fillc(PAL.laser); rect(h.x, h.y, h.w, h.h); } }
     else if (h.type === 'skull' || h.type === 'floatskull') drawSkull(h);
-    else if (h.type === 'snake') drawSnake(h);
+    else if (h.type === 'spider') drawSpider(h);
   }
 
   drawPlayer();
