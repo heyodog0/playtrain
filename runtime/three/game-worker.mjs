@@ -121,7 +121,7 @@ function sendBinaryStep(result) {
 function fail(error) {
   send({
     ok: false,
-    error: error instanceof Error ? error.message : String(error),
+    error: (error && (error.stack || error.message)) || String(error),
   });
 }
 
@@ -143,7 +143,7 @@ async function handleRequest(request, binaryLength) {
   }
 
   if (request.cmd === 'step') {
-    const result = await env.step(request.action);
+    const result = await env.step(request.action, request.num_steps || 1);
     if (process.env.NODE_GYM_THREE_FORCE_JSON === '1') {
       // Bench-only fallback: send the original JSON-meta + obs response.
       return ok({

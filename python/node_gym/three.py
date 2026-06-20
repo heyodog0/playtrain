@@ -103,8 +103,20 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         max_steps: int = 2000,
         node_bin: str = "node",
         obs_quantize_bits: int = 7,
+        action_space: spaces.Space | None = None,
+        action_repeat: int = 1,
+        async_obs: bool = False,
+        worker_path: str | Path | None = None,
     ) -> None:
         super().__init__()
+        # Optional custom action space (e.g. the dmlab engine's vector action).
+        # When None we default to Discrete(15) below for backward compatibility.
+        self._custom_action_space = action_space
+        # Frame-skip: advance N sim frames per step holding the action, render &
+        # read back once (amortizes the GPU readback). Matches DM Lab num_steps.
+        self._action_repeat = max(1, int(action_repeat))
+        # Async pipelined readback (1-step-stale obs) — throughput over freshness.
+        self._async_obs = bool(async_obs)
         self.game = game
         self.obs_size = obs_size
         self.max_steps = max_steps
@@ -121,8 +133,15 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
 
         self._games_dir = _resolve_games_dir(games_dir)
         self._runtime_dir = _resolve_runtime_dir(runtime_dir)
-        self._worker_path = self._runtime_dir / "three" / "game-worker.mjs"
-        self._game_path = self._games_dir / f"{game}.js"
+        # Default worker is the three.js/WebGPU one; an alternative backend (e.g.
+        # the dmlab CPU raycaster) can be supplied via worker_path.
+        self._worker_path = Path(worker_path).resolve() if worker_path else self._runtime_dir / "three" / "game-worker.mjs"
+        # Allow callers to pass a name with an explicit extension (e.g. the
+        # dmlab engine ships modular ".mjs" games); otherwise default to ".js".
+        if game.endswith((".js", ".mjs")):
+            self._game_path = self._games_dir / game
+        else:
+            self._game_path = self._games_dir / f"{game}.js"
 
         if not self._game_path.exists():
             raise FileNotFoundError(f"Three.js game not found: {self._game_path}")
@@ -132,8 +151,9 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
                 "Set NODE_GYM_RUNTIME or pass runtime_dir=."
             )
 
-        # Discrete(15) — see THREE_GAME_TEMPLATE.md
-        self.action_space = spaces.Discrete(15)
+        # Discrete(15) by default — see THREE_GAME_TEMPLATE.md — or a caller-
+        # supplied custom space (e.g. the dmlab vector action).
+        self.action_space = self._custom_action_space or spaces.Discrete(15)
         self.observation_space = spaces.Box(
             low=0, high=255,
             shape=(obs_size, obs_size, 3),
@@ -167,8 +187,9 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
                 access=mmap.ACCESS_READ,
             )
 
-        # Discrete(15) — see THREE_GAME_TEMPLATE.md
-        self.action_space = spaces.Discrete(15)
+        # Discrete(15) by default — see THREE_GAME_TEMPLATE.md — or a caller-
+        # supplied custom space (e.g. the dmlab vector action).
+        self.action_space = self._custom_action_space or spaces.Discrete(15)
         self.observation_space = spaces.Box(
             low=0, high=255,
             shape=(obs_size, obs_size, 3),
@@ -179,6 +200,8 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         # picks them up at startup.
         env = os.environ.copy()
         env["NODE_GYM_THREE_OBS_SIZE"] = str(obs_size)
+        if self._async_obs:
+            env["NODE_GYM_ASYNC_OBS"] = "1"
         if self._mmap_path is not None:
             env["NODE_GYM_THREE_MMAP_PATH"] = str(self._mmap_path)
         # NODE_GYM_THREE_FORCE_JSON is honored by the worker (bench helper).
@@ -299,8 +322,17 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         )
         return self._decode_obs(observation), response["info"]
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        response, observation = self._request({"cmd": "step", "action": int(action)})
+    def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+        # Scalar discrete action -> int; vector action (np.ndarray/list/tuple
+        # for a custom action space) -> JSON list. The worker passes either
+        # form straight through to the game's globalThis.currentAction.
+        if isinstance(action, (np.ndarray, list, tuple)):
+            wire_action: Any = np.asarray(action).ravel().tolist()
+        else:
+            wire_action = int(action)
+        response, observation = self._request(
+            {"cmd": "step", "action": wire_action, "num_steps": self._action_repeat}
+        )
         return (
             self._decode_obs(observation),
             float(response["reward"]),

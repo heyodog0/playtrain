@@ -254,9 +254,10 @@ const LASER_CYCLE = 120;
 // On success: WIN_REWARD_SCALE * (1 - 0.9 * (frameCount / MAX_STEPS)).
 // On failure (death, timeout): score stays at whatever intermediate
 // pickups/kills/curses accumulated (or 0 if you also zero those out).
-// MAX_STEPS should match the env-side truncation budget; node-gym's
-// default is 2000 frames per episode for these grid games.
-const MAX_STEPS = 2000;
+// MAX_STEPS should match the env-side truncation budget. With frame_skip 7 and
+// a 2000-DECISION horizon (config max_decisions: 2000), the env truncates at
+// 2000*7 = 14000 frames, so the win-decay denominator must match it.
+const MAX_STEPS = 14000;
 const WIN_REWARD_SCALE = 100000;  // keeps magnitude similar to old 50k-80k win bonus
 
 const ROLE_HAT      = 'HAT';

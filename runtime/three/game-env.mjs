@@ -10,6 +10,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { pathToFileURL } from 'url';
 import vm from 'vm';
 
 import {
@@ -45,7 +46,20 @@ let readBuffer = null;
 let bytesPerRow = 0;
 let bufferSize = 0;
 
+// Opt-in async (pipelined) readback: returns the PREVIOUS frame's pixels so the
+// GPU map-stall overlaps the next frame's work. Observations are 1 step stale —
+// a deliberate latency-for-throughput trade. Off by default (fresh obs).
+const ASYNC_OBS = process.env.NODE_GYM_ASYNC_OBS === '1';
+let readBufferB = null;     // second buffer for the 2-deep ping-pong
+let inflight = null;        // { buf, map } pending from the previous step
+
 let gameLoaded = false;
+
+// Optional per-phase timing (set NODE_GYM_DMLAB_TIMING=1). Accumulates ns spent
+// in update / render / readback so a bench can attribute the gap vs IPC.
+const TIMING = process.env.NODE_GYM_DMLAB_TIMING === '1';
+let _tUpdate = 0, _tRender = 0, _tReadback = 0, _tCount = 0;
+let _tMap = 0, _tConvert = 0; // readback sub-phases: GPU map-stall vs CPU convert
 
 async function ensureRenderer() {
   if (renderer) return;
@@ -71,12 +85,28 @@ async function loadGame(gamePath) {
   globalThis.renderer = renderer;
   globalThis.THREE = THREE;
 
-  const code = readFileSync(gamePath, 'utf8');
-  vm.runInThisContext(code, { filename: gamePath });
+  const REQUIRED = ['setup', 'update', 'render', 'resetGame', 'getGameState'];
 
-  for (const fn of ['setup', 'update', 'render', 'resetGame', 'getGameState']) {
-    if (typeof globalThis[fn] !== 'function') {
-      throw new Error(`Game ${gamePath} missing required function: ${fn}()`);
+  if (gamePath.endsWith('.mjs')) {
+    // Modular games (e.g. the dmlab engine): load as a native ES module so the
+    // game file can `import` engine modules. We copy its exports onto globalThis
+    // so the rest of the env (which calls globalThis.setup/update/...) is
+    // unchanged. THREE/renderer/currentAction are read from globalThis as usual.
+    const mod = await import(pathToFileURL(gamePath).href);
+    for (const fn of REQUIRED) {
+      if (typeof mod[fn] !== 'function') {
+        throw new Error(`Game ${gamePath} missing required export: ${fn}()`);
+      }
+      globalThis[fn] = mod[fn];
+    }
+  } else {
+    // Single-file games: run in this context; they define the functions as globals.
+    const code = readFileSync(gamePath, 'utf8');
+    vm.runInThisContext(code, { filename: gamePath });
+    for (const fn of REQUIRED) {
+      if (typeof globalThis[fn] !== 'function') {
+        throw new Error(`Game ${gamePath} missing required function: ${fn}()`);
+      }
     }
   }
 
@@ -101,31 +131,81 @@ async function ensureReadBuffer() {
     size: bufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
+  if (ASYNC_OBS) {
+    readBufferB = device.createBuffer({
+      size: bufferSize,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+  }
 }
 
-async function readPixelsRGB() {
-  // Copy current swap-chain texture into a buffer, map it, slice out RGB
-  // (Dawn returns BGRA on macOS Metal — swap to RGB).
+const _rgbOut = new Uint8Array(WIDTH * HEIGHT * 3); // reused across steps (no per-step alloc)
+
+function submitCopy(buf) {
   const tex = fakeContext.getCurrentTexture();
   const enc = device.createCommandEncoder();
-  enc.copyTextureToBuffer({ texture: tex }, { buffer: readBuffer, bytesPerRow }, [WIDTH, HEIGHT]);
+  enc.copyTextureToBuffer({ texture: tex }, { buffer: buf, bytesPerRow }, [WIDTH, HEIGHT]);
   device.queue.submit([enc.finish()]);
-  await readBuffer.mapAsync(GPUMapMode.READ);
+}
 
-  const bgra = new Uint8Array(readBuffer.getMappedRange());
-  // Output: tightly packed WIDTH * HEIGHT * 3 RGB
-  const out = new Uint8Array(WIDTH * HEIGHT * 3);
+// Convert a mapped read buffer (BGRA, padded rows) into packed RGB in _rgbOut.
+function convert(buf, doUnmap = true) {
+  const bgra = new Uint8Array(buf.getMappedRange());
+  const out = _rgbOut;
+  const noPad = bytesPerRow === WIDTH * 4;
   let o = 0;
   for (let y = 0; y < HEIGHT; y++) {
-    const row = y * bytesPerRow;
+    let i = noPad ? y * WIDTH * 4 : y * bytesPerRow;
     for (let x = 0; x < WIDTH; x++) {
-      const i = row + x * 4;
-      out[o++] = bgra[i + 2]; // R
-      out[o++] = bgra[i + 1]; // G
-      out[o++] = bgra[i + 0]; // B
+      out[o] = bgra[i + 2]; out[o + 1] = bgra[i + 1]; out[o + 2] = bgra[i];
+      o += 3; i += 4;
     }
   }
-  readBuffer.unmap();
+  if (doUnmap) buf.unmap();
+  return out;
+}
+
+// Synchronous, fresh: copy + map + convert the current frame (default).
+async function readPixelsRGB() {
+  submitCopy(readBuffer);
+  const m0 = TIMING ? performance.now() : 0;
+  await readBuffer.mapAsync(GPUMapMode.READ);
+  if (TIMING) _tMap += performance.now() - m0;
+  const c0 = TIMING ? performance.now() : 0;
+  const out = convert(readBuffer);
+  if (TIMING) _tConvert += performance.now() - c0;
+  return out;
+}
+
+// Async prime (reset): read the current frame fresh for the reset return, then
+// queue a SECOND copy of it into the other buffer as the pipeline's `inflight`
+// (so step 1 returns this frame, stale by 1). Two reads here keep the per-buffer
+// getMappedRange single-use; reset is infrequent so the extra read is cheap.
+async function readPixelsPrime() {
+  if (inflight) { try { await inflight.map; inflight.buf.unmap(); } catch (e) {} inflight = null; }
+  submitCopy(readBuffer);
+  await readBuffer.mapAsync(GPUMapMode.READ);
+  const obs = convert(readBuffer, /*doUnmap=*/true);  // fresh frame for the reset return
+  submitCopy(readBufferB);
+  const map = readBufferB.mapAsync(GPUMapMode.READ);
+  inflight = { buf: readBufferB, map };
+  return obs;
+}
+
+// Async step: submit the current frame into the free buffer, return the
+// PREVIOUS frame's pixels (1-step stale). The await is cheap because the
+// previous frame's copy finished while this frame's work was queued.
+async function readPixelsAsyncStep() {
+  const buf = inflight.buf === readBuffer ? readBufferB : readBuffer;
+  submitCopy(buf);
+  const map = buf.mapAsync(GPUMapMode.READ);
+  const m0 = TIMING ? performance.now() : 0;
+  await inflight.map;
+  if (TIMING) _tMap += performance.now() - m0;
+  const c0 = TIMING ? performance.now() : 0;
+  const out = convert(inflight.buf);  // previous frame; unmaps it
+  if (TIMING) _tConvert += performance.now() - c0;
+  inflight = { buf, map };
   return out;
 }
 
@@ -205,37 +285,75 @@ export class ThreeGameEnv {
     const state = this._getState();
     this.lastScore = state.score;
 
-    const observation = await readPixelsRGB();
+    // Async mode flushes the pipeline and primes a fresh frame (no stale carry
+    // over episode boundaries).
+    const observation = ASYNC_OBS ? await readPixelsPrime() : await readPixelsRGB();
     return { observation, info: this._buildInfo() };
   }
 
-  async step(actionIndex) {
+  async step(actionIndex, numSteps = 1) {
     await this._ensure();
-    globalThis.currentAction = actionIndex | 0;
+    // Support both a scalar discrete action (default Discrete(15) games) and a
+    // vector action (games with a custom action space, e.g. the dmlab engine's
+    // 7-value DeepMind-Lab-style spec). Arrays are passed through unchanged.
+    globalThis.currentAction = Array.isArray(actionIndex) ? actionIndex : (actionIndex | 0);
+
+    const k = numSteps > 0 ? (numSteps | 0) : 1;
+    let reward = 0;
+    let terminated = false;
+    let truncated = false;
     try {
-      globalThis.update(FIXED_DT);
+      // Action-repeat / frame-skip: advance the simulation K frames holding the
+      // same action. Intermediate frames are never observed, so we render only
+      // the final frame — K updates, ONE render, ONE readback. This amortizes
+      // the (dominant) GPU readback across the action-repeat, matching how DM
+      // Lab's num_steps batches frames.
+      for (let i = 0; i < k; i++) {
+        const a = TIMING ? performance.now() : 0;
+        globalThis.update(FIXED_DT);
+        if (TIMING) _tUpdate += performance.now() - a;
+
+        const state = this._getState();
+        reward += state.score - this.lastScore;
+        this.lastScore = state.score;
+        this.steps += 1;
+        if (TERMINAL_STATES.has(state.gameState)) { terminated = true; break; }
+        if (this.steps >= this.maxSteps) { truncated = true; break; }
+      }
+      const r0 = TIMING ? performance.now() : 0;
       globalThis.render();
+      if (TIMING) { _tRender += performance.now() - r0; _tCount += 1; }
     } catch (e) {
       throw new Error(`Game update/render threw: ${e.message}`);
     }
     // NOTE: don't await device.queue.onSubmittedWorkDone() here — readPixelsRGB
     // below calls mapAsync, which already waits for all prior GPU work.
-    // The extra await was a redundant GPU sync costing ~400μs/step.
 
-    const state = this._getState();
-    const reward = state.score - this.lastScore;
-    this.lastScore = state.score;
-    this.steps += 1;
     this.episodeReturn += reward;
 
-    const terminated = TERMINAL_STATES.has(state.gameState);
-    const truncated = !terminated && this.steps >= this.maxSteps;
-
-    const observation = await readPixelsRGB();
+    const readback = ASYNC_OBS ? readPixelsAsyncStep : readPixelsRGB;
+    let observation;
+    if (TIMING) {
+      const a = performance.now();
+      observation = await readback();
+      _tReadback += performance.now() - a;
+    } else {
+      observation = await readback();
+    }
     return { observation, reward, terminated, truncated, info: this._buildInfo() };
   }
 
   close() {
+    if (TIMING && _tCount > 0) {
+      process.stderr.write('__DMLAB_TIMING ' + JSON.stringify({
+        count: _tCount,
+        update_ms: _tUpdate / _tCount,
+        render_ms: _tRender / _tCount,
+        readback_ms: _tReadback / _tCount,
+        readback_map_ms: _tMap / _tCount,
+        readback_convert_ms: _tConvert / _tCount,
+      }) + '\n');
+    }
     Math.random = ORIGINAL_MATH_RANDOM;
     if (readBuffer) { readBuffer.destroy(); readBuffer = null; }
     if (renderer) { renderer.dispose(); renderer = null; }
