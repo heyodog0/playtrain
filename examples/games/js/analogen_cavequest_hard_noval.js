@@ -1,3 +1,10 @@
+// ===== cavequest_hard_noval: hard with coin/curse DISABLED =====
+// Identical to analogen_cavequest_hard EXCEPT the value items are removed:
+// VALUE_VISUAL_IDS = [] and the bottom room places exactly 6 tool tokens (no
+// coin/curse). Tool-only, like medium. Precautionary ablation: removes the
+// coin(+1000)/curse(-1000) subgame so the only rewards are door/kill/spike/win.
+// ===============================================================
+//
 // ===== cavequest_hard: medium-pickup port (this revision) =====
 // Brings the cavequest_medium pickup mechanics into hard:
 //   - DELIBERATE standalone pickup: walking onto an item no longer collects it;
@@ -160,7 +167,7 @@ const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
 const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
-const VALUE_VISUAL_IDS = [8, 15];
+const VALUE_VISUAL_IDS = [];  // no-value variant: coin REWARD (8) / diamond CURSE (15) DISABLED (tool-only, like medium)
 const PICKUP_COOLDOWN = 14;   // ported from medium (v1.8b): re-pickup lockout frames
 const MAX_INVENTORY = 2;
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
@@ -302,7 +309,9 @@ function initRoom() {
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 8);
+    // no-value variant: exactly one spot per tool (6), so the value-placement
+    // loop below is inert (VALUE_VISUAL_IDS is empty) — mirrors medium.
+    const spots = candidates.slice(0, 6);
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();

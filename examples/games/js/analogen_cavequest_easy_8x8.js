@@ -1,70 +1,65 @@
-// ===== cavequest_hard: medium-pickup port (this revision) =====
-// Brings the cavequest_medium pickup mechanics into hard:
-//   - DELIBERATE standalone pickup: walking onto an item no longer collects it;
-//     tool/value tokens and evicted drops are taken only via the pure-SPACE
-//     pickup action (tryPickup), gated by a cooldown.
-//   - 14-frame PICKUP_COOLDOWN throttles re-pickup (medium v1.8b).
-//   - Tool pickups grant NO reward. Only the value items (coin/diamond bound to
-//     REWARD/CURSE) pay out (+1000 / -1000 by binding). Enemy kills, door-open,
-//     and spike-clear still grant +1000 each.
-//   - The 6-item-mod 2nd enemy (by the blue door at (4,1)) now PATROLS up/down
-//     (col 4, rows 0-3), like the medium env's patroller. Bottom enemy (3,6)
-//     stays stationary.
-//   - Intended reward_clipping = abs_one (set in the config).
-// NOTE: STEP_PENALTY (0.005/frame) is unchanged and was sized for symlog; under
-// abs_one it survives clipping while the win collapses to +1 (see handoff).
-// ==============================================================
+// analogen_cavequest_easy_8x8
+// The 8x8 two-rooms-door map (v7_2rooms_door_inv1) with the finalized
+// cavequest-easy pickup semantics ported in:
+//   - DELIBERATE standalone pickup (already present): pure-SPACE only, no
+//     walk-over, move+space does NOT grab.
+//   - 14-frame PICKUP_COOLDOWN (NEW) throttles re-pickup.
+//   - Tool pickups grant NO reward (the old +500 is removed). The ONLY rewarding
+//     pickup is a value coin: REWARD (id 8) +1000 / CURSE (id 15) -1000 by binding
+//     (VALUE_VISUAL_IDS restored to [8,15]).
+//   - 6-item / 2-sword tool pool [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD];
+//     only BLUE_KEY->door is functional, the rest are no-op distractors. Inv cap 1.
 //
-// analogen_nomemory_grid_v7
-// Copy of analogen_nomemory_grid_v5_stepcost (keeps the per-step living cost)
-// with four changes:
-//   (1) NEW binding pair ARMOR <-> SPIKE replaces the duplicate SWORD. The role
-//       pool was [HAT, BLUE_KEY, BOOTS, SWORD, SWORD]; the 2nd SWORD becomes
-//       ARMOR. ARMOR is a CONSUMABLE like SWORD/BLUE_KEY (NOT a protective
-//       hold-to-pass item like HAT/BOOTS): stepping onto the SPIKE tile (id 9)
-//       with armor consumes it, clears the spike (+1000), and passes; without
-//       armor the spike is lethal. Consumable (one-and-done) is what keeps the
-//       env solvable on the 2-slot inventory — a third *held* gate alongside
-//       BOOTS(laser)+HAT(sunbeam) would deadlock the inventory. Armor still
-//       transforms the body: a chest plate over the torso while held, the torso
-//       member of the head(HAT)/torso(ARMOR)/feet(BOOTS) cue set.
-//   (2) The moving (patrol) top enemy at (4,2) is removed, along with its two
-//       "pillar" walls at (4,0)/(4,3), so the top-middle room is now a clean
-//       2x4. The new SPIKE gate spans the full width of the top-right room at
-//       row 2 (spikes at (6,2) AND (7,2)) — a 2-tile-wide forced barrier on the
-//       laser->door corridor. One stationary enemy (bottom) + one SWORD remain.
-//   (3) HAT no longer morphs the item into a generic hat silhouette. The HAT
-//       role's bound item is instead drawn as its OWN icon sitting on top of
-//       the head — position is the cue, the shape stays the item's true icon
-//       (like the key, which shows its real icon rather than a key shape).
-//   (4) The cell directly below the laser, (7,5), never spawns a pickup.
+// ----- original v7_2rooms_door_inv1 header -----
+// Copy of analogen_nomemory_grid_v5_2rooms_door with TWO changes: (1) the
+// duplicate SWORD in the tool-role pool is replaced by ARMOR (the v7 torso
+// item), so the pool is [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR]. ARMOR is added
+// purely as a DISTRACTOR — there is NO spike tile and no armor-gated obstacle
+// (unlike v7, where ARMOR<->SPIKE is a consumable gate). (2) the inventory cap
+// is 1 instead of 2, so the avatar holds a single item and grabbing any
+// distractor evicts the held one (a strictly harder single-slot binding test,
+// matching the *_inv1 variants). The 8x8 map and the BLUE_KEY-locked door at
+// (3,4) are otherwise identical to the v5_2rooms_door base (tiles 4/5/10/13
+// stay unused — no sunbeam/laser/enemies,
+// so HAT/BOOTS/SWORD/ARMOR are all no-op distractors and only BLUE_KEY->door is
+// functional). When held, ARMOR renders as a chest plate over the torso (the v7
+// head/torso/feet = HAT/ARMOR/BOOTS body-region cue) but it gates nothing.
 //
-//   (5) [6-item / 2-sword mod] Item count goes 5 -> 6. A 6th visual token
-//       (id 18, a teal breastplate icon) joins TOOL_VISUAL_IDS, and the role
-//       pool gains a SECOND SWORD:
-//         [HAT, BLUE_KEY, BOOTS, SWORD, ARMOR, SWORD]  (6 roles, 5 distinct).
-//       The duplicate SWORD is paired with a SECOND enemy: a stationary guard
-//       at (4,1), directly left of the BLUE DOOR. (4,1) is the only cell the
-//       door opens onto, i.e. the chokepoint into the top-middle room, so it is
-//       a FORCED sword gate on the door->sunbeam leg (mirrors v5's 2-sword /
-//       2-enemy pairing, but stationary — the v5 patrol stays retired). 6 tool
-//       tokens + 2 value tokens still fill the same 8 bottom-room pickup spots.
+// ----- original v5_2rooms_door header -----
+// analogen_nomemory_grid_v5_2rooms_door
+// Variant of v5_2rooms that swaps the laser obstacle for a KEY-locked
+// door at (3,4), and rewards opening that door with +1000. The +50000
+// goal at (7,0) is unchanged — agent must open the door AND reach the
+// goal to win.
 //
-// ----- original v5_stepcost header -----
-// analogen_nomemory_grid_v5_stepcost
-// Identical to analogen_nomemory_grid_v5 EXCEPT for a per-step living cost:
-// every frame the game is PLAYING, score is decremented by STEP_PENALTY (see
-// below). This is the env-side time penalty (MiniGrid-style "time is
-// expensive", encoded per-step rather than as a decayed terminal reward so it
-// also punishes idling on non-winning paths). It exists to kill the post-task
-// argmax oscillation seen on the abs_one v5 LSTM runs (jobs 18565971/18565989),
-// where the greedy policy farmed pickups then ping-ponged to the 2000-step
-// truncation. NOTE: STEP_PENALTY is sized for a symlog-transformed reward
-// (reward_clip="symlog"): symlog(x)~=x for small x, so the raw 0.005 lands at
-// ~0.005/step in the agent's symlog reward space (~ -10 over a full 2000-step
-// episode, roughly one symlog'd win). Under raw reward (reward_clip="none") it
-// would be negligible vs the +500..+50000 deltas and need to be ~1-10 instead.
+// Hypothesis: in v5_2rooms the only signal teaching the BOOTS binding
+// was "absence of death at the laser tile" — a weak gradient. v4
+// taught each binding via a dedicated +1000 (sword→kill, blue_key→door,
+// boots→kill). This variant restores that dedicated signal for BOOTS
+// without restoring enemies. Opening the door is the BOOTS-binding
+// equivalent of v4's blue-door reward.
 //
+// Vs v5_2rooms:
+//   - tile 10 (laser, lethal-without-boots) at (3,4) replaced with
+//     tile 2 (key-door, blocks-without-key) at (3,4).
+//   - Walking onto the door with BLUE_KEY: opens it (clear all tile=2),
+//     consumes the key, score += 1000.
+//   - Walking onto the door without BLUE_KEY: blocked, no death.
+//     Removes the laser's "punishment cliff" entirely.
+//
+// Forced path: items -> DOOR(3,4) with BLUE_KEY -> right room -> GOAL(7,0).
+//
+// Vs v5: only ONE obstacle (laser) and ONE binding to identify (BOOTS).
+// BLUE_KEY, SWORD, and HAT roles still appear in the shuffle pool but
+// bind to no-op distractor items (no blue door, no enemy, no sunbeam).
+// This isolates the single role-binding test that defines AnaloGen
+// while leaving the spatial-exploration component roughly intact.
+//
+// All other v5 mechanics preserved: inventory cap 2, drops, curses,
+// sword consumption (no enemy → swords are pure distractors here),
+// score deltas, 8x8 canvas / 64x64 obs downsample geometry.
+//
+// ----- original v5 header -----
 // Same 8x8 layout/puzzle as v4 with two role-binding changes:
 //   - RED KEY / RED DOOR replaced by HAT / SUNBEAM. The hat sits on top
 //     of the avatar's head (parallel to BOOTS at the bottom). The sunbeam
@@ -139,15 +134,10 @@
 //   +1000 enemy kill, -5000 death, +50000 + lives*10000 win.
 
 const TILE_SIZE = 32;
-const ROWS = 8;  // v4: 8x8 → canvas 256, downsamples to 64 at exact 4:1.
+const ROWS = 8;  // v5_2rooms: 8x8, horizontal left/right split.
 const COLS = 8;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
 const DEATH_PENALTY = 5000;
-// Per-frame living cost. DISABLED (0): at the 35000-frame horizon the old
-// 0.005/frame accrued ~-175/episode, swamping the abs_one +1 win and making the
-// greedy policy idle the whole episode (observed greedy_return=-175). Zeroed to
-// unblock learning. `score -= STEP_PENALTY` below is now a no-op.
-const STEP_PENALTY = 0;
 const MOVE_COOLDOWN = 6;
 const LASER_CYCLE = 120;
 
@@ -155,14 +145,14 @@ const ROLE_HAT      = 'HAT';
 const ROLE_BLUE_KEY = 'BLUE_KEY';
 const ROLE_SWORD    = 'SWORD';
 const ROLE_BOOTS    = 'BOOTS';
-const ROLE_ARMOR    = 'ARMOR';  // v7: replaces the duplicate SWORD; pairs with SPIKE
+const ROLE_ARMOR    = 'ARMOR';  // v7 torso item; pure distractor here (no spike gate)
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
-const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
-const VALUE_VISUAL_IDS = [8, 15];
-const PICKUP_COOLDOWN = 14;   // ported from medium (v1.8b): re-pickup lockout frames
-const MAX_INVENTORY = 2;
+const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate
+const VALUE_VISUAL_IDS = [8, 15];  // cavequest-easy: coin REWARD (8) / diamond CURSE (15) restored
+const PICKUP_COOLDOWN = 14;  // cavequest-easy (v1.8b): re-pickup lockout frames
+const MAX_INVENTORY = 1;  // 1-slot variant (was 2): holding the key leaves no room for a distractor
 const DROP_COOLDOWN = 45;  // frames; matches platformer for visible blink
 
 let gameState = 'PLAYING';
@@ -237,8 +227,6 @@ function resetGame(seed) {
 }
 
 function shuffleRoles() {
-    // 6-item mod: 6 roles for the 6 visual tokens, 5 distinct. The 6th role is a
-    // SECOND SWORD (mirrors v5's duplicate SWORD), paired with the 2nd enemy.
     const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
@@ -251,63 +239,44 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 4=sunbeam, 5=blue door, 9=spike (NEW, v7), 10=laser,
-    // 11=goal, 13=enemy.
+    // 0=floor, 1=wall, 2=key-door (NEW), 11=goal. (4/5/10/13 unused.)
     // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
-    // Top: 4 floor rows (0-3) split into 3 rooms by internal walls at
-    // cols 2 and 5. Doors at (2,1) RED and (5,1) BLUE. Goal at (0,0) —
-    // top-LEFT corner of top-left room. v7: the middle-top patrol enemy at
-    // (4,2) is REMOVED, and so are its two "pillar" walls at (4,0) and (4,3),
-    // leaving the top-middle room a clean 2x4 (cols 3-4, rows 0-3). The
-    // top-right room (cols 6-7, rows 0-3) gets a 2-tile-wide SPIKE gate:
-    // spikes at (6,2) AND (7,2) span the full width of row 2, so the only way
-    // up from the laser-entry row to the BLUE_DOOR row is through the spikes
-    // (forced; engage with ARMOR to consume it and clear both). Main wall row
-    // 4 with laser at (7,4). Bottom: rows 5-7 (3 floor rows). Spawn at (1,7).
-    // Two stationary enemies (6-item mod): one at (3,6) in the bottom room and
-    // one at (4,1) left of the BLUE_DOOR; the two pair with the two SWORD roles.
-    // Forced path:
-    //   LASER(7,4) -> (7,3)/(6,3) -> SPIKES(6,2)+(7,2) -> top-right ->
-    //   BLUE_DOOR(5,1) -> ENEMY(4,1) -> top-middle(3-4) -> SUNBEAM(2,1) ->
-    //   top-left(0-1,0-3) -> GOAL(0,0).
+    // Left room (cols 0-2): spawn + items. Wall col 3 (full height)
+    // with a single KEY-locked door at (3,4). Right room (cols 4-7):
+    // empty, goal at (7,0). Forced path: items -> DOOR(3,4) -> GOAL.
     mapData = [
-        [11,0,1,0,0,1,0,0],
-        [0,0,4,0,13,5,0,0],
-        [0,0,1,0,0,1,9,9],
-        [0,0,1,0,0,1,0,0],
-        [1,1,1,1,1,1,1,10],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,13,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,0,0,0,11],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,2,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
     ];
     startCell = { c: 1, r: 7 };
 
-    // 8 pickup spots, position randomized per seed. Enumerate all floor
-    // cells in the bottom area (rows 5-7 × cols 0-7), exclude:
-    //   - the spawn cell
-    //   - the 8 cells within Chebyshev distance 1 of the spawn (so the
-    //     agent always has at least 1 free move before auto-pickup kicks
-    //     in — otherwise a spawn-adjacent item forces a pickup on move 1,
-    //     turning the puzzle into "navigate the swap dance from a bad
-    //     starting inventory")
-    //   - the bottom enemy's cell
-    // Then shuffle and take the first 8.
+    // 8 pickup spots, randomized per seed across the left room (cols
+    // 0-2, all rows). Excludes the spawn cell and the 8 cells within
+    // Chebyshev distance 1 of the spawn — same buffer as v5 / v5_easy
+    // so the agent gets at least one free move before auto-pickup.
+    const DOOR_ROW = 4;  // BLUE_KEY door at (col 3, row 4)
     const candidates = [];
-    for (let r = 5; r <= 7; r++) {
-        for (let c = 0; c <= 7; c++) {
+    for (let r = 0; r <= 7; r++) {
+        for (let c = 0; c <= 2; c++) {
             if (Math.abs(c - startCell.c) <= 1 && Math.abs(r - startCell.r) <= 1) continue;
-            if (c === 3 && r === 6) continue;  // bottom enemy spawn
-            if (c === 7 && r === 5) continue;  // v7: cell directly below the laser stays empty
+            if (r === DOOR_ROW) continue;  // no items on the door's row (left of the door)
             candidates.push({ c, r });
         }
     }
     shuffleInPlace(candidates);
-    const spots = candidates.slice(0, 8);
+    const spots = candidates.slice(0, TOOL_VISUAL_IDS.length + 2);  // 6 tools + 2 value coins
 
     TOOL_VISUAL_IDS.forEach((vid) => {
         const s = spots.pop();
         mapData[s.r][s.c] = vid;
     });
+    // remaining spots get value coins (REWARD coin id 8 / CURSE diamond id 15)
     while (spots.length > 0) {
         const s = spots.pop();
         mapData[s.r][s.c] = VALUE_VISUAL_IDS[rng() > 0.5 ? 0 : 1];
@@ -316,11 +285,8 @@ function initRoom() {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (mapData[r][c] === 13) {
-                // The 6-item-mod 2nd enemy by the blue door at (4,1) now PATROLS
-                // up/down (col 4, rows 0-3; row 4 is the wall row) like the medium
-                // env's patroller — a timing-based sword gate on the door->sunbeam
-                // leg. The bottom enemy at (3,6) stays stationary.
-                const patrol = (c === 4 && r === 1);
+                // Middle-top room enemies patrol vertically; bottom enemies stay put.
+                const patrol = (r >= 0 && r <= 3 && c >= 3 && c <= 4);
                 enemies.push({ c, r, id: `${c}_${r}`, direction: 1, patrol });
                 mapData[r][c] = 0;
             }
@@ -335,13 +301,6 @@ function resetPlayer() {
 }
 
 function updateGame() {
-    // Per-step living cost: every PLAYING frame bleeds STEP_PENALTY from score
-    // (emitted as part of the node-gym per-step reward delta). Applied before
-    // the moveCooldown early-return so it accrues on every frame, not just on
-    // move frames. Only winning (or dying) ends the bleed — this is what kills
-    // the argmax oscillation. The win/pickup deltas dwarf it, so it only
-    // dominates on zero-reward (idle/wander) steps.
-    score -= STEP_PENALTY;
     laserTimer = (laserTimer + 1) % LASER_CYCLE;
     if (penaltyTimer > 0) penaltyTimer--;
     for (const key in persistentDrops) {
@@ -378,12 +337,11 @@ function updateGame() {
 
     if (pickupCooldown > 0) pickupCooldown--;
 
-    // Deliberate pickup (ported from medium): fires ONLY on a STANDALONE space
-    // press (the pure-SPACE action) — not while a movement key is held — and is
-    // gated by the pickup cooldown. Grabbing costs a dedicated turn, so items
-    // can't be swept up by walking or cycled rapidly at a gate.
-    if (pickupCooldown <= 0 && keyIsDown(32) && !keyIsDown(LEFT_ARROW)
-        && !keyIsDown(RIGHT_ARROW) && !keyIsDown(UP_ARROW) && !keyIsDown(DOWN_ARROW)) {
+    // Deliberate pickup: fires ONLY on a standalone space press (no movement key
+    // held), so move+space cannot grab and there is no walk-over. Gated by the
+    // 14-frame pickup cooldown so items can't be cycled rapidly.
+    if (pickupCooldown <= 0 && keyIsDown(32) && !keyIsDown(LEFT_ARROW) && !keyIsDown(RIGHT_ARROW)
+        && !keyIsDown(UP_ARROW) && !keyIsDown(DOWN_ARROW)) {
         tryPickup();
     }
 
@@ -413,6 +371,14 @@ function tryMove(nc, nr) {
         else return;
     }
 
+    // Key-locked door: opens with BLUE_KEY held; key is consumed
+    // (matches v4 blue-door semantics). Opening grants +1000 and clears
+    // all tile=2 cells. Without BLUE_KEY the move is blocked (no death).
+    if (tile === 2) {
+        if (hasItem(ROLE_BLUE_KEY)) { consumeItem(ROLE_BLUE_KEY); clearDoor(2); score += 1000; }
+        else return;
+    }
+
     const enemyIdx = enemies.findIndex(e => e.c === nc && e.r === nr);
     if (enemyIdx !== -1) {
         if (hasItem(ROLE_SWORD)) {
@@ -425,48 +391,34 @@ function tryMove(nc, nr) {
     player.c = nc;
     player.r = nr;
 
-    // Deliberate-pickup variant (ported from medium): walking onto an item does
-    // NOT collect it. Tool/value tokens and evicted drops are taken only via the
-    // explicit standalone-pickup action (updateGame -> tryPickup). tryMove
-    // resolves movement, the pre-move door/enemy gates (above), and the terminal
-    // hazard/goal tiles only.
+    // Deliberate-pickup variant: walking onto an item does NOT collect it.
+    // Items/drops are taken only via the explicit standalone pickup action
+    // (updateGame -> tryPickup). tryMove resolves movement, the door, and
+    // terminal tiles only.
     const here = mapData[player.r][player.c];
-    if (here === 10) {
-        // Always-active: lethal without boots, safe with boots. No timing cycle.
-        if (!hasItem(ROLE_BOOTS)) { die(); return; }
-    }
     if (here === 4) {
-        // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
+        // Sunbeam: lethal without hat (no sunbeam tile on this map; kept for parity).
         if (!hasItem(ROLE_HAT)) { die(); return; }
-    }
-    if (here === 9) {
-        // Spike trap (v7): a CONSUMABLE obstacle, not a hold-to-pass gate.
-        // Engaging it with ARMOR consumes the armor and clears the spike for
-        // good (+1000) — same shape as SWORD vs an enemy / BLUE_KEY vs the
-        // door. Without armor it is lethal.
-        if (hasItem(ROLE_ARMOR)) { consumeItem(ROLE_ARMOR); clearDoor(9); score += 1000; }
-        else { die(); return; }
     }
     if (here === 11) { handleVictory(); return; }
 }
 
-// Explicit pickup (ported from medium): collect a tool/value token or an evicted
-// drop on the player's current cell. Called only when the standalone pickup
-// action fires (pure SPACE, no movement key) and the pickup cooldown has elapsed.
+// Explicit pickup: collect a tool/value token (or an evicted drop) on the current
+// cell. Called only on a standalone space press once the cooldown has elapsed.
 function tryPickup() {
     const here = mapData[player.r][player.c];
     if (TOOL_VISUAL_IDS.includes(here)) {
         const role = toolMapping[here];
         mapData[player.r][player.c] = 0;
         addItem(role, here);
-        // Tool pickups grant NO reward (only value items / kills / gates pay out).
+        // Tool pickups grant NO reward (cavequest-easy): only value coins pay out.
         pickupCooldown = PICKUP_COOLDOWN;
         return;
     }
     if (VALUE_VISUAL_IDS.includes(here)) {
         const role = valueMapping[here];
         mapData[player.r][player.c] = 0;
-        // Value items pay out by their binding: REWARD coin +1000, CURSE -1000.
+        // Value coins pay out by binding: REWARD +1000, CURSE -1000.
         if (role === ROLE_REWARD) { score += 1000; }
         else                       { score -= 1000; penaltyTimer = 30; }
         pickupCooldown = PICKUP_COOLDOWN;
@@ -546,26 +498,17 @@ function drawTile(x, y, type) {
     } else if (type === 5) {
         fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
         fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
+    } else if (type === 2) {
+        // Key-door: blue panel matching the canonical BLUE_KEY color
+        // (0,80,200) so the visual cue points at the correct binding.
+        // Identical render to tile 5 (v4 blue door); tile 5 is not
+        // placed on the 2rooms map, so there is no collision.
+        fill(0, 80, 200); rect(x + 2, y + 2, 28, 28);
+        fill(255, 255, 0); ellipse(x + 16, y + 16, 6);
     } else if (TOOL_VISUAL_IDS.includes(type)) {
         drawToolVisual(type, x + 16, y + 16);
     } else if (VALUE_VISUAL_IDS.includes(type)) {
         drawValueVisual(type, x + 16, y + 16);
-    } else if (type === 10) {
-        // Boots visibly disable the laser: yellow (lethal) without boots,
-        // gray (safe) with boots. Same render rect as v1.
-        fill(hasItem(ROLE_BOOTS) ? color(60) : color(255, 255, 0));
-        rect(x + 2, y + 14, 28, 4);
-    } else if (type === 9) {
-        // Spike trap (v7): always-spiked light-gray upward spikes. It is a
-        // CONSUMABLE obstacle (engaging with ARMOR consumes the armor and
-        // clears the tile), so it does NOT gray out / retract when armor is
-        // held — it stays visibly lethal until actually cleared. Physical
-        // hazard, distinct from the yellow laser/sunbeam beams.
-        fill(210);
-        // Three tall, sharp, separated spikes (narrow bases with gaps between).
-        triangle(x + 2,  y + 28, x + 5,  y + 5, x + 8,  y + 28);   // left
-        triangle(x + 13, y + 28, x + 16, y + 5, x + 19, y + 28);   // middle
-        triangle(x + 24, y + 28, x + 27, y + 5, x + 30, y + 28);   // right
     } else if (type === 11) {
         fill(255, 215, 0); rect(x, y, 32, 32);
     }
@@ -582,10 +525,7 @@ function getItemColor(vid) {
     if (vid === 17) return color(0, 150, 0);
     if (vid === 12) return color(200);
     if (vid === 14) return color(150, 0, 255);
-    // 6-item mod: teal breastplate token. Teal is the open hue in the palette
-    // (pink/blue/green/gray/purple already taken) and stays clear of the
-    // yellow/orange value icons.
-    if (vid === 18) return color(0, 200, 170);
+    if (vid === 18) return color(0, 200, 170);  // 6-item mod: teal breastplate
     return color(255);
 }
 
@@ -612,12 +552,10 @@ function drawToolVisual(id, x, y) {
         rect(x - 8, y - 8, 12, 8, 2);
         rect(x - 8, y, 18, 6, 2);
     } else if (id === 18) {
-        // Breastplate / cuirass: a torso plate flanked by two shoulder pauldrons.
-        // Distinct silhouette from the other tokens, sized to survive the 4:1
-        // downsample.
-        rect(x - 7, y - 5, 14, 13, 3);   // chest plate
-        rect(x - 11, y - 7, 6, 5, 2);    // left pauldron
-        rect(x + 5,  y - 7, 6, 5, 2);    // right pauldron
+        // Breastplate / cuirass: chest plate + two shoulder pauldrons.
+        rect(x - 7, y - 5, 14, 13, 3);
+        rect(x - 11, y - 7, 6, 5, 2);
+        rect(x + 5,  y - 7, 6, 5, 2);
     }
 }
 
@@ -656,18 +594,18 @@ function drawPlayer(x, y) {
     fill(cursed ? 150 : 255, 224, 189); rect(-8, -8, 16, 8);                  // face
     fill(200, 0, 0); rect(-10, 0, 20, 8);                                     // legs (always default red in v5)
 
-    // Hat (v7): the HAT role's bound item is drawn as its OWN icon sitting on
-    // top of the head — NOT morphed into a generic hat silhouette (the pre-v7
-    // behavior). Position (above the head) is the role cue; the shape stays the
-    // item's true icon, exactly like the key shows its real icon on the belt.
+    // Hat ROLE: draw the BOUND item's OWN icon above the head (v7/hard behavior)
+    // — position above the head is the role cue; the shape stays the item's true
+    // icon, NOT morphed into a generic hat silhouette.
     const hat = inventoryQueue.find(it => it.role === ROLE_HAT);
     if (hat) {
         drawToolVisual(hat.visualId, 0, -20);   // bound icon, centered above the head
     }
 
-    // Armor (v7): chest plate over the torso, colored by the equipped armor's
-    // visualId. Completes the body-region cue set — HAT on the head, ARMOR the
-    // torso, BOOTS the feet.
+    // Armor (v7 item): chest plate over the torso, colored by the equipped
+    // armor's visualId. Completes the body-region cue set — HAT on the head,
+    // ARMOR the torso, BOOTS the feet. Distractor here (no spike to use it on),
+    // but still rendered so the bound item is visible while held.
     const armor = inventoryQueue.find(it => it.role === ROLE_ARMOR);
     if (armor) {
         fill(getItemColor(armor.visualId));
@@ -687,7 +625,7 @@ function drawPlayer(x, y) {
     inventoryQueue.forEach((item, idx) => {
         if (item.role === ROLE_SWORD) {
             push(); translate(12, 0); rotate(PI / 6); drawToolVisual(item.visualId, 0, 0); pop();
-        } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_ARMOR && item.role !== ROLE_HAT) {
+        } else if (item.role !== ROLE_BOOTS && item.role !== ROLE_HAT && item.role !== ROLE_ARMOR) {
             push(); scale(0.6); translate(-12 + idx * 10, 12); drawToolVisual(item.visualId, 0, 0); pop();
         }
     });

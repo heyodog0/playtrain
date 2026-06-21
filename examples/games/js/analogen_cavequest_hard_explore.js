@@ -1,3 +1,14 @@
+// ===== cavequest_hard_explore: exploration-friendly hard variant =====
+// Same as analogen_cavequest_hard EXCEPT two exploration changes:
+//   (1) DEATH_PENALTY = 0 — death no longer reduces score, so banked gate
+//       rewards are permanent (under abs_one the old penalty erased them: dying
+//       after grabbing a gate gave -1, making the policy risk-averse and parking
+//       it at ~2000). Dying still costs a life/respawn.
+//   (2) First laser cross grants +1000 (one-time, flagged so back-and-forth
+//       can't farm it) — shortens the unrewarded prefix (laser->spike) so the
+//       agent gets an earlier reward gradient up the forced gate chain.
+// ======================================================================
+//
 // ===== cavequest_hard: medium-pickup port (this revision) =====
 // Brings the cavequest_medium pickup mechanics into hard:
 //   - DELIBERATE standalone pickup: walking onto an item no longer collects it;
@@ -142,7 +153,8 @@ const TILE_SIZE = 32;
 const ROWS = 8;  // v4: 8x8 → canvas 256, downsamples to 64 at exact 4:1.
 const COLS = 8;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
-const DEATH_PENALTY = 5000;
+const DEATH_PENALTY = 0;  // explore variant: death no longer reduces score (banked gate
+                          // rewards become permanent; dying only costs a life/respawn).
 // Per-frame living cost. DISABLED (0): at the 35000-frame horizon the old
 // 0.005/frame accrued ~-175/episode, swamping the abs_one +1 win and making the
 // greedy policy idle the whole episode (observed greedy_return=-175). Zeroed to
@@ -175,6 +187,7 @@ let penaltyTimer = 0;
 let moveCooldown = 0;
 let pickupCooldown = 0;  // frames remaining before the next standalone pickup is allowed
 let laserTimer = 0;
+let laserRewarded = false;  // explore variant: one-time +1000 for the first laser cross
 // Items dropped because inventory was full. Keyed by "c,r"; value is
 // { role, visualId, cooldown }. Matches the platformer's persistentDrops.
 let persistentDrops = {};
@@ -229,6 +242,7 @@ function resetGame(seed) {
     moveCooldown = 0;
     pickupCooldown = 0;
     laserTimer = 0;
+    laserRewarded = false;
     enemies = [];
     gameState = 'PLAYING';
     shuffleRoles();
@@ -434,6 +448,10 @@ function tryMove(nc, nr) {
     if (here === 10) {
         // Always-active: lethal without boots, safe with boots. No timing cycle.
         if (!hasItem(ROLE_BOOTS)) { die(); return; }
+        // explore variant: reward the FIRST successful laser cross (+1000, one-time
+        // so walking back and forth can't farm it). Shortens the unrewarded prefix
+        // before the spike so the agent gets an earlier gradient up the chain.
+        if (!laserRewarded) { score += 1000; laserRewarded = true; }
     }
     if (here === 4) {
         // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.

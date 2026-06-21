@@ -1,3 +1,24 @@
+// ===== cavequest_hard_v4: v4 map + armor-spike end gate =====
+// The cavequest_hard_explore mechanics (deliberate standalone pickup, 14-frame
+// cooldown, no tool-pickup reward, value coins +/-1000, DEATH_PENALTY=0, one-time
+// laser-cross +1000) on the v4 MAP geometry, with v4's RED DOOR (the final gate
+// before the goal) replaced by a SPIKE consumed by ARMOR (+1000, lethal without).
+// Roles: [ARMOR, BLUE_KEY, BOOTS, SWORD, SWORD] on visuals [6,7,12,14,17] (5 tools,
+// no HAT/sunbeam — v4 has none). Gates: LASER(boots) -> BLUE_DOOR(key) -> ENEMY ->
+// SPIKE(armor) -> GOAL, plus a 2nd enemy in the bottom room. Inventory cap 2.
+// ============================================================
+//
+// ===== cavequest_hard_explore: exploration-friendly hard variant =====
+// Same as analogen_cavequest_hard EXCEPT two exploration changes:
+//   (1) DEATH_PENALTY = 0 — death no longer reduces score, so banked gate
+//       rewards are permanent (under abs_one the old penalty erased them: dying
+//       after grabbing a gate gave -1, making the policy risk-averse and parking
+//       it at ~2000). Dying still costs a life/respawn.
+//   (2) First laser cross grants +1000 (one-time, flagged so back-and-forth
+//       can't farm it) — shortens the unrewarded prefix (laser->spike) so the
+//       agent gets an earlier reward gradient up the forced gate chain.
+// ======================================================================
+//
 // ===== cavequest_hard: medium-pickup port (this revision) =====
 // Brings the cavequest_medium pickup mechanics into hard:
 //   - DELIBERATE standalone pickup: walking onto an item no longer collects it;
@@ -142,7 +163,8 @@ const TILE_SIZE = 32;
 const ROWS = 8;  // v4: 8x8 → canvas 256, downsamples to 64 at exact 4:1.
 const COLS = 8;
 const PATROL_INTERVAL = 12;  // frames between patrol-enemy moves (2x player cooldown)
-const DEATH_PENALTY = 5000;
+const DEATH_PENALTY = 0;  // explore variant: death no longer reduces score (banked gate
+                          // rewards become permanent; dying only costs a life/respawn).
 // Per-frame living cost. DISABLED (0): at the 35000-frame horizon the old
 // 0.005/frame accrued ~-175/episode, swamping the abs_one +1 win and making the
 // greedy policy idle the whole episode (observed greedy_return=-175). Zeroed to
@@ -159,7 +181,7 @@ const ROLE_ARMOR    = 'ARMOR';  // v7: replaces the duplicate SWORD; pairs with 
 const ROLE_REWARD   = 'REWARD';
 const ROLE_CURSE    = 'CURSE';
 
-const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17, 18];  // 6-item mod: id 18 = teal breastplate token (6th slot)
+const TOOL_VISUAL_IDS  = [6, 7, 12, 14, 17];  // v4 map: 5 tools (ARMOR/BLUE_KEY/BOOTS/SWORD/SWORD)
 const VALUE_VISUAL_IDS = [8, 15];
 const PICKUP_COOLDOWN = 14;   // ported from medium (v1.8b): re-pickup lockout frames
 const MAX_INVENTORY = 2;
@@ -175,6 +197,7 @@ let penaltyTimer = 0;
 let moveCooldown = 0;
 let pickupCooldown = 0;  // frames remaining before the next standalone pickup is allowed
 let laserTimer = 0;
+let laserRewarded = false;  // explore variant: one-time +1000 for the first laser cross
 // Items dropped because inventory was full. Keyed by "c,r"; value is
 // { role, visualId, cooldown }. Matches the platformer's persistentDrops.
 let persistentDrops = {};
@@ -229,6 +252,7 @@ function resetGame(seed) {
     moveCooldown = 0;
     pickupCooldown = 0;
     laserTimer = 0;
+    laserRewarded = false;
     enemies = [];
     gameState = 'PLAYING';
     shuffleRoles();
@@ -239,7 +263,7 @@ function resetGame(seed) {
 function shuffleRoles() {
     // 6-item mod: 6 roles for the 6 visual tokens, 5 distinct. The 6th role is a
     // SECOND SWORD (mirrors v5's duplicate SWORD), paired with the 2nd enemy.
-    const toolRoles = [ROLE_HAT, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_ARMOR, ROLE_SWORD];
+    const toolRoles = [ROLE_ARMOR, ROLE_BLUE_KEY, ROLE_BOOTS, ROLE_SWORD, ROLE_SWORD];
     shuffleInPlace(toolRoles);
     toolMapping = {};
     TOOL_VISUAL_IDS.forEach((vid, i) => { toolMapping[vid] = toolRoles[i]; });
@@ -251,30 +275,22 @@ function shuffleRoles() {
 }
 
 function initRoom() {
-    // 0=floor, 1=wall, 4=sunbeam, 5=blue door, 9=spike (NEW, v7), 10=laser,
-    // 11=goal, 13=enemy.
-    // 8x8, no outer-border walls (out-of-bounds enforced by tryMove).
-    // Top: 4 floor rows (0-3) split into 3 rooms by internal walls at
-    // cols 2 and 5. Doors at (2,1) RED and (5,1) BLUE. Goal at (0,0) —
-    // top-LEFT corner of top-left room. v7: the middle-top patrol enemy at
-    // (4,2) is REMOVED, and so are its two "pillar" walls at (4,0) and (4,3),
-    // leaving the top-middle room a clean 2x4 (cols 3-4, rows 0-3). The
-    // top-right room (cols 6-7, rows 0-3) gets a 2-tile-wide SPIKE gate:
-    // spikes at (6,2) AND (7,2) span the full width of row 2, so the only way
-    // up from the laser-entry row to the BLUE_DOOR row is through the spikes
-    // (forced; engage with ARMOR to consume it and clear both). Main wall row
-    // 4 with laser at (7,4). Bottom: rows 5-7 (3 floor rows). Spawn at (1,7).
-    // Two stationary enemies (6-item mod): one at (3,6) in the bottom room and
-    // one at (4,1) left of the BLUE_DOOR; the two pair with the two SWORD roles.
+    // 0=floor, 1=wall, 5=blue door, 9=spike (consumed by ARMOR), 10=laser,
+    // 11=goal, 13=enemy. (4=sunbeam unused on this map.)
+    // v4 MAP geometry: 8x8, no outer-border walls. Top: 4 floor rows (0-3) split
+    // into 3 rooms by internal walls at cols 2 and 5. (5,1) BLUE_DOOR; (2,1) is
+    // v4's RED_DOOR replaced by a SPIKE (consumed by ARMOR). Goal at (0,0). The
+    // top-middle room (cols 3-4) has a vertical PATROL enemy at (4,2) bounded by
+    // pillar walls at (4,0)/(4,3). Main wall row 4 with laser at (7,4). Bottom:
+    // rows 5-7. Spawn (1,7); a stationary enemy at (3,6).
     // Forced path:
-    //   LASER(7,4) -> (7,3)/(6,3) -> SPIKES(6,2)+(7,2) -> top-right ->
-    //   BLUE_DOOR(5,1) -> ENEMY(4,1) -> top-middle(3-4) -> SUNBEAM(2,1) ->
-    //   top-left(0-1,0-3) -> GOAL(0,0).
+    //   LASER(7,4) -> top-right(6-7,0-3) -> BLUE_DOOR(5,1) -> top-middle(3-4,
+    //   patrol enemy) -> SPIKE(2,1, armor) -> top-left(0-1,0-3) -> GOAL(0,0).
     mapData = [
-        [11,0,1,0,0,1,0,0],
-        [0,0,4,0,13,5,0,0],
-        [0,0,1,0,0,1,9,9],
-        [0,0,1,0,0,1,0,0],
+        [11,0,1,0,1,1,0,0],
+        [0,0,9,0,0,5,0,0],
+        [0,0,1,0,13,1,0,0],
+        [0,0,1,0,1,1,0,0],
         [1,1,1,1,1,1,1,10],
         [0,0,0,0,0,0,0,0],
         [0,0,0,13,0,0,0,0],
@@ -316,11 +332,9 @@ function initRoom() {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (mapData[r][c] === 13) {
-                // The 6-item-mod 2nd enemy by the blue door at (4,1) now PATROLS
-                // up/down (col 4, rows 0-3; row 4 is the wall row) like the medium
-                // env's patroller — a timing-based sword gate on the door->sunbeam
-                // leg. The bottom enemy at (3,6) stays stationary.
-                const patrol = (c === 4 && r === 1);
+                // v4 map: the top-middle enemy (cols 3-4, rows 0-3) patrols
+                // vertically; the bottom enemy at (3,6) stays stationary.
+                const patrol = (r >= 0 && r <= 3 && c >= 3 && c <= 4);
                 enemies.push({ c, r, id: `${c}_${r}`, direction: 1, patrol });
                 mapData[r][c] = 0;
             }
@@ -434,6 +448,10 @@ function tryMove(nc, nr) {
     if (here === 10) {
         // Always-active: lethal without boots, safe with boots. No timing cycle.
         if (!hasItem(ROLE_BOOTS)) { die(); return; }
+        // explore variant: reward the FIRST successful laser cross (+1000, one-time
+        // so walking back and forth can't farm it). Shortens the unrewarded prefix
+        // before the spike so the agent gets an earlier gradient up the chain.
+        if (!laserRewarded) { score += 1000; laserRewarded = true; }
     }
     if (here === 4) {
         // Sunbeam: lethal without hat, safe with hat. Mirror of laser/boots.
