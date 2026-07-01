@@ -133,8 +133,9 @@ def make_variant(
     root = resolve_root(parent, reg)
     name = unique_name(root, suffix, reg)
 
-    # Reuse the refine transform, but do NOT write/back up the parent.
-    result = refine_game(parent, prompt, model_key, apply=False, on_event=on_event)
+    # Reuse the refine transform with variant framing (bolder edits, contract
+    # preserved), but do NOT write/back up the parent.
+    result = refine_game(parent, prompt, model_key, apply=False, on_event=on_event, intent="variant")
     code = result["code"]
 
     (JS_DIR / f"{name}.js").write_text(code)

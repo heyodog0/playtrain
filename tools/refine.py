@@ -40,6 +40,38 @@ REFINE_RULES = """Critical requirements:
 - Return valid JavaScript only when asked for code, and valid JSON only when asked for JSON.
 """
 
+# Task framing. The contract (REFINE_RULES) is identical for both intents; only
+# the framing differs. "fix" treats the instruction as feedback to address with
+# minimal disturbance; "variant" treats it as a deliberate transformation the
+# model should implement boldly, changing mechanics as needed. The "fix" strings
+# reproduce the original prompts verbatim (backward compatible).
+FRAMINGS = {
+    "fix": {
+        "label": "Player feedback",
+        "select_intro": "You are selecting the smallest set of code chunks to edit in a p5.js game.",
+        "select_tail": (
+            "Choose \"rewrite\" if the feedback likely requires coordinated changes across most of the file.\n"
+            "Prefer the minimal patch set otherwise."
+        ),
+        "patch_intro": "You are patching selected chunks in a p5.js game.",
+        "rewrite_task": "Rewrite the full file to address the feedback while preserving compatibility.",
+    },
+    "variant": {
+        "label": "Requested variant",
+        "select_intro": "You are selecting which code chunks to edit to turn a p5.js game into a new variant.",
+        "select_tail": (
+            "This is a deliberate design change, not a bug fix. Choose \"rewrite\" if the variant needs "
+            "coordinated changes across the file (new mechanics usually do); otherwise prefer the minimal patch set."
+        ),
+        "patch_intro": "You are patching selected chunks to turn a p5.js game into a new variant.",
+        "rewrite_task": (
+            "Rewrite the full file to implement this variant. You may freely change the mechanics, rules, "
+            "entities, visuals, and difficulty to realize it — only the technical contract below (required "
+            "functions, Discrete(8) controls, seeded determinism, getGameState) must stay intact."
+        ),
+    },
+}
+
 
 def mask_api_key(value: str | None) -> str:
     if not value:
@@ -335,12 +367,12 @@ def complete_text(client, model: str, prompt: str, *, label: str) -> str:
     return response.text or ""
 
 
-def select_chunks(client, model: str, name: str, feedback: str, chunks: list[dict]) -> dict:
+def select_chunks(client, model: str, name: str, feedback: str, chunks: list[dict], framing: dict) -> dict:
     catalog = "\n".join(f"- {summarize_chunk(chunk)}" for chunk in chunks)
-    prompt = f"""You are selecting the smallest set of code chunks to edit in a p5.js game.
+    prompt = f"""{framing["select_intro"]}
 
 Game: {name}
-Player feedback: {feedback}
+{framing["label"]}: {feedback}
 
 Available chunks:
 {catalog}
@@ -354,8 +386,7 @@ Return JSON only:
   "reason": "brief reason"
 }}
 
-Choose "rewrite" if the feedback likely requires coordinated changes across most of the file.
-Prefer the minimal patch set otherwise."""
+{framing["select_tail"]}"""
     raw = complete_text(client, model, prompt, label="Selecting target chunks...")
     selection = extract_json(raw)
     if "chunk_ids" not in selection or not isinstance(selection["chunk_ids"], list):
@@ -366,17 +397,17 @@ Prefer the minimal patch set otherwise."""
     return selection
 
 
-def build_patch_prompt(name: str, feedback: str, chunks: list[dict]) -> str:
+def build_patch_prompt(name: str, feedback: str, chunks: list[dict], framing: dict) -> str:
     chunk_text = []
     for chunk in chunks:
         chunk_text.append(
             f"CHUNK {chunk['id']} ({chunk['kind']}, {chunk['label']}):\n```javascript\n{chunk['code']}\n```"
         )
     joined_chunks = "\n\n".join(chunk_text)
-    return f"""You are patching selected chunks in a p5.js game.
+    return f"""{framing["patch_intro"]}
 
 Game: {name}
-Player feedback: {feedback}
+{framing["label"]}: {feedback}
 
 {REFINE_RULES}
 
@@ -440,15 +471,15 @@ def validate_refined_code(code: str):
         raise ValueError("Missing seeded RNG")
 
 
-def full_rewrite(client, model: str, name: str, feedback: str, code: str, *, on_chunk=None) -> tuple[str, str]:
+def full_rewrite(client, model: str, name: str, feedback: str, code: str, framing: dict, *, on_chunk=None) -> tuple[str, str]:
     prompt = f"""Here is the current game code:
 
 {code}
 
-Player feedback:
+{framing["label"]}:
 {feedback}
 
-Rewrite the full file to address the feedback while preserving compatibility.
+{framing["rewrite_task"]}
 
 {REFINE_RULES}
 
@@ -457,7 +488,7 @@ Output ONLY the complete updated JavaScript code. No markdown fences, no explana
     return prompt, raw
 
 
-def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True, on_event=None) -> dict:
+def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True, on_event=None, intent: str = "fix") -> dict:
     client = get_client()
     if not client:
         raise RuntimeError("GEMINI_API_KEY not set")
@@ -469,16 +500,17 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True,
     code = path.read_text()
     model = MODELS.get(model_key, MODELS["flash"])
     chunks = split_code_chunks(code)
+    framing = FRAMINGS.get(intent, FRAMINGS["fix"])
 
     def emit(ev_type, **kwargs):
         if on_event:
             on_event({"type": ev_type, **kwargs})
 
-    print(f"  Refining {name} with {model}...")
+    print(f"  {'Forking' if intent == 'variant' else 'Refining'} {name} with {model}...")
     started = time.time()
 
     emit("status", text="Selecting chunks to edit...")
-    selection = select_chunks(client, model, name, feedback, chunks)
+    selection = select_chunks(client, model, name, feedback, chunks, framing)
     chunk_ids = [chunk_id for chunk_id in selection["chunk_ids"] if chunk_id in {chunk["id"] for chunk in chunks}]
     print(f"  Selection mode: {selection['mode']}")
     if chunk_ids:
@@ -507,7 +539,7 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True,
             raise ValueError("Using full rewrite fallback")
 
         selected_chunks = [chunk for chunk in chunks if chunk["id"] in chunk_ids]
-        patch_prompt = build_patch_prompt(name, feedback, selected_chunks)
+        patch_prompt = build_patch_prompt(name, feedback, selected_chunks, framing)
         emit("status", text="Generating targeted patch...")
         patch_raw = stream_text(client, model, patch_prompt, label="Generating targeted patch...",
                                 on_chunk=lambda t: emit("chunk", text=t))
@@ -528,7 +560,7 @@ def refine_game(name: str, feedback: str, model_key: str, *, apply: bool = True,
         strategy = "rewrite"
         metadata["patch_error"] = str(patch_error)
         emit("status", text=f"Patch failed, falling back to full rewrite...")
-        prompt, raw_output = full_rewrite(client, model, name, feedback, code,
+        prompt, raw_output = full_rewrite(client, model, name, feedback, code, framing,
                                           on_chunk=lambda t: emit("chunk", text=t))
         new_code = strip_fences(raw_output)
         validate_refined_code(new_code)
