@@ -22,6 +22,8 @@ from node_gym import (
 )
 from node_gym.bench import run_bench
 
+from gym_gen.constants import variant_names
+
 
 GAMES_DIR         = Path(__file__).resolve().parents[3] / "games" / "js"
 THREEJS_GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "threejs"
@@ -50,7 +52,9 @@ def main() -> int:
         def env_factory(*, game, **kwargs):
             kwargs.setdefault("games_dir", games_dir)
             return NodeGymEnv(game=game, **kwargs)
-        games = [args.game] if args.game else list_available_games(games_dir)
+        games = [args.game] if args.game else [
+            g for g in list_available_games(games_dir) if g not in variant_names()
+        ]
         n_actions = 8
         frames = args.frames if args.frames is not None else 500
     else:

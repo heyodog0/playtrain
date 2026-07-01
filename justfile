@@ -89,6 +89,25 @@ gen-three-complex name model="pro":
 gen-three-complex-all model="pro":
     uv run python tools/generate_threejs.py --catalog games/catalogs/threejs_complex_games.json --model {{model}} --ref
 
+# === game variants (prototype forks) ===
+
+# Fork a game into a named variant via natural language (parent untouched).
+# name is a short suffix; blank -> auto v{n}. e.g. just variant breakout "3x faster ball" fastball
+variant parent prompt name="" model="pro":
+    uv run python tools/variant.py --parent {{parent}} --prompt {{quote(prompt)}} --name {{name}} --model {{model}}
+
+# List all registered variants and the prompt that created each.
+variants:
+    uv run python tools/variant.py --list
+
+# Graduate a variant into a first-class game (include it in --all sweeps).
+promote name:
+    uv run python tools/variant.py --promote {{name}}
+
+# Delete a variant (a backup is saved first).
+unvariant name:
+    uv run python tools/variant.py --delete {{name}}
+
 # === game tester (browser UI) ===
 
 tester:

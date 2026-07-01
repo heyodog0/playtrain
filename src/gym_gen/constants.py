@@ -8,12 +8,29 @@ normalization, or experiment outputs lives in the consumer side (see
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
 REPO_ROOT         = Path(__file__).resolve().parents[2]
 GAMES_DIR         = REPO_ROOT / "games" / "js"
 THREEJS_GAMES_DIR = REPO_ROOT / "games" / "threejs"
+VARIANTS_REGISTRY = REPO_ROOT / "games" / "variants.json"
+
+
+def variant_names() -> set[str]:
+    """Names of games registered as prototype variants (games/variants.json).
+
+    Variants are ordinary game files but are excluded from bulk ``--all`` runs so
+    that experiments don't sweep half-baked prototypes. Promoting a variant drops
+    it from the registry, making it first-class again. See tools/variant.py.
+    """
+    if VARIANTS_REGISTRY.exists():
+        try:
+            return set(json.loads(VARIANTS_REGISTRY.read_text()).keys())
+        except (json.JSONDecodeError, AttributeError):
+            return set()
+    return set()
 
 
 # Canonical p5 game list — the games we ship with all 5 validation checks

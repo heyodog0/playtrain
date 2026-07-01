@@ -18,6 +18,8 @@ from pathlib import Path
 from node_gym import NodeGymEnv, list_available_games
 from node_gym.validate import run_validation
 
+from gym_gen.constants import variant_names
+
 
 GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "js"
 OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "validation"
@@ -40,7 +42,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    games = [args.game] if args.game else list_available_games(GAMES_DIR)
+    if args.game:
+        games = [args.game]
+    else:
+        variants = variant_names()
+        games = [g for g in list_available_games(GAMES_DIR) if g not in variants]
     return run_validation(
         env_factory=_env_factory,
         games=games,

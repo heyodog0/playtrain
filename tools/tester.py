@@ -9,8 +9,14 @@ from pathlib import Path
 
 if __package__:
     from .refine import refine_game
+    from .variant import (
+        make_variant, promote_variant, delete_variant, load_registry, lookup_physics,
+    )
 else:
     from refine import refine_game
+    from variant import (
+        make_variant, promote_variant, delete_variant, load_registry, lookup_physics,
+    )
 
 ROOT = Path(__file__).resolve().parent.parent
 GAMES_DIR = ROOT / "games"
@@ -32,6 +38,11 @@ def list_backups(name: str) -> list[str]:
 
 
 def needs_matter(name: str) -> bool:
+    # Variants aren't in any catalog, so consult the registry first: it carries
+    # the base game's physics so matter.js loads for variants of angry_birds/suika.
+    reg = load_registry()
+    if name in reg:
+        return reg[name].get("physics") == "matter.js"
     for catalog_file in CATALOGS_DIR.glob("*.json"):
         try:
             catalog = json.loads(catalog_file.read_text())
@@ -88,6 +99,18 @@ TESTER_HTML = """<!DOCTYPE html>
   #bottom input { flex: 1; background: #222; color: #eee; border: 1px solid #444; padding: 6px 10px; font-family: monospace; }
   #bottom button { background: #2a6; color: #fff; border: none; padding: 6px 16px; cursor: pointer; font-family: monospace; }
   #bottom button:disabled { background: #444; cursor: not-allowed; }
+  #mode-toggle { background: #333; color: #ccc; border: 1px solid #555; padding: 6px 12px; cursor: pointer; font-family: monospace; white-space: nowrap; }
+  #mode-toggle.fork { background: #26a; color: #fff; border-color: #48c; }
+  #bottom #variant-name { flex: 0 0 150px; }
+  #bottom #variant-name:disabled { opacity: 0.4; }
+  #refine-btn.fork { background: #38c; }
+  .variant-row { display: flex; align-items: center; }
+  .variant-row .game-btn { padding-left: 20px; font-size: 11px; color: #9ab; flex: 1; }
+  .variant-row .game-btn:before { content: "\\21B3 "; color: #556; }
+  .var-action { background: none; border: 1px solid transparent; color: #666; cursor: pointer; font: 12px monospace; padding: 4px 6px; flex-shrink: 0; }
+  .var-action:hover { border-color: #555; }
+  .var-promote:hover { color: #6d6; }
+  .var-delete:hover { color: #e55; }
   #status { color: #888; font-size: 11px; min-width: 100px; }
   #version-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #161616; border-top: 1px solid #2a2a2a; font-family: monospace; font-size: 12px; color: #888; }
   #version-bar.hidden { display: none; }
@@ -115,9 +138,11 @@ TESTER_HTML = """<!DOCTYPE html>
   <button id="restore-btn" onclick="restoreBackup()" disabled>Restore</button>
 </div>
 <div id="bottom">
-  <select id="model"><option value="flash">Flash</option><option value="pro">Pro</option></select>
+  <button id="mode-toggle" onclick="toggleMode()">Mode: Refine</button>
+  <select id="model"><option value="pro">Pro</option><option value="flash">Flash</option></select>
   <input id="feedback" type="text" placeholder="Feedback for refinement..." disabled>
-  <button id="refine-btn" onclick="refine()" disabled>Refine</button>
+  <input id="variant-name" type="text" placeholder="variant name (optional)" style="display:none" disabled>
+  <button id="refine-btn" onclick="submitBar()" disabled>Refine</button>
   <span id="status">Ready</span>
 </div>
 <script>
@@ -126,17 +151,65 @@ let bigScreen = false;
 let currentBackup = null;
 
 async function loadGames() {
-  const res = await fetch('/api/games');
-  const games = await res.json();
+  const [games, variants] = await Promise.all([
+    fetch('/api/games').then(r => r.json()),
+    fetch('/api/variants').then(r => r.json())
+  ]);
   const list = document.getElementById('game-list');
   list.innerHTML = '';
-  games.forEach(name => {
-    const btn = document.createElement('button');
-    btn.className = 'game-btn';
-    btn.textContent = name;
-    btn.onclick = () => selectGame(name);
-    list.appendChild(btn);
+
+  const byRoot = {};
+  for (const [name, meta] of Object.entries(variants)) {
+    (byRoot[meta.base_root] = byRoot[meta.base_root] || []).push(name);
+  }
+  const variantSet = new Set(Object.keys(variants));
+  const bases = games.filter(g => !variantSet.has(g));
+
+  bases.forEach(name => {
+    list.appendChild(gameButton(name));
+    (byRoot[name] || []).sort().forEach(v => list.appendChild(variantRow(v, variants[v])));
   });
+  // variants whose base game file is gone — still show them so they're reachable
+  Object.keys(byRoot).filter(r => !bases.includes(r)).sort().forEach(r => {
+    byRoot[r].sort().forEach(v => list.appendChild(variantRow(v, variants[v])));
+  });
+
+  // keep the active highlight after a reload
+  if (currentGame) {
+    document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.dataset.game === currentGame));
+  }
+}
+
+function gameButton(name) {
+  const btn = document.createElement('button');
+  btn.className = 'game-btn';
+  btn.dataset.game = name;
+  btn.textContent = name;
+  btn.onclick = () => selectGame(name);
+  return btn;
+}
+
+function variantRow(name, meta) {
+  const row = document.createElement('div');
+  row.className = 'variant-row';
+  const btn = document.createElement('button');
+  btn.className = 'game-btn';
+  btn.dataset.game = name;
+  btn.textContent = name.startsWith(meta.base_root + '.') ? name.slice(meta.base_root.length + 1) : name;
+  btn.title = (meta.prompt || '') + '\\n(from ' + meta.parent + ')';
+  btn.onclick = () => selectGame(name);
+  const promote = document.createElement('button');
+  promote.className = 'var-action var-promote';
+  promote.textContent = '\\u2191';
+  promote.title = 'Promote to first-class game';
+  promote.onclick = (e) => { e.stopPropagation(); promoteVariant(name); };
+  const del = document.createElement('button');
+  del.className = 'var-action var-delete';
+  del.textContent = '\\u00d7';
+  del.title = 'Delete variant (backed up first)';
+  del.onclick = (e) => { e.stopPropagation(); deleteVariant(name); };
+  row.append(btn, promote, del);
+  return row;
 }
 
 function loadGameFrame(src) {
@@ -170,9 +243,10 @@ function clearConsole() {
 async function selectGame(name) {
   currentGame = name;
   currentBackup = null;
-  document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.textContent === name));
+  document.querySelectorAll('.game-btn').forEach(b => b.classList.toggle('active', b.dataset.game === name));
   loadGameFrame('/play/' + name);
   document.getElementById('feedback').disabled = false;
+  document.getElementById('variant-name').disabled = false;
   document.getElementById('refine-btn').disabled = false;
   document.getElementById('view-toggle').disabled = false;
   document.getElementById('status').textContent = 'Playing: ' + name;
@@ -267,87 +341,157 @@ function toggleBigScreen() {
   syncBigScreen();
 }
 
+let mode = 'refine';
+
+function toggleMode() {
+  mode = mode === 'refine' ? 'fork' : 'refine';
+  const t = document.getElementById('mode-toggle');
+  const fb = document.getElementById('feedback');
+  const vn = document.getElementById('variant-name');
+  const btn = document.getElementById('refine-btn');
+  const isFork = mode === 'fork';
+  t.textContent = isFork ? 'Mode: Fork' : 'Mode: Refine';
+  t.classList.toggle('fork', isFork);
+  fb.placeholder = isFork ? 'Describe the new variant...' : 'Feedback for refinement...';
+  vn.style.display = isFork ? '' : 'none';
+  btn.textContent = isFork ? 'Fork' : 'Refine';
+  btn.classList.toggle('fork', isFork);
+}
+
+function submitBar() {
+  if (mode === 'fork') fork();
+  else refine();
+}
+
+// Shared SSE reader for /api/refine and /api/variant. Handles status/chunk/error
+// events uniformly; the caller's onDone runs on the terminal 'done' event.
+async function streamJob(url, payload, onDone) {
+  const status = document.getElementById('status');
+  const outEl = () => document.getElementById('console-output');
+  let liveEl = null, liveText = '';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, {stream: true});
+    const parts = buffer.split('\\n\\n');
+    buffer = parts.pop();
+    for (const part of parts) {
+      if (!part.startsWith('data: ')) continue;
+      let event;
+      try { event = JSON.parse(part.slice(6)); } catch(e) { continue; }
+      if (event.type === 'status') {
+        liveEl = null; liveText = '';
+        appendConsole('log', event.text);
+        status.textContent = event.text;
+      } else if (event.type === 'chunk') {
+        liveText += event.text;
+        if (!liveEl) {
+          liveEl = document.createElement('div');
+          liveEl.className = 'con-line con-stream';
+          outEl().appendChild(liveEl);
+        }
+        liveEl.textContent = liveText;
+        outEl().scrollTop = outEl().scrollHeight;
+      } else if (event.type === 'done') {
+        liveEl = null; liveText = '';
+        await onDone(event);
+      } else if (event.type === 'error') {
+        liveEl = null; liveText = '';
+        status.textContent = 'Error: ' + event.text;
+        appendConsole('error', event.text);
+      }
+    }
+  }
+}
+
 async function refine() {
   const feedback = document.getElementById('feedback').value.trim();
   if (!feedback || !currentGame) return;
   const model = document.getElementById('model').value;
   const btn = document.getElementById('refine-btn');
   const status = document.getElementById('status');
-
   btn.blur();
   btn.disabled = true;
   status.textContent = 'Refining...';
   clearConsole();
-
-  let liveEl = null;
-  let liveText = '';
-
-  function finalizeStream() {
-    liveEl = null;
-    liveText = '';
-  }
-
   try {
-    const res = await fetch('/api/refine', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name: currentGame, feedback, model})
+    await streamJob('/api/refine', {name: currentGame, feedback, model}, async (event) => {
+      const strategy = event.strategy ? ' (' + event.strategy + ')' : '';
+      appendConsole('log', 'Done: ' + event.duration_s + 's' + strategy);
+      status.textContent = 'Refined in ' + event.duration_s + 's' + strategy + '. Reloading...';
+      document.getElementById('feedback').value = '';
+      currentBackup = null;
+      document.getElementById('version-select').value = 'current';
+      document.getElementById('restore-btn').disabled = true;
+      loadGameFrame('/play/' + currentGame);
+      await loadVersionBar(currentGame);
     });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const parts = buffer.split('\\n\\n');
-      buffer = parts.pop();
-      for (const part of parts) {
-        if (!part.startsWith('data: ')) continue;
-        let event;
-        try { event = JSON.parse(part.slice(6)); } catch(e) { continue; }
-
-        if (event.type === 'status') {
-          finalizeStream();
-          appendConsole('log', event.text);
-          status.textContent = event.text;
-        } else if (event.type === 'chunk') {
-          liveText += event.text;
-          if (!liveEl) {
-            liveEl = document.createElement('div');
-            liveEl.className = 'con-line con-stream';
-            document.getElementById('console-output').appendChild(liveEl);
-          }
-          liveEl.textContent = liveText;
-          const out = document.getElementById('console-output');
-          out.scrollTop = out.scrollHeight;
-        } else if (event.type === 'done') {
-          finalizeStream();
-          const strategy = event.strategy ? ' (' + event.strategy + ')' : '';
-          const summary = 'Done: ' + event.duration_s + 's' + strategy;
-          appendConsole('log', summary);
-          status.textContent = 'Refined in ' + event.duration_s + 's' + strategy + '. Reloading...';
-          document.getElementById('feedback').value = '';
-          currentBackup = null;
-          document.getElementById('version-select').value = 'current';
-          document.getElementById('restore-btn').disabled = true;
-          loadGameFrame('/play/' + currentGame);
-          await loadVersionBar(currentGame);
-        } else if (event.type === 'error') {
-          finalizeStream();
-          status.textContent = 'Error: ' + event.text;
-          appendConsole('error', event.text);
-        }
-      }
-    }
   } catch(e) {
-    finalizeStream();
     status.textContent = 'Error: ' + e.message;
     appendConsole('error', e.message);
   }
   btn.disabled = false;
+}
+
+async function fork() {
+  const prompt = document.getElementById('feedback').value.trim();
+  if (!prompt || !currentGame) return;
+  const name = document.getElementById('variant-name').value.trim();
+  const model = document.getElementById('model').value;
+  const btn = document.getElementById('refine-btn');
+  const status = document.getElementById('status');
+  btn.blur();
+  btn.disabled = true;
+  status.textContent = 'Forking ' + currentGame + '...';
+  clearConsole();
+  try {
+    await streamJob('/api/variant', {parent: currentGame, prompt, name, model}, async (event) => {
+      appendConsole('log', 'Forked \\u2192 ' + event.name + ' (' + event.duration_s + 's)');
+      status.textContent = 'Created ' + event.name + '. Opening...';
+      document.getElementById('feedback').value = '';
+      document.getElementById('variant-name').value = '';
+      await loadGames();
+      selectGame(event.name);
+    });
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    appendConsole('error', e.message);
+  }
+  btn.disabled = false;
+}
+
+async function promoteVariant(name) {
+  const status = document.getElementById('status');
+  status.textContent = 'Promoting ' + name + '...';
+  try {
+    const res = await fetch('/api/promote', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name})});
+    const data = await res.json();
+    if (data.success) { status.textContent = 'Promoted ' + name + ' to a first-class game'; await loadGames(); }
+    else status.textContent = 'Error: ' + (data.error || 'unknown');
+  } catch(e) { status.textContent = 'Error: ' + e.message; }
+}
+
+async function deleteVariant(name) {
+  if (!confirm('Delete variant ' + name + '? A backup is saved first.')) return;
+  const status = document.getElementById('status');
+  status.textContent = 'Deleting ' + name + '...';
+  try {
+    const res = await fetch('/api/delete-variant', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name})});
+    const data = await res.json();
+    if (data.success) {
+      status.textContent = 'Deleted ' + name;
+      if (currentGame === name) currentGame = null;
+      await loadGames();
+    } else status.textContent = 'Error: ' + (data.error || 'unknown');
+  } catch(e) { status.textContent = 'Error: ' + e.message; }
 }
 
 window.addEventListener('message', event => {
@@ -357,7 +501,8 @@ window.addEventListener('message', event => {
   }
 });
 
-document.getElementById('feedback').addEventListener('keydown', e => { if (e.key === 'Enter') refine(); });
+document.getElementById('feedback').addEventListener('keydown', e => { if (e.key === 'Enter') submitBar(); });
+document.getElementById('variant-name').addEventListener('keydown', e => { if (e.key === 'Enter') submitBar(); });
 loadGames();
 </script>
 </body>
@@ -458,6 +603,9 @@ class Handler(BaseHTTPRequestHandler):
             games = list_games()
             self._send(200, "application/json", json.dumps(games).encode())
 
+        elif path == "/api/variants":
+            self._send(200, "application/json", json.dumps(load_registry()).encode())
+
         elif path.startswith("/api/games/"):
             name = path.split("/api/games/")[1]
             fp = JS_DIR / f"{name}.js"
@@ -498,10 +646,56 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, "text/plain", b"not found")
 
+    def _read_json(self) -> dict:
+        length = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(length))
+
+    def _json_result(self, fn):
+        """Run fn(), reply {success:true} or {success:false, error:...}."""
+        try:
+            fn()
+            self._send(200, "application/json", json.dumps({"success": True}).encode())
+        except Exception as e:
+            self._send(200, "application/json", json.dumps({"success": False, "error": str(e)}).encode())
+
+    def _stream_sse(self, worker):
+        """Run worker(emit) in a thread and stream its events as SSE.
+
+        worker pushes {"type": "status"/"chunk"/...} via emit; its return dict is
+        sent as the terminal "done" event.
+        """
+        q = queue.Queue()
+
+        def run():
+            try:
+                done = worker(q.put)
+                q.put({"type": "done", **(done or {})})
+            except Exception as e:
+                q.put({"type": "error", "text": str(e)})
+            finally:
+                q.put(None)
+
+        threading.Thread(target=run, daemon=True).start()
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+        try:
+            while True:
+                event = q.get()
+                if event is None:
+                    break
+                self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
     def do_POST(self):
         if self.path == "/api/restore":
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length))
+            body = self._read_json()
             filename = body.get("filename", "")
             src = BACKUPS_DIR / filename
             if not src.exists():
@@ -513,40 +707,32 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "application/json", json.dumps({"success": True}).encode())
 
         elif self.path == "/api/refine":
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length))
-            name = body["name"]
-            feedback = body["feedback"]
-            model_key = body.get("model", "pro")
+            body = self._read_json()
 
-            q = queue.Queue()
+            def worker(emit):
+                r = refine_game(body["name"], body["feedback"], body.get("model", "pro"), on_event=emit)
+                return {"duration_s": r["duration_s"], "strategy": r.get("strategy")}
 
-            def run():
-                try:
-                    result = refine_game(name, feedback, model_key, on_event=q.put)
-                    q.put({"type": "done", "duration_s": result["duration_s"], "strategy": result.get("strategy")})
-                except Exception as e:
-                    q.put({"type": "error", "text": str(e)})
-                finally:
-                    q.put(None)
+            self._stream_sse(worker)
 
-            threading.Thread(target=run, daemon=True).start()
+        elif self.path == "/api/variant":
+            body = self._read_json()
 
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            self.send_header("X-Accel-Buffering", "no")
-            self.end_headers()
+            def worker(emit):
+                r = make_variant(body["parent"], body["prompt"], body.get("name", ""),
+                                 body.get("model", "pro"), on_event=emit)
+                return {"name": r["name"], "duration_s": r["duration_s"], "strategy": r.get("strategy")}
 
-            try:
-                while True:
-                    event = q.get()
-                    if event is None:
-                        break
-                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
-                    self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+            self._stream_sse(worker)
+
+        elif self.path == "/api/promote":
+            body = self._read_json()
+            self._json_result(lambda: promote_variant(body["name"]))
+
+        elif self.path == "/api/delete-variant":
+            body = self._read_json()
+            self._json_result(lambda: delete_variant(body["name"]))
+
         else:
             self._send(404, "text/plain", b"not found")
 
