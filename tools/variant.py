@@ -140,6 +140,28 @@ def make_variant(
 
     (JS_DIR / f"{name}.js").write_text(code)
 
+    # refine_game logged this run under the PARENT as a "refine" (prompt, raw
+    # output, timing, chunk metadata are all captured). Re-tag and re-file it
+    # under the variant name so logs are queryable by variant and carry lineage.
+    # Best-effort: a logging hiccup must never fail a fork.
+    log_name = None
+    try:
+        lp = Path(result["log_path"])
+        log = json.loads(lp.read_text())
+        log["action"] = "variant"
+        log["game"] = name
+        log["parent"] = parent
+        log["base_root"] = root
+        ts = lp.name.split("_", 1)[0]
+        new_lp = lp.with_name(f"{ts}_{name}_variant.json")
+        new_lp.write_text(json.dumps(log, indent=2))
+        if new_lp != lp:
+            lp.unlink()
+        log_name = new_lp.name
+    except Exception:
+        lp = result.get("log_path")
+        log_name = Path(lp).name if lp else None
+
     reg[name] = {
         "parent": parent,
         "base_root": root,
@@ -147,6 +169,9 @@ def make_variant(
         "model": model_key,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "physics": lookup_physics(root),
+        "strategy": result.get("strategy"),
+        "duration_s": result.get("duration_s"),
+        "log": log_name,
     }
     save_registry(reg)
 
