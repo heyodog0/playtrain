@@ -186,23 +186,37 @@ function rectCollide(r1, r2) {
 }
 
 function drawEnvironment() {
-  background(20);
+  // Deep space tunnel background
+  background(15, 15, 35);
 
-  fill(80);
+  // Tunnel walls
+  fill(30, 30, 50);
   noStroke();
   rect(0, 0, width, 20);
   rect(0, 380, width, 20);
 
-  fill(255, 200, 0);
+  // Tunnel neon borders
+  fill(0, 255, 255);
+  rect(0, 18, width, 2);
+  rect(0, 380, width, 2);
+
+  // Energy Crystals (Coins)
+  fill(0, 255, 200);
   for (let c of coins) {
-    rect(c.x, c.y, c.w, c.h);
+    push();
+    translate(c.x + c.w / 2, c.y + c.h / 2);
+    rotate(PI / 4);
+    rect(-c.w / 2, -c.h / 2, c.w, c.h);
+    pop();
   }
 
+  // Laser Obstacles (Zappers)
   for (let z of zappers) {
-    fill(255, 50, 50);
+    fill(255, 50, 100);
     rect(z.x, z.y, z.w, z.h);
     
-    fill(255, 255, 200);
+    // Bright laser core
+    fill(255, 200, 255);
     if (z.w > z.h) {
        rect(z.x, z.y + z.h / 2 - 2, z.w, 4);
     } else {
@@ -210,6 +224,21 @@ function drawEnvironment() {
     }
   }
 
-  fill(50, 150, 255);
-  rect(player.x, player.y, player.w, player.h);
+  // Triangle Spaceship Player
+  fill(255, 220, 50);
+  triangle(
+    player.x, player.y, 
+    player.x, player.y + player.h, 
+    player.x + player.w, player.y + player.h / 2
+  );
+
+  // Spaceship Thruster Flame
+  if (keyIsDown(32)) {
+    fill(255, 100, 0);
+    triangle(
+      player.x - 12, player.y + player.h / 2,
+      player.x, player.y + player.h * 0.2,
+      player.x, player.y + player.h * 0.8
+    );
+  }
 }

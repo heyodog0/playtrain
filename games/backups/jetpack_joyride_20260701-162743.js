@@ -133,7 +133,7 @@ function spawnEntities() {
     r = 0.1;
   }
 
-  if (r < 0.4) {
+  if (r < 0.5) {
     let cy = 80 + Math.floor(rng() * 240);
     let pattern = Math.floor(rng() * 3);
     
@@ -155,26 +155,17 @@ function spawnEntities() {
     nextSpawnDist = distance + 150 + Math.floor(rng() * 100);
     
   } else {
-    let obstaclePos = rng();
-    if (obstaclePos < 0.3) {
-      let zw = 100 + Math.floor(rng() * 150);
-      zappers.push({ x: 400, y: 0, w: zw, h: 40 });
-    } else if (obstaclePos < 0.6) {
-      let zw = 100 + Math.floor(rng() * 150);
-      zappers.push({ x: 400, y: 360, w: zw, h: 40 });
+    let isVert = rng() < 0.5;
+    if (isVert) {
+      let zh = 100 + Math.floor(rng() * 100);
+      let zy = 20 + Math.floor(rng() * (360 - zh));
+      zappers.push({ x: 400, y: zy, w: 20, h: zh });
     } else {
-      let isVert = rng() < 0.5;
-      if (isVert) {
-        let zh = 100 + Math.floor(rng() * 100);
-        let zy = 40 + Math.floor(rng() * (320 - zh));
-        zappers.push({ x: 400, y: zy, w: 20, h: zh });
-      } else {
-        let zw = 100 + Math.floor(rng() * 100);
-        let zy = 60 + Math.floor(rng() * 260);
-        zappers.push({ x: 400, y: zy, w: zw, h: 20 });
-      }
+      let zw = 100 + Math.floor(rng() * 100);
+      let zy = 40 + Math.floor(rng() * 300);
+      zappers.push({ x: 400, y: zy, w: zw, h: 20 });
     }
-    nextSpawnDist = distance + 150 + Math.floor(rng() * 100);
+    nextSpawnDist = distance + 200 + Math.floor(rng() * 150);
   }
 }
 
