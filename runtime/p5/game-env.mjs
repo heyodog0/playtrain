@@ -9,6 +9,7 @@ import {
   setKeysDown,
   simulateKeyPress,
   tick,
+  resetFrameCount,
   getPixelData,
   getObsBuffer,
 } from './p5-shim.mjs';
@@ -198,6 +199,7 @@ export class GameEnv {
     this.episodeReturn = 0;
 
     setKeysDown([]);
+    resetFrameCount();  // per-episode frame phase: make reset(seed) deterministic
     globalThis.resetGame(this.seed);
     tick();
 
