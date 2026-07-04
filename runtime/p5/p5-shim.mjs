@@ -379,6 +379,16 @@ function tick() {
   return _looping;
 }
 
+// ---- Reset per-episode frame phase ----
+// `frameCount` is monotonic across the worker's whole lifetime. Games that key
+// per-episode timers off it (laser/enemy phase, blink cycles) would otherwise
+// start each episode at whatever phase the previous one left off — making
+// episode outcomes depend on how many frames elapsed before (i.e. eval order).
+// env.reset() calls this so frameCount is episode-relative and reset(seed) is
+// fully deterministic. Per-episode game counters (e.g. episodeSteps) are reset
+// by the game's own resetGame(); this only zeroes the shim's global.
+function resetFrameCount() { _frameCount = 0; }
+
 // ---- tint stub (used for player invulnerability flicker) ----
 function tint() {} // visual-only, no gameplay impact
 
@@ -430,6 +440,7 @@ export {
   setKeysDown,
   simulateKeyPress,
   tick,
+  resetFrameCount,
   isLooping,
   getPixelData,
   getCanvasBuffer,
