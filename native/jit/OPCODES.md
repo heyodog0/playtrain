@@ -31,7 +31,7 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 | 0 | **Branch-direction correctness** | a recorded branch may take OR fall through; the guard's exit must be the other way, at the right PC. Fuzzer-found bug; blocks trusting any conditional. | ✅ done |
 | 1 | **Float specialization** (f64 regs, `tag==FLOAT64` guard) | THE headline gap. V8=Smi+HeapNumber, LuaJIT=dual-number. Most game loops (positions, velocities, physics) are float. int-only can't touch them. | ✅ done |
 | 2 | Full **numeric ISA** on int+float | bitwise `and/or/xor/shl/sar/not` (int32), `neg`, int `mod`, `inc`/`dec`/`post_inc`/`post_dec`. **Deferred:** `div` + float `mod` (`js_number` → dynamic int-vs-float result, breaks monomorphic slots), `>>>` (`js_uint32` → float escape), `pow` (transcendental, needs `fm_pow` helper). | ✅ done¹ |
-| 3 | **Property access** `get_field`/`put_field` via shape guard (our inline cache) | V8's crown jewel — real JS is property-access-dominated; games do `e.x`,`e.vy`,`grid.w`. Guard the object's JSShape, load/store at the cached property offset; deopt on shape change. THE unlock for real games to fire. | ⬜ next |
+| 3 | **Property access** `get_field` via shape guard (our inline cache) | V8's crown jewel — real JS is property-access-dominated; games do `e.x`,`e.vy`,`grid.w`. Guard the object's JSShape, load at the cached property offset; deopt on shape change. **3a done** (`<local/arg obj>.field`, numeric); **3b next** (`arr[i].field` — the real-game unlock, needs element→object shape resolution). `put_field` (write; refcount) later. | 🔧 3a done |
 | 4 | **Array element write** `put_array_el` (+ element-kind sense) | grids/entity lists get mutated. Needs refcount (free old, incref new) — the correctness minefield; V8 has element-kinds, we guard fast_array + int/heap element. | ⬜ |
 | 5 | **Call inlining** (LuaJIT-style: record through JS calls) + method `this` | stop aborting recording on JS→JS calls; inline the callee into the trace with a target guard. Native calls already emitted. | ⬜ |
 | 6 | Loose `==`/`!=`, general `strict_eq`, misc hot ops | coercion via helper or abort. | ⬜ |
@@ -53,6 +53,12 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
   the interpreter's `!(a<b)` direction — `!(a<b) != (a>=b)` under NaN, so negation is NOT folded);
   strict_eq (element === interned atom, via js_strict_eq helper)
 - control: goto/8/16 back-edge; if_false/8 (recorded direction — milestone 0)
+- **property (3a): `localObj.field` — decoder fuses get_loc/get_arg + get_field into Q_FIELD_LOC,
+  resolving the property index + JSShape + value type against the LIVE object at compile time
+  (our inline cache; quickjs-ng here has no IC opcodes). In-trace: guard `obj->shape == recorded`
+  (deopt) + load `obj->prop[index].u.value` (int or f64, same 16B layout as an array element).
+  Numeric own-data-properties only (getters/prototype/exotic/non-numeric → abort). Object slot
+  marshaled QK_OBJECT (guard tag==OBJECT), must be loop-invariant.**
 - heap: get_array_el (int/string/object element), get_length, get_var (global fast-array or fn)
 - call: call (global fn, int args, result dropped — via JS_Call helper)
 
@@ -71,6 +77,14 @@ that don't fit the fixed-per-slot-type model; they abort → interpret → bit-e
 (5.7k→73k steps/s), bit-exact OFF==ON. Unit: `qjit_build_test` +11 cases (bitwise int32 ref,
 and/or/mod/sar, neg clean + `-0` deopt, bitwise-on-float abort). Int fuzzer corpus now emits
 bitwise/mod/neg forms: 24 programs × 4 seeds bit-exact, 24/24 fire.
+
+### Property access — measured (milestone 3a)
+`test_field.js` (`o.x*o.vx + o.hp` — float + int fields on a local object) fires and is **~19× the
+interpreter** (14k→270k steps/s), bit-exact OFF==ON across 5 seeds. Regression: all 7 micro-benches
++ both fuzzer corpora + 16 real games bit-exact OFF==ON. Real games still don't fire — they iterate
+entity **arrays** (`entities[i].x`), which needs **3b** (array-element→object shape resolution).
+Caveat: the shape guard bakes a raw `JSShape*`; safe while some object keeps that shape alive (true
+for stable entity types over a render loop), and the gate catches any divergence.
 
 ## Invariant (unchanged, non-negotiable)
 Unsupported or uncertain → abort/deopt → interpreter → bit-exact. The JIT only ever makes a

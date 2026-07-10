@@ -284,6 +284,18 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ROOM(1); ir[n++] = call;
         stk[sp] = (StkEnt){0}; stk[sp].is_void = 1; sp++;   // result: void (must be dropped)
       } break;
+      case Q_FIELD_LOC: {  // fused localObj.field (resolved at compile time)
+        if (t->slot < 0 || t->slot >= 256) FAIL();
+        if (out_slot_kind) out_slot_kind[t->slot] = QK_OBJECT;   // guard tag==OBJECT at entry
+        mem_ref[t->slot] = 1;
+        ROOM(5);
+        ir[n] = (IRInsn){.op = IR_LOAD_LOC, .slot = t->slot}; int obj = n++;
+        ir[n++] = (IRInsn){.op = IR_SHAPE_GUARD, .a = obj, .imm = t->imm};   // shape == recorded
+        ir[n] = (IRInsn){.op = IR_LOAD_FIELD_BASE, .a = obj}; int base = n++;
+        ir[n] = (IRInsn){.op = IR_CONST, .imm = t->foffset}; int idx = n++;  // property index
+        if (t->ftag) { ir[n] = (IRInsn){.op = IR_ARRAY_EL_F64, .a = base, .b = idx}; int r = n++; PUSHF(r); }
+        else         { ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = base, .b = idx}; int r = n++; PUSHV(r); }
+      } break;
       case Q_DROP: { NEED(1); sp--; } break;
       case Q_DUP:  { NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); ROOM(0); stk[sp] = stk[sp-1]; sp++; } break;
       case Q_NOP:  break;
@@ -298,7 +310,8 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   // the loop — else treating it as a fixed JSObject* pointer would be wrong.
   if (out_slot_kind)
     for (int i = 0; i < n; i++)
-      if (ir[i].op == IR_STORE_LOC && out_slot_kind[ir[i].slot] == QK_ARRAY) FAIL();
+      if (ir[i].op == IR_STORE_LOC &&
+          (out_slot_kind[ir[i].slot] == QK_ARRAY || out_slot_kind[ir[i].slot] == QK_OBJECT)) FAIL();
 
   // NO DEOPT AFTER CALL: a deopt resumes at the loop header and re-runs the whole
   // iteration — which would re-execute an already-run side-effecting call. So no op
@@ -311,6 +324,7 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       if (ir[i].op == IR_ADD || ir[i].op == IR_SUB || ir[i].op == IR_MUL ||
           ir[i].op == IR_NEG || ir[i].op == IR_MOD ||
           ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT ||
+          ir[i].op == IR_ARRAY_EL_F64 || ir[i].op == IR_SHAPE_GUARD ||
           ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) FAIL();
 
   if (out_exit_pcs) for (int i = 0; i < nx; i++) out_exit_pcs[i] = exit_pcs[i];

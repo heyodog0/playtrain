@@ -82,6 +82,16 @@ typedef enum {
   IR_FNEG,                // float negate: r = -r(a) (via DMUL by -1.0 → correct -0.0 sign)
   IR_MOD,                 // int mod: guard r(a)>=0 && r(b)>0 (else DEOPT, matching the
                           //   interpreter's slow-path bailout); r = r(a) % r(b) (MODS)
+  // --- property access (milestone 3) — shape-guarded field read (our inline cache) ---
+  // A field read `obj.f` is structurally an array-element read: obj->prop is a JSProperty[]
+  // whose entries are 16-byte JSValues (u.value at offset 0), so prop[index] uses the same
+  // stride/tag layout as a fast-array element. We add only: a SHAPE guard (deopt if the
+  // object's hidden class changed from the one resolved at compile time) and a prop-base
+  // load; the value load reuses IR_ARRAY_EL_INT / the new IR_ARRAY_EL_F64.
+  IR_SHAPE_GUARD,   // if *(void**)(r(a) + obj_shape_off) != (JSShape*)imm  -> DEOPT   [a = obj]
+  IR_LOAD_FIELD_BASE, // r = *(JSProperty**)(r(a) + obj_prop_off)                       [a = obj]
+  IR_ARRAY_EL_F64,  // float element/field: guard tag==FLOAT64 (else DEOPT); r(f64) = *(double*)elem
+                    //   [a = base(values/prop), b = idx] — the f64 twin of IR_ARRAY_EL_INT
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
 
@@ -94,6 +104,9 @@ typedef struct {
   int jsvalue_size;     // sizeof(JSValue)      (16 on 64-bit)
   int jsvalue_tag_off;  // offsetof(JSValue, tag) (8)
   int tag_int;          // JS_TAG_INT (0)
+  int tag_float64;      // JS_TAG_FLOAT64 (used by IR_ARRAY_EL_F64 / field float reads)
+  int obj_shape_off;    // offsetof(JSObject, shape)   (property-access shape guard)
+  int obj_prop_off;     // offsetof(JSObject, prop)    (JSProperty* base; prop[i] is 16B)
 } QjitLayout;
 extern QjitLayout qjit_layout;
 
@@ -178,6 +191,9 @@ typedef enum {
   Q_GET_VAR,    // push a global reference for atom `imm`: a fn (consumed by Q_CALL) OR a
                 // global array (consumed by Q_GET_ARRAY_EL / Q_ARRAY_LENGTH)
   Q_CALL,       // pop `slot` int args + the fn ref; call it (side-effect); push void result
+  Q_FIELD_LOC,  // fused `localObj.field` read, resolved at compile time: load the object in
+                // `slot` (marshaled QK_OBJECT), guard its shape == `imm` (JSShape*), then read
+                // property index `foffset` as `ftag` (JS_TAG_INT -> int, JS_TAG_FLOAT64 -> float).
   Q_DROP,       // pop
   Q_DUP,        // push top
   Q_NOP         // label / no-op
@@ -190,13 +206,17 @@ typedef enum {
 // back as JSValue(float) on a control-flow exit — floats are immediates, NO refcounting).
 // QK_SKIP: a purely trace-internal slot (an object temp resolved by store-to-load
 // forwarding — never a real IR load/store). Not marshaled at entry, not written back.
-enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2, QK_FLOAT = 3 };
+// QK_OBJECT: a general JS object (guard tag==OBJECT at entry, store JSObject* in L[]; no
+// writeback — field reads are read-only). The in-trace SHAPE guard specializes per access.
+enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2, QK_FLOAT = 3, QK_OBJECT = 4 };
 
 typedef struct {
   QOp op;
-  int slot;        // GET/PUT/ADD_LOC
-  int64_t imm;     // PUSH_INT
+  int slot;        // GET/PUT/ADD_LOC; Q_FIELD_LOC: the object's L slot
+  int64_t imm;     // PUSH_INT / PUSH_F64 bits; Q_FIELD_LOC: the resolved JSShape*
   int32_t exit_pc; // IF_FALSE resume PC (maps to an exit id)
+  int32_t foffset; // Q_FIELD_LOC: resolved property index into obj->prop[]
+  int32_t ftag;    // Q_FIELD_LOC: resolved field value tag (JS_TAG_INT / JS_TAG_FLOAT64)
 } TraceOp;
 
 // Build IR from a QOp sequence. Writes up to `max_ir` IRInsn into `ir`, sets
