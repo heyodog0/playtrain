@@ -14,6 +14,7 @@
 #include <string>
 #include <chrono>
 #include "quickjs.h"
+#include "../jit/qjit.h"
 #include "../runtime/p5.hpp"
 
 static const int OBS = 64;
@@ -271,6 +272,7 @@ int main(int argc, char** argv) {
     auto t1 = std::chrono::steady_clock::now();
     double secs = std::chrono::duration<double>(t1 - t0).count();
     printf("bench(qjs): %ld steps in %.4fs = %.0f steps/sec\n", nsteps, secs, nsteps / secs);
+    if (getenv("QJIT_REPORT")) qjit_report(ctx);
   }
 
   JS_FreeValue(ctx, jsSetup); JS_FreeValue(ctx, jsReset); JS_FreeValue(ctx, jsDraw); JS_FreeValue(ctx, jsState);

@@ -1,0 +1,68 @@
+diff --git a/quickjs.c b/quickjs.c
+index 7ec0c25..2ddac40 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -17940,6 +17940,14 @@ static bool needs_backtrace(JSValue exc)
+ }
+ 
+ /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
++/* --- qjit: resolve a JSFunctionBytecode* to its function name (report-time) --- */
++#include "qjit.h"
++const char *qjit_fn_name(void *ctx_, const void *b_) {
++    JSContext *ctx = (JSContext *)ctx_;
++    const JSFunctionBytecode *b = (const JSFunctionBytecode *)b_;
++    return JS_AtomToCString(ctx, b->func_name);
++}
++
+ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+                                JSValueConst this_obj, JSValueConst new_target,
+                                int argc, JSValueConst *argv, int flags)
+@@ -19055,17 +19063,23 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+             BREAK;
+ 
+         CASE(OP_goto):
+-            pc += (int32_t)get_u32(pc);
++            { int32_t _o = (int32_t)get_u32(pc);
++              if (_o < 0) qjit_backedge(b, (int32_t)((pc - b->byte_code_buf) + _o));
++              pc += _o; }
+             if (unlikely(js_poll_interrupts(ctx)))
+                 goto exception;
+             BREAK;
+         CASE(OP_goto16):
+-            pc += (int16_t)get_u16(pc);
++            { int16_t _o = (int16_t)get_u16(pc);
++              if (_o < 0) qjit_backedge(b, (int32_t)((pc - b->byte_code_buf) + _o));
++              pc += _o; }
+             if (unlikely(js_poll_interrupts(ctx)))
+                 goto exception;
+             BREAK;
+         CASE(OP_goto8):
+-            pc += (int8_t)pc[0];
++            { int8_t _o = (int8_t)pc[0];
++              if (_o < 0) qjit_backedge(b, (int32_t)((pc - b->byte_code_buf) + _o));
++              pc += _o; }
+             if (unlikely(js_poll_interrupts(ctx)))
+                 goto exception;
+             BREAK;
+@@ -19083,7 +19097,9 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+                 }
+                 sp--;
+                 if (res) {
+-                    pc += (int32_t)get_u32(pc - 4) - 4;
++                    int32_t _o = (int32_t)get_u32(pc - 4) - 4;
++                    if (_o < 0) qjit_backedge(b, (int32_t)((pc - b->byte_code_buf) + _o));
++                    pc += _o;
+                 }
+                 if (unlikely(js_poll_interrupts(ctx)))
+                     goto exception;
+@@ -19103,7 +19119,9 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+                 }
+                 sp--;
+                 if (!res) {
+-                    pc += (int32_t)get_u32(pc - 4) - 4;
++                    int32_t _o = (int32_t)get_u32(pc - 4) - 4;
++                    if (_o < 0) qjit_backedge(b, (int32_t)((pc - b->byte_code_buf) + _o));
++                    pc += _o;
+                 }
+                 if (unlikely(js_poll_interrupts(ctx)))
+                     goto exception;
