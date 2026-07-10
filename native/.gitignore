@@ -4,3 +4,7 @@ games/*_gen.cpp
 *.o
 *.err
 *.cerr
+qjs/src/
+qjs/bld/
+*.wasm
+*.cjs
