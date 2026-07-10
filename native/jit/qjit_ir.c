@@ -7,6 +7,9 @@
 
 static MIR_context_t g_ctx = NULL;
 
+// heap struct offsets (set by host or tests before compiling a heap trace)
+QjitLayout qjit_layout = {0};
+
 void qjit_ir_init(void) {
   if (g_ctx) return;
   g_ctx = MIR_init();
@@ -39,7 +42,8 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   MIR_reg_t *reg = calloc(n, sizeof(MIR_reg_t));
   for (int i = 0; i < n; i++) {
     if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_CONST || ir[i].op == IR_ADD ||
-        ir[i].op == IR_SUB || ir[i].op == IR_MUL) {
+        ir[i].op == IR_SUB || ir[i].op == IR_MUL ||
+        ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT) {
       char rn[24]; snprintf(rn, sizeof rn, "v%d", i);
       reg[i] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn);
     }
@@ -58,6 +62,10 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
     if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_STORE_LOC) used[ir[i].slot] = 1;
   for (int s = 0; s < n_slots; s++)
     if (used[s]) { char rn[24]; snprintf(rn, sizeof rn, "s%d", s); sreg[s] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn); }
+
+  // scratch regs for heap address arithmetic (element addr = base + idx*size)
+  MIR_reg_t h0 = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, "h0");
+  MIR_reg_t h1 = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, "h1");
 
   MIR_label_t *exit_lab = calloc(n_exits, sizeof(MIR_label_t));   // control-flow exits (flush)
   for (int e = 0; e < n_exits; e++) exit_lab[e] = MIR_new_label(ctx);
@@ -98,6 +106,27 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_GUARD_LE:  APP(MIR_new_insn(ctx, MIR_BGT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_GT:  APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_GE:  APP(MIR_new_insn(ctx, MIR_BLT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
+      // --- heap: fast-array int-element load (offsets from qjit_layout) ---
+      case IR_ARRAY_COUNT:  // r = (u32)*(base + count_off)  -> zero-extended into i64
+        APP(MIR_new_insn(ctx, MIR_MOV, R(i),
+              MIR_new_mem_op(ctx, MIR_T_U32, qjit_layout.arr_count_off, reg[in->a], 0, 1))); break;
+      case IR_ARRAY_VALUES: // r = *(void**)(base + values_off)
+        APP(MIR_new_insn(ctx, MIR_MOV, R(i),
+              MIR_new_mem_op(ctx, MIR_T_I64, qjit_layout.arr_values_off, reg[in->a], 0, 1))); break;
+      case IR_GUARD_BOUNDS: // if (u32)idx >= (u32)count -> deopt  (negative idx -> huge -> deopt)
+        APP(MIR_new_insn(ctx, MIR_UBGES, MIR_new_label_op(ctx, deopt), R(in->a), R(in->b))); break;
+      case IR_ARRAY_EL_INT: // elem = values + idx*size; guard tag==INT; r = (i32)elem.u.int32
+        APP(MIR_new_insn(ctx, MIR_MUL, MIR_new_reg_op(ctx, h0), R(in->b),
+              MIR_new_int_op(ctx, qjit_layout.jsvalue_size)));               // h0 = idx*size
+        APP(MIR_new_insn(ctx, MIR_ADD, MIR_new_reg_op(ctx, h1), R(in->a),
+              MIR_new_reg_op(ctx, h0)));                                     // h1 = values + h0
+        APP(MIR_new_insn(ctx, MIR_MOV, MIR_new_reg_op(ctx, h0),
+              MIR_new_mem_op(ctx, MIR_T_I32, qjit_layout.jsvalue_tag_off, h1, 0, 1))); // h0 = tag
+        APP(MIR_new_insn(ctx, MIR_BNE, MIR_new_label_op(ctx, deopt),
+              MIR_new_reg_op(ctx, h0), MIR_new_int_op(ctx, qjit_layout.tag_int)));     // tag!=INT -> deopt
+        APP(MIR_new_insn(ctx, MIR_MOV, R(i),
+              MIR_new_mem_op(ctx, MIR_T_I32, 0, h1, 0, 1)));                 // r = elem.u.int32 (sign-ext)
+        break;
       case IR_LOOP:      APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, top))); break;
     }
   }

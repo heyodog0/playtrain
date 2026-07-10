@@ -14,16 +14,37 @@
 #include <stddef.h>
 
 typedef enum {
-  IR_LOAD_LOC,   // r = locals[slot]
+  IR_LOAD_LOC,   // r = locals[slot]  (int payload OR, for heap-invariant slots, a JSObject*)
   IR_STORE_LOC,  // locals[slot] = r(a)
   IR_CONST,      // r = imm
-  IR_ADD, IR_SUB, IR_MUL,       // r = r(a) op r(b)
+  IR_ADD, IR_SUB, IR_MUL,       // r = r(a) op r(b)   (int32, overflow -> deopt)
   IR_GUARD_LT,   // if !(r(a) <  r(b)) side-exit exit_id
   IR_GUARD_LE,   // if !(r(a) <= r(b)) side-exit exit_id
   IR_GUARD_GT,   // if !(r(a) >  r(b)) side-exit exit_id
   IR_GUARD_GE,   // if !(r(a) >= r(b)) side-exit exit_id
+  // --- heap (increment 1: fast-array int-element load) ---
+  // r(a) is a trusted JSObject* (a loop-invariant array, tag+class+fast_array guarded
+  // ONCE at trace entry). All heap guards below DEOPT (resume header, re-run iteration
+  // interpreted) so the interpreter's slow path handles the non-fast/OOB/non-int case.
+  IR_ARRAY_COUNT,   // r = (i64)*(u32*)(r(a) + arr_count_off)         [a = array base]
+  IR_ARRAY_VALUES,  // r = *(void**)(r(a) + arr_values_off)           [a = array base]
+  IR_GUARD_BOUNDS,  // if (u32)r(a) >= (u32)r(b) DEOPT                 [a = idx, b = count]
+  IR_ARRAY_EL_INT,  // e = r(a) + r(b)*jsvalue_size; if *(i32*)(e+tag_off)!=tag_int DEOPT;
+                    //   r = (i64)(i32)*(i32*)(e)                     [a = values, b = idx]
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
+
+// Struct offsets for heap access — baked from offsetof/sizeof in the host (patched
+// quickjs.c) or set by unit tests. Codegen reads these so qjit stays decoupled from
+// the quickjs struct definitions. Must be set before compiling any heap trace.
+typedef struct {
+  int arr_count_off;    // offsetof(JSObject, u.array.count)
+  int arr_values_off;   // offsetof(JSObject, u.array.u.values)
+  int jsvalue_size;     // sizeof(JSValue)      (16 on 64-bit)
+  int jsvalue_tag_off;  // offsetof(JSValue, tag) (8)
+  int tag_int;          // JS_TAG_INT (0)
+} QjitLayout;
+extern QjitLayout qjit_layout;
 
 typedef struct {
   IROp op;
