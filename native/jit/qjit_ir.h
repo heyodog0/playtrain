@@ -38,8 +38,9 @@ typedef enum {
   IR_STREQ_EL,      // r = strict_eq(values[idx], atom) as 0/1, via a host helper that
                     //   runs quickjs's own js_strict_eq (content-correct for any element
                     //   type). imm = atom.  [a = values, b = idx]  (no deopt; a pure call)
-  IR_GUARD_TRUE,    // if r(a) == 0 side-exit exit_id (for `if_false` on a boolean value,
-                    //   e.g. the strict_eq result). control-flow exit (flush), not a deopt.
+  IR_GUARD_TRUE,    // if r(a) == 0 side-exit exit_id  (continue iff value truthy)
+  IR_GUARD_FALSE,   // if r(a) != 0 side-exit exit_id  (continue iff value falsy) — used when
+                    //   the recorded branch path is the negated one. control-flow exit, not deopt.
   // --- nested/global arrays (increment 3) ---
   IR_LOAD_GVAR,     // r = qjit_gvar_array(atom); if r==0 DEOPT. (a global that is a fast
                     //   array, resolved once — loop-invariant, hoisted.)  imm = atom

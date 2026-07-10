@@ -240,8 +240,11 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
               MIR_new_reg_op(ctx, h1),                                       // &elem
               MIR_new_int_op(ctx, in->imm)));                                // atom
       } break;
-      case IR_GUARD_TRUE: // if r(a) == 0 side-exit (flush + resume) — for if_false on a bool
+      case IR_GUARD_TRUE: // if r(a) == 0 side-exit (continue iff truthy)
         APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, exit_lab[in->exit_id]),
+              R(in->a), MIR_new_int_op(ctx, 0))); break;
+      case IR_GUARD_FALSE: // if r(a) != 0 side-exit (continue iff falsy)
+        APP(MIR_new_insn(ctx, MIR_BNE, MIR_new_label_op(ctx, exit_lab[in->exit_id]),
               R(in->a), MIR_new_int_op(ctx, 0))); break;
       case IR_LOAD_GVAR:  // r = qjit_gvar_array(atom); if r==0 deopt (not a fast array)
         APP(MIR_new_call_insn(ctx, 4, MIR_new_ref_op(ctx, gvar_proto), MIR_new_ref_op(ctx, gvar_import),

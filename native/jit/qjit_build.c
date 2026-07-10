@@ -119,25 +119,29 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         int b = stk[--sp].ref, a = stk[--sp].ref;
         stk[sp] = (StkEnt){0}; stk[sp].is_cmp = 1; stk[sp].cmp_kind = t->op; stk[sp].a = a; stk[sp].b = b; sp++;
       } break;
-      case Q_IF_FALSE: {  // exit iff FALSE, continue iff TRUE
+      case Q_IF_FALSE: {  // conditional guard. imm = negate: 0 -> continue iff cond TRUE,
+                          // 1 -> continue iff cond FALSE. exit_pc = the resume PC of the
+                          // NOT-taken direction (decoder picks it from the recorded path).
         NEED(1);
+        int neg = (int)t->imm;
         int eid = exit_id_for(t->exit_pc, exit_pcs, &nx);
         if (!stk[sp-1].is_cmp) {
-          // if_false on a boolean VALUE (only a strict_eq result — is_bool): side-exit iff
-          // ==0. Reject if_false on arbitrary values (e.g. int truthiness) -> abort, so a
-          // degenerate `push k; if_false; loop` can't build a never-exiting trace.
+          // conditional on a boolean VALUE (a strict_eq result — is_bool only, so a
+          // degenerate `push k; if; loop` can't build a never-exiting trace).
           if (!stk[sp-1].is_bool) FAIL();
           int v = stk[--sp].ref;
-          ROOM(1); ir[n++] = (IRInsn){.op = IR_GUARD_TRUE, .a = v, .exit_id = eid};
+          ROOM(1); ir[n++] = (IRInsn){.op = neg ? IR_GUARD_FALSE : IR_GUARD_TRUE, .a = v, .exit_id = eid};
           break;
         }
         StkEnt c = stk[--sp];
-        // guard "continue iff (a cmp b)": direct mapping of the compare kind
-        IROp g = c.cmp_kind == Q_LT ? IR_GUARD_LT : c.cmp_kind == Q_LE ? IR_GUARD_LE
-               : c.cmp_kind == Q_GT ? IR_GUARD_GT : IR_GUARD_GE;
-        // first guard = loop condition: remember the induction slot (guard.a from a load)
-        // and whether the test is strict `<` (needed to prove `i+=1` can't overflow).
-        if (ind_slot < 0 && ir[c.a].op == IR_LOAD_LOC) { ind_slot = ir[c.a].slot; ind_lt = (c.cmp_kind == Q_LT); }
+        // continue iff (a cmp b); if negated, continue iff !(a cmp b) == (a !cmp b).
+        int k = c.cmp_kind;
+        if (neg) k = k == Q_LT ? Q_GE : k == Q_LE ? Q_GT : k == Q_GT ? Q_LE : Q_LT;  // negate the test
+        IROp g = k == Q_LT ? IR_GUARD_LT : k == Q_LE ? IR_GUARD_LE
+               : k == Q_GT ? IR_GUARD_GT : IR_GUARD_GE;
+        // first guard = loop condition (never negated in practice): remember the induction
+        // slot + whether the test is strict `<` (to prove `i+=1` can't overflow).
+        if (ind_slot < 0 && !neg && ir[c.a].op == IR_LOAD_LOC) { ind_slot = ir[c.a].slot; ind_lt = (c.cmp_kind == Q_LT); }
         ROOM(1); ir[n++] = (IRInsn){.op = g, .a = c.a, .b = c.b, .exit_id = eid};
       } break;
       case Q_GOTO_LOOP: {
