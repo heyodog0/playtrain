@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 
+// stub call helper so call traces can compile (records nothing; just satisfies the bind)
+static int64_t bt_call_stub(int64_t atom, int64_t argc, int64_t *argv) { (void)atom;(void)argc;(void)argv; return 0; }
+
 static int g_pass = 0, g_fail = 0;
 static void check(const char *name, int cond) {
   printf("  [%s] %s\n", cond ? "PASS" : "FAIL", name);
@@ -142,6 +145,46 @@ int main(void) {
 
     TraceOp bad4[] = {{Q_GET_LOC,.slot=0}, {Q_GOTO_LOOP}};                          // unbalanced stack
     check("abort: unbalanced stack", run_trace(bad4, 2, L) == -1);
+  }
+
+  // ---- call path: get_var + call + safe increment after the call ----
+  qjit_set_call_helper((void *)&bt_call_stub);
+  {
+    // while(i<n){ f(); i+=1 }   slots: i=0, n=1.  Safe increment (i<n strict) after call OK.
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=1}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_VAR,.imm=77}, {Q_CALL,.slot=0}, {Q_DROP},          // f()
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},                  // i += 1 (safe)
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[2] = {0, 4};
+    int e = run_trace(t, 10, L);
+    check("call+safe-inc: exit 0", e == 0);
+    check("call+safe-inc: i==4", L[1] == 4 && L[0] == 4);
+  }
+  {
+    // no-deopt-after-call: a deoptable MUL after the call must ABORT the build.
+    // while(i<n){ f(); s = s*2; i+=1 }   slots: i=0,n=1,s=2
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=1}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_VAR,.imm=77}, {Q_CALL,.slot=0}, {Q_DROP},
+      {Q_GET_LOC,.slot=2}, {Q_PUSH_INT,.imm=2}, {Q_MUL}, {Q_PUT_LOC,.slot=2},   // s*=2 (deoptable) AFTER call
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 4, 1};
+    check("abort: deoptable op after call", run_trace(t, 14, L) == -1);
+  }
+  {
+    // call result not dropped -> unbalanced stack at loop end -> abort
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=1}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_VAR,.imm=77}, {Q_CALL,.slot=0},                     // no drop
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[2] = {0, 4};
+    check("abort: call result not dropped (unbalanced)", run_trace(t, 9, L) == -1);
   }
 
   qjit_ir_finish();

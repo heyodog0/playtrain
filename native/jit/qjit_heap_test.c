@@ -9,6 +9,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+// call-helper stub (file scope; C): records (atom, argv[0]) per IR_CALL invocation
+static int64_t call_log[64], call_atoms[64];
+static int call_n;
+static int64_t call_stub(int64_t atom, int64_t argc, int64_t *argv) {
+  if (call_n < 64) { call_atoms[call_n] = atom; call_log[call_n] = argc > 0 ? argv[0] : -1; call_n++; }
+  return 0;
+}
+
 static int g_pass = 0, g_fail = 0;
 static void check(const char *name, int cond) {
   printf("  [%s] %s\n", cond ? "PASS" : "FAIL", name);
@@ -128,6 +136,58 @@ int main(void) {
     check("n==0: control-flow exit 0", e == 0);
     check("n==0: s unchanged (77)", L[0] == 77);
     free(a->values); free(a);
+  }
+
+  // ---- test 5: layout-not-set guard — compiling a heap trace with a zeroed layout
+  // MUST fail (return NULL), never emit silently-wrong idx*0 addressing. This is the
+  // regression test for the live init-ordering bug (layout set after the compile it feeds).
+  {
+    IRInsn ir[] = {
+      {.op=IR_LOAD_LOC,.slot=1}, {.op=IR_LOAD_LOC,.slot=2}, {.op=IR_GUARD_LT,.a=0,.b=1,.exit_id=0},
+      {.op=IR_LOAD_LOC,.slot=3}, {.op=IR_ARRAY_COUNT,.a=3}, {.op=IR_GUARD_BOUNDS,.a=0,.b=4},
+      {.op=IR_ARRAY_VALUES,.a=3}, {.op=IR_ARRAY_EL_INT,.a=6,.b=0}, {.op=IR_LOAD_LOC,.slot=0},
+      {.op=IR_ADD,.a=8,.b=7}, {.op=IR_STORE_LOC,.slot=0,.a=9},
+      {.op=IR_LOAD_LOC,.slot=1}, {.op=IR_CONST,.imm=1}, {.op=IR_ADD,.a=11,.b=12}, {.op=IR_STORE_LOC,.slot=1,.a=13},
+      {.op=IR_LOOP},
+    };
+    QjitLayout saved = qjit_layout;
+    qjit_layout = (QjitLayout){0};                       // simulate "not yet initialized"
+    qjit_trace_fn fn = qjit_ir_compile(ir, 16, 1);
+    check("layout unset: heap trace refuses to compile (NULL)", fn == NULL);
+    qjit_layout = saved;                                 // restore
+    fn = qjit_ir_compile(ir, 16, 1);
+    check("layout set: heap trace compiles", fn != NULL);
+  }
+
+  // ---- test 6: IR_CALL codegen — call a host helper each iteration with an int arg ----
+  {
+    qjit_set_call_helper((void *)&call_stub);
+    call_n = 0;
+    // while(i<n){ f(i); i+=1 }   slots: i=0, n=1
+    IRInsn ir[] = {
+      {.op=IR_LOAD_LOC,.slot=0}, {.op=IR_LOAD_LOC,.slot=1}, {.op=IR_GUARD_LT,.a=0,.b=1,.exit_id=0},
+      {.op=IR_CALL,.imm=77,.argc=1,.argv={0}},              // f(i)  (i is v0)
+      {.op=IR_LOAD_LOC,.slot=0}, {.op=IR_CONST,.imm=1}, {.op=IR_ADD_SAFE,.a=4,.b=5}, {.op=IR_STORE_LOC,.slot=0,.a=6},
+      {.op=IR_LOOP},
+    };
+    int64_t L[2] = {0, 5};                                   // i=0, n=5
+    int64_t e = run_ir(ir, 9, 1, L);
+    check("call loop: control-flow exit 0", e == 0);
+    check("call loop: i==5 after", L[0] == 5);
+    check("call loop: helper called 5x", call_n == 5);
+    int seq_ok = 1; for (int k = 0; k < 5; k++) if (call_log[k] != k || call_atoms[k] != 77) seq_ok = 0;
+    check("call loop: args 0,1,2,3,4 with atom 77 in order", call_n == 5 && seq_ok);
+  }
+  // ---- test 7: IR_CALL with no helper registered -> compile fails (stays interpreted) ----
+  {
+    qjit_set_call_helper(NULL);
+    IRInsn ir[] = {
+      {.op=IR_LOAD_LOC,.slot=0}, {.op=IR_LOAD_LOC,.slot=1}, {.op=IR_GUARD_LT,.a=0,.b=1,.exit_id=0},
+      {.op=IR_CALL,.imm=1,.argc=0}, {.op=IR_LOAD_LOC,.slot=0}, {.op=IR_CONST,.imm=1},
+      {.op=IR_ADD_SAFE,.a=4,.b=5}, {.op=IR_STORE_LOC,.slot=0,.a=6}, {.op=IR_LOOP},
+    };
+    qjit_trace_fn fn = qjit_ir_compile(ir, 9, 1);
+    check("call, no helper: refuses to compile (NULL)", fn == NULL);
   }
 
   qjit_ir_finish();

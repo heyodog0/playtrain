@@ -18,6 +18,9 @@ typedef enum {
   IR_STORE_LOC,  // locals[slot] = r(a)
   IR_CONST,      // r = imm
   IR_ADD, IR_SUB, IR_MUL,       // r = r(a) op r(b)   (int32, overflow -> deopt)
+  IR_ADD_SAFE,   // r = r(a) + r(b), NO overflow guard — only for the loop-induction
+                 // increment `i += 1` under a strict `i < n` guard (i+1 <= n <= INT_MAX,
+                 // provably no overflow). Guard-free so it can sit safely after a call.
   IR_GUARD_LT,   // if !(r(a) <  r(b)) side-exit exit_id
   IR_GUARD_LE,   // if !(r(a) <= r(b)) side-exit exit_id
   IR_GUARD_GT,   // if !(r(a) >  r(b)) side-exit exit_id
@@ -31,6 +34,9 @@ typedef enum {
   IR_GUARD_BOUNDS,  // if (u32)r(a) >= (u32)r(b) DEOPT                 [a = idx, b = count]
   IR_ARRAY_EL_INT,  // e = r(a) + r(b)*jsvalue_size; if *(i32*)(e+tag_off)!=tag_int DEOPT;
                     //   r = (i64)(i32)*(i32*)(e)                     [a = values, b = idx]
+  // --- call (increment 4: native global fn, int args, result dropped) ---
+  IR_CALL,          // call global fn named by atom (imm) with argc int args (r(argv[k]));
+                    // side-effect only, result is freed. imm=atom, argc, argv[] = arg refs.
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
 
@@ -46,13 +52,24 @@ typedef struct {
 } QjitLayout;
 extern QjitLayout qjit_layout;
 
+#define QJIT_MAX_CALL_ARGS 8
 typedef struct {
   IROp op;
   int a, b;       // operand IR-value indices (for value/guard ops)
   int slot;       // local slot (LOAD/STORE)
-  int64_t imm;    // CONST
+  int64_t imm;    // CONST; for IR_CALL: the global-var atom
   int exit_id;    // GUARD
+  int argc;       // IR_CALL: number of args
+  int argv[QJIT_MAX_CALL_ARGS]; // IR_CALL: arg IR-value indices
 } IRInsn;
+
+// Register the call helper the codegen binds to IR_CALL: a host function
+//   int64_t (*)(int64_t atom, int64_t argc, int64_t *argv)
+// that resolves the global named `atom`, invokes it with argc unboxed-int args, and
+// frees the result (reading the host JSContext from a host-set global). qjit_ir.c stays
+// decoupled from quickjs — unit tests register a stub. A trace with IR_CALL fails to
+// compile (stays interpreted) if no helper is registered.
+void qjit_set_call_helper(void *fn);
 
 // Native trace signature: run the loop over `locals`, return the exit taken:
 //   >= 0            -> control-flow exit id (locals flushed; resume at that exit's PC)
@@ -91,6 +108,8 @@ typedef enum {
   Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
   Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)
   Q_GET_ARRAY_EL, // pop idx, pop array-base; push array[idx] as unboxed int (guarded)
+  Q_GET_VAR,    // push a global-fn reference for atom `imm` (callable; consumed by Q_CALL)
+  Q_CALL,       // pop `slot` int args + the fn ref; call it (side-effect); push void result
   Q_DROP,       // pop
   Q_DUP,        // push top
   Q_NOP         // label / no-op
