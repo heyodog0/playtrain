@@ -29,6 +29,11 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   int32_t exit_pcs[32]; int nx = 0;
   int n = 0;  // ir length
   int ind_slot = -1, ind_lt = 0;  // loop-induction slot + whether its guard is strict `<`
+  // store-to-load forwarding for OBJECT temps (e.g. quickjs caching grid[x] in a local for
+  // the `.length` bound): storing an object-base value to a slot records the value; a later
+  // load returns it directly (SSA copy-prop) — the slot never touches memory (QK_SKIP).
+  static StkEnt fwd[256]; char fwd_ok[256] = {0}, mem_ref[256] = {0};
+#define ISOBJ(i) (stk[i].is_func || stk[i].is_elem)
 
 #define EMIT0(o)          (ir[n] = (IRInsn){.op=o}, n++)
 #define FAIL()            do { return 1; } while (0)
@@ -60,21 +65,41 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
     const TraceOp *t = &ops[i];
     switch (t->op) {
       case Q_GET_LOC: {
-        ROOM(1); ir[n] = (IRInsn){.op = IR_LOAD_LOC, .slot = t->slot}; int r = n++; PUSHV(r);
+        if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) { ROOM(0); stk[sp++] = fwd[t->slot]; }  // forwarded object temp
+        else { ROOM(1); ir[n] = (IRInsn){.op = IR_LOAD_LOC, .slot = t->slot}; int r = n++; PUSHV(r);
+               if (t->slot >= 0 && t->slot < 256) mem_ref[t->slot] = 1; }
       } break;
       case Q_PUSH_INT: {
         ROOM(1); ir[n] = (IRInsn){.op = IR_CONST, .imm = t->imm}; int r = n++; PUSHV(r);
       } break;
       case Q_PUT_LOC: {
-        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
-        ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
+        NEED(1);
+        if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {  // forward object temp
+          if (mem_ref[t->slot]) FAIL();
+          fwd[t->slot] = stk[--sp]; fwd_ok[t->slot] = 1;
+          if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
+        } else {
+          MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
+          ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
+          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+        }
       } break;
       case Q_SET_LOC: {  // store top, leave it on the stack (set_loc/set_arg)
-        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[sp-1].ref;
-        ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
+        NEED(1);
+        if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {
+          if (mem_ref[t->slot]) FAIL();
+          fwd[t->slot] = stk[sp-1]; fwd_ok[t->slot] = 1;
+          if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
+        } else {
+          MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[sp-1].ref;
+          ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
+          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+        }
       } break;
       case Q_ADD_LOC: {  // locals[slot] += pop
-        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
+        NEED(1); if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) FAIL();  // can't += an object temp
+        if (t->slot >= 0 && t->slot < 256) mem_ref[t->slot] = 1;
+        MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
         // Safe loop increment: induction slot `+= 1` under a strict `i < n` guard can't
         // overflow (i+1 <= n <= INT_MAX) -> emit guard-free so it may follow a call.
         int safe = (t->slot == ind_slot && ind_lt && ir[a].op == IR_CONST && ir[a].imm == 1);

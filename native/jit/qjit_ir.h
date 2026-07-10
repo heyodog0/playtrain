@@ -147,7 +147,9 @@ typedef enum {
 // Per-slot marshaling kind (fills QjitTrace.live_kind): how the entry code reads the
 // frame slot into L[]. QK_INT = int payload (guard tag==INT). QK_ARRAY = a fast array
 // (guard tag==OBJECT && class==ARRAY && fast_array; store JSObject* in L[]).
-enum { QK_INT = 0, QK_ARRAY = 1 };
+// QK_SKIP: a purely trace-internal slot (an object temp resolved by store-to-load
+// forwarding — never a real IR load/store). Not marshaled at entry, not written back.
+enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2 };
 
 typedef struct {
   QOp op;

@@ -12,7 +12,7 @@ function getGameState() { return { score: acc | 0, lives: 0, gameState: 'PLAYING
 function countG() {
   var c = 0;
   for (var x = 0; x < 12; x++) {
-    for (var y = 0; y < 16; y++) {
+    for (var y = 0; y < grid[x].length; y++) {
       if (grid[x][y] === 'G') { c = c + 1; }
     }
   }
