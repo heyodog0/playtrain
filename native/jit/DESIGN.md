@@ -61,6 +61,21 @@ QuickJS interpreter (tier 0, always correct)
 `JS_CallInternal`, at a loop back-edge whose anchor has a compiled trace, jump into the native trace;
 it runs until a side-exit returns control (with a PC) to the interpreter.
 
+## IR-builder notes — real quickjs-ng bytecode is OPTIMIZED (grounded from handlers)
+The peephole optimizer emits fused ops, not textbook get_loc/add/put_loc. Exact semantics
+(from quickjs.c handlers) the int IR-builder must model:
+- locals in `var_buf[idx]`, args in `arg_buf[idx]` (frame layout matters for marshaling).
+- `add_loc idx` (1-byte operand): `var_buf[idx] += pop()` — fused local add.
+- `get_loc_check idx` / `put_loc_check idx` (2-byte): var_buf load/store + TDZ check
+  (`JS_IsUninitialized`); in a hot loop always initialized → compile as load/store + a
+  one-time entry guard (or ignore for int).
+- `get_arg/put_arg/set_arg idx` (2-byte): arg_buf load / store(pop) / store(peek, no pop).
+- `push_const8 idx` (1-byte): push `b->cpool[idx]` (read its int value at build time).
+- `push_minus1..push_7`: push immediate int. `post_inc`: int fast path (else float).
+- CORRECTNESS: QuickJS `add/sub/mul` promote int→float on **overflow** — the int trace MUST
+  guard overflow (MIR_ADDO/SUBO/MULO → side-exit) to match. Exits at stack-empty points
+  (loop condition) resume with empty operand stack → only var_buf/arg_buf need restoring.
+
 ## Scope discipline
 Trace only hot loops; support a bytecode subset; abort/deopt on everything else. Correctness is the
 interpreter + gate; the JIT only ever makes correct code faster or safely bails. Base = quickjs-ng
