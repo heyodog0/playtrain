@@ -92,6 +92,8 @@ typedef enum {
   // load; the value load reuses IR_ARRAY_EL_INT / the new IR_ARRAY_EL_F64.
   IR_SHAPE_GUARD,   // if *(void**)(r(a) + obj_shape_off) != (JSShape*)imm  -> DEOPT   [a = obj]
   IR_LOAD_FIELD_BASE, // r = *(JSProperty**)(r(a) + obj_prop_off)                       [a = obj]
+  IR_ELEM_OBJ_ANY,  // element as a general object: elem = base + idx*size; guard tag==OBJECT
+                    //   (else DEOPT); r = *(JSObject**)elem.  [a = values, b = idx] — for arr[i].field
   IR_ARRAY_EL_F64,  // float element/field: guard tag==FLOAT64 (else DEOPT); r(f64) = *(double*)elem
                     //   [a = base(values/prop), b = idx] — the f64 twin of IR_ARRAY_EL_INT
   IR_LOOP        // jump to trace top (loop back-edge)
@@ -107,6 +109,7 @@ typedef struct {
   int jsvalue_tag_off;  // offsetof(JSValue, tag) (8)
   int tag_int;          // JS_TAG_INT (0)
   int tag_float64;      // JS_TAG_FLOAT64 (used by IR_ARRAY_EL_F64 / field float reads)
+  int tag_object;       // JS_TAG_OBJECT (used by IR_ELEM_OBJ_ANY)
   int obj_shape_off;    // offsetof(JSObject, shape)   (property-access shape guard)
   int obj_prop_off;     // offsetof(JSObject, prop)    (JSProperty* base; prop[i] is 16B)
 } QjitLayout;
@@ -197,6 +200,8 @@ typedef enum {
   Q_FIELD_LOC,  // fused `localObj.field` read, resolved at compile time: load the object in
                 // `slot` (marshaled QK_OBJECT), guard its shape == `imm` (JSShape*), then read
                 // property index `foffset` as `ftag` (JS_TAG_INT -> int, JS_TAG_FLOAT64 -> float).
+  Q_FIELD_ELEM, // fused `arr[i].field`: consumes the deferred array element on the stack,
+                // materializes it as an object, guards shape==`imm`, reads property `foffset`/`ftag`.
   Q_DROP,       // pop
   Q_DUP,        // push top
   Q_NOP         // label / no-op

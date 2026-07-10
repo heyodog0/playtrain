@@ -59,7 +59,7 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       if (ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES ||
           ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT ||
           ir[i].op == IR_ARRAY_EL_F64 || ir[i].op == IR_SHAPE_GUARD ||
-          ir[i].op == IR_LOAD_FIELD_BASE)
+          ir[i].op == IR_LOAD_FIELD_BASE || ir[i].op == IR_ELEM_OBJ_ANY)
         return NULL;
   // a trace with IR_CALL / IR_STREQ_EL needs its registered host helper; fail closed.
   int has_call = 0, has_streq = 0, has_gvar = 0, has_elemobj = 0;
@@ -123,7 +123,7 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
         ir[i].op == IR_ISZERO ||
         ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT ||
         ir[i].op == IR_STREQ_EL || ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ ||
-        ir[i].op == IR_LOAD_FIELD_BASE) {
+        ir[i].op == IR_LOAD_FIELD_BASE || ir[i].op == IR_ELEM_OBJ_ANY) {
       char rn[24]; snprintf(rn, sizeof rn, "v%d", i);
       reg[i] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn);
     }
@@ -335,6 +335,18 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_LOAD_FIELD_BASE: // r = *(JSProperty**)(obj + obj_prop_off)   (prop[] base)
         APP(MIR_new_insn(ctx, MIR_MOV, R(i),
               MIR_new_mem_op(ctx, MIR_T_I64, qjit_layout.obj_prop_off, reg[in->a], 0, 1)));
+        break;
+      case IR_ELEM_OBJ_ANY: // elem = values + idx*size; guard tag==OBJECT; r = *(JSObject**)elem
+        APP(MIR_new_insn(ctx, MIR_MUL, MIR_new_reg_op(ctx, h0), R(in->b),
+              MIR_new_int_op(ctx, qjit_layout.jsvalue_size)));                 // h0 = idx*size
+        APP(MIR_new_insn(ctx, MIR_ADD, MIR_new_reg_op(ctx, h1), R(in->a),
+              MIR_new_reg_op(ctx, h0)));                                       // h1 = values + h0
+        APP(MIR_new_insn(ctx, MIR_MOV, MIR_new_reg_op(ctx, h0),
+              MIR_new_mem_op(ctx, MIR_T_I32, qjit_layout.jsvalue_tag_off, h1, 0, 1)));  // h0 = tag
+        APP(MIR_new_insn(ctx, MIR_BNE, MIR_new_label_op(ctx, deopt),
+              MIR_new_reg_op(ctx, h0), MIR_new_int_op(ctx, qjit_layout.tag_object)));   // tag!=OBJECT -> deopt
+        APP(MIR_new_insn(ctx, MIR_MOV, R(i),
+              MIR_new_mem_op(ctx, MIR_T_I64, 0, h1, 0, 1)));                   // r = elem.u.ptr (JSObject*)
         break;
       case IR_STREQ_EL: { // elem = values + idx*size; r = qjit_streq_atom(&elem, atom)
         APP(MIR_new_insn(ctx, MIR_MUL, MIR_new_reg_op(ctx, h0), R(in->b),

@@ -316,6 +316,18 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         if (t->ftag) { ir[n] = (IRInsn){.op = IR_ARRAY_EL_F64, .a = base, .b = idx}; int r = n++; PUSHF(r); }
         else         { ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = base, .b = idx}; int r = n++; PUSHV(r); }
       } break;
+      case Q_FIELD_ELEM: {  // fused arr[i].field: consume the deferred element, read a field of it
+        NEED(1);
+        if (!stk[sp-1].is_elem) FAIL();
+        int vals = stk[sp-1].e_values, idx = stk[sp-1].e_idx; sp--;
+        ROOM(5);
+        ir[n] = (IRInsn){.op = IR_ELEM_OBJ_ANY, .a = vals, .b = idx}; int obj = n++;
+        ir[n++] = (IRInsn){.op = IR_SHAPE_GUARD, .a = obj, .imm = t->imm};
+        ir[n] = (IRInsn){.op = IR_LOAD_FIELD_BASE, .a = obj}; int base = n++;
+        ir[n] = (IRInsn){.op = IR_CONST, .imm = t->foffset}; int fidx = n++;
+        if (t->ftag) { ir[n] = (IRInsn){.op = IR_ARRAY_EL_F64, .a = base, .b = fidx}; int r = n++; PUSHF(r); }
+        else         { ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = base, .b = fidx}; int r = n++; PUSHV(r); }
+      } break;
       case Q_DROP: { NEED(1); sp--; } break;
       case Q_DUP:  { NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); ROOM(0); stk[sp] = stk[sp-1]; sp++; } break;
       case Q_NOP:  break;
@@ -345,6 +357,7 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
           ir[i].op == IR_NEG || ir[i].op == IR_MOD ||
           ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT ||
           ir[i].op == IR_ARRAY_EL_F64 || ir[i].op == IR_SHAPE_GUARD ||
+          ir[i].op == IR_ELEM_OBJ_ANY ||
           ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) FAIL();
 
   if (out_exit_pcs) for (int i = 0; i < nx; i++) out_exit_pcs[i] = exit_pcs[i];
