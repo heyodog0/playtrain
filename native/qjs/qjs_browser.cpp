@@ -11,12 +11,15 @@
 #include "quickjs.h"
 #include "../runtime/p5.hpp"
 
-static const int OBS = 64;
+// Browser renders at the game's NATIVE logical resolution (crisp, full-detail for
+// humans) — not the 64x64 agent obs. The game logic is identical either way
+// (proven native==wasm), so the human plays a faithful high-res view of the same
+// deterministic game the agent trains on at 64x64.
 static JSRuntime* rt = nullptr;
 static JSContext* ctx = nullptr;
 static JSValue jsReset, jsDraw, jsState;
 static int frameCount = 0;
-static uint8_t obsbuf[OBS * OBS * 3];
+static uint8_t obsbuf[1600 * 1600 * 3];  // large enough for any logical canvas
 static bool keydown[256];
 
 static double argd(JSContext* c, JSValueConst v) { double d = 0; JS_ToFloat64(c, &d, v); return d; }
@@ -81,7 +84,8 @@ static void call0(JSValue fn){ JSValue r=JS_Call(ctx,fn,JS_UNDEFINED,0,nullptr);
 
 extern "C" {
 
-EMSCRIPTEN_KEEPALIVE int qb_obs_dim() { return OBS; }
+EMSCRIPTEN_KEEPALIVE int qb_width() { return p5::width(); }
+EMSCRIPTEN_KEEPALIVE int qb_height() { return p5::height(); }
 EMSCRIPTEN_KEEPALIVE uint8_t* qb_pixels() { return obsbuf; }
 
 EMSCRIPTEN_KEEPALIVE int qb_init(const char* src) {
@@ -113,7 +117,7 @@ EMSCRIPTEN_KEEPALIVE int qb_init(const char* src) {
 
   auto ev = [&](const char* code, const char* fn) { JSValue r = JS_Eval(ctx, code, strlen(code), fn, JS_EVAL_TYPE_GLOBAL);
     int bad = JS_IsException(r); JS_FreeValue(ctx, r); return bad ? -1 : 0; };
-  p5::setRasterRes(OBS);
+  // no setRasterRes -> render at the game's logical (native) resolution
   if (ev(PRELUDE, "<prelude>")) return -1;
   if (ev(src, "<game>")) return -2;
   JSValue gg = JS_GetGlobalObject(ctx);
