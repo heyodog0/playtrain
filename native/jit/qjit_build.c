@@ -43,6 +43,14 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
     int _r = n++; stk[si] = (StkEnt){0}; stk[si].ref = _r; } } while (0)
 // not a plain int value (after MATINT, is_elem is resolved to a value)
 #define NOTVAL(i)         (stk[i].is_cmp || stk[i].is_func || stk[i].is_void || stk[i].is_atom || stk[i].is_elem)
+// Materialize stack slot `si` into a fast-array JSObject* base, writing its IR ref to
+// `out`. Sources: a global var (is_func -> IR_LOAD_GVAR), a deferred element (is_elem ->
+// IR_ELEM_OBJ, for nested a[x][y]), or a plain local/arg array load (existing QK_ARRAY).
+#define MATOBJ(si, out) do { \
+    if (stk[si].is_func) { if (n+1>max_ir) FAIL(); ir[n]=(IRInsn){.op=IR_LOAD_GVAR,.imm=stk[si].atom}; (out)=n++; } \
+    else if (stk[si].is_elem) { if (n+1>max_ir) FAIL(); ir[n]=(IRInsn){.op=IR_ELEM_OBJ,.a=stk[si].e_values,.b=stk[si].e_idx}; (out)=n++; } \
+    else if (!NOTVAL(si) && ir[stk[si].ref].op==IR_LOAD_LOC) { if(out_slot_kind) out_slot_kind[ir[stk[si].ref].slot]=QK_ARRAY; (out)=stk[si].ref; } \
+    else FAIL(); } while (0)
 #define PUSHV(r)          do { stk[sp] = (StkEnt){0}; stk[sp].ref = (r); sp++; } while (0)
 
   // helper: emit a value-producing insn, return its ir index
@@ -111,17 +119,19 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ROOM(1); EMIT0(IR_LOOP);
       } break;
       case Q_GET_ARRAY_EL: {  // arr[idx] -> DEFERRED element (consumer materializes it)
-        NEED(2); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); if (NOTVAL(sp-2)) FAIL();
-        int idx = stk[--sp].ref, arr = stk[--sp].ref;
-        // increment 1/2: the array base must come DIRECTLY from a local/arg load (no
-        // nested arr[x][y] yet), and its slot is marshaled as a JSObject* (QK_ARRAY).
-        if (ir[arr].op != IR_LOAD_LOC) FAIL();
-        if (out_slot_kind) out_slot_kind[ir[arr].slot] = QK_ARRAY;
+        NEED(2); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL();
+        int base; MATOBJ(sp-2, base);                 // array base objptr (global/elem/local)
+        int idx = stk[sp-1].ref; sp -= 2;
         ROOM(3);
-        ir[n] = (IRInsn){.op = IR_ARRAY_COUNT, .a = arr}; int cnt = n++;
+        ir[n] = (IRInsn){.op = IR_ARRAY_COUNT, .a = base}; int cnt = n++;
         ir[n++] = (IRInsn){.op = IR_GUARD_BOUNDS, .a = idx, .b = cnt};
-        ir[n] = (IRInsn){.op = IR_ARRAY_VALUES, .a = arr}; int vals = n++;
+        ir[n] = (IRInsn){.op = IR_ARRAY_VALUES, .a = base}; int vals = n++;
         stk[sp] = (StkEnt){0}; stk[sp].is_elem = 1; stk[sp].e_values = vals; stk[sp].e_idx = idx; sp++;
+      } break;
+      case Q_ARRAY_LENGTH: {  // array.length -> fast-array count (as int)
+        NEED(1); int base; MATOBJ(sp-1, base); sp -= 1;
+        ROOM(1); ir[n] = (IRInsn){.op = IR_ARRAY_COUNT, .a = base}; int cnt = n++;
+        PUSHV(cnt);
       } break;
       case Q_PUSH_ATOM: {  // interned string atom; only meaningful as a strict_eq operand
         ROOM(0); stk[sp] = (StkEnt){0}; stk[sp].is_atom = 1; stk[sp].atom = t->imm; sp++;
@@ -177,7 +187,8 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   if (first_call >= 0)
     for (int i = first_call + 1; i < n; i++)
       if (ir[i].op == IR_ADD || ir[i].op == IR_SUB || ir[i].op == IR_MUL ||
-          ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT) FAIL();
+          ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT ||
+          ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) FAIL();
 
   if (out_exit_pcs) for (int i = 0; i < nx; i++) out_exit_pcs[i] = exit_pcs[i];
   *ir_n = n; *n_exits = nx > 0 ? nx : 1;

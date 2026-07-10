@@ -17,6 +17,10 @@ static void *g_call_helper = NULL;
 void qjit_set_call_helper(void *fn) { g_call_helper = fn; }
 static void *g_streq_helper = NULL;
 void qjit_set_streq_helper(void *fn) { g_streq_helper = fn; }
+static void *g_gvar_helper = NULL;
+void qjit_set_gvar_helper(void *fn) { g_gvar_helper = fn; }
+static void *g_elem_array_helper = NULL;
+void qjit_set_elem_array_helper(void *fn) { g_elem_array_helper = fn; }
 
 void qjit_ir_init(void) {
   if (g_ctx) return;
@@ -45,13 +49,17 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
           ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT)
         return NULL;
   // a trace with IR_CALL / IR_STREQ_EL needs its registered host helper; fail closed.
-  int has_call = 0, has_streq = 0;
+  int has_call = 0, has_streq = 0, has_gvar = 0, has_elemobj = 0;
   for (int i = 0; i < n; i++) {
     if (ir[i].op == IR_CALL) has_call = 1;
     if (ir[i].op == IR_STREQ_EL) has_streq = 1;
+    if (ir[i].op == IR_LOAD_GVAR) has_gvar = 1;
+    if (ir[i].op == IR_ELEM_OBJ) has_elemobj = 1;
   }
   if (has_call && !g_call_helper) return NULL;
   if (has_streq && !g_streq_helper) return NULL;
+  if (has_gvar && !g_gvar_helper) return NULL;
+  if (has_elemobj && !g_elem_array_helper) return NULL;
 
   qjit_ir_init();
   MIR_context_t ctx = g_ctx;
@@ -71,7 +79,7 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
     if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_CONST || ir[i].op == IR_ADD ||
         ir[i].op == IR_SUB || ir[i].op == IR_MUL || ir[i].op == IR_ADD_SAFE ||
         ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT ||
-        ir[i].op == IR_STREQ_EL) {
+        ir[i].op == IR_STREQ_EL || ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) {
       char rn[24]; snprintf(rn, sizeof rn, "v%d", i);
       reg[i] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn);
     }
@@ -115,6 +123,18 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
     streq_proto = MIR_new_proto(ctx, "qjit_streq_p", 1, &rt, 2, MIR_T_P, "elem", MIR_T_I64, "atom");
     streq_import = MIR_new_import(ctx, "qjit_streq_atom");
   }
+  // IR_LOAD_GVAR: int64 qjit_gvar_array(int64 atom); IR_ELEM_OBJ: int64 qjit_elem_array(void* addr)
+  MIR_item_t gvar_proto = NULL, gvar_import = NULL, elem_proto = NULL, elem_import = NULL;
+  if (has_gvar) {
+    MIR_type_t rt = MIR_T_I64;
+    gvar_proto = MIR_new_proto(ctx, "qjit_gvar_p", 1, &rt, 1, MIR_T_I64, "atom");
+    gvar_import = MIR_new_import(ctx, "qjit_gvar_array");
+  }
+  if (has_elemobj) {
+    MIR_type_t rt = MIR_T_I64;
+    elem_proto = MIR_new_proto(ctx, "qjit_elemobj_p", 1, &rt, 1, MIR_T_P, "addr");
+    elem_import = MIR_new_import(ctx, "qjit_elem_array");
+  }
 
   MIR_label_t *exit_lab = calloc(n_exits, sizeof(MIR_label_t));   // control-flow exits (flush)
   for (int e = 0; e < n_exits; e++) exit_lab[e] = MIR_new_label(ctx);
@@ -143,9 +163,11 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   for (int i = 0; hoist && i < n; i++) {
     switch (ir[i].op) {
       case IR_CONST:        inv[i] = 1; break;
+      case IR_LOAD_GVAR:    inv[i] = 1; break;   // global resolved once (loop-invariant)
       case IR_LOAD_LOC:     inv[i] = slot_inv[ir[i].slot]; break;
       case IR_ARRAY_COUNT:
       case IR_ARRAY_VALUES: inv[i] = inv[ir[i].a]; break;
+      case IR_ELEM_OBJ:     inv[i] = inv[ir[i].a] && inv[ir[i].b]; break;  // e.g. grid[x] in inner loop
       default:              inv[i] = 0; break;   // arith/element/guard/store/loop: in body
     }
   }
@@ -221,6 +243,19 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_GUARD_TRUE: // if r(a) == 0 side-exit (flush + resume) — for if_false on a bool
         APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, exit_lab[in->exit_id]),
               R(in->a), MIR_new_int_op(ctx, 0))); break;
+      case IR_LOAD_GVAR:  // r = qjit_gvar_array(atom); if r==0 deopt (not a fast array)
+        APP(MIR_new_call_insn(ctx, 4, MIR_new_ref_op(ctx, gvar_proto), MIR_new_ref_op(ctx, gvar_import),
+              R(i), MIR_new_int_op(ctx, in->imm)));
+        APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, deopt), R(i), MIR_new_int_op(ctx, 0)));
+        break;
+      case IR_ELEM_OBJ:   // addr = values + idx*size; r = qjit_elem_array(addr); if r==0 deopt
+        APP(MIR_new_insn(ctx, MIR_MUL, MIR_new_reg_op(ctx, h0), R(in->b),
+              MIR_new_int_op(ctx, qjit_layout.jsvalue_size)));
+        APP(MIR_new_insn(ctx, MIR_ADD, MIR_new_reg_op(ctx, h1), R(in->a), MIR_new_reg_op(ctx, h0)));
+        APP(MIR_new_call_insn(ctx, 4, MIR_new_ref_op(ctx, elem_proto), MIR_new_ref_op(ctx, elem_import),
+              R(i), MIR_new_reg_op(ctx, h1)));
+        APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, deopt), R(i), MIR_new_int_op(ctx, 0)));
+        break;
       case IR_CALL: {   // fill qjit_argbuf with boxed-int args, call helper(atom, argc, &argbuf)
         APP(MIR_new_insn(ctx, MIR_MOV, MIR_new_reg_op(ctx, cargv),
               MIR_new_int_op(ctx, (int64_t)(intptr_t)qjit_argbuf)));          // cargv = &qjit_argbuf
@@ -253,8 +288,10 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   MIR_finish_func(ctx);
   MIR_finish_module(ctx);
   MIR_load_module(ctx, m);
-  if (has_call)  MIR_load_external(ctx, "qjit_call_global", g_call_helper);  // bind imports
-  if (has_streq) MIR_load_external(ctx, "qjit_streq_atom", g_streq_helper);
+  if (has_call)    MIR_load_external(ctx, "qjit_call_global", g_call_helper);  // bind imports
+  if (has_streq)   MIR_load_external(ctx, "qjit_streq_atom", g_streq_helper);
+  if (has_gvar)    MIR_load_external(ctx, "qjit_gvar_array", g_gvar_helper);
+  if (has_elemobj) MIR_load_external(ctx, "qjit_elem_array", g_elem_array_helper);
   MIR_link(ctx, MIR_set_gen_interface, NULL);
   void *code = MIR_gen(ctx, func);
   free(reg); free(exit_lab);

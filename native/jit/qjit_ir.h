@@ -40,6 +40,11 @@ typedef enum {
                     //   type). imm = atom.  [a = values, b = idx]  (no deopt; a pure call)
   IR_GUARD_TRUE,    // if r(a) == 0 side-exit exit_id (for `if_false` on a boolean value,
                     //   e.g. the strict_eq result). control-flow exit (flush), not a deopt.
+  // --- nested/global arrays (increment 3) ---
+  IR_LOAD_GVAR,     // r = qjit_gvar_array(atom); if r==0 DEOPT. (a global that is a fast
+                    //   array, resolved once — loop-invariant, hoisted.)  imm = atom
+  IR_ELEM_OBJ,      // r = qjit_elem_array(values + idx*size); if r==0 DEOPT. (materialize an
+                    //   array ELEMENT as a fast-array JSObject* — for nested a[x][y].) [a,b]
   // --- call (increment 4: native global fn, int args, result dropped) ---
   IR_CALL,          // call global fn named by atom (imm) with argc int args (r(argv[k]));
                     // side-effect only, result is freed. imm=atom, argc, argv[] = arg refs.
@@ -83,6 +88,13 @@ void qjit_set_call_helper(void *fn);
 // IR_STREQ_EL fails to compile (stays interpreted) if no helper is registered.
 void qjit_set_streq_helper(void *fn);
 
+// Helpers for nested/global arrays (bound to IR_LOAD_GVAR / IR_ELEM_OBJ). Each returns a
+// fast-array JSObject* or 0 (→ the trace deopts). Signatures:
+//   int64_t (*gvar)(int64_t atom)    // global named `atom` if it is a fast array, else 0
+//   int64_t (*elem)(void *elem_addr) // *elem_addr if it is a fast array object, else 0
+void qjit_set_gvar_helper(void *fn);
+void qjit_set_elem_array_helper(void *fn);
+
 // Native trace signature: run the loop over `locals`, return the exit taken:
 //   >= 0            -> control-flow exit id (locals flushed; resume at that exit's PC)
 //   QJIT_DEOPT (-1) -> overflow/type deopt (locals = iteration-START; resume at header,
@@ -123,7 +135,9 @@ typedef enum {
                   // consumer: as int for arithmetic, or fused into a strict_eq)
   Q_PUSH_ATOM,  // push an interned-atom reference (imm = atom); consumed by strict_eq
   Q_STREQ,      // pop 2 (a deferred element + an atom); push (element === atom) as 0/1
-  Q_GET_VAR,    // push a global-fn reference for atom `imm` (callable; consumed by Q_CALL)
+  Q_ARRAY_LENGTH, // pop an array base (global/element/local); push its length (fast-array count)
+  Q_GET_VAR,    // push a global reference for atom `imm`: a fn (consumed by Q_CALL) OR a
+                // global array (consumed by Q_GET_ARRAY_EL / Q_ARRAY_LENGTH)
   Q_CALL,       // pop `slot` int args + the fn ref; call it (side-effect); push void result
   Q_DROP,       // pop
   Q_DUP,        // push top
