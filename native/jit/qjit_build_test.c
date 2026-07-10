@@ -192,6 +192,82 @@ int main(void) {
     check("abort: call result not dropped (unbalanced)", run_trace(t, 9, L) == -1);
   }
 
+  // ===== NUMERIC ISA builder tests (milestone 2) =====
+  // M2-A bitwise: while(i<n){ s = (s << 1) ^ i; i += 1 }  (int32 shift + xor)
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=0}, {Q_PUSH_INT,.imm=1}, {Q_SHL},   // s << 1
+      {Q_GET_LOC,.slot=1}, {Q_XOR},                        // ^ i
+      {Q_PUT_LOC,.slot=0},
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {12345, 0, 200};
+    int e = run_trace(t, 13, L);
+    int32_t rs = 12345; for (int32_t i = 0; i < 200; i++) rs = (int32_t)(((uint32_t)rs) << 1) ^ i;
+    check("m2 bitwise (shl^xor): exit 0", e == 0);
+    check("m2 bitwise: s matches int32 ref", (int32_t)L[0] == rs);
+  }
+  // M2-B mod + and + or + sar:  while(i<n){ a = a | (i & 3); b = b + (i % 5); c = i >> 1; i+=1 }
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=3}, {Q_GET_LOC,.slot=4}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},  // i<n
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=3}, {Q_PUSH_INT,.imm=3}, {Q_AND}, {Q_OR}, {Q_PUT_LOC,.slot=0}, // a |= i&3
+      {Q_GET_LOC,.slot=3}, {Q_PUSH_INT,.imm=5}, {Q_MOD}, {Q_ADD_LOC,.slot=1},       // b += i%5
+      {Q_GET_LOC,.slot=3}, {Q_PUSH_INT,.imm=1}, {Q_SAR}, {Q_PUT_LOC,.slot=2},        // c = i>>1
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=3},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[5] = {0, 0, 0, 0, 300};   // a,b,c,i,n
+    int e = run_trace(t, 21, L);
+    int32_t a=0,b=0,c=0; for (int32_t i=0;i<300;i++){ a = a | (i & 3); b += i % 5; c = i >> 1; }
+    check("m2 and/or/mod/sar: exit 0", e == 0);
+    check("m2: a (|= i&3) matches", (int32_t)L[0] == a);
+    check("m2: b (+= i%5) matches",  (int32_t)L[1] == b);
+    check("m2: c (= i>>1) matches",  (int32_t)L[2] == c);
+  }
+  // M2-C negate (clean, operand never 0/INT32_MIN): while(i<n){ s = s + (-i); i+=1 } i from 1
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=1}, {Q_NEG}, {Q_ADD_LOC,.slot=0},   // s += -i
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 1, 500};   // s, i(=1), n
+    int e = run_trace(t, 10, L);
+    int32_t rs=0; for (int32_t i=1;i<500;i++) rs += -i;
+    check("m2 neg (clean): exit 0", e == 0);
+    check("m2 neg: s matches",  (int32_t)L[0] == rs);
+  }
+  // M2-D negate DEOPT on -0: i starts 0 -> first iter -i == -0 (a float) -> deopt, locals unchanged.
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=1}, {Q_NEG}, {Q_ADD_LOC,.slot=0},
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {77, 0, 500};   // s=77, i=0 -> neg(0) deopts
+    int e = run_trace(t, 10, L);   // valid trace, so -1 here == QJIT_DEOPT (not build abort)
+    check("m2 neg -0 -> deopt (exit<0)", e < 0);
+    check("m2 neg -0: locals unchanged (iteration start)", L[0] == 77 && L[1] == 0);
+  }
+  // M2-E bitwise on a float operand must ABORT (JS would ToInt32 it -> interpreter path).
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=0}, {Q_PUSH_F64,.imm=0}, {Q_AND}, {Q_PUT_LOC,.slot=0},   // s & <float> -> abort
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    { double d = 2.5; memcpy(&t[5].imm, &d, 8); }
+    unsigned char ty[3] = {QK_INT, QK_INT, QK_INT};
+    int64_t L[3] = {0, 0, 10};
+    check("m2 bitwise-on-float aborts", run_trace_t(t, 11, L, ty) == -1);
+  }
+
   // ===== FLOAT builder tests (milestone 1) =====
   // Helpers to move doubles through the int64 `locals` and Q_PUSH_F64 imm.
   #define FB(d) ({ double _d = (d); int64_t _b; memcpy(&_b, &_d, 8); _b; })

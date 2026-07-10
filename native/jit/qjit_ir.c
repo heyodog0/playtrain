@@ -43,7 +43,7 @@ static int ir_is_fval(IROp op) {
   switch (op) {
     case IR_FLOAD_LOC: case IR_FCONST:
     case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
-    case IR_I2F: return 1;
+    case IR_I2F: case IR_FNEG: return 1;
     default: return 0;
   }
 }
@@ -116,6 +116,8 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       reg[i] = MIR_new_func_reg(ctx, func->u.func, MIR_T_D, rn);
     } else if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_CONST || ir[i].op == IR_ADD ||
         ir[i].op == IR_SUB || ir[i].op == IR_MUL || ir[i].op == IR_ADD_SAFE ||
+        ir[i].op == IR_AND || ir[i].op == IR_OR || ir[i].op == IR_XOR ||
+        ir[i].op == IR_SHL || ir[i].op == IR_SAR || ir[i].op == IR_NEG || ir[i].op == IR_MOD ||
         ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT ||
         ir[i].op == IR_STREQ_EL || ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) {
       char rn[24]; snprintf(rn, sizeof rn, "v%d", i);
@@ -350,6 +352,26 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
               MIR_new_int_op(ctx, in->argc),                                 // argc
               MIR_new_reg_op(ctx, cargv)));                                  // argv
       } break;
+      // --- numeric ISA (milestone 2): int32 bitwise / shifts / negate / mod ---
+      case IR_AND: APP(MIR_new_insn(ctx, MIR_ANDS, R(i), R(in->a), R(in->b))); break;
+      case IR_OR:  APP(MIR_new_insn(ctx, MIR_ORS,  R(i), R(in->a), R(in->b))); break;
+      case IR_XOR: APP(MIR_new_insn(ctx, MIR_XORS, R(i), R(in->a), R(in->b))); break;
+      case IR_SHL: // r = (i32)(a << (b & 31))   — mask the count, 32-bit shift (sign-extends)
+        APP(MIR_new_insn(ctx, MIR_ANDS, MIR_new_reg_op(ctx, h0), R(in->b), MIR_new_int_op(ctx, 31)));
+        APP(MIR_new_insn(ctx, MIR_LSHS, R(i), R(in->a), MIR_new_reg_op(ctx, h0))); break;
+      case IR_SAR: // r = (i32)(a >> (b & 31))   — arithmetic (signed) right shift
+        APP(MIR_new_insn(ctx, MIR_ANDS, MIR_new_reg_op(ctx, h0), R(in->b), MIR_new_int_op(ctx, 31)));
+        APP(MIR_new_insn(ctx, MIR_RSHS, R(i), R(in->a), MIR_new_reg_op(ctx, h0))); break;
+      case IR_NEG: // int negate: -0 and -(INT32_MIN) are floats in JS -> guard both, deopt.
+        APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, deopt), R(in->a), MIR_new_int_op(ctx, 0)));
+        APP(MIR_new_insn(ctx, MIR_BEQ, MIR_new_label_op(ctx, deopt), R(in->a), MIR_new_int_op(ctx, (int64_t)INT32_MIN)));
+        APP(MIR_new_insn(ctx, MIR_SUBS, R(i), MIR_new_int_op(ctx, 0), R(in->a))); break;
+      case IR_FNEG: // float negate: multiply by -1.0 (flips the sign bit, incl. 0.0 -> -0.0)
+        APP(MIR_new_insn(ctx, MIR_DMUL, R(i), R(in->a), MIR_new_double_op(ctx, -1.0))); break;
+      case IR_MOD: // int mod: interpreter bails (=> deopt) unless a>=0 && b>0; then a % b (int).
+        APP(MIR_new_insn(ctx, MIR_BLT, MIR_new_label_op(ctx, deopt), R(in->a), MIR_new_int_op(ctx, 0)));
+        APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, deopt), R(in->b), MIR_new_int_op(ctx, 0)));
+        APP(MIR_new_insn(ctx, MIR_MODS, R(i), R(in->a), R(in->b))); break;
       case IR_LOOP:      APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, top))); break;
     }
    }

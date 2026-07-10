@@ -70,6 +70,18 @@ typedef enum {
   // This split is REQUIRED because for floats !(a<b) != (a>=b) under NaN, so — unlike the
   // int guards — negation cannot be folded into the operator; it must stay explicit.
   IR_FGUARD_LT, IR_FGUARD_LE, IR_FGUARD_GT, IR_FGUARD_GE,
+  // --- numeric ISA extensions (milestone 2) — int32 bitwise, negate, int mod ---
+  // Bitwise ops match JS: operands are int32 (ToInt32), result is a sign-extended int32
+  // (MIR *S 32-bit variants). Emitted only when both operands are int (a float operand
+  // aborts the trace — the interpreter would ToInt32 it). Shifts mask the count to & 31.
+  IR_AND, IR_OR, IR_XOR,  // r = r(a) op r(b)                (ANDS/ORS/XORS)
+  IR_SHL,                 // r = (i32)(r(a) << (r(b) & 31))  (LSHS)
+  IR_SAR,                 // r = (i32)(r(a) >> (r(b) & 31))  (arithmetic, RSHS)
+  IR_NEG,                 // int negate: guard r(a)!=0 && r(a)!=INT32_MIN (else DEOPT — the
+                          //   interpreter makes -0.0 / -(INT32_MIN) a float); r = -r(a)
+  IR_FNEG,                // float negate: r = -r(a) (via DMUL by -1.0 → correct -0.0 sign)
+  IR_MOD,                 // int mod: guard r(a)>=0 && r(b)>0 (else DEOPT, matching the
+                          //   interpreter's slow-path bailout); r = r(a) % r(b) (MODS)
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
 
@@ -151,6 +163,10 @@ typedef enum {
   Q_PUSH_INT,   // push imm (int)                   (operand: imm)
   Q_PUSH_F64,   // push a float const               (operand: imm = the double's raw bits)
   Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b  (float if either operand is float)
+  Q_AND, Q_OR, Q_XOR, Q_SHL, Q_SAR,  // int32 bitwise (b=pop,a=pop); abort if an operand is float
+  Q_NOT,                // int32 bitwise-not (a=pop) -> a ^ -1
+  Q_NEG,                // unary negate (a=pop); int (guarded) or float
+  Q_MOD,                // int mod (b=pop,a=pop), guarded non-negative; float mod aborts
   Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)
   Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
   Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)

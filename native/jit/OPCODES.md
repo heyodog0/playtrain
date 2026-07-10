@@ -30,8 +30,8 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 |---|---|---|---|
 | 0 | **Branch-direction correctness** | a recorded branch may take OR fall through; the guard's exit must be the other way, at the right PC. Fuzzer-found bug; blocks trusting any conditional. | ✅ done |
 | 1 | **Float specialization** (f64 regs, `tag==FLOAT64` guard) | THE headline gap. V8=Smi+HeapNumber, LuaJIT=dual-number. Most game loops (positions, velocities, physics) are float. int-only can't touch them. | ✅ done |
-| 2 | Full **numeric ISA** on int+float | `div`/`mod`/`neg`/`inc`/`post_inc`/`pow`; bitwise `and/or/xor/shl/shr/sar/not` (int32). Mechanical once float exists — **next** (float path now in place). | ⬜ next |
-| 3 | **Property access** `get_field`/`put_field` via shape guard (our inline cache) | V8's crown jewel — real JS is property-access-dominated; games do `e.x`,`e.vy`,`grid.w`. Guard the object's JSShape, load/store at the cached property offset; deopt on shape change. | ⬜ |
+| 2 | Full **numeric ISA** on int+float | bitwise `and/or/xor/shl/sar/not` (int32), `neg`, int `mod`, `inc`/`dec`/`post_inc`/`post_dec`. **Deferred:** `div` + float `mod` (`js_number` → dynamic int-vs-float result, breaks monomorphic slots), `>>>` (`js_uint32` → float escape), `pow` (transcendental, needs `fm_pow` helper). | ✅ done¹ |
+| 3 | **Property access** `get_field`/`put_field` via shape guard (our inline cache) | V8's crown jewel — real JS is property-access-dominated; games do `e.x`,`e.vy`,`grid.w`. Guard the object's JSShape, load/store at the cached property offset; deopt on shape change. THE unlock for real games to fire. | ⬜ next |
 | 4 | **Array element write** `put_array_el` (+ element-kind sense) | grids/entity lists get mutated. Needs refcount (free old, incref new) — the correctness minefield; V8 has element-kinds, we guard fast_array + int/heap element. | ⬜ |
 | 5 | **Call inlining** (LuaJIT-style: record through JS calls) + method `this` | stop aborting recording on JS→JS calls; inline the callee into the trace with a target guard. Native calls already emitted. | ⬜ |
 | 6 | Loose `==`/`!=`, general `strict_eq`, misc hot ops | coercion via helper or abort. | ⬜ |
@@ -45,6 +45,10 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 - **float arith: add, sub, mul, div (f64, no overflow/deopt); int→float promotion (I2F) on mixed
   operands; float add_loc/put_loc. Entry guards tag==FLOAT64; writeback via `js_float64` (raw,
   matches the interpreter — no int normalization).**
+- **int32 bitwise/shift: and, or, xor, not (`^ -1`), shl (`<<`), sar (`>>`) — abort if an operand
+  is float (JS would ToInt32); shift counts masked `& 31`. int mod (`%`, guarded a>=0 && b>0 else
+  deopt). neg (int: deopt on `-0`/`INT32_MIN`; float: `× -1.0`). inc/dec/post_inc/post_dec decode
+  to dup/push/add (reusing the overflow-guarded int add + float promotion).**
 - compare: lt, lte, gt, gte (int **and float**; float guards carry a NEG flag so NaN resolves to
   the interpreter's `!(a<b)` direction — `!(a<b) != (a>=b)` under NaN, so negation is NOT folded);
   strict_eq (element === interned atom, via js_strict_eq helper)
@@ -58,6 +62,15 @@ bit-exact OFF==ON. Float fuzzer corpus (`node fuzz_jit.mjs 24 <dir> float`): 24 
 bit-exact, 19/24 fire. Unit tests: `qjit_fir_test` 21/21 (IR+codegen incl. NaN both polarities,
 mixed int/float, fail-closed type-mixed slot); `qjit_build_test` +10 float builder cases.
 Real games stay bit-exact but don't fire yet — their hot loops read object fields (milestone 3).
+
+### Numeric ISA — measured (milestone 2)
+¹ "done" = the mechanical int32 ops (bitwise/shift/neg/mod/inc-family). `div`, float `mod`, `>>>`,
+and `pow` are **deferred** (see table) — they produce dynamically-typed or transcendental results
+that don't fit the fixed-per-slot-type model; they abort → interpret → bit-exact (never wrong).
+`test_numops.js` (shl/xor/and/or/sar/mod/neg/inc hot loop) fires and is **~13× the interpreter**
+(5.7k→73k steps/s), bit-exact OFF==ON. Unit: `qjit_build_test` +11 cases (bitwise int32 ref,
+and/or/mod/sar, neg clean + `-0` deopt, bitwise-on-float abort). Int fuzzer corpus now emits
+bitwise/mod/neg forms: 24 programs × 4 seeds bit-exact, 24/24 fire.
 
 ## Invariant (unchanged, non-negotiable)
 Unsupported or uncertain → abort/deopt → interpreter → bit-exact. The JIT only ever makes a

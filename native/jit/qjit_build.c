@@ -160,6 +160,35 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
           ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHV(r);
         }
       } break;
+      case Q_AND: case Q_OR: case Q_XOR: case Q_SHL: case Q_SAR: case Q_MOD: {
+        // int32-only (JS ToInt32 both operands); a float operand aborts (interpreter path).
+        NEED(2);
+        if (stk[sp-1].is_float || stk[sp-2].is_float) FAIL();
+        MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+        int b = stk[--sp].ref, a = stk[--sp].ref;
+        IROp o = t->op == Q_AND ? IR_AND : t->op == Q_OR ? IR_OR : t->op == Q_XOR ? IR_XOR
+               : t->op == Q_SHL ? IR_SHL : t->op == Q_SAR ? IR_SAR : IR_MOD;
+        ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHV(r);
+      } break;
+      case Q_NOT: {   // ~a == a ^ -1 (int32)
+        NEED(1); if (stk[sp-1].is_float) FAIL();
+        MATINT(sp-1); if (NOTVAL(sp-1)) FAIL();
+        int a = stk[--sp].ref;
+        ROOM(2);
+        ir[n] = (IRInsn){.op = IR_CONST, .imm = -1}; int m1 = n++;
+        ir[n] = (IRInsn){.op = IR_XOR, .a = a, .b = m1}; int r = n++; PUSHV(r);
+      } break;
+      case Q_NEG: {   // unary minus: float -> IR_FNEG, int -> IR_NEG (guards -0 / INT32_MIN)
+        NEED(1);
+        if (stk[sp-1].is_float) {
+          int a = stk[--sp].ref;
+          ROOM(1); ir[n] = (IRInsn){.op = IR_FNEG, .a = a}; int r = n++; PUSHF(r);
+        } else {
+          MATINT(sp-1); if (NOTVAL(sp-1)) FAIL();
+          int a = stk[--sp].ref;
+          ROOM(1); ir[n] = (IRInsn){.op = IR_NEG, .a = a}; int r = n++; PUSHV(r);
+        }
+      } break;
       case Q_LT: case Q_LE: case Q_GT: case Q_GE: {
         NEED(2);
         if (stk[sp-1].is_float || stk[sp-2].is_float) {   // float compare (promote int side)
@@ -280,6 +309,7 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   if (first_call >= 0)
     for (int i = first_call + 1; i < n; i++)
       if (ir[i].op == IR_ADD || ir[i].op == IR_SUB || ir[i].op == IR_MUL ||
+          ir[i].op == IR_NEG || ir[i].op == IR_MOD ||
           ir[i].op == IR_GUARD_BOUNDS || ir[i].op == IR_ARRAY_EL_INT ||
           ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) FAIL();
 

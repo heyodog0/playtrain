@@ -32,13 +32,18 @@ function intExpr(r) {
 }
 
 function stmt(r) {
-  switch (r() * 6 | 0) {
+  switch (r() * 10 | 0) {
     case 0: return `s = s + ${intExpr(r)};`;
     case 1: return `s = s - ${intExpr(r)};`;
     case 2: return `s = s + ai[i];`;
     case 3: return `if (as[i] === '${ATOMS[r() * ATOMS.length | 0]}') c = c + 1;`;
     case 4: return `if (ai[i] < ${(r() * 5 | 0)}) c = c + 1;`;
-    default: return `s = s + i * ${(r() * 4 | 0) + 1};`;
+    // milestone-2 int32 ops (bitwise/mod/neg); results kept bounded by & so adds don't overflow
+    case 5: return `s = (s ^ (i & ${(r() * 15 | 0)})) & 0x3FFFFF;`;
+    case 6: return `c = c + (i % ${(r() * 7 | 0) + 1});`;
+    case 7: return `s = (s | (i >> ${(r() * 4 | 0) + 1})) & 0x3FFFFF;`;
+    case 8: return `s = ((s << ${(r() * 3 | 0) + 1}) ^ i) & 0x3FFFFF;`;
+    default: return `s = (s + (-((i % 5) + 1))) & 0x3FFFFF;`;   // neg (operand 1..5)
   }
 }
 
