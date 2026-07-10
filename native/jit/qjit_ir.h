@@ -33,8 +33,12 @@ typedef struct {
   int exit_id;    // GUARD
 } IRInsn;
 
-// Native trace signature: run the loop over `locals`, return the exit id taken.
+// Native trace signature: run the loop over `locals`, return the exit taken:
+//   >= 0            -> control-flow exit id (locals flushed; resume at that exit's PC)
+//   QJIT_DEOPT (-1) -> overflow/type deopt (locals = iteration-START; resume at header,
+//                      i.e. re-run this iteration in the interpreter)
 typedef int64_t (*qjit_trace_fn)(int64_t *locals);
+#define QJIT_DEOPT ((int64_t)-1)
 
 // Compile an IR trace to a native function via MIR. n_exits = number of distinct
 // exit ids used by guards. Returns NULL on failure. Not thread-safe (one ctx).

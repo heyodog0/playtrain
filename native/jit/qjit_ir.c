@@ -59,30 +59,41 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   for (int s = 0; s < n_slots; s++)
     if (used[s]) { char rn[24]; snprintf(rn, sizeof rn, "s%d", s); sreg[s] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn); }
 
-  MIR_label_t *exit_lab = calloc(n_exits, sizeof(MIR_label_t));
+  MIR_label_t *exit_lab = calloc(n_exits, sizeof(MIR_label_t));   // control-flow exits (flush)
   for (int e = 0; e < n_exits; e++) exit_lab[e] = MIR_new_label(ctx);
+  MIR_label_t deopt = MIR_new_label(ctx);                         // overflow/type deopt (no flush)
 
 #define APP(insn) MIR_append_insn(ctx, func, (insn))
 #define MEM(slot) MIR_new_mem_op(ctx, MIR_T_I64, (MIR_disp_t)((slot) * 8), Lp, 0, 1)
 #define R(i) MIR_new_reg_op(ctx, reg[i])
 #define SR(s) MIR_new_reg_op(ctx, sreg[s])
+#define FLUSH() do { for (int s = 0; s < n_slots; s++) if (used[s]) APP(MIR_new_insn(ctx, MIR_MOV, MEM(s), SR(s))); } while (0)
 
-  // prologue: load referenced slots from memory into their slot-regs
+  // prologue: load referenced slots from memory into slot-regs (once)
   for (int s = 0; s < n_slots; s++)
     if (used[s]) APP(MIR_new_insn(ctx, MIR_MOV, SR(s), MEM(s)));
 
   MIR_label_t top = MIR_new_label(ctx);
   APP(top);
+  // per-iteration sync: var_buf = iteration-START (slot-regs hold last committed values).
+  // Body mutates only slot-regs, so on an overflow deopt var_buf is the iteration start
+  // and the interpreter can safely re-run this iteration (handling int->float promotion).
+  FLUSH();
 
   for (int i = 0; i < n; i++) {
     const IRInsn *in = &ir[i];
     switch (in->op) {
-      case IR_LOAD_LOC:  APP(MIR_new_insn(ctx, MIR_MOV, R(i), SR(in->slot))); break;   // read slot-reg
-      case IR_STORE_LOC: APP(MIR_new_insn(ctx, MIR_MOV, SR(in->slot), R(in->a))); break; // write slot-reg
+      case IR_LOAD_LOC:  APP(MIR_new_insn(ctx, MIR_MOV, R(i), SR(in->slot))); break;
+      case IR_STORE_LOC: APP(MIR_new_insn(ctx, MIR_MOV, SR(in->slot), R(in->a))); break;
       case IR_CONST:     APP(MIR_new_insn(ctx, MIR_MOV, R(i), MIR_new_int_op(ctx, in->imm))); break;
-      case IR_ADD:       APP(MIR_new_insn(ctx, MIR_ADD, R(i), R(in->a), R(in->b))); break;
-      case IR_SUB:       APP(MIR_new_insn(ctx, MIR_SUB, R(i), R(in->a), R(in->b))); break;
-      case IR_MUL:       APP(MIR_new_insn(ctx, MIR_MUL, R(i), R(in->a), R(in->b))); break;
+      // int32 arithmetic with overflow -> deopt (matches QuickJS int->float promotion).
+      // The overflow op and its MIR_BO must be adjacent.
+      case IR_ADD: APP(MIR_new_insn(ctx, MIR_ADDOS, R(i), R(in->a), R(in->b)));
+                   APP(MIR_new_insn(ctx, MIR_BO, MIR_new_label_op(ctx, deopt))); break;
+      case IR_SUB: APP(MIR_new_insn(ctx, MIR_SUBOS, R(i), R(in->a), R(in->b)));
+                   APP(MIR_new_insn(ctx, MIR_BO, MIR_new_label_op(ctx, deopt))); break;
+      case IR_MUL: APP(MIR_new_insn(ctx, MIR_MULOS, R(i), R(in->a), R(in->b)));
+                   APP(MIR_new_insn(ctx, MIR_BO, MIR_new_label_op(ctx, deopt))); break;
       case IR_GUARD_LT:  APP(MIR_new_insn(ctx, MIR_BGE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_LE:  APP(MIR_new_insn(ctx, MIR_BGT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_GT:  APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
@@ -90,13 +101,10 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_LOOP:      APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, top))); break;
     }
   }
-  // side-exit blocks: flush slot-regs to memory (deopt state), then ret exit id
-  for (int e = 0; e < n_exits; e++) {
-    APP(exit_lab[e]);
-    for (int s = 0; s < n_slots; s++)
-      if (used[s]) APP(MIR_new_insn(ctx, MIR_MOV, MEM(s), SR(s)));
-    APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, e)));
-  }
+  // control-flow exits: flush slot-regs (commit values up to this point), ret exit id
+  for (int e = 0; e < n_exits; e++) { APP(exit_lab[e]); FLUSH(); APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, e))); }
+  // deopt exit: do NOT flush (var_buf already = iteration-start); ret QJIT_DEOPT (-1)
+  APP(deopt); APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, -1)));
   free(sreg); free(used);
 #undef APP
 #undef MEM

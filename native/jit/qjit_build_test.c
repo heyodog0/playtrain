@@ -97,6 +97,36 @@ int main(void) {
     check("two-exit: s==sum(0..50)", L[0] == rs);
     check("two-exit: i==51 at break", L[1] == 51);
   }
+  // ---- test 6: OVERFLOW deopt — while(i<n){ s = s*10; i += 1 } overflows int32 ----
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=100},
+      {Q_GET_LOC,.slot=0}, {Q_PUSH_INT,.imm=10}, {Q_MUL}, {Q_PUT_LOC,.slot=0},  // s = s*10
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},                                  // i += 1
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {1, 0, 100};                          // s=1, i=0, n=100
+    int64_t e = run_trace(t, 11, L);
+    // C ref: iterate while s*10 fits int32; s=1->10->...->1e9 (i=9), then 1e9*10 overflows
+    check("overflow: deopts (QJIT_DEOPT)", e == QJIT_DEOPT);
+    check("overflow: s==1e9 (iteration START, not committed)", L[0] == 1000000000);
+    check("overflow: i==9 (iteration START)", L[1] == 9);
+    check("overflow: n untouched", L[2] == 100);
+  }
+  // ---- test 7: no spurious deopt — a loop whose values stay in int32 runs clean ----
+  {
+    TraceOp t[] = {  // while(i<n){ s += i*i; i += 1 }  (n small so s*... fits)
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=9},
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=1}, {Q_MUL}, {Q_ADD_LOC,.slot=0},  // s += i*i
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 0, 1000};
+    int64_t e = run_trace(t, 11, L);
+    int32_t rs = 0; for (int32_t i = 0; i < 1000; i++) rs += i * i;  // int32 (matches, no overflow)
+    check("sum i*i (int32): clean exit 0", e == 0);
+    check("sum i*i (int32): s matches int32 ref", L[0] == rs);
+  }
   // ---- abort cases: builder must return -1 (stay interpreted), never miscompile ----
   {
     TraceOp bad1[] = {{Q_PUSH_INT,.imm=1}, {Q_IF_FALSE,.exit_pc=0}, {Q_GOTO_LOOP}}; // IF on non-compare
