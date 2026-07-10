@@ -12,3 +12,8 @@ frozenmath/src/
 frozenmath/*.o
 frozenmath/*.a
 frozenmath/*.bak
+jit/mir/
+jiteval/aot/
+jiteval/*_aot
+jiteval/hotloop_spec
+jit/*.o

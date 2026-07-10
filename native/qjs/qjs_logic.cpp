@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cstdint>
 #include <string>
+#include <chrono>
 #include "quickjs.h"
 #include "../runtime/jsmath.h"  // frozen transcendentals (fm_pow/fm_atan2, psin/pcos)
 
@@ -95,6 +96,23 @@ int main(int argc, char** argv) {
   // reset(seed)
   for (int i=0;i<256;i++) keys[i]=false; frameCount = 0; setFrame(0);
   reseed(seed); { JSValue a = JS_NewInt32(ctx, (int)seed); JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a); JS_FreeValue(ctx,r); JS_FreeValue(ctx,a);} setFrame(++frameCount); call0(jsDraw);
+  // bench mode: pure JS execution + no-op draw bindings (NO arg-read, NO p5 state,
+  // NO rasterizer). Isolates QuickJS interpreter + C-call machinery. seed arg reused
+  // as a mode flag: if 3rd CLI arg == "bench", nsteps is the 4th arg.
+  bool bench = (argc > 2 && std::string(argv[2]) == "bench");
+  if (bench) {
+    long steps = argc > 3 ? atol(argv[3]) : 300000;
+    auto t0 = std::chrono::steady_clock::now();
+    for (long i = 0; i < steps; i++) {
+      int a = (int)((i * 3 + 1) % 8);
+      for (int k=0;k<256;k++) keys[k]=false; for (int j=0;j<2;j++) if (HELD[a][j]>=0) keys[HELD[a][j]]=true;
+      setFrame(++frameCount); call0(jsDraw);
+    }
+    auto t1 = std::chrono::steady_clock::now();
+    double secs = std::chrono::duration<double>(t1 - t0).count();
+    printf("bench(logic): %ld steps in %.3fs = %.0f steps/sec\n", steps, secs, steps / secs);
+    return 0;
+  }
   printf("reset score=%.0f\n", score());
   for (long i = 0; i < nsteps; i++) {
     int a = (int)((i * 3 + 1) % 8);
