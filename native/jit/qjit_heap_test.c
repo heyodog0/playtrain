@@ -25,6 +25,10 @@ static void check(const char *name, int cond) {
 
 // test mirrors of the quickjs structs (only the fields codegen touches)
 typedef struct { int32_t int32; int32_t _pad; int64_t tag; } TJSValue;  // 16 bytes
+// stub streq helper: "element === atom" faked as (element.int32 == atom) for codegen testing
+static int64_t streq_stub(void *elem, int64_t atom) {
+  return ((TJSValue *)elem)->int32 == (int32_t)atom ? 1 : 0;
+}
 typedef struct { uint32_t count; uint32_t _pad; TJSValue *values; } TArray; // count@0, values@8
 #define TAG_INT 0
 #define TAG_OBJ (-1)
@@ -45,6 +49,7 @@ static int64_t run_ir(const IRInsn *ir, int n, int n_exits, int64_t *locals) {
 }
 
 int main(void) {
+  setvbuf(stdout, NULL, _IONBF, 0);   // unbuffered: last line before a hang is the culprit
   qjit_layout = (QjitLayout){ .arr_count_off = 0, .arr_values_off = 8,
                               .jsvalue_size = 16, .jsvalue_tag_off = 8, .tag_int = TAG_INT };
 
@@ -188,6 +193,30 @@ int main(void) {
     };
     qjit_trace_fn fn = qjit_ir_compile(ir, 9, 1);
     check("call, no helper: refuses to compile (NULL)", fn == NULL);
+  }
+
+  // ---- test 8: IR_STREQ_EL + IR_GUARD_TRUE — count matches, exit when one differs ----
+  // while(i<n){ if(a[i]===K) c+=1; i+=1 }  slots: c=0,i=1,n=2,a=3(ptr); atom K=7
+  {
+    extern void qjit_set_streq_helper(void *fn);
+    qjit_set_streq_helper((void *)&streq_stub);
+    IRInsn ir[] = {
+      /*0*/ {.op=IR_LOAD_LOC,.slot=1}, /*1*/ {.op=IR_LOAD_LOC,.slot=2}, /*2*/ {.op=IR_GUARD_LT,.a=0,.b=1,.exit_id=0},
+      /*3*/ {.op=IR_LOAD_LOC,.slot=3}, /*4*/ {.op=IR_ARRAY_COUNT,.a=3}, /*5*/ {.op=IR_GUARD_BOUNDS,.a=0,.b=4},
+      /*6*/ {.op=IR_ARRAY_VALUES,.a=3}, /*7*/ {.op=IR_STREQ_EL,.a=6,.b=0,.imm=7},   // a[i]===7
+      /*8*/ {.op=IR_GUARD_TRUE,.a=7,.exit_id=1},                                     // skip/exit iff !match
+      /*9*/ {.op=IR_LOAD_LOC,.slot=0}, /*10*/ {.op=IR_CONST,.imm=1}, /*11*/ {.op=IR_ADD,.a=9,.b=10}, /*12*/ {.op=IR_STORE_LOC,.slot=0,.a=11},
+      /*13*/ {.op=IR_LOAD_LOC,.slot=1}, /*14*/ {.op=IR_CONST,.imm=1}, /*15*/ {.op=IR_ADD_SAFE,.a=13,.b=14}, /*16*/ {.op=IR_STORE_LOC,.slot=1,.a=15},
+      /*17*/ {.op=IR_LOOP},
+    };
+    int vals[4] = {7, 7, 99, 7};                         // matches at 0,1,3; differs at 2
+    TArray *a = make_int_array(4, vals);
+    int64_t L[4] = {0, 0, 4, (int64_t)(intptr_t)a};      // c,i,n,a
+    int64_t e = run_ir(ir, 18, 2, L);
+    check("streq: exits via guard-true (id 1) at first mismatch", e == 1);
+    check("streq: counted 2 matches before mismatch (c==2)", L[0] == 2);
+    check("streq: stopped at i==2 (the mismatch)", L[1] == 2);
+    free(a->values); free(a);
   }
 
   qjit_ir_finish();

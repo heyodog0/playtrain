@@ -4,9 +4,17 @@
 // (returns nonzero) so the loop stays interpreted — never miscompiles.
 #include "qjit_ir.h"
 
-// abstract operand-stack entry: a plain IR value ref, a pending comparison, a global
-// function reference (from get_var, consumed by call), or a void call result.
-typedef struct { int is_cmp, is_func, is_void; int ref; int cmp_kind; int a, b; int64_t atom; } StkEnt;
+// abstract operand-stack entry. Exactly one "kind" holds:
+//   plain value (default): `ref` is its IR value index
+//   is_cmp: a pending integer comparison (fused into a guard by if_false)
+//   is_func: a global-fn reference from get_var (consumed by call); `atom` set
+//   is_void: a dropped call result
+//   is_atom: an interned atom (from push_atom_value); `atom` set (consumed by strict_eq)
+//   is_elem: a DEFERRED array element — `e_values`/`e_idx` are the IR refs for the
+//            array's values pointer and the index; the consumer materializes it (int
+//            load for arithmetic, or a fused strict_eq).
+typedef struct { int is_cmp, is_func, is_void, is_atom, is_elem, is_bool;
+                 int ref; int cmp_kind; int a, b; int64_t atom; int e_values, e_idx; } StkEnt;
 
 // map an exit resume-PC to a dense exit id (small number of exits per trace)
 static int exit_id_for(int32_t pc, int32_t *pcs, int *n) {
@@ -26,7 +34,15 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
 #define FAIL()            do { return 1; } while (0)
 #define NEED(k)           do { if (sp < (k)) FAIL(); } while (0)
 #define ROOM(k)           do { if (n + (k) > max_ir || sp + 1 > 256) FAIL(); } while (0)
-#define NOTVAL(i)         (stk[i].is_cmp || stk[i].is_func || stk[i].is_void)  // not a plain value
+// Materialize a deferred array element at stack slot `si` into a plain INT value
+// (guarded fast-array int load). No-op if already a plain value. Must be called before
+// an int consumer reads the operand.
+#define MATINT(si) do { if (stk[si].is_elem) { \
+    if (n + 1 > max_ir) FAIL(); \
+    ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = stk[si].e_values, .b = stk[si].e_idx}; \
+    int _r = n++; stk[si] = (StkEnt){0}; stk[si].ref = _r; } } while (0)
+// not a plain int value (after MATINT, is_elem is resolved to a value)
+#define NOTVAL(i)         (stk[i].is_cmp || stk[i].is_func || stk[i].is_void || stk[i].is_atom || stk[i].is_elem)
 #define PUSHV(r)          do { stk[sp] = (StkEnt){0}; stk[sp].ref = (r); sp++; } while (0)
 
   // helper: emit a value-producing insn, return its ir index
@@ -42,15 +58,15 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ROOM(1); ir[n] = (IRInsn){.op = IR_CONST, .imm = t->imm}; int r = n++; PUSHV(r);
       } break;
       case Q_PUT_LOC: {
-        NEED(1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
+        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
         ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
       } break;
       case Q_SET_LOC: {  // store top, leave it on the stack (set_loc/set_arg)
-        NEED(1); if (NOTVAL(sp-1)) FAIL(); int a = stk[sp-1].ref;
+        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[sp-1].ref;
         ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
       } break;
       case Q_ADD_LOC: {  // locals[slot] += pop
-        NEED(1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
+        NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
         // Safe loop increment: induction slot `+= 1` under a strict `i < n` guard can't
         // overflow (i+1 <= n <= INT_MAX) -> emit guard-free so it may follow a call.
         int safe = (t->slot == ind_slot && ind_lt && ir[a].op == IR_CONST && ir[a].imm == 1);
@@ -60,20 +76,29 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = su};
       } break;
       case Q_ADD: case Q_SUB: case Q_MUL: {
-        NEED(2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+        NEED(2); MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
         int b = stk[--sp].ref, a = stk[--sp].ref;
         IROp o = t->op == Q_ADD ? IR_ADD : t->op == Q_SUB ? IR_SUB : IR_MUL;
         ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHV(r);
       } break;
       case Q_LT: case Q_LE: case Q_GT: case Q_GE: {
-        NEED(2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+        NEED(2); MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
         int b = stk[--sp].ref, a = stk[--sp].ref;
         stk[sp] = (StkEnt){0}; stk[sp].is_cmp = 1; stk[sp].cmp_kind = t->op; stk[sp].a = a; stk[sp].b = b; sp++;
       } break;
-      case Q_IF_FALSE: {  // exit iff compare FALSE, continue iff TRUE
-        NEED(1); if (!stk[sp-1].is_cmp) FAIL();
-        StkEnt c = stk[--sp];
+      case Q_IF_FALSE: {  // exit iff FALSE, continue iff TRUE
+        NEED(1);
         int eid = exit_id_for(t->exit_pc, exit_pcs, &nx);
+        if (!stk[sp-1].is_cmp) {
+          // if_false on a boolean VALUE (only a strict_eq result — is_bool): side-exit iff
+          // ==0. Reject if_false on arbitrary values (e.g. int truthiness) -> abort, so a
+          // degenerate `push k; if_false; loop` can't build a never-exiting trace.
+          if (!stk[sp-1].is_bool) FAIL();
+          int v = stk[--sp].ref;
+          ROOM(1); ir[n++] = (IRInsn){.op = IR_GUARD_TRUE, .a = v, .exit_id = eid};
+          break;
+        }
+        StkEnt c = stk[--sp];
         // guard "continue iff (a cmp b)": direct mapping of the compare kind
         IROp g = c.cmp_kind == Q_LT ? IR_GUARD_LT : c.cmp_kind == Q_LE ? IR_GUARD_LE
                : c.cmp_kind == Q_GT ? IR_GUARD_GT : IR_GUARD_GE;
@@ -85,19 +110,33 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       case Q_GOTO_LOOP: {
         ROOM(1); EMIT0(IR_LOOP);
       } break;
-      case Q_GET_ARRAY_EL: {  // arr[idx] -> unboxed int, with array/bounds/int guards
-        NEED(2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+      case Q_GET_ARRAY_EL: {  // arr[idx] -> DEFERRED element (consumer materializes it)
+        NEED(2); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); if (NOTVAL(sp-2)) FAIL();
         int idx = stk[--sp].ref, arr = stk[--sp].ref;
-        // increment 1: the array base must come DIRECTLY from a local/arg load (no
+        // increment 1/2: the array base must come DIRECTLY from a local/arg load (no
         // nested arr[x][y] yet), and its slot is marshaled as a JSObject* (QK_ARRAY).
         if (ir[arr].op != IR_LOAD_LOC) FAIL();
         if (out_slot_kind) out_slot_kind[ir[arr].slot] = QK_ARRAY;
-        ROOM(4);
+        ROOM(3);
         ir[n] = (IRInsn){.op = IR_ARRAY_COUNT, .a = arr}; int cnt = n++;
         ir[n++] = (IRInsn){.op = IR_GUARD_BOUNDS, .a = idx, .b = cnt};
         ir[n] = (IRInsn){.op = IR_ARRAY_VALUES, .a = arr}; int vals = n++;
-        ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = vals, .b = idx}; int el = n++;
-        PUSHV(el);
+        stk[sp] = (StkEnt){0}; stk[sp].is_elem = 1; stk[sp].e_values = vals; stk[sp].e_idx = idx; sp++;
+      } break;
+      case Q_PUSH_ATOM: {  // interned string atom; only meaningful as a strict_eq operand
+        ROOM(0); stk[sp] = (StkEnt){0}; stk[sp].is_atom = 1; stk[sp].atom = t->imm; sp++;
+      } break;
+      case Q_STREQ: {  // (element === atom) -> 0/1, via the host strict_eq helper
+        NEED(2);
+        // one operand must be a deferred element, the other an atom (either order)
+        StkEnt *e = NULL, *a = NULL;
+        if (stk[sp-1].is_elem && stk[sp-2].is_atom) { e = &stk[sp-1]; a = &stk[sp-2]; }
+        else if (stk[sp-1].is_atom && stk[sp-2].is_elem) { a = &stk[sp-1]; e = &stk[sp-2]; }
+        else FAIL();
+        int vals = e->e_values, idx = e->e_idx; int64_t atom = a->atom;
+        sp -= 2;
+        ROOM(1); ir[n] = (IRInsn){.op = IR_STREQ_EL, .a = vals, .b = idx, .imm = atom}; int r = n++;
+        PUSHV(r); stk[sp-1].is_bool = 1;   // a proper boolean (0/1): may feed if_false
       } break;
       case Q_GET_VAR: {  // push a global-fn reference (callable); resolved by name at run time
         ROOM(0); stk[sp] = (StkEnt){0}; stk[sp].is_func = 1; stk[sp].atom = t->imm; sp++;
@@ -114,7 +153,7 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         stk[sp] = (StkEnt){0}; stk[sp].is_void = 1; sp++;   // result: void (must be dropped)
       } break;
       case Q_DROP: { NEED(1); sp--; } break;
-      case Q_DUP:  { NEED(1); if (NOTVAL(sp-1)) FAIL(); ROOM(0); stk[sp] = stk[sp-1]; sp++; } break;
+      case Q_DUP:  { NEED(1); MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); ROOM(0); stk[sp] = stk[sp-1]; sp++; } break;
       case Q_NOP:  break;
       default: FAIL();
     }

@@ -26,6 +26,7 @@ static int run_trace(const TraceOp *ops, int n_ops, int64_t *locals) {
 }
 
 int main(void) {
+  setvbuf(stdout, NULL, _IONBF, 0);   // unbuffered: last line before a hang is the culprit
   // ---- test 1: while(i<n){ s += i; i += 1 }  via add_loc ----
   {
     TraceOp t[] = {

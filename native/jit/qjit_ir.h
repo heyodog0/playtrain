@@ -34,6 +34,12 @@ typedef enum {
   IR_GUARD_BOUNDS,  // if (u32)r(a) >= (u32)r(b) DEOPT                 [a = idx, b = count]
   IR_ARRAY_EL_INT,  // e = r(a) + r(b)*jsvalue_size; if *(i32*)(e+tag_off)!=tag_int DEOPT;
                     //   r = (i64)(i32)*(i32*)(e)                     [a = values, b = idx]
+  // --- strings (increment 2) ---
+  IR_STREQ_EL,      // r = strict_eq(values[idx], atom) as 0/1, via a host helper that
+                    //   runs quickjs's own js_strict_eq (content-correct for any element
+                    //   type). imm = atom.  [a = values, b = idx]  (no deopt; a pure call)
+  IR_GUARD_TRUE,    // if r(a) == 0 side-exit exit_id (for `if_false` on a boolean value,
+                    //   e.g. the strict_eq result). control-flow exit (flush), not a deopt.
   // --- call (increment 4: native global fn, int args, result dropped) ---
   IR_CALL,          // call global fn named by atom (imm) with argc int args (r(argv[k]));
                     // side-effect only, result is freed. imm=atom, argc, argv[] = arg refs.
@@ -71,6 +77,12 @@ typedef struct {
 // compile (stays interpreted) if no helper is registered.
 void qjit_set_call_helper(void *fn);
 
+// Register the strict-eq helper bound to IR_STREQ_EL: a host function
+//   int64_t (*)(void *elem, int64_t atom)   // elem = &JSValue (the array element)
+// returning (element === atom) as 0/1 via quickjs's own js_strict_eq. A trace with
+// IR_STREQ_EL fails to compile (stays interpreted) if no helper is registered.
+void qjit_set_streq_helper(void *fn);
+
 // Native trace signature: run the loop over `locals`, return the exit taken:
 //   >= 0            -> control-flow exit id (locals flushed; resume at that exit's PC)
 //   QJIT_DEOPT (-1) -> overflow/type deopt (locals = iteration-START; resume at header,
@@ -107,7 +119,10 @@ typedef enum {
   Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)
   Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
   Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)
-  Q_GET_ARRAY_EL, // pop idx, pop array-base; push array[idx] as unboxed int (guarded)
+  Q_GET_ARRAY_EL, // pop idx, pop array-base; push a DEFERRED element (materialized by its
+                  // consumer: as int for arithmetic, or fused into a strict_eq)
+  Q_PUSH_ATOM,  // push an interned-atom reference (imm = atom); consumed by strict_eq
+  Q_STREQ,      // pop 2 (a deferred element + an atom); push (element === atom) as 0/1
   Q_GET_VAR,    // push a global-fn reference for atom `imm` (callable; consumed by Q_CALL)
   Q_CALL,       // pop `slot` int args + the fn ref; call it (side-effect); push void result
   Q_DROP,       // pop
