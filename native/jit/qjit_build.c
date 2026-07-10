@@ -49,8 +49,10 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
     if (n + 1 > max_ir) FAIL(); \
     ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = stk[si].e_values, .b = stk[si].e_idx}; \
     int _r = n++; stk[si] = (StkEnt){0}; stk[si].ref = _r; } } while (0)
-// not a plain int value (after MATINT, is_elem is resolved to a value)
-#define NOTVAL(i)         (stk[i].is_cmp || stk[i].is_func || stk[i].is_void || stk[i].is_atom || stk[i].is_elem)
+// not a plain int value (after MATINT, is_elem is resolved to a value). is_bool is included:
+// a boolean (JS_TAG_BOOL, from strict_eq / lnot) may ONLY feed a truthiness guard (if_false),
+// never be stored or arithmetic'd — storing it as an int would mismatch TAG_BOOL vs TAG_INT.
+#define NOTVAL(i)         (stk[i].is_cmp || stk[i].is_func || stk[i].is_void || stk[i].is_atom || stk[i].is_elem || stk[i].is_bool)
 // Materialize stack slot `si` into a fast-array JSObject* base, writing its IR ref to
 // `out`. Sources: a global var (is_func -> IR_LOAD_GVAR), a deferred element (is_elem ->
 // IR_ELEM_OBJ, for nested a[x][y]), or a plain local/arg array load (existing QK_ARRAY).
@@ -177,6 +179,24 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ROOM(2);
         ir[n] = (IRInsn){.op = IR_CONST, .imm = -1}; int m1 = n++;
         ir[n] = (IRInsn){.op = IR_XOR, .a = a, .b = m1}; int r = n++; PUSHV(r);
+      } break;
+      case Q_LNOT: {  // logical-not `!x`
+        NEED(1);
+        if (stk[sp-1].is_cmp) {   // !(a cmp b) == (a !cmp b): flip the comparison, stays a cmp
+          int k = stk[sp-1].cmp_kind;
+          stk[sp-1].cmp_kind = k == Q_LT ? Q_GE : k == Q_LE ? Q_GT : k == Q_GT ? Q_LE : Q_LT;
+          break;
+        }
+        if (stk[sp-1].is_bool) {  // !bool == (bool==0), still a bool
+          int a = stk[--sp].ref;
+          ROOM(1); ir[n] = (IRInsn){.op = IR_ISZERO, .a = a}; int r = n++;
+          PUSHV(r); stk[sp-1].is_bool = 1; break;
+        }
+        if (stk[sp-1].is_float) FAIL();   // ToBoolean(float) has NaN/-0 edges -> bail
+        MATINT(sp-1); if (NOTVAL(sp-1)) FAIL();
+        int a = stk[--sp].ref;
+        ROOM(1); ir[n] = (IRInsn){.op = IR_ISZERO, .a = a}; int r = n++;
+        PUSHV(r); stk[sp-1].is_bool = 1;   // a boolean (0/1): only feeds if_false, never stored
       } break;
       case Q_NEG: {   // unary minus: float -> IR_FNEG, int -> IR_NEG (guards -0 / INT32_MIN)
         NEED(1);

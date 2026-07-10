@@ -52,6 +52,9 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 - compare: lt, lte, gt, gte (int **and float**; float guards carry a NEG flag so NaN resolves to
   the interpreter's `!(a<b)` direction — `!(a<b) != (a>=b)` under NaN, so negation is NOT folded);
   strict_eq (element === interned atom, via js_strict_eq helper)
+- **logical: `lnot` (`!x`) — int operand → `(x==0)` boolean; a pending compare → negated compare.
+  Booleans (from lnot / strict_eq) are hardened to ONLY feed a truthiness guard — storing one as an
+  int would mismatch `TAG_BOOL` vs `TAG_INT`, so bool-in-arith/store aborts the trace.**
 - control: goto/8/16 back-edge; if_false/8 (recorded direction — milestone 0)
 - **property (3a): `localObj.field` — decoder fuses get_loc/get_arg + get_field into Q_FIELD_LOC,
   resolving the property index + JSShape + value type against the LIVE object at compile time

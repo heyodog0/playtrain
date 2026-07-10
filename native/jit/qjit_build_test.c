@@ -268,6 +268,47 @@ int main(void) {
     check("m2 bitwise-on-float aborts", run_trace_t(t, 11, L, ty) == -1);
   }
 
+  // M2-F lnot on an int -> bool feeding a guard: while(i<n){ if(!(i-i)) c++; i++ } (!0 always true)
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=1}, {Q_SUB}, {Q_LNOT},     // !(i-i) == !0 == true
+      {Q_IF_FALSE,.imm=0,.exit_pc=88},                                 // continue iff true (always)
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},                        // c++
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},                        // i++
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 0, 300};   // c, i, n
+    int e = run_trace(t, 14, L);
+    check("m2 lnot(int)->bool guard: exit 0", e == 0);
+    check("m2 lnot: c==n (branch always taken)", L[0] == 300 && L[1] == 300);
+  }
+  // M2-G lnot flips a comparison: while(i<n){ if(!(i<0)) c++; i++ }  (!(i<0)==i>=0, always)
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=1}, {Q_PUSH_INT,.imm=0}, {Q_LT}, {Q_LNOT},      // !(i<0)
+      {Q_IF_FALSE,.imm=0,.exit_pc=88},
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},
+      {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 0, 250};
+    int e = run_trace(t, 14, L);
+    check("m2 lnot(cmp-flip): exit 0", e == 0);
+    check("m2 lnot(cmp-flip): c==n", L[0] == 250);
+  }
+  // M2-H a bool must not be stored/arithmetic'd -> abort (would mismatch TAG_BOOL vs TAG_INT)
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=99},
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=1}, {Q_PUSH_INT,.imm=1}, {Q_AND}, {Q_LNOT}, {Q_ADD}, // s + bool
+      {Q_PUT_LOC,.slot=0}, {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1}, {Q_GOTO_LOOP},
+    };
+    int64_t L[3] = {0, 0, 10};
+    check("m2 lnot: bool-in-arith aborts", run_trace(t, 14, L) == -1);
+  }
+
   // ===== FLOAT builder tests (milestone 1) =====
   // Helpers to move doubles through the int64 `locals` and Q_PUSH_F64 imm.
   #define FB(d) ({ double _d = (d); int64_t _b; memcpy(&_b, &_d, 8); _b; })

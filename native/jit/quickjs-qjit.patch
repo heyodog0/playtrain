@@ -1,5 +1,5 @@
 diff --git a/quickjs.c b/quickjs.c
-index 7ec0c25..cc88ab1 100644
+index 7ec0c25..e3150bc 100644
 --- a/quickjs.c
 +++ b/quickjs.c
 @@ -17940,6 +17940,19 @@ static bool needs_backtrace(JSValue exc)
@@ -119,7 +119,7 @@ index 7ec0c25..cc88ab1 100644
                  }
                  if (unlikely(js_poll_interrupts(ctx)))
                      goto exception;
-@@ -22322,6 +22374,357 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
+@@ -22322,6 +22374,358 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
      opcode_info[(op) >= OP_TEMP_START ? \
                  (op) + (OP_TEMP_END - OP_TEMP_START) : (op)]
  
@@ -277,6 +277,7 @@ index 7ec0c25..cc88ab1 100644
 +        else if (op == OP_sar) { EMIT(Q_SAR); }
 +        else if (op == OP_mod) { EMIT(Q_MOD); }
 +        else if (op == OP_not) { EMIT(Q_NOT); }
++        else if (op == OP_lnot) { EMIT(Q_LNOT); }
 +        else if (op == OP_neg) { EMIT(Q_NEG); }
 +        // inc/dec/post_inc/post_dec reuse int add (overflow->deopt) + dup; no new IR needed.
 +        else if (op == OP_inc) { EMIT(Q_PUSH_INT, .imm = 1);  EMIT(Q_ADD); }

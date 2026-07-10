@@ -82,6 +82,8 @@ typedef enum {
   IR_FNEG,                // float negate: r = -r(a) (via DMUL by -1.0 → correct -0.0 sign)
   IR_MOD,                 // int mod: guard r(a)>=0 && r(b)>0 (else DEOPT, matching the
                           //   interpreter's slow-path bailout); r = r(a) % r(b) (MODS)
+  IR_ISZERO,              // r = (r(a) == 0) as 0/1 — logical-not of an int (`!x`); the result is a
+                          //   boolean, only ever consumed by a truthiness guard (never stored).
   // --- property access (milestone 3) — shape-guarded field read (our inline cache) ---
   // A field read `obj.f` is structurally an array-element read: obj->prop is a JSProperty[]
   // whose entries are 16-byte JSValues (u.value at offset 0), so prop[index] uses the same
@@ -178,6 +180,7 @@ typedef enum {
   Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b  (float if either operand is float)
   Q_AND, Q_OR, Q_XOR, Q_SHL, Q_SAR,  // int32 bitwise (b=pop,a=pop); abort if an operand is float
   Q_NOT,                // int32 bitwise-not (a=pop) -> a ^ -1
+  Q_LNOT,               // logical-not `!x` (a=pop): int -> (x==0) bool; a compare -> negated compare
   Q_NEG,                // unary negate (a=pop); int (guarded) or float
   Q_MOD,                // int mod (b=pop,a=pop), guarded non-negative; float mod aborts
   Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)

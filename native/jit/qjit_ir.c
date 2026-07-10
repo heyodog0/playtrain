@@ -120,6 +120,7 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
         ir[i].op == IR_SUB || ir[i].op == IR_MUL || ir[i].op == IR_ADD_SAFE ||
         ir[i].op == IR_AND || ir[i].op == IR_OR || ir[i].op == IR_XOR ||
         ir[i].op == IR_SHL || ir[i].op == IR_SAR || ir[i].op == IR_NEG || ir[i].op == IR_MOD ||
+        ir[i].op == IR_ISZERO ||
         ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT ||
         ir[i].op == IR_STREQ_EL || ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ ||
         ir[i].op == IR_LOAD_FIELD_BASE) {
@@ -399,6 +400,8 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
         APP(MIR_new_insn(ctx, MIR_BLT, MIR_new_label_op(ctx, deopt), R(in->a), MIR_new_int_op(ctx, 0)));
         APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, deopt), R(in->b), MIR_new_int_op(ctx, 0)));
         APP(MIR_new_insn(ctx, MIR_MODS, R(i), R(in->a), R(in->b))); break;
+      case IR_ISZERO: // r = (a == 0) as 0/1  — logical-not of an int
+        APP(MIR_new_insn(ctx, MIR_EQ, R(i), R(in->a), MIR_new_int_op(ctx, 0))); break;
       case IR_LOOP:      APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, top))); break;
     }
    }
