@@ -13,7 +13,10 @@
 //   is_elem: a DEFERRED array element — `e_values`/`e_idx` are the IR refs for the
 //            array's values pointer and the index; the consumer materializes it (int
 //            load for arithmetic, or a fused strict_eq).
-typedef struct { int is_cmp, is_func, is_void, is_atom, is_elem, is_bool;
+//   is_float: a plain value (or a pending compare) whose type is f64. Float values come
+//             from Q_FLOAD (a QK_FLOAT slot), Q_PUSH_F64, or float arithmetic; int
+//             operands are promoted to float (IR_I2F) when they meet a float operand.
+typedef struct { int is_cmp, is_func, is_void, is_atom, is_elem, is_bool, is_float;
                  int ref; int cmp_kind; int a, b; int64_t atom; int e_values, e_idx; } StkEnt;
 
 // map an exit resume-PC to a dense exit id (small number of exits per trace)
@@ -24,7 +27,7 @@ static int exit_id_for(int32_t pc, int32_t *pcs, int *n) {
 
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
                   int *ir_n, int *n_exits, int32_t *out_exit_pcs,
-                  unsigned char *out_slot_kind) {
+                  unsigned char *out_slot_kind, const unsigned char *in_slot_type) {
   StkEnt stk[256]; int sp = 0;
   int32_t exit_pcs[32]; int nx = 0;
   int n = 0;  // ir length
@@ -57,6 +60,14 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
     else if (!NOTVAL(si) && ir[stk[si].ref].op==IR_LOAD_LOC) { if(out_slot_kind) out_slot_kind[ir[stk[si].ref].slot]=QK_ARRAY; (out)=stk[si].ref; } \
     else FAIL(); } while (0)
 #define PUSHV(r)          do { stk[sp] = (StkEnt){0}; stk[sp].ref = (r); sp++; } while (0)
+#define PUSHF(r)          do { stk[sp] = (StkEnt){0}; stk[sp].ref = (r); stk[sp].is_float = 1; sp++; } while (0)
+// slot `s` is float at entry (from the observed frame tag). Out of range / no table -> int.
+#define FSLOT(s)          ((s) >= 0 && (s) < 256 && in_slot_type && in_slot_type[(s)] == QK_FLOAT)
+// Coerce a stack value at index `si` to a float IR ref: if already float, its ref; else
+// emit IR_I2F to promote the int. Returns the (possibly new) IR value index, or -1 on room.
+#define TOFLOAT(si, out)  do { \
+    if (stk[si].is_float) (out) = stk[si].ref; \
+    else { if (n + 1 > max_ir) FAIL(); ir[n] = (IRInsn){.op = IR_I2F, .a = stk[si].ref}; (out) = n++; } } while (0)
 
   // helper: emit a value-producing insn, return its ir index
   // (kept inline via macros below to keep operand wiring explicit)
@@ -66,15 +77,26 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
     switch (t->op) {
       case Q_GET_LOC: {
         if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) { ROOM(0); stk[sp++] = fwd[t->slot]; }  // forwarded object temp
+        else if (FSLOT(t->slot)) {  // float local: load as f64
+          ROOM(1); ir[n] = (IRInsn){.op = IR_FLOAD_LOC, .slot = t->slot}; int r = n++; PUSHF(r);
+          if (out_slot_kind) out_slot_kind[t->slot] = QK_FLOAT; mem_ref[t->slot] = 1;
+        }
         else { ROOM(1); ir[n] = (IRInsn){.op = IR_LOAD_LOC, .slot = t->slot}; int r = n++; PUSHV(r);
                if (t->slot >= 0 && t->slot < 256) mem_ref[t->slot] = 1; }
       } break;
       case Q_PUSH_INT: {
         ROOM(1); ir[n] = (IRInsn){.op = IR_CONST, .imm = t->imm}; int r = n++; PUSHV(r);
       } break;
+      case Q_PUSH_F64: {
+        ROOM(1); ir[n] = (IRInsn){.op = IR_FCONST, .imm = t->imm}; int r = n++; PUSHF(r);  // imm = double bits
+      } break;
       case Q_PUT_LOC: {
         NEED(1);
-        if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {  // forward object temp
+        if (stk[sp-1].is_float) {  // float store: pop f64 value -> IR_FSTORE_LOC
+          int a = stk[--sp].ref;
+          ROOM(1); ir[n++] = (IRInsn){.op = IR_FSTORE_LOC, .slot = t->slot, .a = a};
+          if (t->slot >= 0 && t->slot < 256) { if (out_slot_kind) out_slot_kind[t->slot] = QK_FLOAT; mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+        } else if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {  // forward object temp
           if (mem_ref[t->slot]) FAIL();
           fwd[t->slot] = stk[--sp]; fwd_ok[t->slot] = 1;
           if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
@@ -86,7 +108,11 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       } break;
       case Q_SET_LOC: {  // store top, leave it on the stack (set_loc/set_arg)
         NEED(1);
-        if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {
+        if (stk[sp-1].is_float) {  // float store, peek (no pop)
+          int a = stk[sp-1].ref;
+          ROOM(1); ir[n++] = (IRInsn){.op = IR_FSTORE_LOC, .slot = t->slot, .a = a};
+          if (t->slot >= 0 && t->slot < 256) { if (out_slot_kind) out_slot_kind[t->slot] = QK_FLOAT; mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+        } else if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {
           if (mem_ref[t->slot]) FAIL();
           fwd[t->slot] = stk[sp-1]; fwd_ok[t->slot] = 1;
           if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
@@ -99,6 +125,17 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       case Q_ADD_LOC: {  // locals[slot] += pop
         NEED(1); if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) FAIL();  // can't += an object temp
         if (t->slot >= 0 && t->slot < 256) mem_ref[t->slot] = 1;
+        if (FSLOT(t->slot) || stk[sp-1].is_float) {   // float: locals[slot](f64) += pop
+          if (stk[sp-1].is_elem) FAIL();               // float array elements: later increment
+          if (NOTVAL(sp-1)) FAIL();
+          int add; TOFLOAT(sp-1, add); sp--;
+          ROOM(3);
+          ir[n] = (IRInsn){.op = IR_FLOAD_LOC, .slot = t->slot}; int ld = n++;
+          ir[n] = (IRInsn){.op = IR_FADD, .a = ld, .b = add}; int su = n++;
+          ir[n++] = (IRInsn){.op = IR_FSTORE_LOC, .slot = t->slot, .a = su};
+          if (out_slot_kind && t->slot >= 0 && t->slot < 256) out_slot_kind[t->slot] = QK_FLOAT;
+          break;
+        }
         MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
         // Safe loop increment: induction slot `+= 1` under a strict `i < n` guard can't
         // overflow (i+1 <= n <= INT_MAX) -> emit guard-free so it may follow a call.
@@ -109,15 +146,33 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
         ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = su};
       } break;
       case Q_ADD: case Q_SUB: case Q_MUL: {
-        NEED(2); MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
-        int b = stk[--sp].ref, a = stk[--sp].ref;
-        IROp o = t->op == Q_ADD ? IR_ADD : t->op == Q_SUB ? IR_SUB : IR_MUL;
-        ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHV(r);
+        NEED(2);
+        if (stk[sp-1].is_float || stk[sp-2].is_float) {   // float arithmetic (promote int side)
+          if (stk[sp-1].is_elem || stk[sp-2].is_elem) FAIL();  // float array elements: later
+          if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+          int b, a; TOFLOAT(sp-1, b); TOFLOAT(sp-2, a); sp -= 2;
+          IROp o = t->op == Q_ADD ? IR_FADD : t->op == Q_SUB ? IR_FSUB : IR_FMUL;
+          ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHF(r);
+        } else {
+          MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+          int b = stk[--sp].ref, a = stk[--sp].ref;
+          IROp o = t->op == Q_ADD ? IR_ADD : t->op == Q_SUB ? IR_SUB : IR_MUL;
+          ROOM(1); ir[n] = (IRInsn){.op = o, .a = a, .b = b}; int r = n++; PUSHV(r);
+        }
       } break;
       case Q_LT: case Q_LE: case Q_GT: case Q_GE: {
-        NEED(2); MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
-        int b = stk[--sp].ref, a = stk[--sp].ref;
-        stk[sp] = (StkEnt){0}; stk[sp].is_cmp = 1; stk[sp].cmp_kind = t->op; stk[sp].a = a; stk[sp].b = b; sp++;
+        NEED(2);
+        if (stk[sp-1].is_float || stk[sp-2].is_float) {   // float compare (promote int side)
+          if (stk[sp-1].is_elem || stk[sp-2].is_elem) FAIL();
+          if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+          int b, a; TOFLOAT(sp-1, b); TOFLOAT(sp-2, a); sp -= 2;
+          stk[sp] = (StkEnt){0}; stk[sp].is_cmp = 1; stk[sp].is_float = 1;
+          stk[sp].cmp_kind = t->op; stk[sp].a = a; stk[sp].b = b; sp++;
+        } else {
+          MATINT(sp-1); MATINT(sp-2); if (NOTVAL(sp-1) || NOTVAL(sp-2)) FAIL();
+          int b = stk[--sp].ref, a = stk[--sp].ref;
+          stk[sp] = (StkEnt){0}; stk[sp].is_cmp = 1; stk[sp].cmp_kind = t->op; stk[sp].a = a; stk[sp].b = b; sp++;
+        }
       } break;
       case Q_IF_FALSE: {  // conditional guard. imm = negate: 0 -> continue iff cond TRUE,
                           // 1 -> continue iff cond FALSE. exit_pc = the resume PC of the
@@ -134,6 +189,15 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
           break;
         }
         StkEnt c = stk[--sp];
+        if (c.is_float) {
+          // Float guard: keep the ORDERED comparison; carry NEG in imm (do NOT fold it into
+          // the operator — !(a<b) != (a>=b) under NaN). Codegen picks continue/exit + NaN
+          // direction from NEG. (No induction/overflow tracking: float arith never overflows.)
+          IROp g = c.cmp_kind == Q_LT ? IR_FGUARD_LT : c.cmp_kind == Q_LE ? IR_FGUARD_LE
+                 : c.cmp_kind == Q_GT ? IR_FGUARD_GT : IR_FGUARD_GE;
+          ROOM(1); ir[n++] = (IRInsn){.op = g, .a = c.a, .b = c.b, .exit_id = eid, .imm = neg};
+          break;
+        }
         // continue iff (a cmp b); if negated, continue iff !(a cmp b) == (a !cmp b).
         int k = c.cmp_kind;
         if (neg) k = k == Q_LT ? Q_GE : k == Q_LE ? Q_GT : k == Q_GT ? Q_LE : Q_LT;  // negate the test

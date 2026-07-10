@@ -4,6 +4,7 @@
 #include "mir-gen.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static MIR_context_t g_ctx = NULL;
 
@@ -37,6 +38,16 @@ void qjit_ir_finish(void) {
 
 static int trace_counter = 0;
 
+// A value-producing IR op whose MIR result register is a double (MIR_T_D).
+static int ir_is_fval(IROp op) {
+  switch (op) {
+    case IR_FLOAD_LOC: case IR_FCONST:
+    case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+    case IR_I2F: return 1;
+    default: return 0;
+  }
+}
+
 qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   // Heap ops bake qjit_layout (struct offsets) into the emitted addressing. If the
   // layout was never initialized (jsvalue_size==0), refuse to compile — otherwise the
@@ -61,6 +72,30 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   if (has_gvar && !g_gvar_helper) return NULL;
   if (has_elemobj && !g_elem_array_helper) return NULL;
 
+  // Fail closed (BEFORE opening a MIR module) if any slot is accessed as BOTH int and
+  // float — the marshaling is per-slot single-type; a mixed slot would reinterpret the
+  // same 8 bytes two ways. The builder never emits this; guard anyway so bad IR bails.
+  {
+    int ms = -1;
+    for (int i = 0; i < n; i++) {
+      IROp o = ir[i].op;
+      if ((o == IR_LOAD_LOC || o == IR_STORE_LOC || o == IR_FLOAD_LOC || o == IR_FSTORE_LOC)
+          && ir[i].slot > ms) ms = ir[i].slot;
+    }
+    if (ms >= 0) {
+      char *ti = calloc(ms + 1, 1), *tf = calloc(ms + 1, 1);
+      for (int i = 0; i < n; i++) {
+        IROp o = ir[i].op;
+        if (o == IR_LOAD_LOC  || o == IR_STORE_LOC)  ti[ir[i].slot] = 1;
+        if (o == IR_FLOAD_LOC || o == IR_FSTORE_LOC) tf[ir[i].slot] = 1;
+      }
+      int bad = 0;
+      for (int s = 0; s <= ms; s++) if (ti[s] && tf[s]) bad = 1;
+      free(ti); free(tf);
+      if (bad) return NULL;
+    }
+  }
+
   qjit_ir_init();
   MIR_context_t ctx = g_ctx;
   char mname[32], fname[32];
@@ -73,10 +108,13 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   MIR_item_t func = MIR_new_func(ctx, fname, 1, &res, 1, MIR_T_I64, "L");
   MIR_reg_t Lp = MIR_reg(ctx, "L", func->u.func);
 
-  // one MIR reg per IR value-producing insn
+  // one MIR reg per IR value-producing insn (i64 for int values, f64 for float values)
   MIR_reg_t *reg = calloc(n, sizeof(MIR_reg_t));
   for (int i = 0; i < n; i++) {
-    if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_CONST || ir[i].op == IR_ADD ||
+    if (ir_is_fval(ir[i].op)) {
+      char rn[24]; snprintf(rn, sizeof rn, "f%d", i);
+      reg[i] = MIR_new_func_reg(ctx, func->u.func, MIR_T_D, rn);
+    } else if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_CONST || ir[i].op == IR_ADD ||
         ir[i].op == IR_SUB || ir[i].op == IR_MUL || ir[i].op == IR_ADD_SAFE ||
         ir[i].op == IR_ARRAY_COUNT || ir[i].op == IR_ARRAY_VALUES || ir[i].op == IR_ARRAY_EL_INT ||
         ir[i].op == IR_STREQ_EL || ir[i].op == IR_LOAD_GVAR || ir[i].op == IR_ELEM_OBJ) {
@@ -88,16 +126,23 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   // REGISTER PROMOTION: keep each referenced local slot in a MIR reg across the
   // loop; load once before the loop, flush to memory only at side-exits. Turns
   // the memory-bound loop into a register loop (native speed).
+#define IS_LDST_INT(o) ((o) == IR_LOAD_LOC  || (o) == IR_STORE_LOC)
+#define IS_LDST_FLT(o) ((o) == IR_FLOAD_LOC || (o) == IR_FSTORE_LOC)
   int max_slot = -1;
   for (int i = 0; i < n; i++)
-    if ((ir[i].op == IR_LOAD_LOC || ir[i].op == IR_STORE_LOC) && ir[i].slot > max_slot) max_slot = ir[i].slot;
+    if ((IS_LDST_INT(ir[i].op) || IS_LDST_FLT(ir[i].op)) && ir[i].slot > max_slot) max_slot = ir[i].slot;
   int n_slots = max_slot + 1;
   MIR_reg_t *sreg = calloc(n_slots > 0 ? n_slots : 1, sizeof(MIR_reg_t));
   char *used = calloc(n_slots > 0 ? n_slots : 1, 1);
-  for (int i = 0; i < n; i++)
-    if (ir[i].op == IR_LOAD_LOC || ir[i].op == IR_STORE_LOC) used[ir[i].slot] = 1;
+  char *slot_flt = calloc(n_slots > 0 ? n_slots : 1, 1);  // slot is a float (MIR_T_D) slot
+  for (int i = 0; i < n; i++) {
+    if (IS_LDST_INT(ir[i].op)) used[ir[i].slot] = 1;
+    if (IS_LDST_FLT(ir[i].op)) { used[ir[i].slot] = 1; slot_flt[ir[i].slot] = 1; }
+  }
+  // (int/float slot conflict already rejected in the pre-scan above, before MIR opened.)
   for (int s = 0; s < n_slots; s++)
-    if (used[s]) { char rn[24]; snprintf(rn, sizeof rn, "s%d", s); sreg[s] = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, rn); }
+    if (used[s]) { char rn[24]; snprintf(rn, sizeof rn, "s%d", s);
+                   sreg[s] = MIR_new_func_reg(ctx, func->u.func, slot_flt[s] ? MIR_T_D : MIR_T_I64, rn); }
 
   // scratch regs for heap address arithmetic (element addr = base + idx*size)
   MIR_reg_t h0 = MIR_new_func_reg(ctx, func->u.func, MIR_T_I64, "h0");
@@ -142,13 +187,17 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   MIR_label_t deopt_b = MIR_new_label(ctx), deopt_t = MIR_new_label(ctx); // diag: bounds/tag
 
 #define APP(insn) MIR_append_insn(ctx, func, (insn))
-#define MEM(slot) MIR_new_mem_op(ctx, MIR_T_I64, (MIR_disp_t)((slot) * 8), Lp, 0, 1)
+#define MEM(slot)  MIR_new_mem_op(ctx, MIR_T_I64, (MIR_disp_t)((slot) * 8), Lp, 0, 1)
+#define MEMD(slot) MIR_new_mem_op(ctx, MIR_T_D,   (MIR_disp_t)((slot) * 8), Lp, 0, 1)
 #define R(i) MIR_new_reg_op(ctx, reg[i])
 #define SR(s) MIR_new_reg_op(ctx, sreg[s])
 // Flush only VARIANT slots: invariant slots are never modified by the body, so
 // var_buf already holds their (iteration-start == final) value — no store needed.
-// This is the hot per-iteration cost, so keeping it minimal matters.
-#define FLUSH() do { for (int s = 0; s < n_slots; s++) if (used[s] && !slot_inv[s]) APP(MIR_new_insn(ctx, MIR_MOV, MEM(s), SR(s))); } while (0)
+// This is the hot per-iteration cost, so keeping it minimal matters. Float slots
+// flush the double bits (DMOV via a T_D mem op — same 8 bytes as the int slot).
+#define FLUSH() do { for (int s = 0; s < n_slots; s++) if (used[s] && !slot_inv[s]) \
+    APP(slot_flt[s] ? MIR_new_insn(ctx, MIR_DMOV, MEMD(s), SR(s)) \
+                    : MIR_new_insn(ctx, MIR_MOV,  MEM(s),  SR(s))); } while (0)
 
   // LICM: a slot is loop-invariant if never stored; a value insn is invariant if it
   // only depends on invariant inputs (LOAD_LOC of an invariant slot, CONST, or an
@@ -157,14 +206,14 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   // guards, stores and arithmetic on the induction var stay in the body.
   char *slot_inv = calloc(n_slots > 0 ? n_slots : 1, 1);
   for (int s = 0; s < n_slots; s++) slot_inv[s] = used[s];
-  for (int i = 0; i < n; i++) if (ir[i].op == IR_STORE_LOC) slot_inv[ir[i].slot] = 0;
+  for (int i = 0; i < n; i++) if (ir[i].op == IR_STORE_LOC || ir[i].op == IR_FSTORE_LOC) slot_inv[ir[i].slot] = 0;
   char *inv = calloc(n > 0 ? n : 1, 1);
   int hoist = !getenv("QJIT_NOHOIST");
   for (int i = 0; hoist && i < n; i++) {
     switch (ir[i].op) {
-      case IR_CONST:        inv[i] = 1; break;
+      case IR_CONST: case IR_FCONST:  inv[i] = 1; break;
       case IR_LOAD_GVAR:    inv[i] = 1; break;   // global resolved once (loop-invariant)
-      case IR_LOAD_LOC:     inv[i] = slot_inv[ir[i].slot]; break;
+      case IR_LOAD_LOC: case IR_FLOAD_LOC:  inv[i] = slot_inv[ir[i].slot]; break;
       case IR_ARRAY_COUNT:
       case IR_ARRAY_VALUES: inv[i] = inv[ir[i].a]; break;
       case IR_ELEM_OBJ:     inv[i] = inv[ir[i].a] && inv[ir[i].b]; break;  // e.g. grid[x] in inner loop
@@ -174,7 +223,8 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
 
   // prologue: load referenced slots from memory into slot-regs (once)
   for (int s = 0; s < n_slots; s++)
-    if (used[s]) APP(MIR_new_insn(ctx, MIR_MOV, SR(s), MEM(s)));
+    if (used[s]) APP(slot_flt[s] ? MIR_new_insn(ctx, MIR_DMOV, SR(s), MEMD(s))
+                                 : MIR_new_insn(ctx, MIR_MOV,  SR(s), MEM(s)));
 
   MIR_label_t top = MIR_new_label(ctx);
   // Two emission phases: phase 0 hoists invariant value insns (before top, run once);
@@ -204,6 +254,33 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_MUL: APP(MIR_new_insn(ctx, MIR_MULOS, R(i), R(in->a), R(in->b)));
                    APP(MIR_new_insn(ctx, MIR_BO, MIR_new_label_op(ctx, deopt))); break;
       case IR_ADD_SAFE: APP(MIR_new_insn(ctx, MIR_ADD, R(i), R(in->a), R(in->b))); break; // no overflow guard (proven safe)
+      // --- float fast path: f64 regs, no overflow/deopt (floats never change type) ---
+      case IR_FLOAD_LOC:  APP(MIR_new_insn(ctx, MIR_DMOV, R(i), SR(in->slot))); break;
+      case IR_FSTORE_LOC: APP(MIR_new_insn(ctx, MIR_DMOV, SR(in->slot), R(in->a))); break;
+      case IR_FCONST: { double d; memcpy(&d, &in->imm, sizeof d);
+                        APP(MIR_new_insn(ctx, MIR_DMOV, R(i), MIR_new_double_op(ctx, d))); } break;
+      case IR_FADD: APP(MIR_new_insn(ctx, MIR_DADD, R(i), R(in->a), R(in->b))); break;
+      case IR_FSUB: APP(MIR_new_insn(ctx, MIR_DSUB, R(i), R(in->a), R(in->b))); break;
+      case IR_FMUL: APP(MIR_new_insn(ctx, MIR_DMUL, R(i), R(in->a), R(in->b))); break;
+      case IR_FDIV: APP(MIR_new_insn(ctx, MIR_DDIV, R(i), R(in->a), R(in->b))); break;
+      case IR_I2F:  APP(MIR_new_insn(ctx, MIR_I2D,  R(i), R(in->a))); break;
+      // Float guards. cc = the ordered comparison to test. imm carries NEG:
+      //   NEG==0: continue iff (a cc b) — branch-to-continue on cc, else JMP side-exit
+      //           (so NaN/unordered, where cc is false, correctly side-exits).
+      //   NEG==1: continue iff !(a cc b) — branch-to-side-exit on cc, fall through to continue
+      //           (so NaN, where cc is false, continues — matching `!(a<b)` in the interpreter).
+      case IR_FGUARD_LT: case IR_FGUARD_LE: case IR_FGUARD_GT: case IR_FGUARD_GE: {
+        MIR_insn_code_t cc = in->op == IR_FGUARD_LT ? MIR_DBLT : in->op == IR_FGUARD_LE ? MIR_DBLE
+                           : in->op == IR_FGUARD_GT ? MIR_DBGT : MIR_DBGE;
+        if (!in->imm) {
+          MIR_label_t cont = MIR_new_label(ctx);
+          APP(MIR_new_insn(ctx, cc, MIR_new_label_op(ctx, cont), R(in->a), R(in->b)));
+          APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, exit_lab[in->exit_id])));
+          APP(cont);
+        } else {
+          APP(MIR_new_insn(ctx, cc, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b)));
+        }
+      } break;
       case IR_GUARD_LT:  APP(MIR_new_insn(ctx, MIR_BGE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_LE:  APP(MIR_new_insn(ctx, MIR_BGT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_GT:  APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
@@ -283,11 +360,14 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
   APP(deopt);   APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, QJIT_DEOPT)));        // overflow/type
   APP(deopt_b); APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, QJIT_DEOPT_BOUNDS))); // array bounds
   APP(deopt_t); APP(MIR_new_ret_insn(ctx, 1, MIR_new_int_op(ctx, QJIT_DEOPT_TAG)));    // element non-int
-  free(sreg); free(used); free(slot_inv); free(inv);
+  free(sreg); free(used); free(slot_flt); free(slot_inv); free(inv);
 #undef APP
 #undef MEM
+#undef MEMD
 #undef R
 #undef SR
+#undef IS_LDST_INT
+#undef IS_LDST_FLT
   MIR_finish_func(ctx);
   MIR_finish_module(ctx);
   MIR_load_module(ctx, m);

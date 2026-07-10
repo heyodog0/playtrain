@@ -6,8 +6,10 @@
 // Guards compile to conditional branches to side-exit blocks that RETURN an exit
 // id — the interpreter deopts by resuming at that exit's bytecode PC.
 //
-// Stage 15/16 scope: INTEGER loops only (ints are tagged immediates in QuickJS →
-// no refcounting), so the fast path is provably correct + the deopt is trivial.
+// Scope: numeric loops over INT and FLOAT locals/args (both are tagged immediates in
+// QuickJS → no refcounting), plus guarded fast-array int/string element loads. The int
+// fast path deopts on overflow; the float fast path never overflows (floats never change
+// type) so it has no deopt. Heap-value mutation (refcounting) is a later milestone.
 #ifndef QJIT_IR_H
 #define QJIT_IR_H
 #include <stdint.h>
@@ -49,6 +51,25 @@ typedef enum {
   // --- call (increment 4: native global fn, int args, result dropped) ---
   IR_CALL,          // call global fn named by atom (imm) with argc int args (r(argv[k]));
                     // side-effect only, result is freed. imm=atom, argc, argv[] = arg refs.
+  // --- float specialization (milestone 1) — f64 fast path ---------------------
+  // Floats are stored in the SAME int64 `locals` slots (the QuickJS JSValue payload
+  // is a double; the host marshals its raw bits into locals[slot] and guards
+  // tag==JS_TAG_FLOAT64 at entry, QK_FLOAT). Codegen views a float slot through a
+  // MIR_T_D memory op — the 8 bytes reinterpret as the double, no conversion. Float
+  // arithmetic NEVER overflows to another type, so the float path has NO deopt (it is
+  // like IR_ADD_SAFE — may sit safely after a call). NaN handling lives in the guards.
+  IR_FLOAD_LOC,  // r(f64) = *(double*)&locals[slot]      (slot marshaled as FLOAT64)
+  IR_FSTORE_LOC, // *(double*)&locals[slot] = r(a)(f64)
+  IR_FCONST,     // r(f64) = the double whose raw bits are in `imm` (bit-reinterpret)
+  IR_FADD, IR_FSUB, IR_FMUL, IR_FDIV,  // r(f64) = r(a) op r(b)   (no overflow, no deopt)
+  IR_I2F,        // r(f64) = (double) r(a)(i64)   — promote an int operand for mixed arith
+  // Float compare guards. `imm` carries NEG (0/1): the compare op stored is the ORDERED
+  // comparison to test; NEG says which side is "continue".
+  //   NEG==0: continue iff (a cmp b) is TRUE  → any unordered/NaN result side-exits.
+  //   NEG==1: continue iff (a cmp b) is FALSE → NaN CONTINUES (matches `!(a<b)` in JS).
+  // This split is REQUIRED because for floats !(a<b) != (a>=b) under NaN, so — unlike the
+  // int guards — negation cannot be folded into the operator; it must stay explicit.
+  IR_FGUARD_LT, IR_FGUARD_LE, IR_FGUARD_GT, IR_FGUARD_GE,
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
 
@@ -127,8 +148,9 @@ typedef enum {
   Q_PUT_LOC,    // locals[slot] = pop               (operand: slot)
   Q_SET_LOC,    // locals[slot] = peek (NO pop)     (operand: slot)   [set_loc/set_arg]
   Q_ADD_LOC,    // locals[slot] += pop              (operand: slot)   [fused]
-  Q_PUSH_INT,   // push imm                         (operand: imm)
-  Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b
+  Q_PUSH_INT,   // push imm (int)                   (operand: imm)
+  Q_PUSH_F64,   // push a float const               (operand: imm = the double's raw bits)
+  Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b  (float if either operand is float)
   Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)
   Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
   Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)
@@ -148,9 +170,11 @@ typedef enum {
 // Per-slot marshaling kind (fills QjitTrace.live_kind): how the entry code reads the
 // frame slot into L[]. QK_INT = int payload (guard tag==INT). QK_ARRAY = a fast array
 // (guard tag==OBJECT && class==ARRAY && fast_array; store JSObject* in L[]).
+// QK_FLOAT = float payload (guard tag==FLOAT64; store the double's raw bits in L[], read
+// back as JSValue(float) on a control-flow exit — floats are immediates, NO refcounting).
 // QK_SKIP: a purely trace-internal slot (an object temp resolved by store-to-load
 // forwarding — never a real IR load/store). Not marshaled at entry, not written back.
-enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2 };
+enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2, QK_FLOAT = 3 };
 
 typedef struct {
   QOp op;
@@ -164,10 +188,14 @@ typedef struct {
 // stack underflow / control shape not handled).
 // out_exit_pcs (may be NULL): filled with exit-id -> resume bytecode PC (from the
 // IF_FALSE exit_pc values, in the same id order the codegen uses).
-// out_slot_kind (may be NULL): per local-slot marshaling kind (QK_INT / QK_ARRAY),
-// sized >= (max slot + 1); the caller must zero it before the call.
+// out_slot_kind (may be NULL): per local-slot marshaling kind (QK_INT / QK_ARRAY /
+// QK_FLOAT), sized >= (max slot + 1); the caller must zero it before the call.
+// in_slot_type (may be NULL = all int): per local-slot ENTRY type observed from the
+// live frame (var_buf/arg_buf tag), QK_INT vs QK_FLOAT — this is how the builder learns
+// a slot is float without any recorder change. A Q_GET_LOC of a QK_FLOAT slot loads it
+// as a double; NULL means treat every slot as int (back-compat for the int-only tests).
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
                   int *ir_n, int *n_exits, int32_t *out_exit_pcs,
-                  unsigned char *out_slot_kind);
+                  unsigned char *out_slot_kind, const unsigned char *in_slot_type);
 
 #endif

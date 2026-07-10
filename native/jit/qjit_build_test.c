@@ -15,14 +15,18 @@ static void check(const char *name, int cond) {
   if (cond) g_pass++; else g_fail++;
 }
 
-// Build+compile+run a trace; return exit id (or -1 on build abort).
-static int run_trace(const TraceOp *ops, int n_ops, int64_t *locals) {
+// Build+compile+run a trace; return exit id (or -1 on build abort, -2 on compile fail).
+// slot_type: per-slot entry types (QK_INT/QK_FLOAT) or NULL for all-int.
+static int run_trace_t(const TraceOp *ops, int n_ops, int64_t *locals, const unsigned char *slot_type) {
   IRInsn ir[256]; int ir_n, n_exits; int32_t exit_pcs[8];
   unsigned char kind[64] = {0};
-  if (qjit_build_ir(ops, n_ops, ir, 256, &ir_n, &n_exits, exit_pcs, kind) != 0) return -1;
+  if (qjit_build_ir(ops, n_ops, ir, 256, &ir_n, &n_exits, exit_pcs, kind, slot_type) != 0) return -1;
   qjit_trace_fn fn = qjit_ir_compile(ir, ir_n, n_exits);
   if (!fn) return -2;
   return (int)fn(locals);
+}
+static int run_trace(const TraceOp *ops, int n_ops, int64_t *locals) {
+  return run_trace_t(ops, n_ops, locals, NULL);
 }
 
 int main(void) {
@@ -187,6 +191,85 @@ int main(void) {
     int64_t L[2] = {0, 4};
     check("abort: call result not dropped (unbalanced)", run_trace(t, 9, L) == -1);
   }
+
+  // ===== FLOAT builder tests (milestone 1) =====
+  // Helpers to move doubles through the int64 `locals` and Q_PUSH_F64 imm.
+  #define FB(d) ({ double _d = (d); int64_t _b; memcpy(&_b, &_d, 8); _b; })
+  #define FD(b) ({ int64_t _b = (b); double _d; memcpy(&_d, &_b, 8); _d; })
+
+  // ---- F1: while (x < n) { s += g*x; x += 1.0 }  — all-float locals via entry types.
+  //   slot0=s, slot1=x, slot2=n, slot3=g ; QK_FLOAT for all. g invariant -> hoisted.
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=77}, // x<n
+      {Q_GET_LOC,.slot=3}, {Q_GET_LOC,.slot=1}, {Q_MUL}, {Q_ADD_LOC,.slot=0},      // s += g*x
+      {Q_PUSH_F64,.imm=0}, {Q_ADD_LOC,.slot=1},                                    // x += 1.0 (imm set below)
+      {Q_GOTO_LOOP},
+    };
+    { double one = 1.0; memcpy(&t[8].imm, &one, 8); }
+    unsigned char ty[4] = {QK_FLOAT, QK_FLOAT, QK_FLOAT, QK_FLOAT};
+    int64_t L[4] = {FB(0.0), FB(0.0), FB(1000.0), FB(0.3)};
+    int e = run_trace_t(t, 11, L, ty);
+    double rs = 0, x = 0; for (; x < 1000.0; x += 1.0) rs += 0.3 * x;
+    check("float F1: exit 0", e == 0);
+    check("float F1: s bit-exact", FD(L[0]) == rs);
+    check("float F1: x==n", FD(L[1]) == 1000.0);
+  }
+
+  // ---- F2: mixed — while (i < n) { acc += (i * 0.5); i += 1 }  (i,n int; acc float).
+  //   Q_MUL of int i and float 0.5 -> promotes i (IR_I2F) -> IR_FMUL. Compare stays int.
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=50},  // int i<n
+      {Q_GET_LOC,.slot=1}, {Q_PUSH_F64,.imm=0}, {Q_MUL}, {Q_ADD_LOC,.slot=0},       // acc += i*0.5
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=1},                                     // i += 1 (int)
+      {Q_GOTO_LOOP},
+    };
+    { double half = 0.5; memcpy(&t[5].imm, &half, 8); }
+    unsigned char ty[3] = {QK_FLOAT, QK_INT, QK_INT};  // acc float, i/n int
+    int64_t L[3] = {FB(0.0), 0, 400};
+    int e = run_trace_t(t, 11, L, ty);
+    double racc = 0; for (int64_t i = 0; i < 400; i++) racc += (double)i * 0.5;
+    check("float F2 (mixed): exit 0", e == 0);
+    check("float F2 (mixed): i==n", L[1] == 400);
+    check("float F2 (mixed): acc bit-exact", FD(L[0]) == racc);
+  }
+
+  // ---- F3: float PUT_LOC (not compound): while (x<n){ y = x*x; x += 1.0 }  y,x,n float.
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=2}, {Q_LT}, {Q_IF_FALSE,.exit_pc=60},   // x<n
+      {Q_GET_LOC,.slot=1}, {Q_GET_LOC,.slot=1}, {Q_MUL}, {Q_PUT_LOC,.slot=0},        // y = x*x
+      {Q_PUSH_F64,.imm=0}, {Q_ADD_LOC,.slot=1},                                      // x += 1.0
+      {Q_GOTO_LOOP},
+    };
+    { double one = 1.0; memcpy(&t[8].imm, &one, 8); }
+    unsigned char ty[3] = {QK_FLOAT, QK_FLOAT, QK_FLOAT};
+    int64_t L[3] = {FB(0.0), FB(0.0), FB(7.0)};
+    int e = run_trace_t(t, 11, L, ty);
+    check("float F3: exit 0", e == 0);
+    check("float F3: y == (n-1)^2 == 36", FD(L[0]) == 36.0);
+    check("float F3: x==n", FD(L[1]) == 7.0);
+  }
+
+  // ---- F4: a slot the frame says is INT, then a float stored into it -> codegen must
+  //   refuse (int load elsewhere + float store == mixed slot). Here: read slot0 as int
+  //   (guard i<n uses it) AND float-store slot0 -> conflict -> compile returns NULL (-2).
+  {
+    TraceOp t[] = {
+      {Q_GET_LOC,.slot=0}, {Q_GET_LOC,.slot=1}, {Q_LT}, {Q_IF_FALSE,.exit_pc=9},     // int slot0 < slot1
+      {Q_PUSH_F64,.imm=0}, {Q_PUT_LOC,.slot=0},                                       // float-store slot0
+      {Q_PUSH_INT,.imm=1}, {Q_ADD_LOC,.slot=0},                                       // (keeps slot0 live/int too)
+      {Q_GOTO_LOOP},
+    };
+    { double one = 1.0; memcpy(&t[4].imm, &one, 8); }
+    int64_t L[2] = {0, 5};
+    int e = run_trace(t, 9, L);  // NULL slot_type: slot0 int -> float store conflicts
+    check("float F4: mixed int/float slot refused", e == -1 || e == -2);
+  }
+
+  #undef FB
+  #undef FD
 
   qjit_ir_finish();
   printf("\n%d passed, %d failed\n", g_pass, g_fail);

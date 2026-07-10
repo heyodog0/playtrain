@@ -28,9 +28,9 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 
 | # | Milestone | Why it's here (engine rationale) | Status |
 |---|---|---|---|
-| 0 | **Branch-direction correctness** | a recorded branch may take OR fall through; the guard's exit must be the other way, at the right PC. Fuzzer-found bug; blocks trusting any conditional. | 🔧 in progress |
-| 1 | **Float specialization** (f64 regs, `tag==FLOAT64` guard) | THE headline gap. V8=Smi+HeapNumber, LuaJIT=dual-number. Most game loops (positions, velocities, physics) are float. int-only can't touch them. | ⬜ next |
-| 2 | Full **numeric ISA** on int+float | `div`/`mod`/`neg`/`inc`/`post_inc`/`pow`; bitwise `and/or/xor/shl/shr/sar/not` (int32). Mechanical once float exists. | ⬜ |
+| 0 | **Branch-direction correctness** | a recorded branch may take OR fall through; the guard's exit must be the other way, at the right PC. Fuzzer-found bug; blocks trusting any conditional. | ✅ done |
+| 1 | **Float specialization** (f64 regs, `tag==FLOAT64` guard) | THE headline gap. V8=Smi+HeapNumber, LuaJIT=dual-number. Most game loops (positions, velocities, physics) are float. int-only can't touch them. | ✅ done |
+| 2 | Full **numeric ISA** on int+float | `div`/`mod`/`neg`/`inc`/`post_inc`/`pow`; bitwise `and/or/xor/shl/shr/sar/not` (int32). Mechanical once float exists — **next** (float path now in place). | ⬜ next |
 | 3 | **Property access** `get_field`/`put_field` via shape guard (our inline cache) | V8's crown jewel — real JS is property-access-dominated; games do `e.x`,`e.vy`,`grid.w`. Guard the object's JSShape, load/store at the cached property offset; deopt on shape change. | ⬜ |
 | 4 | **Array element write** `put_array_el` (+ element-kind sense) | grids/entity lists get mutated. Needs refcount (free old, incref new) — the correctness minefield; V8 has element-kinds, we guard fast_array + int/heap element. | ⬜ |
 | 5 | **Call inlining** (LuaJIT-style: record through JS calls) + method `this` | stop aborting recording on JS→JS calls; inline the callee into the trace with a target guard. Native calls already emitted. | ⬜ |
@@ -38,14 +38,26 @@ specialization, (4) feedback-directed **call inlining**, (5) deopt for the rest.
 | ∞ | **Permanent abort** | throw/catch, generators/async, eval, with, proxies, bigint, spread, for-in/of iterators. | ⛔ by design |
 
 ## Supported today (✅ — fires, gated OFF==ON)
-- stack/const: push_0-7/i8/i16/i32/minus1/const8(int)/atom_value, drop, dup, nop
-- locals/args: get/put/set_loc(+0-3,8,check), get/put/set_arg(+0-3); int payload OR object-temp
-  via store-to-load forwarding (QK_SKIP)
+- stack/const: push_0-7/i8/i16/i32/minus1/const8+const(int **or float**)/atom_value, drop, dup, nop
+- locals/args: get/put/set_loc(+0-3,8,check), get_loc0_loc1 (fused), get/put/set_arg(+0-3); int
+  OR **float** (QK_FLOAT) payload, OR object-temp via store-to-load forwarding (QK_SKIP)
 - int arith: add, sub, mul (overflow→deopt), add_loc, inc_loc, dec_loc
-- compare: lt, lte, gt, gte (int); strict_eq (element === interned atom, via js_strict_eq helper)
-- control: goto/8/16 back-edge; if_false/8 (only the recorded direction — see milestone 0)
+- **float arith: add, sub, mul, div (f64, no overflow/deopt); int→float promotion (I2F) on mixed
+  operands; float add_loc/put_loc. Entry guards tag==FLOAT64; writeback via `js_float64` (raw,
+  matches the interpreter — no int normalization).**
+- compare: lt, lte, gt, gte (int **and float**; float guards carry a NEG flag so NaN resolves to
+  the interpreter's `!(a<b)` direction — `!(a<b) != (a>=b)` under NaN, so negation is NOT folded);
+  strict_eq (element === interned atom, via js_strict_eq helper)
+- control: goto/8/16 back-edge; if_false/8 (recorded direction — milestone 0)
 - heap: get_array_el (int/string/object element), get_length, get_var (global fast-array or fn)
 - call: call (global fn, int args, result dropped — via JS_Call helper)
+
+### Float — measured (milestone 1)
+`test_floop.js` (pure-float hot loop) fires and is **24.5× the interpreter** (11.4k→279k steps/s),
+bit-exact OFF==ON. Float fuzzer corpus (`node fuzz_jit.mjs 24 <dir> float`): 24 programs × 4 seeds
+bit-exact, 19/24 fire. Unit tests: `qjit_fir_test` 21/21 (IR+codegen incl. NaN both polarities,
+mixed int/float, fail-closed type-mixed slot); `qjit_build_test` +10 float builder cases.
+Real games stay bit-exact but don't fire yet — their hot loops read object fields (milestone 3).
 
 ## Invariant (unchanged, non-negotiable)
 Unsupported or uncertain → abort/deopt → interpreter → bit-exact. The JIT only ever makes a
