@@ -99,6 +99,23 @@ snapshots by re-running whole iterations:
 This is correct + snapshot-free for the integer subset; heap values (arrays/strings) later
 need real snapshots + refcounting.
 
+## Live-wiring opcode encodings (grounded from quickjs-opcode.h) + firing blocker
+Exact instruction sizes (opcode+operands) for the int subset:
+- get/put_loc, get/put_loc_check, get/put_arg: 3 bytes (u16 idx)
+- get/put_loc8, add_loc: 2 bytes (u8 idx)   | push_i32: 5 | push_i16: 3 | push_i8: 2
+- push_const8: 2 (u8 cpool idx; read b->cpool[idx], must be JS_TAG_INT else abort)
+- push_0/1/.../minus1: 1 (immediate) | add/sub/mul/lt/lte/gt/gte/drop/dup/nop: 1
+- if_false/goto: 5 (label = i32 rel offset)
+
+FIRING BLOCKER (honest): the peephole optimizer emits SHORT forms (get_loc0-3, put_loc0-3,
+get_arg0-3, put_arg2, set_arg0, ...) and `set_arg` (stores WITHOUT popping) for real loops.
+The conservative decoder must ABORT on these (→ no trace → interpreted → bit-exact), so real
+optimized loops don't fire yet. To fire: add short-form decode (idx baked in opcode) + model
+`set_arg` (peek-store, stack stays) correctly. Alternatively disable the short-opcode pass for
+traced funcs. Either way: gate bit-exact on every game; a trace fires only when the decoder is
+certain, else falls back. Infra (trace table, recorder exposure, marshal/enter) is in place +
+inert-safe; opcode coverage is the remaining gate-driven work to make traces fire.
+
 ## Scope discipline
 Trace only hot loops; support a bytecode subset; abort/deopt on everything else. Correctness is the
 interpreter + gate; the JIT only ever makes correct code faster or safely bails. Base = quickjs-ng

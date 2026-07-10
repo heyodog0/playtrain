@@ -61,6 +61,28 @@ void qjit_record(const void *b, int32_t off, int opcode) {
   else { qjit_rec_active = 0; }  // too long -> abort/retry
 }
 
+// ---- stage 3: expose recorded trace + a small trace table ----
+int qjit_rec_ready(void) { return rec_ready; }
+const void *qjit_rec_b(void) { return rec_hot_b; }
+int qjit_rec_anchor_off(void) { return rec_hot_anchor; }
+int qjit_rec_count(void) { return rec_len; }
+int qjit_rec_off(int i) { return (i >= 0 && i < rec_len) ? rec_trace[i].off : -1; }
+int qjit_rec_opcode(int i) { return (i >= 0 && i < rec_len) ? rec_trace[i].op : -1; }
+// allow the next hot loop to be recorded once this one is consumed
+void qjit_rec_consume(void) { rec_ready = 0; rec_done = 0; cand_b = NULL; }
+
+#define QJIT_MAX_TRACES 256
+static QjitTrace g_traces[QJIT_MAX_TRACES];
+static int g_n_traces = 0;
+void qjit_store_trace(const QjitTrace *t) {
+  if (g_n_traces < QJIT_MAX_TRACES) g_traces[g_n_traces++] = *t;
+}
+QjitTrace *qjit_lookup_trace(const void *b, int32_t anchor) {
+  for (int i = 0; i < g_n_traces; i++)
+    if (g_traces[i].b == b && g_traces[i].anchor == anchor) return &g_traces[i];
+  return NULL;
+}
+
 static int cmp_desc(const void *a, const void *b) {
   uint64_t ca = ((const QEntry *)a)->count, cb = ((const QEntry *)b)->count;
   return ca < cb ? 1 : ca > cb ? -1 : 0;

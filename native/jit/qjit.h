@@ -27,6 +27,32 @@ void qjit_report(void *ctx);
 // Provided by quickjs.c: resolve a JSFunctionBytecode* to its function name.
 const char *qjit_fn_name(void *ctx, const void *b);
 
+// ---- stage 3: live trace store + entry (recorder -> compiled trace -> run) ----
+// After a trace is recorded, quickjs.c reads it via these getters, decodes operands,
+// builds+compiles it, and stores it keyed by (b, anchor). At a hot back-edge it looks
+// the trace up and runs it (marshaling int locals), else falls back to the interpreter.
+int         qjit_rec_ready(void);          // a freshly-recorded trace is available
+const void *qjit_rec_b(void);
+int         qjit_rec_anchor_off(void);
+int         qjit_rec_count(void);          // number of recorded bytecodes
+int         qjit_rec_off(int i);           // bytecode offset of recorded op i
+int         qjit_rec_opcode(int i);        // opcode of recorded op i
+void        qjit_rec_consume(void);        // clear rec_ready (compiled or rejected)
+
+// A compiled trace + the metadata quickjs.c needs to marshal/resume.
+typedef struct {
+  const void *b; int32_t anchor; int valid;
+  void *fn;                        // qjit_trace_fn
+  int n_live;                      // number of live frame slots (L[] layout)
+  unsigned char live_is_arg[64];   // per L index: 1 = arg_buf, 0 = var_buf
+  int          live_idx[64];       // per L index: frame slot index
+  int n_exits; int32_t exit_pc[8]; // exit id -> resume bytecode offset
+} QjitTrace;
+
+// Build IR-provided trace (already compiled by qjit_ir_compile) into the table.
+void       qjit_store_trace(const QjitTrace *t);
+QjitTrace *qjit_lookup_trace(const void *b, int32_t anchor);
+
 #ifdef __cplusplus
 }
 #endif
