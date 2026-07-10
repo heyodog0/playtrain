@@ -1,0 +1,266 @@
+// p5.cpp — state + implementation for the native p5 runtime. Mirrors
+// runtime/p5/p5-shim.mjs call-for-call against the rasterizer C ABI.
+#include "p5.hpp"
+#include "raster_abi.h"
+
+#include <vector>
+
+namespace p5 {
+
+// ---- module-level singleton state (one canvas per game, like the shim) ----
+static uint32_t _h = 0;
+static int _width = 0, _height = 0;
+static int _rasterRes = 0;   // device res; 0 => render at logical size
+static int _frameCount = 0;
+
+static Color _fill{255, 255, 255, 255};
+static Color _stroke{0, 0, 0, 255};
+static bool _strokeEnabled = true;
+static double _strokeW = 1.0;
+static int _rectMode = CORNER;
+static int _ellipseMode = CENTER;
+
+// style cache (mirrors the shim's _ctxFill/_ctxStroke/_ctxLineW reparse guard)
+static bool _cacheValid = false;
+static Color _ctxFill{-1, -1, -1, -1};
+static Color _ctxStroke{-1, -1, -1, -1};
+static double _ctxLineW = -1;
+
+struct StyleSnap {
+  Color fill, stroke;
+  bool strokeEnabled;
+  double strokeW;
+  int rectMode, ellipseMode;
+};
+static std::vector<StyleSnap> _styleStack;
+static std::vector<std::pair<double, double>> _shapeVerts;
+
+static bool _keys[256] = {false};
+
+// ---- color pipeline (colorArgs + parseColor rounding) ----
+static inline double clamp01(double x) { return js::min(1.0, js::max(0.0, x)); }
+
+Color color(double gray) { double v = js::jround(gray); return {v, v, v, 255}; }
+Color color(double gray, double alpha) {
+  double v = js::jround(gray);
+  return {v, v, v, js::jround(clamp01(alpha / 255.0) * 255.0)};
+}
+Color color(double r, double g, double b) {
+  return {js::jround(r), js::jround(g), js::jround(b), 255};
+}
+Color color(double r, double g, double b, double a) {
+  return {js::jround(r), js::jround(g), js::jround(b), js::jround(clamp01(a / 255.0) * 255.0)};
+}
+
+// ---- style application (defer until draw, mirroring _applyFill/_applyStroke) ----
+static inline bool sameColor(const Color& a, const Color& b) {
+  return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+}
+static void applyFill() {
+  if (!_cacheValid || !sameColor(_ctxFill, _fill)) {
+    rs_set_fill(_h, _fill.r, _fill.g, _fill.b, _fill.a);
+    _ctxFill = _fill;
+  }
+}
+static void applyStroke() {
+  if (!_cacheValid || !sameColor(_ctxStroke, _stroke)) {
+    rs_set_stroke(_h, _stroke.r, _stroke.g, _stroke.b, _stroke.a);
+    _ctxStroke = _stroke;
+  }
+  if (!_cacheValid || _ctxLineW != _strokeW) {
+    rs_set_line_width(_h, _strokeW);
+    _ctxLineW = _strokeW;
+  }
+  _cacheValid = true;
+}
+static void invalidateCache() { _cacheValid = false; }
+// applyFill leaves the cache marked valid only after applyStroke; ensure fill
+// alone also validates the entries it wrote.
+static void afterFill() { _cacheValid = true; }
+
+// ---- lifecycle ----
+void setRasterRes(int n) { if (n > 0) _rasterRes = n; }
+
+void createCanvas(double w, double h) {
+  _width = (int)w;
+  _height = (int)h;
+  int dw = _rasterRes > 0 ? _rasterRes : (int)w;
+  int dh = _rasterRes > 0 ? _rasterRes : (int)h;
+  _h = rs_new_canvas(w, h, (double)dw, (double)dh);
+}
+
+int width() { return _width; }
+int height() { return _height; }
+int frameCount() { return _frameCount; }
+void resetFrameCount() { _frameCount = 0; }
+void tick() { _frameCount++; }
+
+void render_obs_rgb(uint8_t* out) {
+  // The JS obs path is rs_to_bgra (RGBA->BGRA premul) then bgraBufferToRGB
+  // (BGRA->RGB), i.e. two passes. But the rasterizer forces every written pixel
+  // to alpha=255 (span/plot/background all set a=255), so the final buffer is
+  // fully opaque: premul is a no-op and BGRA->RGB round-trips to the original
+  // RGB. We therefore read the internal RGBA buffer straight to RGB in ONE pass,
+  // skipping rs_to_bgra. Byte-identical to V8 (proven by the differential gate).
+  const uint8_t* px = rs_pixels_ptr(_h);  // RGBA straight-alpha, device res
+  int n = _rasterRes > 0 ? _rasterRes * _rasterRes : _width * _height;
+  for (int i = 0, s = 0, d = 0; i < n; i++, s += 4, d += 3) {
+    out[d]     = px[s];      // R
+    out[d + 1] = px[s + 1];  // G
+    out[d + 2] = px[s + 2];  // B
+  }
+}
+
+// ---- input ----
+void setKeysDown(const int* codes, int n) {
+  for (int i = 0; i < 256; i++) _keys[i] = false;
+  for (int i = 0; i < n; i++) {
+    int c = codes[i];
+    if (c >= 0 && c < 256) _keys[c] = true;
+  }
+}
+bool keyIsDown(int code) { return code >= 0 && code < 256 && _keys[code]; }
+
+// ---- drawing state ----
+void background(Color c) {
+  rs_save(_h);
+  rs_reset_transform(_h);
+  rs_set_fill(_h, c.r, c.g, c.b, c.a);
+  rs_fill_rect(_h, 0, 0, _width, _height);
+  rs_restore(_h);
+  invalidateCache();  // save/restore reset rasterizer state outside our cache
+}
+void background(double gray) { background(color(gray)); }
+void background(double r, double g, double b) { background(color(r, g, b)); }
+
+void fill(Color c) { _fill = c; }
+void fill(double gray) { _fill = color(gray); }
+void fill(double gray, double a) { _fill = color(gray, a); }
+void fill(double r, double g, double b) { _fill = color(r, g, b); }
+void fill(double r, double g, double b, double a) { _fill = color(r, g, b, a); }
+
+void stroke(Color c) { _strokeEnabled = true; _stroke = c; }
+void stroke(double gray) { _strokeEnabled = true; _stroke = color(gray); }
+void stroke(double r, double g, double b) { _strokeEnabled = true; _stroke = color(r, g, b); }
+void stroke(double r, double g, double b, double a) { _strokeEnabled = true; _stroke = color(r, g, b, a); }
+void noStroke() { _strokeEnabled = false; }
+void noFill() { /* not represented in shim; no-op for now */ }
+void strokeWeight(double w) { _strokeW = w; }
+void rectMode(int mode) { _rectMode = (mode == CENTER) ? CENTER : CORNER; }
+void ellipseMode(int mode) { _ellipseMode = (mode == CORNER) ? CORNER : CENTER; }
+
+// ---- primitives ----
+void rect(double x, double y, double w, double h) {
+  double dx = x, dy = y;
+  if (_rectMode == CENTER) { dx = x - w / 2; dy = y - h / 2; }
+  applyFill();
+  rs_fill_rect(_h, dx, dy, w, h);
+  if (_strokeEnabled) {
+    applyStroke();
+    rs_begin_path(_h);
+    rs_rect_path(_h, dx, dy, w, h);
+    rs_stroke(_h);
+  }
+  afterFill();
+}
+void rect(double x, double y, double w, double h, double r) {
+  if (!(r > 0)) { rect(x, y, w, h); return; }
+  double dx = x, dy = y;
+  if (_rectMode == CENTER) { dx = x - w / 2; dy = y - h / 2; }
+  applyFill();
+  rs_begin_path(_h);
+  rs_round_rect_path(_h, dx, dy, w, h, r);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
+
+void ellipse(double x, double y, double w, double h) {
+  double cx = x, cy = y;
+  if (_ellipseMode == CORNER) { cx = x + w / 2; cy = y + h / 2; }
+  applyFill();
+  rs_begin_path(_h);
+  rs_ellipse_path(_h, cx, cy, w / 2, h / 2, 0, TWO_PI);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
+void ellipse(double x, double y, double w) { ellipse(x, y, w, w); }
+void circle(double x, double y, double d) { ellipse(x, y, d, d); }
+
+void triangle(double x1, double y1, double x2, double y2, double x3, double y3) {
+  applyFill();
+  rs_begin_path(_h);
+  rs_move_to(_h, x1, y1);
+  rs_line_to(_h, x2, y2);
+  rs_line_to(_h, x3, y3);
+  rs_close_path(_h);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
+void quad(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
+  applyFill();
+  rs_begin_path(_h);
+  rs_move_to(_h, x1, y1);
+  rs_line_to(_h, x2, y2);
+  rs_line_to(_h, x3, y3);
+  rs_line_to(_h, x4, y4);
+  rs_close_path(_h);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
+void line(double x1, double y1, double x2, double y2) {
+  applyStroke();
+  rs_begin_path(_h);
+  rs_move_to(_h, x1, y1);
+  rs_line_to(_h, x2, y2);
+  rs_stroke(_h);
+}
+
+// ---- transform stack ----
+void push() {
+  rs_save(_h);
+  _styleStack.push_back({_fill, _stroke, _strokeEnabled, _strokeW, _rectMode, _ellipseMode});
+}
+void pop() {
+  rs_restore(_h);
+  if (!_styleStack.empty()) {
+    StyleSnap s = _styleStack.back();
+    _styleStack.pop_back();
+    _fill = s.fill; _stroke = s.stroke; _strokeEnabled = s.strokeEnabled;
+    _strokeW = s.strokeW; _rectMode = s.rectMode; _ellipseMode = s.ellipseMode;
+  }
+  invalidateCache();
+}
+void translate(double x, double y) { rs_translate(_h, x, y); }
+void rotate(double a) { rs_rotate(_h, a); }
+void scale(double sx) { rs_scale(_h, sx, sx); }
+void scale(double sx, double sy) { rs_scale(_h, sx, sy); }
+
+// ---- shapes ----
+void beginShape() { _shapeVerts.clear(); }
+void vertex(double x, double y) { _shapeVerts.emplace_back(x, y); }
+static void endShapeImpl(bool close) {
+  if (_shapeVerts.size() < 2) return;
+  applyFill();
+  rs_begin_path(_h);
+  rs_move_to(_h, _shapeVerts[0].first, _shapeVerts[0].second);
+  for (size_t i = 1; i < _shapeVerts.size(); i++)
+    rs_line_to(_h, _shapeVerts[i].first, _shapeVerts[i].second);
+  if (close) rs_close_path(_h);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
+void endShape() { endShapeImpl(false); }
+void endShape(int mode) { endShapeImpl(mode == CLOSE); }
+
+// ---- text (visual only; rasterizer has no text -> no-op, matches headless obs) ----
+void textSize(double) {}
+void textAlign(int) {}
+void text(const std::string&, double, double) {}
+void text(double, double, double) {}
+
+}  // namespace p5

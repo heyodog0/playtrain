@@ -1,0 +1,56 @@
+// raster_abi.h — C declarations for the Rust rasterizer's extern "C" surface
+// (crates/rasterizer/src/lib.rs). Built as libnode_gym_rasterizer.a and linked
+// into the AOT-compiled native game twins. This is the SAME rasterizer the JS
+// runtime uses via wasm (raster-wasm.mjs) — bit-identical output by construction.
+#ifndef NODE_GYM_RASTER_ABI_H
+#define NODE_GYM_RASTER_ABI_H
+
+#include <cstdint>
+
+extern "C" {
+
+// Canvas lifecycle. Logical size (lw,lh) is the game's coordinate space;
+// device size (dw,dh) is the rasterization resolution (obs res, e.g. 64).
+uint32_t rs_new_canvas(double lw, double lh, double dw, double dh);
+
+// Pixel buffers (straight-alpha RGBA and premultiplied BGRA scratch).
+const uint8_t* rs_pixels_ptr(uint32_t h);
+const uint8_t* rs_bgra_ptr(uint32_t h);
+uint32_t       rs_buf_len(uint32_t h);
+
+// Transform stack.
+void rs_save(uint32_t h);
+void rs_restore(uint32_t h);
+void rs_reset_transform(uint32_t h);
+void rs_translate(uint32_t h, double x, double y);
+void rs_scale(uint32_t h, double sx, double sy);
+void rs_rotate(uint32_t h, double a);
+
+// Style.
+void rs_set_fill(uint32_t h, double r, double g, double b, double a);
+void rs_set_stroke(uint32_t h, double r, double g, double b, double a);
+void rs_set_line_width(uint32_t h, double w);
+
+// Path building (logical coords; transformed to device space internally).
+void rs_begin_path(uint32_t h);
+void rs_move_to(uint32_t h, double x, double y);
+void rs_line_to(uint32_t h, double x, double y);
+void rs_close_path(uint32_t h);
+void rs_rect_path(uint32_t h, double x, double y, double w, double hh);
+void rs_round_rect_path(uint32_t h, double x, double y, double w, double hh, double r0);
+void rs_ellipse_path(uint32_t h, double cx, double cy, double rx, double ry,
+                     double a0, double a1);
+
+// Fill / stroke.
+void rs_fill(uint32_t h);
+void rs_stroke(uint32_t h);
+void rs_fill_rect(uint32_t h, double x, double y, double w, double hh);
+
+// Blit / downsample and readback.
+void rs_draw_image(uint32_t dst_h, uint32_t src_h, double dx, double dy,
+                   double dw, double dh);
+void rs_to_bgra(uint32_t h);
+
+}  // extern "C"
+
+#endif  // NODE_GYM_RASTER_ABI_H
