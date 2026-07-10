@@ -1,23 +1,28 @@
 diff --git a/quickjs.c b/quickjs.c
-index 7ec0c25..7b7f24b 100644
+index 7ec0c25..9438bc7 100644
 --- a/quickjs.c
 +++ b/quickjs.c
-@@ -17940,6 +17940,14 @@ static bool needs_backtrace(JSValue exc)
+@@ -17940,6 +17940,19 @@ static bool needs_backtrace(JSValue exc)
  }
  
  /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
 +/* --- qjit: resolve a JSFunctionBytecode* to its function name (report-time) --- */
 +#include "qjit.h"
++#include "qjit_ir.h"
 +const char *qjit_fn_name(void *ctx_, const void *b_) {
 +    JSContext *ctx = (JSContext *)ctx_;
 +    const JSFunctionBytecode *b = (const JSFunctionBytecode *)b_;
 +    return JS_AtomToCString(ctx, b->func_name);
 +}
++/* qjit live trace entry (defined after opcode enum); returns resume bytecode
++   offset if a native trace ran, else -1. env-gated OFF by default (safe). */
++static int32_t qjit_try_enter(JSContext *ctx, JSFunctionBytecode *b, int32_t anchor,
++                              JSValue *var_buf, JSValue *arg_buf);
 +
  static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                                 JSValueConst this_obj, JSValueConst new_target,
                                 int argc, JSValueConst *argv, int flags)
-@@ -17962,8 +17970,12 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -17962,8 +17975,12 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
  #define DUMP_BYTECODE_OR_DONT(pc)
  #endif
  
@@ -31,7 +36,7 @@ index 7ec0c25..7b7f24b 100644
  #define CASE(op)        case op
  #define DEFAULT         default
  #define BREAK           break
-@@ -17974,7 +17986,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -17974,7 +17991,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
  #include "quickjs-opcode.h"
          [ OP_COUNT ... 255 ] = &&case_default
      };
@@ -40,13 +45,18 @@ index 7ec0c25..7b7f24b 100644
  #define CASE(op)        case_ ## op
  #define DEFAULT         case_default
  #define BREAK           SWITCH(pc)
-@@ -19055,17 +19067,23 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -19055,17 +19072,38 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
              BREAK;
  
          CASE(OP_goto):
 -            pc += (int32_t)get_u32(pc);
 +            { int32_t _o = (int32_t)get_u32(pc);
-+              if (_o < 0) qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), (int32_t)((pc - b->byte_code_buf) + _o));
++              if (_o < 0) {
++                int32_t _tgt = (int32_t)((pc - b->byte_code_buf) + _o);
++                qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), _tgt);
++                int32_t _rp = qjit_try_enter(ctx, b, _tgt, var_buf, arg_buf);
++                if (_rp >= 0) { pc = b->byte_code_buf + _rp; if (unlikely(js_poll_interrupts(ctx))) goto exception; BREAK; }
++              }
 +              pc += _o; }
              if (unlikely(js_poll_interrupts(ctx)))
                  goto exception;
@@ -54,7 +64,12 @@ index 7ec0c25..7b7f24b 100644
          CASE(OP_goto16):
 -            pc += (int16_t)get_u16(pc);
 +            { int16_t _o = (int16_t)get_u16(pc);
-+              if (_o < 0) qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), (int32_t)((pc - b->byte_code_buf) + _o));
++              if (_o < 0) {
++                int32_t _tgt = (int32_t)((pc - b->byte_code_buf) + _o);
++                qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), _tgt);
++                int32_t _rp = qjit_try_enter(ctx, b, _tgt, var_buf, arg_buf);
++                if (_rp >= 0) { pc = b->byte_code_buf + _rp; if (unlikely(js_poll_interrupts(ctx))) goto exception; BREAK; }
++              }
 +              pc += _o; }
              if (unlikely(js_poll_interrupts(ctx)))
                  goto exception;
@@ -62,45 +77,200 @@ index 7ec0c25..7b7f24b 100644
          CASE(OP_goto8):
 -            pc += (int8_t)pc[0];
 +            { int8_t _o = (int8_t)pc[0];
-+              if (_o < 0) qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), (int32_t)((pc - b->byte_code_buf) + _o));
++              if (_o < 0) {
++                int32_t _tgt = (int32_t)((pc - b->byte_code_buf) + _o);
++                qjit_backedge(b, (int32_t)((pc - 1) - b->byte_code_buf), _tgt);
++                int32_t _rp = qjit_try_enter(ctx, b, _tgt, var_buf, arg_buf);
++                if (_rp >= 0) { pc = b->byte_code_buf + _rp; if (unlikely(js_poll_interrupts(ctx))) goto exception; BREAK; }
++              }
 +              pc += _o; }
              if (unlikely(js_poll_interrupts(ctx)))
                  goto exception;
              BREAK;
-@@ -19083,7 +19101,9 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -19083,7 +19121,14 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                  }
                  sp--;
                  if (res) {
 -                    pc += (int32_t)get_u32(pc - 4) - 4;
 +                    int32_t _o = (int32_t)get_u32(pc - 4) - 4;
-+                    if (_o < 0) qjit_backedge(b, (int32_t)((pc - 5) - b->byte_code_buf), (int32_t)((pc - b->byte_code_buf) + _o));
++                    if (_o < 0) {
++                        int32_t _tgt = (int32_t)((pc - b->byte_code_buf) + _o);
++                        qjit_backedge(b, (int32_t)((pc - 5) - b->byte_code_buf), _tgt);
++                        int32_t _rp = qjit_try_enter(ctx, b, _tgt, var_buf, arg_buf);
++                        if (_rp >= 0) { pc = b->byte_code_buf + _rp; if (unlikely(js_poll_interrupts(ctx))) goto exception; BREAK; }
++                    }
 +                    pc += _o;
                  }
                  if (unlikely(js_poll_interrupts(ctx)))
                      goto exception;
-@@ -19103,7 +19123,9 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+@@ -19103,7 +19148,14 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                  }
                  sp--;
                  if (!res) {
 -                    pc += (int32_t)get_u32(pc - 4) - 4;
 +                    int32_t _o = (int32_t)get_u32(pc - 4) - 4;
-+                    if (_o < 0) qjit_backedge(b, (int32_t)((pc - 5) - b->byte_code_buf), (int32_t)((pc - b->byte_code_buf) + _o));
++                    if (_o < 0) {
++                        int32_t _tgt = (int32_t)((pc - b->byte_code_buf) + _o);
++                        qjit_backedge(b, (int32_t)((pc - 5) - b->byte_code_buf), _tgt);
++                        int32_t _rp = qjit_try_enter(ctx, b, _tgt, var_buf, arg_buf);
++                        if (_rp >= 0) { pc = b->byte_code_buf + _rp; if (unlikely(js_poll_interrupts(ctx))) goto exception; BREAK; }
++                    }
 +                    pc += _o;
                  }
                  if (unlikely(js_poll_interrupts(ctx)))
                      goto exception;
-@@ -22322,6 +22344,19 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
+@@ -22322,6 +22374,159 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
      opcode_info[(op) >= OP_TEMP_START ? \
                  (op) + (OP_TEMP_END - OP_TEMP_START) : (op)]
  
++/* ==================== qjit live trace: decode + compile + enter ==================== */
++static int qjit_on(void) { static int e = -1; if (e < 0) e = getenv("QJIT_ENABLE") ? 1 : 0; return e; }
++
++/* map a frame slot (is_arg, idx) to a dense L[] index, recording the reverse map. */
++static int qjit_getL(int is_arg, int idx, int *loc2L, int *arg2L, QjitTrace *tr) {
++    int *m = is_arg ? arg2L : loc2L;
++    if (idx < 0 || idx >= 1024 || tr->n_live >= 64) return -1;
++    if (m[idx] >= 0) return m[idx];
++    int L = tr->n_live++;
++    m[idx] = L; tr->live_is_arg[L] = (unsigned char)is_arg; tr->live_idx[L] = idx;
++    return L;
++}
++
++static int qjit_opcode_size(int op) {
++    static const unsigned char qjit_sizes[] = {
++#define DEF(id, size, n_pop, n_push, f) size,
++#include "quickjs-opcode.h"
++#undef DEF
++    };
++    if (op < 0 || op >= (int)(sizeof(qjit_sizes) / sizeof(qjit_sizes[0]))) return 1;
++    return qjit_sizes[op];
++}
++
++/* linear disassembly of b around a range, gated by QJIT_DUMPBC (debug). */
++static void qjit_dump_bytecode(JSContext *ctx, JSFunctionBytecode *b) {
++    const uint8_t *buf = b->byte_code_buf; int len = b->byte_code_len;
++    fprintf(stderr, "=== bytecode dump: %s (len=%d) ===\n", qjit_fn_name(ctx, b), len);
++    for (int off = 0; off < len; ) {
++        int op = buf[off], sz = qjit_opcode_size(op);
++        fprintf(stderr, "  %4d  %-16s", off, qjit_opcode_name(op));
++        if (op == OP_goto || op == OP_if_false || op == OP_if_true)
++            fprintf(stderr, " -> %d", off + 1 + (int32_t)get_u32(buf + off + 1));
++        else if (op == OP_goto8 || op == OP_if_false8 || op == OP_if_true8)
++            fprintf(stderr, " -> %d", off + 1 + (int8_t)buf[off + 1]);
++        else if (op == OP_goto16)
++            fprintf(stderr, " -> %d", off + 1 + (int16_t)get_u16(buf + off + 1));
++        else if (sz == 3) fprintf(stderr, " #%d", get_u16(buf + off + 1));
++        else if (sz == 2) fprintf(stderr, " #%d", buf[off + 1]);
++        else if (sz == 5) fprintf(stderr, " #%d", get_u32(buf + off + 1));
++        fprintf(stderr, "\n");
++        off += sz > 0 ? sz : 1;
++    }
++}
++
++/* decode the recorded trace for (b,anchor), build+compile it, store (valid or invalid). */
++static void qjit_try_compile(JSContext *ctx, JSFunctionBytecode *b, int32_t anchor) {
++    if (!qjit_rec_ready() || qjit_rec_b() != b || qjit_rec_anchor_off() != anchor) return;
++    if (getenv("QJIT_DUMPBC")) { static int dumped=0; if(!dumped){dumped=1; qjit_dump_bytecode(ctx, b);} }
++    int nrec = qjit_rec_count(), ok = 1;
++    static TraceOp tops[512]; int nt = 0;
++    QjitTrace tr; memset(&tr, 0, sizeof tr); tr.b = b; tr.anchor = anchor;
++    int loc2L[1024], arg2L[1024];
++    for (int i = 0; i < 1024; i++) { loc2L[i] = -1; arg2L[i] = -1; }
++#define GETL(is_arg, idx) qjit_getL(is_arg, idx, loc2L, arg2L, &tr)
++#define EMIT(...) do { if (nt >= 512) { ok = 0; break; } tops[nt++] = (TraceOp){__VA_ARGS__}; } while (0)
++    for (int i = 0; i < nrec && ok; i++) {
++        int off = qjit_rec_off(i), op = qjit_rec_opcode(i);
++        const uint8_t *pc = b->byte_code_buf + off;
++        int L;
++        if (op == OP_get_loc || op == OP_get_loc_check) { L = GETL(0, get_u16(pc + 1)); if (L < 0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
++        else if (op == OP_get_loc8) { L = GETL(0, pc[1]); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
++        else if (op >= OP_get_loc0 && op <= OP_get_loc3) { L = GETL(0, op - OP_get_loc0); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
++        else if (op == OP_put_loc || op == OP_put_loc_check) { L = GETL(0, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_PUT_LOC, .slot = L); }
++        else if (op == OP_put_loc8) { L = GETL(0, pc[1]); if(L<0){ok=0;break;} EMIT(Q_PUT_LOC, .slot = L); }
++        else if (op >= OP_put_loc0 && op <= OP_put_loc3) { L = GETL(0, op - OP_put_loc0); if(L<0){ok=0;break;} EMIT(Q_PUT_LOC, .slot = L); }
++        else if (op == OP_set_loc) { L = GETL(0, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
++        else if (op == OP_set_loc8) { L = GETL(0, pc[1]); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
++        else if (op == OP_get_arg) { L = GETL(1, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
++        else if (op >= OP_get_arg0 && op <= OP_get_arg3) { L = GETL(1, op - OP_get_arg0); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
++        else if (op == OP_put_arg) { L = GETL(1, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_PUT_LOC, .slot = L); }
++        else if (op == OP_set_arg) { L = GETL(1, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
++        else if (op == OP_add_loc) { L = GETL(0, pc[1]); if(L<0){ok=0;break;} EMIT(Q_ADD_LOC, .slot = L); }
++        else if (op == OP_push_i32) { EMIT(Q_PUSH_INT, .imm = (int32_t)get_u32(pc + 1)); }
++        else if (op == OP_push_i16) { EMIT(Q_PUSH_INT, .imm = (int16_t)get_u16(pc + 1)); }
++        else if (op == OP_push_i8)  { EMIT(Q_PUSH_INT, .imm = (int8_t)pc[1]); }
++        else if (op >= OP_push_0 && op <= OP_push_7) { EMIT(Q_PUSH_INT, .imm = op - OP_push_0); }
++        else if (op == OP_push_minus1) { EMIT(Q_PUSH_INT, .imm = -1); }
++        else if (op == OP_push_const8) { JSValue c = b->cpool[pc[1]]; if (JS_VALUE_GET_TAG(c) != JS_TAG_INT) { ok = 0; break; } EMIT(Q_PUSH_INT, .imm = JS_VALUE_GET_INT(c)); }
++        else if (op == OP_add) { EMIT(Q_ADD); }
++        else if (op == OP_sub) { EMIT(Q_SUB); }
++        else if (op == OP_mul) { EMIT(Q_MUL); }
++        else if (op == OP_lt)  { EMIT(Q_LT); }
++        else if (op == OP_lte) { EMIT(Q_LE); }
++        else if (op == OP_gt)  { EMIT(Q_GT); }
++        else if (op == OP_gte) { EMIT(Q_GE); }
++        else if (op == OP_if_false) { EMIT(Q_IF_FALSE, .exit_pc = off + 1 + (int32_t)get_u32(pc + 1)); }
++        else if (op == OP_if_false8) { EMIT(Q_IF_FALSE, .exit_pc = off + 1 + (int8_t)pc[1]); }
++        else if (op == OP_goto)  { int32_t tgt = off + 1 + (int32_t)get_u32(pc + 1); if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
++        else if (op == OP_goto8) { int32_t tgt = off + 1 + (int8_t)pc[1]; if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
++        else if (op == OP_goto16){ int32_t tgt = off + 1 + (int16_t)get_u16(pc + 1); if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
++        else if (op == OP_drop) { EMIT(Q_DROP); }
++        else if (op == OP_dup)  { EMIT(Q_DUP); }
++        else if (op == OP_nop)  { EMIT(Q_NOP); }
++        else { ok = 0; break; }   // unsupported opcode -> abort (stay interpreted)
++    }
++    if (ok && !getenv("QJIT_NOCOMPILE")) {
++        static IRInsn ir[512]; int ir_n, n_exits;
++        if (qjit_build_ir(tops, nt, ir, 512, &ir_n, &n_exits, tr.exit_pc) == 0) {
++            void *fn = (void *)qjit_ir_compile(ir, ir_n, n_exits);
++            if (fn) { tr.fn = fn; tr.n_exits = n_exits; tr.valid = 1; }
++        }
++    }
++    if (getenv("QJIT_DEBUG")) {
++        fprintf(stderr, "[qjit] COMPILE %s anchor=%d nrec=%d nt=%d ok=%d valid=%d nlive=%d\n",
++                qjit_fn_name(ctx, b), anchor, nrec, nt, ok, tr.valid, tr.n_live);
++        fprintf(stderr, "  raw recorded ops:");
++        for (int i = 0; i < nrec; i++) fprintf(stderr, " %d@%d", qjit_rec_opcode(i), qjit_rec_off(i));
++        fprintf(stderr, "\n  key OPs: get_loc0=%d get_loc3=%d get_arg0=%d add_loc=%d lt=%d if_true=%d if_false=%d goto8=%d put_loc0=%d set_loc=%d push_0=%d dup=%d get_loc=%d\n",
++                OP_get_loc0, OP_get_loc3, OP_get_arg0, OP_add_loc, OP_lt, OP_if_true, OP_if_false, OP_goto8, OP_put_loc0, OP_set_loc, OP_push_0, OP_dup, OP_get_loc);
++    }
++    qjit_store_trace(&tr);   // store valid OR invalid (memoize; don't recompile)
++    qjit_rec_consume();
++#undef GETL
++#undef EMIT
++}
++
++static int32_t qjit_try_enter(JSContext *ctx, JSFunctionBytecode *b, int32_t anchor,
++                              JSValue *var_buf, JSValue *arg_buf) {
++    if (!qjit_on()) return -1;
++    QjitTrace *t = qjit_lookup_trace(b, anchor);
++    if (!t) { qjit_try_compile(ctx, b, anchor); t = qjit_lookup_trace(b, anchor); }
++    if (!t || !t->valid) return -1;
++    int64_t L[64];
++    for (int k = 0; k < t->n_live; k++) {          // entry type guard: all live slots int
++        JSValue v = t->live_is_arg[k] ? arg_buf[t->live_idx[k]] : var_buf[t->live_idx[k]];
++        if (JS_VALUE_GET_TAG(v) != JS_TAG_INT) return -1;
++        L[k] = JS_VALUE_GET_INT(v);
++    }
++    static int dbg = -1, nofire = -1;              // cached: no getenv in the hot path
++    if (dbg < 0) { dbg = getenv("QJIT_DEBUG") ? 1 : 0; nofire = getenv("QJIT_NOFIRE") ? 1 : 0; }
++    if (dbg) fprintf(stderr, "[qjit] FIRE %s anchor=%d nlive=%d\n", qjit_fn_name(ctx, b), anchor, t->n_live);
++    if (nofire) return -1;                          // compile but don't fire (bug isolation)
++    int64_t ex = ((qjit_trace_fn)t->fn)(L);
++    for (int k = 0; k < t->n_live; k++) {          // write back (ints are immediates: no free)
++        JSValue nv = JS_MKVAL(JS_TAG_INT, (int32_t)L[k]);
++        if (t->live_is_arg[k]) arg_buf[t->live_idx[k]] = nv; else var_buf[t->live_idx[k]] = nv;
++    }
++    if (ex == QJIT_DEOPT) return anchor;            // re-run this iteration interpreted
++    if (ex >= 0 && ex < t->n_exits) return t->exit_pc[ex];
++    return anchor;
++}
++
 +/* --- qjit: opcode -> name (self-contained table, no ENABLE_DUMPS dep) --- */
 +const char *qjit_opcode_name(int op) {
 +    static const char * const qjit_names[] = {
 +#define DEF(id, size, n_pop, n_push, f) #id,
-+#define def(id, size, n_pop, n_push, f) #id,
 +#include "quickjs-opcode.h"
 +#undef DEF
-+#undef def
 +    };
 +    if (op < 0 || op >= (int)(sizeof(qjit_names) / sizeof(qjit_names[0]))) return "<oob>";
 +    return qjit_names[op];

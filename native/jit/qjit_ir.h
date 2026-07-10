@@ -58,6 +58,7 @@ void qjit_ir_finish(void);
 typedef enum {
   Q_GET_LOC,    // push locals[slot]                (operand: slot)
   Q_PUT_LOC,    // locals[slot] = pop               (operand: slot)
+  Q_SET_LOC,    // locals[slot] = peek (NO pop)     (operand: slot)   [set_loc/set_arg]
   Q_ADD_LOC,    // locals[slot] += pop              (operand: slot)   [fused]
   Q_PUSH_INT,   // push imm                         (operand: imm)
   Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b
@@ -79,7 +80,9 @@ typedef struct {
 // Build IR from a QOp sequence. Writes up to `max_ir` IRInsn into `ir`, sets
 // *ir_n and *n_exits. Returns 0 on success, nonzero on abort (unsupported op /
 // stack underflow / control shape not handled).
+// out_exit_pcs (may be NULL): filled with exit-id -> resume bytecode PC (from the
+// IF_FALSE exit_pc values, in the same id order the codegen uses).
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
-                  int *ir_n, int *n_exits);
+                  int *ir_n, int *n_exits, int32_t *out_exit_pcs);
 
 #endif

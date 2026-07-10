@@ -99,22 +99,31 @@ snapshots by re-running whole iterations:
 This is correct + snapshot-free for the integer subset; heap values (arrays/strings) later
 need real snapshots + refcounting.
 
-## Live-wiring opcode encodings (grounded from quickjs-opcode.h) + firing blocker
+## Live-wiring opcode encodings (grounded from quickjs-opcode.h) — FIRES + gated
 Exact instruction sizes (opcode+operands) for the int subset:
 - get/put_loc, get/put_loc_check, get/put_arg: 3 bytes (u16 idx)
 - get/put_loc8, add_loc: 2 bytes (u8 idx)   | push_i32: 5 | push_i16: 3 | push_i8: 2
 - push_const8: 2 (u8 cpool idx; read b->cpool[idx], must be JS_TAG_INT else abort)
 - push_0/1/.../minus1: 1 (immediate) | add/sub/mul/lt/lte/gt/gte/drop/dup/nop: 1
-- if_false/goto: 5 (label = i32 rel offset)
+- if_false/goto: 5 (i32 rel) | if_false8/goto8: 2 (i8 rel) | goto16: 3 (i16 rel)
 
-FIRING BLOCKER (honest): the peephole optimizer emits SHORT forms (get_loc0-3, put_loc0-3,
-get_arg0-3, put_arg2, set_arg0, ...) and `set_arg` (stores WITHOUT popping) for real loops.
-The conservative decoder must ABORT on these (→ no trace → interpreted → bit-exact), so real
-optimized loops don't fire yet. To fire: add short-form decode (idx baked in opcode) + model
-`set_arg` (peek-store, stack stays) correctly. Alternatively disable the short-opcode pass for
-traced funcs. Either way: gate bit-exact on every game; a trace fires only when the decoder is
-certain, else falls back. Infra (trace table, recorder exposure, marshal/enter) is in place +
-inert-safe; opcode coverage is the remaining gate-driven work to make traces fire.
+RESOLVED (2026-07): the decoder now handles the peephole SHORT forms the optimizer
+actually emits — get_loc0-3 / put_loc0-3 / get_arg0-3 / add_loc / push_short /
+push_const8 — plus the short back-edges **if_false8 / goto8 / goto16** (the real firing
+gap: tiny loops branch via goto8, not full goto, so `qjit_try_enter` had to be hooked into
+OP_goto8/16 too). A `while(i<n){s+=i;i+=1}` loop now records → decodes → SSA → MIR →
+fires: **24× over the interpreter (17.9k→435k steps/s), bit-exact OFF==ON**.
+GATE STATUS: test_intloop fires + bit-exact across 5 seeds; **89/89 games bit-exact
+OFF==ON** (their hot loops call other fns / use heap+string ops → recorder or decoder
+aborts → stay interpreted → identical). So the JIT is proven correct + never diverges;
+GAME loops don't fire yet — that needs the heap/refcount + call-handling extension below.
+
+DEBUG KNOBS (env, cached; zero hot-path cost when unset): QJIT_ENABLE (arm the JIT),
+QJIT_DEBUG (log COMPILE/FIRE + raw opcode numbers), QJIT_DUMPBC (linear disasm of first
+traced fn), QJIT_NOFIRE (compile but don't fire), QJIT_NOCOMPILE (decode/build, skip MIR),
+QJIT_REPORT (hot-loop table + recorded trace). GOTCHA fixed: the self-contained opcode
+name/size tables MUST expand DEF only (NOT `def`) — the OPCodeEnum numbers runtime ops
+[0,OP_COUNT) with DEF only; `def` temp ops live in a separate OP_TEMP_START range.
 
 ## Scope discipline
 Trace only hot loops; support a bytecode subset; abort/deopt on everything else. Correctness is the

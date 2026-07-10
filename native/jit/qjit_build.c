@@ -14,7 +14,7 @@ static int exit_id_for(int32_t pc, int32_t *pcs, int *n) {
 }
 
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
-                  int *ir_n, int *n_exits) {
+                  int *ir_n, int *n_exits, int32_t *out_exit_pcs) {
   StkEnt stk[256]; int sp = 0;
   int32_t exit_pcs[32]; int nx = 0;
   int n = 0;  // ir length
@@ -39,6 +39,10 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       } break;
       case Q_PUT_LOC: {
         NEED(1); if (stk[sp-1].is_cmp) FAIL(); int a = stk[--sp].ref;
+        ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
+      } break;
+      case Q_SET_LOC: {  // store top, leave it on the stack (set_loc/set_arg)
+        NEED(1); if (stk[sp-1].is_cmp) FAIL(); int a = stk[sp-1].ref;
         ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
       } break;
       case Q_ADD_LOC: {  // locals[slot] += pop
@@ -82,6 +86,7 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   int has_loop = 0; for (int i = 0; i < n; i++) if (ir[i].op == IR_LOOP) has_loop = 1;
   if (!has_loop) FAIL();
 
+  if (out_exit_pcs) for (int i = 0; i < nx; i++) out_exit_pcs[i] = exit_pcs[i];
   *ir_n = n; *n_exits = nx > 0 ? nx : 1;
   return 0;
 #undef EMIT0
