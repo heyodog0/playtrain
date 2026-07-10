@@ -89,9 +89,37 @@ Tests whether the YELLOW dynamic-object path (`js::Object`/`js::Value`,
   throughput cost. Robustness comes from the box + the V8 fallback + the gate, not
   from perfect static inference.
 
-## Projection to the paper's ProcGen comparison (needs on-node verification)
-On the EPYC 9454 node, V8 bigfish was 9.8k/core and ProcGen 28.8k/core (2.9×). A
-4× native-over-V8 factor would put native at ~39k/core — **matching or beating
-ProcGen per-core**. Must be re-measured on that node (throughput is very
-CPU-sensitive; the 4× may not transfer from Apple Silicon to x86). The native
-build is portable C++ + a cargo staticlib, so it deploys the same way.
+## x86 VERIFICATION — native beats ProcGen per-core (CONFIRMED)
+Ran on a FASRC sapphire compute node (Intel Xeon Platinum 8480+, `holy8a24105`),
+all three engines same node, bigfish, frameskip=1, 64×64 RGB obs:
+
+| engine | steps/sec | vs V8 |
+|---|---|---|
+| **Native (C++ AOT twin)** | **79,700** | **3.96×** |
+| ProcGen (hand-optimized C++) | 39,659 | 1.97× |
+| V8 (node-gym runtime, wasm rasterizer) | 20,150 | 1.0× |
+
+- **Native / V8 = 3.96×** — the Apple-Silicon 4.1× **transfers to x86** (throughput is
+  CPU-sensitive, but the native advantage is architectural — no per-primitive JS→wasm
+  boundary — so it holds across ISAs).
+- **Native / ProcGen = 2.01×** — the native-compiled twin is **twice as fast as ProcGen
+  per core.** This flips the paper's story from "ProcGen ~2.9× faster" to "native
+  node-gym is ~2× faster than ProcGen per-core," while keeping full generality.
+- **Bit-exactness holds on x86 too**: the gate passed 100k frames × 5 seeds on the
+  sapphire node (glibc/clang `pow` matches V8's x86 `pow` — no fdlibm port needed).
+
+### Honest caveats
+- One game (bigfish), render-bound and favorable. Logic-heavy or primitive-heavy games
+  will differ (though both effects tend to *favor* native: free logic + more boundary
+  crossings avoided). Needs a multi-game sweep once the transpiler covers them.
+- Single-core. Aggregate throughput depends on parallel scaling — node-gym had ~63%
+  sharding efficiency vs ProcGen ~100% in the earlier study, so per-core 2× may not
+  fully translate to aggregate 2×. Separate measurement.
+- Rasterizer is shared native/V8 (Rust, linked static vs wasm), so the comparison is clean.
+
+## Reproduce on FASRC
+Deploy (no GitHub auth on the node): tarball `native/` + `crates/rasterizer/` → pipe
+`base64 | fasrc 'base64 -d | tar xz -C ~/node-gym-smoke/node-gym'`. Build:
+`cargo rustc --release --lib --crate-type staticlib` (staticlib-only; the cdylib half
+fails to link on this x86 `cc` with `--version-script`), then clang++ link. Bench on a
+compute node: `srun -p sapphire -c 4 -t 0:15:00 --mem=8G bash -c '...'`.
