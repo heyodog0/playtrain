@@ -13,6 +13,13 @@ extern "C" {
 // `anchor_off` = byte offset of the loop-header (branch target) in b's bytecode.
 void qjit_backedge(const void *b, int32_t anchor_off);
 
+// Stage 2 — trace recording. When a loop goes hot, qjit_backedge arms recording;
+// the interpreter's dispatch calls qjit_record() per bytecode (guarded by the hot
+// global qjit_rec_active so steady-state cost is one predicted-untaken branch).
+extern int qjit_rec_active;
+void qjit_record(const void *b, int32_t off, int opcode);
+const char *qjit_opcode_name(int op);  // provided by quickjs.c (opcode_info table)
+
 // Print the hottest loops (needs ctx to resolve function names). Call at shutdown.
 void qjit_report(void *ctx);
 
