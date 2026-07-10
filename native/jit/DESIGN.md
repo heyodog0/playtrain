@@ -76,6 +76,29 @@ The peephole optimizer emits fused ops, not textbook get_loc/add/put_loc. Exact 
   guard overflow (MIR_ADDO/SUBO/MULO → side-exit) to match. Exits at stack-empty points
   (loop condition) resume with empty operand stack → only var_buf/arg_buf need restoring.
 
+## Deopt correctness for int traces WITHOUT full snapshots (worked out; to implement)
+QuickJS `add/sub/mul` promote int32→float on **overflow**, so a native int trace that
+computes in i64 and keeps going would diverge. Correct design that avoids LuaJIT-style
+snapshots by re-running whole iterations:
+- **Per-iteration load/flush**: load live locals var_buf→regs at the loop TOP, work in
+  regs, flush regs→var_buf at the BOTTOM. So `var_buf` holds iteration-START state
+  throughout the body (only committed at the bottom). (NOT load-once-at-entry — that
+  breaks the invariant. Costs one load+store per live local per iteration; body stays
+  in regs; still ~10-15× the interpreter.)
+- **Two exit kinds:**
+  - *control-flow* exit (loop-end guard i>=n at top / `break` mid-body): FLUSH regs→var_buf
+    (values are correct up to that point), resume at the exit's bytecode PC.
+  - *deopt* exit (arithmetic OVERFLOW guard, or entry type-guard fail): do NOT flush;
+    resume at the loop HEADER. var_buf = iteration-start (body only wrote regs), so the
+    interpreter re-runs the whole iteration correctly (producing the float on overflow).
+- **Overflow guard**: after each ADD/SUB/MUL, check result fits int32 (`r != (int32)r`) →
+  branch to the deopt/header exit. (MIR: compute i64, sign-extend low32, BNE to exit.)
+- **Entry type-guard**: before entering the trace, every live local read must be JS_TAG_INT;
+  else stay interpreted. On entry, marshal var_buf/arg_buf int payloads → int64[]; on a
+  control-flow exit, write int64→JSValue(int) back. Ints are immediates → NO refcounting.
+This is correct + snapshot-free for the integer subset; heap values (arrays/strings) later
+need real snapshots + refcounting.
+
 ## Scope discipline
 Trace only hot loops; support a bytecode subset; abort/deopt on everything else. Correctness is the
 interpreter + gate; the JIT only ever makes correct code faster or safely bails. Base = quickjs-ng
