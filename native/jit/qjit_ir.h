@@ -19,8 +19,9 @@ typedef enum {
   IR_CONST,      // r = imm
   IR_ADD, IR_SUB, IR_MUL,       // r = r(a) op r(b)
   IR_GUARD_LT,   // if !(r(a) <  r(b)) side-exit exit_id
-  IR_GUARD_GE,   // if !(r(a) >= r(b)) side-exit exit_id
   IR_GUARD_LE,   // if !(r(a) <= r(b)) side-exit exit_id
+  IR_GUARD_GT,   // if !(r(a) >  r(b)) side-exit exit_id
+  IR_GUARD_GE,   // if !(r(a) >= r(b)) side-exit exit_id
   IR_LOOP        // jump to trace top (loop back-edge)
 } IROp;
 
@@ -42,5 +43,39 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits);
 // One-time init/teardown of the MIR context used by qjit_ir_compile.
 void qjit_ir_init(void);
 void qjit_ir_finish(void);
+
+// ---------------------------------------------------------------------------
+// IR BUILDER: recorded trace (QOp sequence) -> trace IR (abstract-stack -> SSA).
+// QOp is a small engine-independent opcode set; the live recorder maps quickjs-ng
+// OP_* -> QOp (capturing operands + resolving push_const to its int value), and
+// unit tests construct QOp sequences directly. Anything not in this set -> abort
+// (build returns nonzero) so the loop stays interpreted (correct).
+// ---------------------------------------------------------------------------
+typedef enum {
+  Q_GET_LOC,    // push locals[slot]                (operand: slot)
+  Q_PUT_LOC,    // locals[slot] = pop               (operand: slot)
+  Q_ADD_LOC,    // locals[slot] += pop              (operand: slot)   [fused]
+  Q_PUSH_INT,   // push imm                         (operand: imm)
+  Q_ADD, Q_SUB, Q_MUL,  // b=pop,a=pop, push a op b
+  Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)
+  Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
+  Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)
+  Q_DROP,       // pop
+  Q_DUP,        // push top
+  Q_NOP         // label / no-op
+} QOp;
+
+typedef struct {
+  QOp op;
+  int slot;        // GET/PUT/ADD_LOC
+  int64_t imm;     // PUSH_INT
+  int32_t exit_pc; // IF_FALSE resume PC (maps to an exit id)
+} TraceOp;
+
+// Build IR from a QOp sequence. Writes up to `max_ir` IRInsn into `ir`, sets
+// *ir_n and *n_exits. Returns 0 on success, nonzero on abort (unsupported op /
+// stack underflow / control shape not handled).
+int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
+                  int *ir_n, int *n_exits);
 
 #endif

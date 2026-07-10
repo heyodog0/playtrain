@@ -84,8 +84,9 @@ qjit_trace_fn qjit_ir_compile(const IRInsn *ir, int n, int n_exits) {
       case IR_SUB:       APP(MIR_new_insn(ctx, MIR_SUB, R(i), R(in->a), R(in->b))); break;
       case IR_MUL:       APP(MIR_new_insn(ctx, MIR_MUL, R(i), R(in->a), R(in->b))); break;
       case IR_GUARD_LT:  APP(MIR_new_insn(ctx, MIR_BGE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
-      case IR_GUARD_GE:  APP(MIR_new_insn(ctx, MIR_BLT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_GUARD_LE:  APP(MIR_new_insn(ctx, MIR_BGT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
+      case IR_GUARD_GT:  APP(MIR_new_insn(ctx, MIR_BLE, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
+      case IR_GUARD_GE:  APP(MIR_new_insn(ctx, MIR_BLT, MIR_new_label_op(ctx, exit_lab[in->exit_id]), R(in->a), R(in->b))); break;
       case IR_LOOP:      APP(MIR_new_insn(ctx, MIR_JMP, MIR_new_label_op(ctx, top))); break;
     }
   }
