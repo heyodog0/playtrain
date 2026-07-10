@@ -46,6 +46,7 @@ typedef struct {
   int n_live;                      // number of live frame slots (L[] layout)
   unsigned char live_is_arg[64];   // per L index: 1 = arg_buf, 0 = var_buf
   int          live_idx[64];       // per L index: frame slot index
+  unsigned char live_kind[64];     // per L index: 0 = int payload, 1 = array JSObject*
   int n_exits; int32_t exit_pc[8]; // exit id -> resume bytecode offset
 } QjitTrace;
 

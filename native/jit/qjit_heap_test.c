@@ -86,7 +86,7 @@ int main(void) {
     TArray *a = make_int_array(3, vals);
     int64_t L[4] = {0, 0, 100, (int64_t)(intptr_t)a};  // n=100 > count=3
     int64_t e = run_ir(ir, 16, 1, L);
-    check("bounds OOB: DEOPT (-1)", e == QJIT_DEOPT);
+    check("bounds OOB: DEOPT (bounds)", e == QJIT_DEOPT_BOUNDS);
     check("bounds OOB: summed only in-range (s==30), i==3 at deopt start", L[0] == 30 && L[1] == 3);
     free(a->values); free(a);
   }
@@ -106,7 +106,7 @@ int main(void) {
     a->values[2].tag = TAG_OBJ;                        // element 2 is a heap value, not int
     int64_t L[4] = {0, 0, 4, (int64_t)(intptr_t)a};
     int64_t e = run_ir(ir, 16, 1, L);
-    check("non-int elem: DEOPT (-1)", e == QJIT_DEOPT);
+    check("non-int elem: DEOPT (tag)", e == QJIT_DEOPT_TAG);
     check("non-int elem: s==15 (0,1 summed), i==2 at deopt", L[0] == 15 && L[1] == 2);
     free(a->values); free(a);
   }

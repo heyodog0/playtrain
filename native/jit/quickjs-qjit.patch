@@ -1,5 +1,5 @@
 diff --git a/quickjs.c b/quickjs.c
-index 7ec0c25..9438bc7 100644
+index 7ec0c25..51f1a70 100644
 --- a/quickjs.c
 +++ b/quickjs.c
 @@ -17940,6 +17940,19 @@ static bool needs_backtrace(JSValue exc)
@@ -119,7 +119,7 @@ index 7ec0c25..9438bc7 100644
                  }
                  if (unlikely(js_poll_interrupts(ctx)))
                      goto exception;
-@@ -22322,6 +22374,159 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
+@@ -22322,6 +22374,180 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
      opcode_info[(op) >= OP_TEMP_START ? \
                  (op) + (OP_TEMP_END - OP_TEMP_START) : (op)]
  
@@ -213,6 +213,7 @@ index 7ec0c25..9438bc7 100644
 +        else if (op == OP_goto)  { int32_t tgt = off + 1 + (int32_t)get_u32(pc + 1); if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
 +        else if (op == OP_goto8) { int32_t tgt = off + 1 + (int8_t)pc[1]; if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
 +        else if (op == OP_goto16){ int32_t tgt = off + 1 + (int16_t)get_u16(pc + 1); if (tgt == anchor) EMIT(Q_GOTO_LOOP); else { ok = 0; break; } }
++        else if (op == OP_get_array_el) { EMIT(Q_GET_ARRAY_EL); }
 +        else if (op == OP_drop) { EMIT(Q_DROP); }
 +        else if (op == OP_dup)  { EMIT(Q_DUP); }
 +        else if (op == OP_nop)  { EMIT(Q_NOP); }
@@ -220,7 +221,9 @@ index 7ec0c25..9438bc7 100644
 +    }
 +    if (ok && !getenv("QJIT_NOCOMPILE")) {
 +        static IRInsn ir[512]; int ir_n, n_exits;
-+        if (qjit_build_ir(tops, nt, ir, 512, &ir_n, &n_exits, tr.exit_pc) == 0) {
++        // tr.live_kind is zeroed (memset above) -> defaults to QK_INT; the builder
++        // flips array-base slots to QK_ARRAY. qjit_try_enter reads it to marshal.
++        if (qjit_build_ir(tops, nt, ir, 512, &ir_n, &n_exits, tr.exit_pc, tr.live_kind) == 0) {
 +            void *fn = (void *)qjit_ir_compile(ir, ir_n, n_exits);
 +            if (fn) { tr.fn = fn; tr.n_exits = n_exits; tr.valid = 1; }
 +        }
@@ -242,25 +245,43 @@ index 7ec0c25..9438bc7 100644
 +static int32_t qjit_try_enter(JSContext *ctx, JSFunctionBytecode *b, int32_t anchor,
 +                              JSValue *var_buf, JSValue *arg_buf) {
 +    if (!qjit_on()) return -1;
++    // Bake the struct offsets the heap codegen needs BEFORE compiling — qjit_ir_compile
++    // reads qjit_layout to emit element addressing (JSValue is 16 bytes on 64-bit). If this
++    // ran after qjit_try_compile, the first trace would compile with size=0 (idx*0 -> const).
++    if (!qjit_layout.jsvalue_size) {
++        qjit_layout.arr_count_off   = (int)offsetof(JSObject, u.array.count);
++        qjit_layout.arr_values_off  = (int)offsetof(JSObject, u.array.u.values);
++        qjit_layout.jsvalue_size    = (int)sizeof(JSValue);
++        qjit_layout.jsvalue_tag_off = (int)offsetof(JSValue, tag);
++        qjit_layout.tag_int         = JS_TAG_INT;
++    }
 +    QjitTrace *t = qjit_lookup_trace(b, anchor);
 +    if (!t) { qjit_try_compile(ctx, b, anchor); t = qjit_lookup_trace(b, anchor); }
 +    if (!t || !t->valid) return -1;
 +    int64_t L[64];
-+    for (int k = 0; k < t->n_live; k++) {          // entry type guard: all live slots int
++    for (int k = 0; k < t->n_live; k++) {          // entry type guards, kind-specialized
 +        JSValue v = t->live_is_arg[k] ? arg_buf[t->live_idx[k]] : var_buf[t->live_idx[k]];
-+        if (JS_VALUE_GET_TAG(v) != JS_TAG_INT) return -1;
-+        L[k] = JS_VALUE_GET_INT(v);
++        if (t->live_kind[k] == QK_ARRAY) {         // must be a fast JS array -> pass JSObject*
++            if (JS_VALUE_GET_TAG(v) != JS_TAG_OBJECT) return -1;
++            JSObject *p = JS_VALUE_GET_OBJ(v);
++            if (p->class_id != JS_CLASS_ARRAY || !p->fast_array) return -1;
++            L[k] = (int64_t)(intptr_t)p;
++        } else {                                    // int payload
++            if (JS_VALUE_GET_TAG(v) != JS_TAG_INT) return -1;
++            L[k] = JS_VALUE_GET_INT(v);
++        }
 +    }
 +    static int dbg = -1, nofire = -1;              // cached: no getenv in the hot path
 +    if (dbg < 0) { dbg = getenv("QJIT_DEBUG") ? 1 : 0; nofire = getenv("QJIT_NOFIRE") ? 1 : 0; }
 +    if (dbg) fprintf(stderr, "[qjit] FIRE %s anchor=%d nlive=%d\n", qjit_fn_name(ctx, b), anchor, t->n_live);
 +    if (nofire) return -1;                          // compile but don't fire (bug isolation)
 +    int64_t ex = ((qjit_trace_fn)t->fn)(L);
-+    for (int k = 0; k < t->n_live; k++) {          // write back (ints are immediates: no free)
++    for (int k = 0; k < t->n_live; k++) {          // write back int slots (immediates: no free)
++        if (t->live_kind[k] == QK_ARRAY) continue; // array locals are read-only + unchanged
 +        JSValue nv = JS_MKVAL(JS_TAG_INT, (int32_t)L[k]);
 +        if (t->live_is_arg[k]) arg_buf[t->live_idx[k]] = nv; else var_buf[t->live_idx[k]] = nv;
 +    }
-+    if (ex == QJIT_DEOPT) return anchor;            // re-run this iteration interpreted
++    if (ex < 0) return anchor;                      // deopt (any reason): re-run interpreted
 +    if (ex >= 0 && ex < t->n_exits) return t->exit_pc[ex];
 +    return anchor;
 +}

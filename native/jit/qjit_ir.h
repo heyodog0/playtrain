@@ -59,7 +59,11 @@ typedef struct {
 //   QJIT_DEOPT (-1) -> overflow/type deopt (locals = iteration-START; resume at header,
 //                      i.e. re-run this iteration in the interpreter)
 typedef int64_t (*qjit_trace_fn)(int64_t *locals);
-#define QJIT_DEOPT ((int64_t)-1)
+// Deopt reason codes (all < 0). The interpreter treats ANY negative return as a
+// deopt (resume header, re-run the iteration); the distinct codes aid profiling.
+#define QJIT_DEOPT        ((int64_t)-1)   // arithmetic overflow / entry type mismatch
+#define QJIT_DEOPT_BOUNDS ((int64_t)-10)  // array index out of bounds
+#define QJIT_DEOPT_TAG    ((int64_t)-20)  // array element not the guarded type (e.g. non-int)
 
 // Compile an IR trace to a native function via MIR. n_exits = number of distinct
 // exit ids used by guards. Returns NULL on failure. Not thread-safe (one ctx).
@@ -86,10 +90,16 @@ typedef enum {
   Q_LT, Q_LE, Q_GT, Q_GE, // b=pop,a=pop, push compare(a,b)  (consumed by IF)
   Q_IF_FALSE,   // pop compare; guard: continue iff TRUE, side-exit(exit_pc) iff false
   Q_GOTO_LOOP,  // loop back-edge -> IR_LOOP        (operand: -)
+  Q_GET_ARRAY_EL, // pop idx, pop array-base; push array[idx] as unboxed int (guarded)
   Q_DROP,       // pop
   Q_DUP,        // push top
   Q_NOP         // label / no-op
 } QOp;
+
+// Per-slot marshaling kind (fills QjitTrace.live_kind): how the entry code reads the
+// frame slot into L[]. QK_INT = int payload (guard tag==INT). QK_ARRAY = a fast array
+// (guard tag==OBJECT && class==ARRAY && fast_array; store JSObject* in L[]).
+enum { QK_INT = 0, QK_ARRAY = 1 };
 
 typedef struct {
   QOp op;
@@ -103,7 +113,10 @@ typedef struct {
 // stack underflow / control shape not handled).
 // out_exit_pcs (may be NULL): filled with exit-id -> resume bytecode PC (from the
 // IF_FALSE exit_pc values, in the same id order the codegen uses).
+// out_slot_kind (may be NULL): per local-slot marshaling kind (QK_INT / QK_ARRAY),
+// sized >= (max slot + 1); the caller must zero it before the call.
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
-                  int *ir_n, int *n_exits, int32_t *out_exit_pcs);
+                  int *ir_n, int *n_exits, int32_t *out_exit_pcs,
+                  unsigned char *out_slot_kind);
 
 #endif

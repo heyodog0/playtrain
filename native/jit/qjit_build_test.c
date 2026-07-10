@@ -15,7 +15,8 @@ static void check(const char *name, int cond) {
 // Build+compile+run a trace; return exit id (or -1 on build abort).
 static int run_trace(const TraceOp *ops, int n_ops, int64_t *locals) {
   IRInsn ir[256]; int ir_n, n_exits; int32_t exit_pcs[8];
-  if (qjit_build_ir(ops, n_ops, ir, 256, &ir_n, &n_exits, exit_pcs) != 0) return -1;
+  unsigned char kind[64] = {0};
+  if (qjit_build_ir(ops, n_ops, ir, 256, &ir_n, &n_exits, exit_pcs, kind) != 0) return -1;
   qjit_trace_fn fn = qjit_ir_compile(ir, ir_n, n_exits);
   if (!fn) return -2;
   return (int)fn(locals);

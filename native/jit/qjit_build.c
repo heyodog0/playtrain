@@ -14,7 +14,8 @@ static int exit_id_for(int32_t pc, int32_t *pcs, int *n) {
 }
 
 int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
-                  int *ir_n, int *n_exits, int32_t *out_exit_pcs) {
+                  int *ir_n, int *n_exits, int32_t *out_exit_pcs,
+                  unsigned char *out_slot_kind) {
   StkEnt stk[256]; int sp = 0;
   int32_t exit_pcs[32]; int nx = 0;
   int n = 0;  // ir length
@@ -75,6 +76,20 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       case Q_GOTO_LOOP: {
         ROOM(1); EMIT0(IR_LOOP);
       } break;
+      case Q_GET_ARRAY_EL: {  // arr[idx] -> unboxed int, with array/bounds/int guards
+        NEED(2); if (stk[sp-1].is_cmp || stk[sp-2].is_cmp) FAIL();
+        int idx = stk[--sp].ref, arr = stk[--sp].ref;
+        // increment 1: the array base must come DIRECTLY from a local/arg load (no
+        // nested arr[x][y] yet), and its slot is marshaled as a JSObject* (QK_ARRAY).
+        if (ir[arr].op != IR_LOAD_LOC) FAIL();
+        if (out_slot_kind) out_slot_kind[ir[arr].slot] = QK_ARRAY;
+        ROOM(4);
+        ir[n] = (IRInsn){.op = IR_ARRAY_COUNT, .a = arr}; int cnt = n++;
+        ir[n++] = (IRInsn){.op = IR_GUARD_BOUNDS, .a = idx, .b = cnt};
+        ir[n] = (IRInsn){.op = IR_ARRAY_VALUES, .a = arr}; int vals = n++;
+        ir[n] = (IRInsn){.op = IR_ARRAY_EL_INT, .a = vals, .b = idx}; int el = n++;
+        PUSHV(el);
+      } break;
       case Q_DROP: { NEED(1); sp--; } break;
       case Q_DUP:  { NEED(1); if (stk[sp-1].is_cmp) FAIL(); ROOM(0); stk[sp] = stk[sp-1]; sp++; } break;
       case Q_NOP:  break;
@@ -85,6 +100,11 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   if (sp != 0) FAIL();
   int has_loop = 0; for (int i = 0; i < n; i++) if (ir[i].op == IR_LOOP) has_loop = 1;
   if (!has_loop) FAIL();
+  // safety: an array-base slot (QK_ARRAY) must be loop-invariant — never stored in
+  // the loop — else treating it as a fixed JSObject* pointer would be wrong.
+  if (out_slot_kind)
+    for (int i = 0; i < n; i++)
+      if (ir[i].op == IR_STORE_LOC && out_slot_kind[ir[i].slot] == QK_ARRAY) FAIL();
 
   if (out_exit_pcs) for (int i = 0; i < nx; i++) out_exit_pcs[i] = exit_pcs[i];
   *ir_n = n; *n_exits = nx > 0 ? nx : 1;
