@@ -10,8 +10,9 @@ extern "C" {
 #endif
 
 // Called from JS_CallInternal on a backward branch. `b` = JSFunctionBytecode*,
-// `anchor_off` = byte offset of the loop-header (branch target) in b's bytecode.
-void qjit_backedge(const void *b, int32_t anchor_off);
+// `source_off` = the back-branch instruction offset (loop bottom), `target_off` =
+// the loop-header offset (branch target). The loop body is [target_off, source_off].
+void qjit_backedge(const void *b, int32_t source_off, int32_t target_off);
 
 // Stage 2 — trace recording. When a loop goes hot, qjit_backedge arms recording;
 // the interpreter's dispatch calls qjit_record() per bytecode (guarded by the hot

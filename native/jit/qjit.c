@@ -20,35 +20,45 @@ static inline uint64_t mix(const void *b, int32_t off) {
 #define REC_MAX 4096         // max bytecodes in a recorded trace
 int qjit_rec_active = 0;
 static const void *rec_b;
-static int32_t rec_anchor;
+static int32_t rec_anchor, rec_source;
 static struct { int32_t off; int op; } rec_trace[REC_MAX];
 static int rec_len = 0;
 static int rec_done = 0;      // stage 2 demo: record just the first hot loop
 static const void *rec_hot_b; static int32_t rec_hot_anchor; static int rec_ready = 0;
+static const void *cand_b = NULL; static int32_t cand_anchor;  // the chosen hot loop
 
-void qjit_backedge(const void *b, int32_t off) {
-  uint64_t i = mix(b, off) & (QJIT_CAP - 1);
+void qjit_backedge(const void *b, int32_t source_off, int32_t target_off) {
+  uint64_t i = mix(b, target_off) & (QJIT_CAP - 1);
   for (int probe = 0; probe < QJIT_CAP; probe++) {
     QEntry *e = &g_tab[(i + probe) & (QJIT_CAP - 1)];
-    if (e->b == NULL) { e->b = b; e->off = off; e->count = 1; g_used++; return; }
-    if (e->b == b && e->off == off) {
-      e->count++;
-      if (!rec_done && !qjit_rec_active && e->count == REC_THRESHOLD) {
-        rec_b = b; rec_anchor = off; rec_len = 0; qjit_rec_active = 1;  // arm: record from the loop header
-      }
-      return;
+    if (e->b == NULL) { e->b = b; e->off = target_off; e->count = 1; g_used++; break; }
+    if (e->b == b && e->off == target_off) { e->count++; break; }
+  }
+  if (rec_done) return;
+  // pick the first anchor to cross threshold as the recording candidate
+  if (cand_b == NULL) {
+    uint64_t j = mix(b, target_off) & (QJIT_CAP - 1);
+    for (int probe = 0; probe < QJIT_CAP; probe++) {
+      QEntry *e = &g_tab[(j + probe) & (QJIT_CAP - 1)];
+      if (e->b == b && e->off == target_off) { if (e->count >= REC_THRESHOLD) { cand_b = b; cand_anchor = target_off; } break; }
+      if (e->b == NULL) break;
     }
+  }
+  // (re-)arm recording on the candidate's back-edge (retries until a clean iteration)
+  if (!qjit_rec_active && b == cand_b && target_off == cand_anchor) {
+    rec_b = b; rec_anchor = target_off; rec_source = source_off; rec_len = 0; qjit_rec_active = 1;
   }
 }
 
 void qjit_record(const void *b, int32_t off, int opcode) {
-  if (b != rec_b) return;                 // stage 2: ignore ops in called JS funcs
-  if (off == rec_anchor && rec_len > 0) { // completed one loop iteration
+  if (b != rec_b) { qjit_rec_active = 0; return; }            // left the function -> abort
+  if (off < rec_anchor || off > rec_source) { qjit_rec_active = 0; return; }  // left loop body (exit/return/break) -> abort/retry
+  if (off == rec_anchor && rec_len > 0) {                     // looped back to header -> success
     qjit_rec_active = 0; rec_done = 1; rec_ready = 1; rec_hot_b = rec_b; rec_hot_anchor = rec_anchor;
     return;
   }
   if (rec_len < REC_MAX) { rec_trace[rec_len].off = off; rec_trace[rec_len].op = opcode; rec_len++; }
-  else { qjit_rec_active = 0; rec_done = 1; }  // trace too long -> abort
+  else { qjit_rec_active = 0; }  // too long -> abort/retry
 }
 
 static int cmp_desc(const void *a, const void *b) {
