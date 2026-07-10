@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include "quickjs.h"
+#include "../runtime/jsmath.h"  // frozen transcendentals (fm_pow/fm_atan2, psin/pcos)
 
 static double argd(JSContext* c, JSValueConst v) { double d = 0; JS_ToFloat64(c, &d, v); return d; }
 static JSValue noop(JSContext*, JSValueConst, int, JSValueConst*) { return JS_UNDEFINED; }
@@ -19,6 +20,13 @@ static bool keys[256];
 static JSValue js_keyIsDown(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
   int k = argc ? (int)argd(c, argv[0]) : -1; return JS_NewBool(c, k >= 0 && k < 256 && keys[k]);
 }
+// Frozen Math bindings (route to js:: = vendored fdlibm + psin/pcos), so QuickJS's
+// transcendentals are deterministic + identical native<->wasm.
+static JSValue m_pow(JSContext* c, JSValueConst, int, JSValueConst* a) { return JS_NewFloat64(c, js::pow(argd(c, a[0]), argd(c, a[1]))); }
+static JSValue m_atan2(JSContext* c, JSValueConst, int, JSValueConst* a) { return JS_NewFloat64(c, js::atan2(argd(c, a[0]), argd(c, a[1]))); }
+static JSValue m_hypot(JSContext* c, JSValueConst, int, JSValueConst* a) { return JS_NewFloat64(c, js::hypot(argd(c, a[0]), argd(c, a[1]))); }
+static JSValue m_sin(JSContext* c, JSValueConst, int, JSValueConst* a) { return JS_NewFloat64(c, js::sin(argd(c, a[0]))); }
+static JSValue m_cos(JSContext* c, JSValueConst, int, JSValueConst* a) { return JS_NewFloat64(c, js::cos(argd(c, a[0]))); }
 static JSValue js_createCanvas(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
   JSValue g = JS_GetGlobalObject(c);
   JS_SetPropertyStr(c, g, "width", JS_NewInt32(c, argc > 0 ? (int)argd(c, argv[0]) : 400));
@@ -33,6 +41,7 @@ globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
+Math.pow=__m_pow; Math.atan2=__m_atan2; Math.hypot=__m_hypot; Math.sin=__m_sin; Math.cos=__m_cos;
 )JS";
 
 static const char* P5FUNCS[] = {"background","fill","stroke","noStroke","noFill","strokeWeight",
@@ -56,6 +65,11 @@ int main(int argc, char** argv) {
   for (int i = 0; P5FUNCS[i]; i++) JS_SetPropertyStr(ctx, g, P5FUNCS[i], JS_NewCFunction(ctx, noop, P5FUNCS[i], 0));
   JS_SetPropertyStr(ctx, g, "createCanvas", JS_NewCFunction(ctx, js_createCanvas, "createCanvas", 2));
   JS_SetPropertyStr(ctx, g, "keyIsDown", JS_NewCFunction(ctx, js_keyIsDown, "keyIsDown", 1));
+  JS_SetPropertyStr(ctx, g, "__m_pow", JS_NewCFunction(ctx, m_pow, "__m_pow", 2));
+  JS_SetPropertyStr(ctx, g, "__m_atan2", JS_NewCFunction(ctx, m_atan2, "__m_atan2", 2));
+  JS_SetPropertyStr(ctx, g, "__m_hypot", JS_NewCFunction(ctx, m_hypot, "__m_hypot", 2));
+  JS_SetPropertyStr(ctx, g, "__m_sin", JS_NewCFunction(ctx, m_sin, "__m_sin", 1));
+  JS_SetPropertyStr(ctx, g, "__m_cos", JS_NewCFunction(ctx, m_cos, "__m_cos", 1));
   const char* consts[][2] = {{"LEFT_ARROW","37"},{"UP_ARROW","38"},{"RIGHT_ARROW","39"},{"DOWN_ARROW","40"},
     {"ENTER","13"},{"CENTER","1"},{"CORNER","2"},{"LEFT","3"},{"CLOSE","1"}};
   for (auto& c : consts) JS_SetPropertyStr(ctx, g, c[0], JS_NewInt32(ctx, atoi(c[1])));

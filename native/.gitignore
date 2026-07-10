@@ -8,3 +8,7 @@ qjs/src/
 qjs/bld/
 *.wasm
 *.cjs
+frozenmath/src/
+frozenmath/*.o
+frozenmath/*.a
+frozenmath/*.bak

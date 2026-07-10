@@ -7,6 +7,20 @@ cd "$(dirname "$0")"
 RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
 [ -f "$RASTER_LIB" ] || (cd ../crates/rasterizer && cargo rustc --release --lib --crate-type staticlib)
 
+# frozen transcendentals (vendored fdlibm/openlibm) — same source native + wasm so
+# pow/atan2 are bit-identical across platforms/engines. Exposed as fm_pow/fm_atan2.
+if [ ! -f frozenmath/libfrozenmath.a ]; then
+  [ -d frozenmath/src ] || git clone --depth 1 https://github.com/JuliaMath/openlibm.git frozenmath/src
+  # rename the public symbols to fm_* so they never collide with the platform libm
+  sed -i.bak -e 's/#define[[:space:]]*__ieee754_pow[[:space:]]*pow/#define __ieee754_pow fm_pow/' \
+             -e 's/#define[[:space:]]*__ieee754_atan2[[:space:]]*atan2/#define __ieee754_atan2 fm_atan2/' \
+             frozenmath/src/src/math_private.h
+  ( cd frozenmath && A=$(pwd)/src && clang -c -O2 -DNDEBUG -w -Datan=fm_atan -I"$A/include" -I"$A/src" \
+      src/src/e_pow.c src/src/e_atan2.c src/src/s_atan.c src/src/s_scalbn.c \
+    && ar rcs libfrozenmath.a e_pow.o e_atan2.o s_atan.o s_scalbn.o )
+fi
+FROZEN="frozenmath/libfrozenmath.a"
+
 # QuickJS static lib (clone quickjs-ng if absent; build core objects -> .a)
 if [ ! -f qjs/bld/libqjs.a ]; then
   [ -d qjs/src ] || git clone --depth 1 https://github.com/quickjs-ng/quickjs.git qjs/src
@@ -21,7 +35,7 @@ EXTRA=""
 case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
 clang++ -std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing \
   -I runtime -I qjs/src \
-  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a $EXTRA \
+  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
   -o build/qjs_host
 
 echo "built build/qjs_host"

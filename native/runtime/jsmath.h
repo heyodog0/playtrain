@@ -39,13 +39,22 @@ inline double mod(double a, double b) { return std::fmod(a, b); }
 inline double jround(double x) { return std::floor(x + 0.5); }
 
 // --- transcendentals / reals ---
+// FROZEN transcendentals: vendored fdlibm (openlibm) compiled into every target
+// (native + wasm), so pow/atan2 are bit-identical across platforms and engines
+// (browser == training). NOT the platform libm (Apple/glibc/musl differ by ULPs).
+// See native/frozenmath/. sin/cos are frozen separately via psin/pcos below;
+// sqrt/floor/ceil/abs are IEEE-exact (correctly rounded) everywhere.
+extern "C" {
+double fm_pow(double, double);
+double fm_atan2(double, double);
+}
 inline double floor(double x) { return std::floor(x); }
 inline double ceil(double x)  { return std::ceil(x); }
 inline double abs(double x)   { return std::fabs(x); }
 inline double sqrt(double x)  { return std::sqrt(x); }
-inline double pow(double b, double e)   { return std::pow(b, e); }   // v8-libm candidate
-inline double atan2(double y, double x) { return std::atan2(y, x); } // v8-libm candidate
-inline double hypot(double x, double y) { return std::hypot(x, y); } // v8-libm candidate
+inline double pow(double b, double e)   { return fm_pow(b, e); }
+inline double atan2(double y, double x) { return fm_atan2(y, x); }
+inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  // deterministic (games use small coords)
 
 // psin/pcos — bit-identical to the rasterizer's psin/pcos (lib.rs) and the JS
 // shim's _rsin/_rcos. Used wherever the game calls sin/cos so game logic matches
