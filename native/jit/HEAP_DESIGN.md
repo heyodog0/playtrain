@@ -91,6 +91,31 @@ OOB or non-int elem → deopt (interpreter takes the slow JS_GetPropertyValue pa
    to follow `b` changes across a call/return within the loop body (bounded depth), so JS-call
    loops record. Then their heap codegen reuses 1–4.
 
+## Increment 4 grounding — native call emission (the focus, make-or-break)
+Recon (test_callloop.js `while(i<n){ rect(i,0,1,1); i+=1 }`): the loop records fully; decodes to
+`get_var(rect)` (push the global fn), int args, `OP_call argc=4`, `drop`. So the pieces:
+- **get_var(rect/fill)**: a GLOBAL function lookup, loop-invariant (these bindings don't change in a
+  frame). Plan: at trace ENTRY resolve the callee once (by atom) into a held JSValue; guard it is a
+  callable object; treat as a loop-invariant operand. (Do NOT re-resolve per iteration.)
+- **OP_call(argc)**: rather than reproduce quickjs's call ABI inline (arg stack, this-binding,
+  exception plumbing — fragile), emit `IR_CALL` -> a C helper
+  `qjit_call(ctx, func, argc, int_args[])` that boxes the unboxed int args to JSValue(INT), invokes
+  `JS_Call(ctx, func, JS_UNDEFINED, argc, argv)` (reuse quickjs's own machinery = correct by
+  construction), frees the return + args. Side effects (the actual rasterizer draw) happen in JS_Call.
+- **drop**: discard the (undefined) return.
+- Args are ints for rect/fill (`rect(x*TS,y*TS,TS,TS)`, `fill(r,g,b)`), so NO string/heap args yet.
+
+**CRITICAL correctness constraint (deopt after a call):** our snapshot-free deopt re-runs the WHOLE
+iteration in the interpreter (resume at header, var_buf = iteration-start). That is WRONG once the
+iteration has already executed a side-effecting call: re-running would call rect()/fill() AGAIN →
+double draw → divergence. So for a trace containing a call, any guard that could deopt AFTER the first
+call in the iteration must NOT resume-at-header. Options: (a) forbid deopt-after-call — i.e. all guards
+(overflow, bounds, type) must sit BEFORE the first call in the recorded iteration, else ABORT the trace
+at build time (conservative, simple, correct); or (b) real snapshots that resume at the post-call PC.
+Increment 4 takes (a): the builder rejects a trace where a deoptable op follows a CALL in the same
+iteration. (The tile loop's guards — array/bounds/string — all precede the fill/rect calls, so (a) is
+enough for coinrun.) Gate this hard with the differential harness.
+
 ## Invariants (unchanged from the int JIT)
 Correctness is the interpreter + the OFF==ON gate. The JIT only ever makes a correct loop faster
 or safely deopts. Every new op is conservative: if any assumption (type, shape, bounds, escape)
