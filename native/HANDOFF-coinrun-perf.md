@@ -14,13 +14,16 @@
   bossfight 189k, ninja 170k, starpilot 141k, leaper 84k, heist 59k, maze 40k,
   caveflyer 42k, dodgeball 38k, jumper 34k, chaser 37k, climber 25k, coinrun 24k,
   fruitbot 22k, miner 16k.
-- **vs ProcGen:** the 27.5k-QJS-vs-23.2k-PG mean (1.19×) was **FASRC Sapphire**;
-  these Apple-Silicon numbers are NOT comparable in absolute terms (this workload
-  is ~2–3×/core faster on Apple Silicon). But every change since that sweep
-  (rasterizer packed-u32 fill/alloc-kills + JIT removal) is a **pure QuickJS-side
-  speedup with ProcGen unchanged**, so the 1.19× margin can only have widened.
-  To restate the definitive QJS-vs-PG mean, re-run the ratio sweep on one machine
-  (FASRC `~/sweep2.sh`).
+- **vs ProcGen — RE-MEASURED on FASRC sapphire (node holy8a32607), same-node ratio:**
+  QuickJS **32,949** vs ProcGen **22,264** → **1.48× mean** (was 1.19×). QuickJS+ProcGen
+  co-measured on one dedicated node so the ratio controls for CPU. FASRC's QuickJS was
+  already stock (JIT never in its hot path), so this +20% QJS gain (27.5k→32.9k mean)
+  is **attributable to the rasterizer update** (packed-u32 span fill), concentrated on
+  simple-render games (plunder +31%, bigfish +28%, ninja +31%, bossfight +23%); the
+  tile-heavy losers barely moved (coinrun +1%, miner +2%) and still lose to ProcGen
+  (0.44–0.54×). Repro: FASRC `~/sweep3.sh` (sbatch -p sapphire) → `~/compare_new.json`.
+  (Apple-Silicon local numbers — coinrun 24.6k, 16-game mean 89.3k — are ~2–3×/core
+  faster and NOT comparable to these sapphire figures in absolute terms.)
 
 ---
 
