@@ -89,6 +89,10 @@ void createCanvas(double w, double h) {
   _h = rs_new_canvas(w, h, (double)dw, (double)dh);
 }
 
+void setDirty(bool on) { rs_set_dirty(on ? 1 : 0); }
+void frameBegin() { rs_frame_begin(_h); }
+void frameEnd() { rs_frame_end(); }
+
 int width() { return _width; }
 int height() { return _height; }
 int frameCount() { return _frameCount; }

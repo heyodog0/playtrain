@@ -34,6 +34,12 @@ void tick();                              // ++frameCount (draw() is called by t
 // Observation readback: writes obsW*obsH*3 RGB bytes (matches env fast path).
 void render_obs_rgb(uint8_t* out);
 
+// Dirty-rect whole-frame skip. setDirty(true) enables record/replay; frameBegin/frameEnd
+// bracket the game's draw() (a no-op when dirty is off).
+void setDirty(bool on);
+void frameBegin();
+void frameEnd();
+
 // Input.
 void setKeysDown(const int* codes, int n);
 bool keyIsDown(int code);

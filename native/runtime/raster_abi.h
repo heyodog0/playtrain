@@ -51,6 +51,12 @@ void rs_draw_image(uint32_t dst_h, uint32_t src_h, double dx, double dy,
                    double dw, double dh);
 void rs_to_bgra(uint32_t h);
 
+// Dirty-rect whole-frame skip (record/replay). Between frame_begin/frame_end the draw ops
+// are recorded; if the command stream matches the previous frame, rendering is skipped.
+void rs_set_dirty(int on);
+void rs_frame_begin(uint32_t h);
+int  rs_frame_end(void);
+
 }  // extern "C"
 
 #endif  // NODE_GYM_RASTER_ABI_H

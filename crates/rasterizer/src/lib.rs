@@ -87,6 +87,129 @@ fn cv(h: u32) -> &'static mut Canvas {
     unsafe { &mut CANVASES[h as usize] }
 }
 
+// ---- dirty-rectangle: whole-frame skip via command record/replay ----
+// When DIRTY is on, a frame's draw ops are RECORDED (not executed) between rs_frame_begin
+// and rs_frame_end; if the command stream hashes identical to the previous frame, the frame
+// is SKIPPED (px still holds last frame's pixels -> identical obs by determinism). Otherwise
+// the buffer is replayed (ops execute) and the hash cached. Opt-in via rs_set_dirty so the
+// original direct path stays available for the differential test (dirty off == on, per-frame).
+static mut DIRTY: bool = false;
+static mut RECORDING: bool = false;
+static mut REC: Vec<(u8, [f64; 6])> = Vec::new();
+static mut LAST_HASH: u64 = 0;
+static mut HAS_LAST: bool = false;
+static mut CUR_H: u32 = 0;
+static mut FRAME_OPAQUE: bool = true;   // false if any a<255 fill/stroke this frame
+
+// record guard placed at the top of every draw op: returns true (op should return early) iff
+// we're capturing this frame's commands.
+#[inline]
+fn rec(tag: u8, a: [f64; 6]) -> bool {
+    unsafe {
+        if RECORDING {
+            // A semi-transparent fill/stroke makes re-rendering non-idempotent (double-blend),
+            // so a frame containing one must NOT be whole-frame-skipped.
+            if (tag == 7 || tag == 8) && a[3] < 255.0 {
+                FRAME_OPAQUE = false;
+            }
+            REC.push((tag, a));
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rs_set_dirty(on: i32) {
+    unsafe { DIRTY = on != 0; HAS_LAST = false; }   // reset cache when toggled
+}
+
+#[no_mangle]
+pub extern "C" fn rs_frame_begin(h: u32) {
+    unsafe {
+        if !DIRTY { return; }
+        RECORDING = true;
+        REC.clear();
+        CUR_H = h;
+        FRAME_OPAQUE = true;
+    }
+}
+
+// returns 1 if the frame was identical to the previous (skipped), 0 if replayed/rendered.
+#[no_mangle]
+pub extern "C" fn rs_frame_end() -> i32 {
+    unsafe {
+        if !DIRTY { return 0; }
+        RECORDING = false;
+        let mut hsh: u64 = 1469598103934665603;
+        macro_rules! mix { ($v:expr) => {{ hsh ^= $v; hsh = hsh.wrapping_mul(1099511628211); }} }
+        // Seed with the frame-START canvas state (recording didn't mutate it): identical
+        // commands from different carried state (transform/fill/path/stack) must NOT be judged
+        // identical, or a skip would reuse the wrong pixels (the qbert frame-118 bug).
+        {
+            let c = cv(CUR_H);
+            for v in c.t.iter() { mix!(v.to_bits()); }
+            for v in c.fill.iter() { mix!(*v as u64); }
+            for v in c.stroke.iter() { mix!(*v as u64); }
+            mix!(c.line_w.to_bits());
+            for st in c.stack.iter() {
+                for v in st.0.iter() { mix!(v.to_bits()); }
+                for v in st.1.iter() { mix!(*v as u64); }
+                for v in st.2.iter() { mix!(*v as u64); }
+                mix!(st.3.to_bits());
+            }
+            mix!(0x5EED_5EED);
+            for sp in c.path.iter() {
+                for p in sp.pts.iter() { mix!(p.0.to_bits()); mix!(p.1.to_bits()); }
+                mix!(0xF0F0_F0F0);
+            }
+            mix!(0xC0DE_C0DE);
+        }
+        for (t, a) in REC.iter() {
+            mix!(*t as u64);
+            for v in a.iter() { mix!(v.to_bits()); }
+        }
+        if HAS_LAST && hsh == LAST_HASH && FRAME_OPAQUE {
+            return 1; // identical opaque frame -> re-render is idempotent -> px unchanged
+        }
+        let h = CUR_H;
+        let cmds = core::mem::take(&mut REC);
+        for (t, a) in cmds.iter() {
+            replay_one(h, *t, a);
+        }
+        REC = cmds;
+        LAST_HASH = hsh;
+        HAS_LAST = true;
+        0
+    }
+}
+
+fn replay_one(h: u32, t: u8, a: &[f64; 6]) {
+    match t {
+        1 => rs_translate(h, a[0], a[1]),
+        2 => rs_scale(h, a[0], a[1]),
+        3 => rs_rotate(h, a[0]),
+        4 => rs_save(h),
+        5 => rs_restore(h),
+        6 => rs_reset_transform(h),
+        7 => rs_set_fill(h, a[0], a[1], a[2], a[3]),
+        8 => rs_set_stroke(h, a[0], a[1], a[2], a[3]),
+        9 => rs_set_line_width(h, a[0]),
+        10 => rs_begin_path(h),
+        11 => rs_move_to(h, a[0], a[1]),
+        12 => rs_line_to(h, a[0], a[1]),
+        13 => rs_close_path(h),
+        14 => rs_rect_path(h, a[0], a[1], a[2], a[3]),
+        15 => rs_round_rect_path(h, a[0], a[1], a[2], a[3], a[4]),
+        16 => rs_ellipse_path(h, a[0], a[1], a[2], a[3], a[4], a[5]),
+        17 => rs_fill(h),
+        18 => rs_fill_rect(h, a[0], a[1], a[2], a[3]),
+        19 => rs_stroke(h),
+        _ => {}
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rs_new_canvas(lw: f64, lh: f64, dw: f64, dh: f64) -> u32 {
     let dwu = dw as usize;
@@ -131,11 +254,13 @@ pub extern "C" fn rs_buf_len(h: u32) -> u32 {
 // ---- transform stack ----
 #[no_mangle]
 pub extern "C" fn rs_save(h: u32) {
+    if rec(4, [0.0; 6]) { return; }
     let c = cv(h);
     c.stack.push((c.t, c.fill, c.stroke, c.line_w));
 }
 #[no_mangle]
 pub extern "C" fn rs_restore(h: u32) {
+    if rec(5, [0.0; 6]) { return; }
     let c = cv(h);
     if let Some((t, f, s, lw)) = c.stack.pop() {
         c.t = t;
@@ -146,17 +271,20 @@ pub extern "C" fn rs_restore(h: u32) {
 }
 #[no_mangle]
 pub extern "C" fn rs_reset_transform(h: u32) {
+    if rec(6, [0.0; 6]) { return; }
     let c = cv(h);
     c.t = c.base;
 }
 #[no_mangle]
 pub extern "C" fn rs_translate(h: u32, x: f64, y: f64) {
+    if rec(1, [x, y, 0.0, 0.0, 0.0, 0.0]) { return; }
     let t = &mut cv(h).t;
     t[4] += t[0] * x + t[2] * y;
     t[5] += t[1] * x + t[3] * y;
 }
 #[no_mangle]
 pub extern "C" fn rs_scale(h: u32, sx: f64, sy: f64) {
+    if rec(2, [sx, sy, 0.0, 0.0, 0.0, 0.0]) { return; }
     let t = &mut cv(h).t;
     t[0] *= sx;
     t[1] *= sx;
@@ -165,6 +293,7 @@ pub extern "C" fn rs_scale(h: u32, sx: f64, sy: f64) {
 }
 #[no_mangle]
 pub extern "C" fn rs_rotate(h: u32, a: f64) {
+    if rec(3, [a, 0.0, 0.0, 0.0, 0.0, 0.0]) { return; }
     let t = &mut cv(h).t;
     let (s, co) = (psin(a), pcos(a));
     let (a0, b0, c0, d0) = (t[0], t[1], t[2], t[3]);
@@ -182,30 +311,36 @@ fn xf(t: &[f64; 6], x: f64, y: f64) -> (f64, f64) {
 // ---- style ----
 #[no_mangle]
 pub extern "C" fn rs_set_fill(h: u32, r: f64, g: f64, b: f64, a: f64) {
+    if rec(7, [r, g, b, a, 0.0, 0.0]) { return; }
     cv(h).fill = [r as u8, g as u8, b as u8, a as u8];
 }
 #[no_mangle]
 pub extern "C" fn rs_set_stroke(h: u32, r: f64, g: f64, b: f64, a: f64) {
+    if rec(8, [r, g, b, a, 0.0, 0.0]) { return; }
     cv(h).stroke = [r as u8, g as u8, b as u8, a as u8];
 }
 #[no_mangle]
 pub extern "C" fn rs_set_line_width(h: u32, w: f64) {
+    if rec(9, [w, 0.0, 0.0, 0.0, 0.0, 0.0]) { return; }
     cv(h).line_w = w;
 }
 
 // ---- path building (points stored in DEVICE space) ----
 #[no_mangle]
 pub extern "C" fn rs_begin_path(h: u32) {
+    if rec(10, [0.0; 6]) { return; }
     cv(h).path.clear();
 }
 #[no_mangle]
 pub extern "C" fn rs_move_to(h: u32, x: f64, y: f64) {
+    if rec(11, [x, y, 0.0, 0.0, 0.0, 0.0]) { return; }
     let c = cv(h);
     let p = xf(&c.t, x, y);
     c.path.push(SubPath { pts: vec![p], closed: false });
 }
 #[no_mangle]
 pub extern "C" fn rs_line_to(h: u32, x: f64, y: f64) {
+    if rec(12, [x, y, 0.0, 0.0, 0.0, 0.0]) { return; }
     let c = cv(h);
     let p = xf(&c.t, x, y);
     if let Some(sp) = c.path.last_mut() {
@@ -216,12 +351,14 @@ pub extern "C" fn rs_line_to(h: u32, x: f64, y: f64) {
 }
 #[no_mangle]
 pub extern "C" fn rs_close_path(h: u32) {
+    if rec(13, [0.0; 6]) { return; }
     if let Some(sp) = cv(h).path.last_mut() {
         sp.closed = true;
     }
 }
 #[no_mangle]
 pub extern "C" fn rs_rect_path(h: u32, x: f64, y: f64, w: f64, hh: f64) {
+    if rec(14, [x, y, w, hh, 0.0, 0.0]) { return; }
     rs_move_to(h, x, y);
     rs_line_to(h, x + w, y);
     rs_line_to(h, x + w, y + hh);
@@ -230,6 +367,7 @@ pub extern "C" fn rs_rect_path(h: u32, x: f64, y: f64, w: f64, hh: f64) {
 }
 #[no_mangle]
 pub extern "C" fn rs_round_rect_path(h: u32, x: f64, y: f64, w: f64, hh: f64, r0: f64) {
+    if rec(15, [x, y, w, hh, r0, 0.0]) { return; }
     let r = r0.min(w / 2.0).min(hh / 2.0);
     let k = 6;
     let mut pts: Vec<(f64, f64)> = Vec::new();
@@ -251,6 +389,7 @@ pub extern "C" fn rs_round_rect_path(h: u32, x: f64, y: f64, w: f64, hh: f64, r0
 }
 #[no_mangle]
 pub extern "C" fn rs_ellipse_path(h: u32, cx: f64, cy: f64, rx: f64, ry: f64, a0: f64, a1: f64) {
+    if rec(16, [cx, cy, rx, ry, a0, a1]) { return; }
     let span = a1 - a0;
     let n = (rx.max(ry) * 0.8).ceil().max(10.0) as i32;
     for i in 0..=n {
@@ -358,6 +497,7 @@ fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
 
 #[no_mangle]
 pub extern "C" fn rs_fill(h: u32) {
+    if rec(17, [0.0; 6]) { return; }
     let c = cv(h);
     let col = c.fill;
     fill_subpaths(c, col);
@@ -365,6 +505,7 @@ pub extern "C" fn rs_fill(h: u32) {
 
 #[no_mangle]
 pub extern "C" fn rs_fill_rect(h: u32, x: f64, y: f64, w: f64, hh: f64) {
+    if rec(18, [x, y, w, hh, 0.0, 0.0]) { return; }
     let c = cv(h);
     let col = c.fill;
     let t = c.t;
@@ -421,6 +562,7 @@ fn plot(c: &mut Canvas, cx: i64, cy: i64, rad: i64, col: [u8; 4]) {
 
 #[no_mangle]
 pub extern "C" fn rs_stroke(h: u32) {
+    if rec(19, [0.0; 6]) { return; }
     let c = cv(h);
     let col = c.stroke;
     let lw = c.line_w.round().max(1.0);

@@ -169,7 +169,8 @@ int main(int argc, char** argv) {
   };
   // init (mirror env.init / game-env loadGame)
   call0(jsSetup);
-  resetGame(0); setFrame(++frameCount); call0(jsDraw);
+  if (getenv("QJS_DIRTY")) p5::setDirty(true);   // opt-in dirty-rect whole-frame skip
+  resetGame(0); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
 
   std::vector<uint8_t> obs((size_t)OBS * OBS * 3);
   auto obshash = [&]() -> uint64_t { p5::render_obs_rgb(obs.data()); uint64_t h = 1469598103934665603ULL; for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; } return h; };
@@ -179,7 +180,7 @@ int main(int argc, char** argv) {
   auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
     int codes[2], n = 0; for (int i = 0; i < 2; i++) if (HELD[a][i] >= 0) codes[n++] = HELD[a][i];
     p5::setKeysDown(codes, n);
-    setFrame(++frameCount); call0(jsDraw);
+    setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
     // read state
     JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
     JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx, &score, sc); JS_FreeValue(ctx, sc);
@@ -195,6 +196,34 @@ int main(int argc, char** argv) {
     if (!strcmp(s, "GAMEOVER")) return 2; if (!strcmp(s, "EXIT")) return 3; return 4;
   };
 
+  if (!strcmp(mode, "dirtycheck")) {
+    // Differential test: run the SAME game+seed with dirty-rect OFF (baseline direct render)
+    // and ON (record/replay/skip), hashing obs every frame; any mismatch = silent corruption
+    // caught loudly. This is the safety net for the whole-frame-skip optimization.
+    auto runN = [&](bool dirty, std::vector<uint64_t>& out) {
+      p5::setDirty(dirty);
+      p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+      resetGame(seed); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
+      out.clear();
+      double sc, lv; bool term; const char* nm;
+      for (long i = 0; i < nsteps; i++) {
+        stepEnv(action_at(i), sc, lv, term, nm);
+        out.push_back(obshash());
+        if (term) { resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd(); }
+      }
+    };
+    std::vector<uint64_t> ha, hb;
+    runN(false, ha);   // baseline: direct render
+    runN(true,  hb);   // dirty-rect: record/replay/skip
+    long mism = 0, first = -1;
+    for (size_t i = 0; i < ha.size() && i < hb.size(); i++)
+      if (ha[i] != hb[i]) { mism++; if (first < 0) first = (long)i; }
+    printf("%-40s dirtycheck %ld frames: %ld mismatches%s -> %s\n",
+           gamePath, (long)ha.size(), mism,
+           first >= 0 ? (std::string(" (first @frame ") + std::to_string(first) + ")").c_str() : "",
+           mism == 0 ? "BIT-EXACT" : "CORRUPT");
+    return mism == 0 ? 0 : 1;
+  }
   if (!strcmp(mode, "framediff")) {
     // Measure the dirty-rect ceiling: what fraction of obs pixels change frame-to-frame?
     const size_t N = (size_t)OBS * OBS * 3;
