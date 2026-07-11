@@ -15,8 +15,11 @@
   caveflyer 42k, dodgeball 38k, jumper 34k, chaser 37k, climber 25k, coinrun 24k,
   fruitbot 22k, miner 16k.
 - **vs ProcGen — RE-MEASURED on FASRC sapphire (node holy8a32607), same-node ratio:**
-  QuickJS **32,949** vs ProcGen **22,264** → **1.48× mean** (was 1.19×). QuickJS+ProcGen
-  co-measured on one dedicated node so the ratio controls for CPU. FASRC's QuickJS was
+  QuickJS **33,000 ± 22** vs ProcGen **22,437 ± 113** → **1.47 ± 0.01× mean** (7 trials/game;
+  was 1.19×). QuickJS is deterministic (trial CV 0.14–2.3%); ProcGen noisier (up to ±14%). The
+  ±0.01 is measurement error on the mean — the win is not noise. (Cross-game spread of QJS
+  game-means is ±28k — real heterogeneity, 6k→95k, not error.) QuickJS+ProcGen co-measured on
+  one dedicated node so the ratio controls for CPU. FASRC's QuickJS was
   already stock (JIT never in its hot path), so this +20% QJS gain (27.5k→32.9k mean)
   is **attributable to the rasterizer update** (packed-u32 span fill), concentrated on
   simple-render games (plunder +31%, bigfish +28%, ninja +31%, bossfight +23%); the
