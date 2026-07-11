@@ -1,5 +1,5 @@
 diff --git a/quickjs.c b/quickjs.c
-index 7ec0c25..185b3f4 100644
+index 7ec0c25..1a2a220 100644
 --- a/quickjs.c
 +++ b/quickjs.c
 @@ -17940,6 +17940,19 @@ static bool needs_backtrace(JSValue exc)
@@ -119,7 +119,7 @@ index 7ec0c25..185b3f4 100644
                  }
                  if (unlikely(js_poll_interrupts(ctx)))
                      goto exception;
-@@ -22322,6 +22374,419 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
+@@ -22322,6 +22374,421 @@ static const JSOpCode opcode_info[OP_COUNT + (OP_TEMP_END - OP_TEMP_START)] = {
      opcode_info[(op) >= OP_TEMP_START ? \
                  (op) + (OP_TEMP_END - OP_TEMP_START) : (op)]
  
@@ -289,6 +289,7 @@ index 7ec0c25..185b3f4 100644
 +        else if (op == OP_set_loc) { L = GETL(0, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
 +        else if (op == OP_set_loc8) { L = GETL(0, pc[1]); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
 +        else if (op >= OP_set_loc0 && op <= OP_set_loc3) { L = GETL(0, op - OP_set_loc0); if(L<0){ok=0;break;} EMIT(Q_SET_LOC, .slot = L); }
++        else if (op == OP_set_loc_uninitialized) { L = GETL(0, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_SET_UNINIT, .slot = L); }
 +        else if (op == OP_get_arg) { L = GETL(1, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
 +        else if (op >= OP_get_arg0 && op <= OP_get_arg3) { L = GETL(1, op - OP_get_arg0); if(L<0){ok=0;break;} EMIT(Q_GET_LOC, .slot = L); }
 +        else if (op == OP_put_arg) { L = GETL(1, get_u16(pc + 1)); if(L<0){ok=0;break;} EMIT(Q_PUT_LOC, .slot = L); }
@@ -489,6 +490,7 @@ index 7ec0c25..185b3f4 100644
 +    int64_t L[64];
 +    for (int k = 0; k < t->n_live; k++) {          // entry type guards, kind-specialized
 +        if (t->live_kind[k] == QK_SKIP) { L[k] = 0; continue; }  // trace-internal temp: never read
++        if (t->live_kind[k] == QK_TEMP) { L[k] = 0; continue; }  // per-iter `let`: write-first, no entry guard
 +        JSValue v = t->live_is_arg[k] ? arg_buf[t->live_idx[k]] : var_buf[t->live_idx[k]];
 +        if (t->live_kind[k] == QK_ARRAY) {         // must be a fast JS array -> pass JSObject*
 +            if (JS_VALUE_GET_TAG(v) != JS_TAG_OBJECT) return -1;

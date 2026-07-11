@@ -36,6 +36,9 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   // the `.length` bound): storing an object-base value to a slot records the value; a later
   // load returns it directly (SSA copy-prop) — the slot never touches memory (QK_SKIP).
   static StkEnt fwd[256]; char fwd_ok[256] = {0}, mem_ref[256] = {0};
+  // per-iteration temps declared by set_loc_uninitialized (a loop-body `let`): QK_TEMP,
+  // write-first, no entry marshal / no writeback. temp_stored tracks first-store (TDZ).
+  char temp_slot[256] = {0}, temp_stored[256] = {0};
 #define ISOBJ(i) (stk[i].is_func || stk[i].is_elem)
 
 #define EMIT0(o)          (ir[n] = (IRInsn){.op=o}, n++)
@@ -77,7 +80,14 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
   for (int i = 0; i < n_ops; i++) {
     const TraceOp *t = &ops[i];
     switch (t->op) {
+      case Q_SET_UNINIT: {  // declare a fresh per-iteration temp (loop-body `let`)
+        int s = t->slot;
+        if (s < 0 || s >= 256) FAIL();
+        if (mem_ref[s]) FAIL();          // slot already used as a normal local -> not a fresh temp
+        temp_slot[s] = 1; temp_stored[s] = 0;   // the store decides: forward (QK_SKIP) or int (QK_TEMP)
+      } break;
       case Q_GET_LOC: {
+        if (t->slot >= 0 && t->slot < 256 && temp_slot[t->slot] && !temp_stored[t->slot]) FAIL();  // TDZ: read before store
         if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) { ROOM(0); stk[sp++] = fwd[t->slot]; }  // forwarded object temp
         else if (FSLOT(t->slot)) {  // float local: load as f64
           ROOM(1); ir[n] = (IRInsn){.op = IR_FLOAD_LOC, .slot = t->slot}; int r = n++; PUSHF(r);
@@ -94,22 +104,28 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
       } break;
       case Q_PUT_LOC: {
         NEED(1);
+        int is_temp = (t->slot >= 0 && t->slot < 256 && temp_slot[t->slot]);
+        if (is_temp && stk[sp-1].is_float) FAIL();       // float temps not supported yet
         if (stk[sp-1].is_float) {  // float store: pop f64 value -> IR_FSTORE_LOC
           int a = stk[--sp].ref;
           ROOM(1); ir[n++] = (IRInsn){.op = IR_FSTORE_LOC, .slot = t->slot, .a = a};
           if (t->slot >= 0 && t->slot < 256) { if (out_slot_kind) out_slot_kind[t->slot] = QK_FLOAT; mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
-        } else if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {  // forward object temp
+        } else if (ISOBJ(sp-1) && t->slot >= 0 && t->slot < 256) {  // forward object/element temp (`t = grid[x][y]`)
           if (mem_ref[t->slot]) FAIL();
           fwd[t->slot] = stk[--sp]; fwd_ok[t->slot] = 1;
           if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
-        } else {
+          if (is_temp) temp_stored[t->slot] = 1;
+        } else {   // int store
           MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[--sp].ref;
           ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
-          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0;
+            if (is_temp) { temp_stored[t->slot] = 1; if (out_slot_kind) out_slot_kind[t->slot] = QK_TEMP; } }
         }
       } break;
       case Q_SET_LOC: {  // store top, leave it on the stack (set_loc/set_arg)
         NEED(1);
+        int is_temp = (t->slot >= 0 && t->slot < 256 && temp_slot[t->slot]);
+        if (is_temp && stk[sp-1].is_float) FAIL();
         if (stk[sp-1].is_float) {  // float store, peek (no pop)
           int a = stk[sp-1].ref;
           ROOM(1); ir[n++] = (IRInsn){.op = IR_FSTORE_LOC, .slot = t->slot, .a = a};
@@ -118,14 +134,17 @@ int qjit_build_ir(const TraceOp *ops, int n_ops, IRInsn *ir, int max_ir,
           if (mem_ref[t->slot]) FAIL();
           fwd[t->slot] = stk[sp-1]; fwd_ok[t->slot] = 1;
           if (out_slot_kind) out_slot_kind[t->slot] = QK_SKIP;
+          if (is_temp) temp_stored[t->slot] = 1;
         } else {
           MATINT(sp-1); if (NOTVAL(sp-1)) FAIL(); int a = stk[sp-1].ref;
           ROOM(1); ir[n++] = (IRInsn){.op = IR_STORE_LOC, .slot = t->slot, .a = a};
-          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0; }
+          if (t->slot >= 0 && t->slot < 256) { mem_ref[t->slot] = 1; fwd_ok[t->slot] = 0;
+            if (is_temp) { temp_stored[t->slot] = 1; if (out_slot_kind) out_slot_kind[t->slot] = QK_TEMP; } }
         }
       } break;
       case Q_ADD_LOC: {  // locals[slot] += pop
         NEED(1); if (t->slot >= 0 && t->slot < 256 && fwd_ok[t->slot]) FAIL();  // can't += an object temp
+        if (t->slot >= 0 && t->slot < 256 && temp_slot[t->slot] && !temp_stored[t->slot]) FAIL();  // TDZ: += before init
         if (t->slot >= 0 && t->slot < 256) mem_ref[t->slot] = 1;
         if (FSLOT(t->slot) || stk[sp-1].is_float) {   // float: locals[slot](f64) += pop
           if (stk[sp-1].is_elem) FAIL();               // float array elements: later increment

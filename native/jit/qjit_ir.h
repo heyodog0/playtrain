@@ -202,6 +202,8 @@ typedef enum {
                 // property index `foffset` as `ftag` (JS_TAG_INT -> int, JS_TAG_FLOAT64 -> float).
   Q_FIELD_ELEM, // fused `arr[i].field`: consumes the deferred array element on the stack,
                 // materializes it as an object, guards shape==`imm`, reads property `foffset`/`ftag`.
+  Q_SET_UNINIT, // set_loc_uninitialized: declare a fresh per-iteration temp in `slot` (TDZ).
+                // marks the slot QK_TEMP; a read before a store in the trace aborts (TDZ).
   Q_DROP,       // pop
   Q_DUP,        // push top
   Q_NOP         // label / no-op
@@ -216,7 +218,10 @@ typedef enum {
 // forwarding — never a real IR load/store). Not marshaled at entry, not written back.
 // QK_OBJECT: a general JS object (guard tag==OBJECT at entry, store JSObject* in L[]; no
 // writeback — field reads are read-only). The in-trace SHAPE guard specializes per access.
-enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2, QK_FLOAT = 3, QK_OBJECT = 4 };
+// QK_TEMP: a per-iteration temp (a loop-body `let`, declared via set_loc_uninitialized):
+// a real register slot, but NOT marshaled at entry (its entry value is UNINITIALIZED, which
+// would deopt) and NOT written back (out of scope after the loop). Write-first each iteration.
+enum { QK_INT = 0, QK_ARRAY = 1, QK_SKIP = 2, QK_FLOAT = 3, QK_OBJECT = 4, QK_TEMP = 5 };
 
 typedef struct {
   QOp op;
