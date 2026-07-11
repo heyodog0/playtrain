@@ -87,6 +87,19 @@ void vertex(double x, double y);
 void endShape();       // open
 void endShape(int mode);  // CLOSE
 
+// Offscreen graphics (createGraphics + image) — retarget model. createGraphics
+// allocates a second canvas rasterized 1:1 (device res == logical size).
+// setTarget/clearTarget swap the shim's singleton draw target _h so the SAME
+// global rect/fill/etc draw into the offscreen; image() blits an offscreen into
+// the current target, logical coords mapped through the base device scale
+// (nearest-neighbor downsample in rs_draw_image). NOTE: this is the "layer-cache"
+// experiment path (see native/HANDOFF-coinrun-perf.md) — pre-rasterize-then-
+// rescale, which is NOT bit-exact to direct rendering on scaled-camera games.
+int  createGraphics(double w, double h);
+void setTarget(int handle);
+void clearTarget();
+void image(int srcHandle, double x, double y, double w, double h);
+
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is
 // a no-op, so headless obs already omits text. Matches env behavior.)

@@ -80,6 +80,12 @@ FN(js_endShape) { NODRAW if (argc >= 1) p5::endShape((int)argd(ctx, argv[0])); e
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 
+// Offscreen graphics (layer-cache experiment; see native/HANDOFF-coinrun-perf.md).
+FN(js_createGraphics) { return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_setTarget) { p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_clearTarget) { p5::clearTarget(); return JS_UNDEFINED; }
+FN(js_image) { NODRAW p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
+
 // Bit-exact Math overrides: QuickJS's built-in transcendentals differ from V8 by
 // ULPs (breaks bit-exactness over time). Route to the SAME js:: math the
 // transpiled native path uses, which gated bit-exact vs V8.
@@ -102,6 +108,8 @@ static const Binding BINDINGS[] = {
   {"rotate", js_rotate, 1}, {"scale", js_scale, 2},
   {"beginShape", js_beginShape, 0}, {"vertex", js_vertex, 2}, {"endShape", js_endShape, 1},
   {"keyIsDown", js_keyIsDown, 1},
+  {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
+  {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},
   {"noLoop", js_noop, 0}, {"loop", js_noop, 0}, {"noCursor", js_noop, 0}, {"cursor", js_noop, 0},

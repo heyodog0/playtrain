@@ -12,6 +12,8 @@ static uint32_t _h = 0;
 static int _width = 0, _height = 0;
 static int _rasterRes = 0;   // device res; 0 => render at logical size
 static int _frameCount = 0;
+static double _devSx = 1.0, _devSy = 1.0;   // logical->device scale of the MAIN canvas (for image())
+static std::vector<uint32_t> _targetStack;  // saved _h across setTarget/clearTarget
 
 static Color _fill{255, 255, 255, 255};
 static Color _stroke{0, 0, 0, 255};
@@ -87,6 +89,31 @@ void createCanvas(double w, double h) {
   int dw = _rasterRes > 0 ? _rasterRes : (int)w;
   int dh = _rasterRes > 0 ? _rasterRes : (int)h;
   _h = rs_new_canvas(w, h, (double)dw, (double)dh);
+  _devSx = (double)dw / w;   // logical->device (for image() blit mapping)
+  _devSy = (double)dh / h;
+}
+
+// ---- offscreen graphics (createGraphics + image); see p5.hpp ----
+int createGraphics(double w, double h) {
+  // Rasterized 1:1 (device res == logical size). image() downsamples on blit,
+  // so the layer is cached at logical res then rescaled — deliberately NOT the
+  // same pixels as direct render at obs res (the layer-cache wall).
+  return (int)rs_new_canvas(w, h, w, h);
+}
+void setTarget(int handle) {
+  _targetStack.push_back(_h);
+  _h = (uint32_t)handle;
+  invalidateCache();  // rasterizer style state is per-canvas; force re-apply
+}
+void clearTarget() {
+  if (!_targetStack.empty()) { _h = _targetStack.back(); _targetStack.pop_back(); }
+  invalidateCache();
+}
+void image(int srcHandle, double x, double y, double w, double h) {
+  // p5 image() honors the current transform; here we map logical->device via the
+  // MAIN canvas base scale (image is only ever called at identity transform in
+  // the layered variant). rs_draw_image nearest-neighbor resamples src -> dst rect.
+  rs_draw_image(_h, (uint32_t)srcHandle, x * _devSx, y * _devSy, w * _devSx, h * _devSy);
 }
 
 void setDirty(bool on) { rs_set_dirty(on ? 1 : 0); }
