@@ -9,6 +9,15 @@
 
 extern "C" {
 
+// Per-env rasterizer state (for the multi-env threadpool host, qjs_vec_host.cpp).
+// rs_state_new() allocates a fresh state (canvas registry + dirty-rect globals)
+// without selecting it; rs_state_select() makes it active for the calling thread;
+// rs_state_free() releases one that is not selected anywhere. Single-env callers
+// ignore these: a per-thread default state is created lazily on first use.
+void* rs_state_new(void);
+void  rs_state_select(void* p);
+void  rs_state_free(void* p);
+
 // Canvas lifecycle. Logical size (lw,lh) is the game's coordinate space;
 // device size (dw,dh) is the rasterization resolution (obs res, e.g. 64).
 uint32_t rs_new_canvas(double lw, double lh, double dw, double dh);

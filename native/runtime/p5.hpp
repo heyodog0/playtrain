@@ -22,6 +22,14 @@ Color color(double gray, double alpha);
 Color color(double r, double g, double b);
 Color color(double r, double g, double b, double a);
 
+// Per-env shim state (for the multi-env threadpool host, qjs_vec_host.cpp).
+// newState() allocates a fresh shim state without selecting it; selectState()
+// makes it the active state for the calling thread; freeState() releases one.
+// Single-env callers ignore this: a per-thread default state is created lazily.
+void* newState();
+void  selectState(void* s);
+void  freeState(void* s);
+
 // Canvas / frame lifecycle.
 void createCanvas(double w, double h);   // rs_new_canvas at RASTER_RES device size
 void setRasterRes(int n);                 // must be called before createCanvas

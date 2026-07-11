@@ -80,77 +80,148 @@ struct Canvas {
     path: Vec<SubPath>,
 }
 
-static mut CANVASES: Vec<Canvas> = Vec::new();
+// ---- per-env rasterizer state ----
+// All mutable rasterizer state (the canvas registry + the dirty-rect frame globals)
+// lives in one `RState`. A thread-local pointer selects the ACTIVE state, so a
+// multi-env host (native/qjs/qjs_vec_host.cpp) can give each env its own state and
+// swap between them on a worker thread with `rs_state_new` / `rs_state_select`.
+// Single-threaded callers (trace/bench/serve) never touch that API: the first
+// `rs()` on a thread lazily leaks one default RState, reproducing the old
+// single-global behavior exactly (bit-exact, verified).
+struct RState {
+    canvases: Vec<Canvas>,
+    // ---- dirty-rectangle: whole-frame skip via command record/replay ----
+    // When `dirty` is on, a frame's draw ops are RECORDED (not executed) between
+    // rs_frame_begin and rs_frame_end; if the command stream hashes identical to the
+    // previous frame, the frame is SKIPPED (px still holds last frame's pixels ->
+    // identical obs by determinism). Otherwise the buffer is replayed (ops execute)
+    // and the hash cached. Opt-in via rs_set_dirty so the original direct path stays
+    // available for the differential test (dirty off == on, per-frame).
+    dirty: bool,
+    recording: bool,
+    rec: Vec<(u8, [f64; 6])>,
+    last_hash: u64,
+    has_last: bool,
+    cur_h: u32,
+    frame_opaque: bool,   // false if any a<255 fill/stroke this frame
+    forceskip: bool,      // measurement: skip all render after frame 1
+}
+
+impl RState {
+    fn new() -> RState {
+        RState {
+            canvases: Vec::new(),
+            dirty: false,
+            recording: false,
+            rec: Vec::new(),
+            last_hash: 0,
+            has_last: false,
+            cur_h: 0,
+            frame_opaque: true,
+            forceskip: false,
+        }
+    }
+}
+
+use std::cell::Cell;
+thread_local! {
+    // Raw pointer to a leaked, `'static` RState. Leaking (never dropped) is
+    // deliberate: worker threads live for the whole process and we want a stable
+    // pointer we can hand back through the C ABI without lifetime gymnastics.
+    static RS_CUR: Cell<*mut RState> = const { Cell::new(core::ptr::null_mut()) };
+}
+
+#[inline]
+fn rs() -> &'static mut RState {
+    RS_CUR.with(|p| {
+        let mut ptr = p.get();
+        if ptr.is_null() {
+            ptr = Box::into_raw(Box::new(RState::new()));
+            p.set(ptr);
+        }
+        unsafe { &mut *ptr }
+    })
+}
+
+/// Allocate a fresh env state and return an opaque handle. Does NOT select it.
+#[no_mangle]
+pub extern "C" fn rs_state_new() -> *mut core::ffi::c_void {
+    Box::into_raw(Box::new(RState::new())) as *mut core::ffi::c_void
+}
+
+/// Make `p` the active state for the calling thread. `p` must come from
+/// `rs_state_new` (or be null to fall back to the thread's lazy default).
+#[no_mangle]
+pub extern "C" fn rs_state_select(p: *mut core::ffi::c_void) {
+    RS_CUR.with(|c| c.set(p as *mut RState));
+}
+
+/// Free a state previously returned by `rs_state_new`. The caller must ensure it
+/// is not the active state on any thread.
+#[no_mangle]
+pub extern "C" fn rs_state_free(p: *mut core::ffi::c_void) {
+    if !p.is_null() {
+        unsafe { drop(Box::from_raw(p as *mut RState)); }
+    }
+}
 
 #[inline]
 fn cv(h: u32) -> &'static mut Canvas {
-    unsafe { &mut CANVASES[h as usize] }
+    &mut rs().canvases[h as usize]
 }
-
-// ---- dirty-rectangle: whole-frame skip via command record/replay ----
-// When DIRTY is on, a frame's draw ops are RECORDED (not executed) between rs_frame_begin
-// and rs_frame_end; if the command stream hashes identical to the previous frame, the frame
-// is SKIPPED (px still holds last frame's pixels -> identical obs by determinism). Otherwise
-// the buffer is replayed (ops execute) and the hash cached. Opt-in via rs_set_dirty so the
-// original direct path stays available for the differential test (dirty off == on, per-frame).
-static mut DIRTY: bool = false;
-static mut RECORDING: bool = false;
-static mut REC: Vec<(u8, [f64; 6])> = Vec::new();
-static mut LAST_HASH: u64 = 0;
-static mut HAS_LAST: bool = false;
-static mut CUR_H: u32 = 0;
-static mut FRAME_OPAQUE: bool = true;   // false if any a<255 fill/stroke this frame
-static mut FORCESKIP: bool = false;     // measurement: skip all render after frame 1
 
 // record guard placed at the top of every draw op: returns true (op should return early) iff
 // we're capturing this frame's commands.
 #[inline]
 fn rec(tag: u8, a: [f64; 6]) -> bool {
-    unsafe {
-        if RECORDING {
-            // A semi-transparent fill/stroke makes re-rendering non-idempotent (double-blend),
-            // so a frame containing one must NOT be whole-frame-skipped.
-            if (tag == 7 || tag == 8) && a[3] < 255.0 {
-                FRAME_OPAQUE = false;
-            }
-            REC.push((tag, a));
-            true
-        } else {
-            false
+    let s = rs();
+    if s.recording {
+        // A semi-transparent fill/stroke makes re-rendering non-idempotent (double-blend),
+        // so a frame containing one must NOT be whole-frame-skipped.
+        if (tag == 7 || tag == 8) && a[3] < 255.0 {
+            s.frame_opaque = false;
         }
+        s.rec.push((tag, a));
+        true
+    } else {
+        false
     }
 }
 
 #[no_mangle]
 pub extern "C" fn rs_set_dirty(on: i32) {
-    unsafe { DIRTY = on != 0; HAS_LAST = false;
-        FORCESKIP = std::env::var("RS_FORCESKIP").is_ok(); }   // reset cache when toggled
+    let s = rs();
+    s.dirty = on != 0;
+    s.has_last = false;                                 // reset cache when toggled
+    s.forceskip = std::env::var("RS_FORCESKIP").is_ok();
 }
 
 #[no_mangle]
 pub extern "C" fn rs_frame_begin(h: u32) {
-    unsafe {
-        if !DIRTY { return; }
-        RECORDING = true;
-        REC.clear();
-        CUR_H = h;
-        FRAME_OPAQUE = true;
-    }
+    let s = rs();
+    if !s.dirty { return; }
+    s.recording = true;
+    s.rec.clear();
+    s.cur_h = h;
+    s.frame_opaque = true;
 }
 
 // returns 1 if the frame was identical to the previous (skipped), 0 if replayed/rendered.
 #[no_mangle]
 pub extern "C" fn rs_frame_end() -> i32 {
-    unsafe {
-        if !DIRTY { return 0; }
-        RECORDING = false;
+    // Phase 1: compute the command-stream hash under one short borrow (byte-identical
+    // hash order to the pre-per-env-state version).
+    let (hsh, cur_h) = {
+        let s = rs();
+        if !s.dirty { return 0; }
+        s.recording = false;
         let mut hsh: u64 = 1469598103934665603;
         macro_rules! mix { ($v:expr) => {{ hsh ^= $v; hsh = hsh.wrapping_mul(1099511628211); }} }
         // Seed with the frame-START canvas state (recording didn't mutate it): identical
         // commands from different carried state (transform/fill/path/stack) must NOT be judged
         // identical, or a skip would reuse the wrong pixels (the qbert frame-118 bug).
         {
-            let c = cv(CUR_H);
+            let c = &s.canvases[s.cur_h as usize];
             for v in c.t.iter() { mix!(v.to_bits()); }
             for v in c.fill.iter() { mix!(*v as u64); }
             for v in c.stroke.iter() { mix!(*v as u64); }
@@ -168,26 +239,30 @@ pub extern "C" fn rs_frame_end() -> i32 {
             }
             mix!(0xC0DE_C0DE);
         }
-        for (t, a) in REC.iter() {
+        for (t, a) in s.rec.iter() {
             mix!(*t as u64);
             for v in a.iter() { mix!(v.to_bits()); }
         }
-        if HAS_LAST && hsh == LAST_HASH && FRAME_OPAQUE {
+        if s.has_last && hsh == s.last_hash && s.frame_opaque {
             return 1; // identical opaque frame -> re-render is idempotent -> px unchanged
         }
         // measurement hook: RS_FORCESKIP=1 skips ALL rendering after frame 1 (obs is bogus)
         // to isolate pure logic+record cost vs fill. Not a correctness path.
-        if HAS_LAST && FORCESKIP { LAST_HASH = hsh; return 1; }
-        let h = CUR_H;
-        let cmds = core::mem::take(&mut REC);
-        for (t, a) in cmds.iter() {
-            replay_one(h, *t, a);
-        }
-        REC = cmds;
-        LAST_HASH = hsh;
-        HAS_LAST = true;
-        0
+        if s.has_last && s.forceskip { s.last_hash = hsh; return 1; }
+        (hsh, s.cur_h)
+    };
+    // Phase 2: replay the recorded commands. Each replayed op re-borrows rs()
+    // internally (recording is now false, so rec() executes rather than captures),
+    // so `rec` must be moved out first to avoid overlapping borrows.
+    let cmds = core::mem::take(&mut rs().rec);
+    for (t, a) in cmds.iter() {
+        replay_one(cur_h, *t, a);
     }
+    let s = rs();
+    s.rec = cmds;
+    s.last_hash = hsh;
+    s.has_last = true;
+    0
 }
 
 fn replay_one(h: u32, t: u8, a: &[f64; 6]) {
@@ -237,10 +312,9 @@ pub extern "C" fn rs_new_canvas(lw: f64, lh: f64, dw: f64, dh: f64) -> u32 {
         line_w: 1.0,
         path: Vec::new(),
     };
-    unsafe {
-        CANVASES.push(c);
-        (CANVASES.len() - 1) as u32
-    }
+    let s = rs();
+    s.canvases.push(c);
+    (s.canvases.len() - 1) as u32
 }
 
 #[no_mangle]

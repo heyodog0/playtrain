@@ -7,37 +7,85 @@
 
 namespace p5 {
 
-// ---- module-level singleton state (one canvas per game, like the shim) ----
-static uint32_t _h = 0;
-static int _width = 0, _height = 0;
-static int _rasterRes = 0;   // device res; 0 => render at logical size
-static int _frameCount = 0;
-static double _devSx = 1.0, _devSy = 1.0;   // logical->device scale of the MAIN canvas (for image())
-static std::vector<uint32_t> _targetStack;  // saved _h across setTarget/clearTarget
-
-static Color _fill{255, 255, 255, 255};
-static Color _stroke{0, 0, 0, 255};
-static bool _strokeEnabled = true;
-static double _strokeW = 1.0;
-static int _rectMode = CORNER;
-static int _ellipseMode = CENTER;
-
-// style cache (mirrors the shim's _ctxFill/_ctxStroke/_ctxLineW reparse guard)
-static bool _cacheValid = false;
-static Color _ctxFill{-1, -1, -1, -1};
-static Color _ctxStroke{-1, -1, -1, -1};
-static double _ctxLineW = -1;
-
 struct StyleSnap {
   Color fill, stroke;
   bool strokeEnabled;
   double strokeW;
   int rectMode, ellipseMode;
 };
-static std::vector<StyleSnap> _styleStack;
-static std::vector<std::pair<double, double>> _shapeVerts;
 
-static bool _keys[256] = {false};
+// ---- per-env shim state ----
+// Formerly module-level singletons (one canvas per game, like the shim). Now
+// bundled into a P5State so a multi-env host can give each env its own shim state
+// and select the active one per worker thread. The field names below are redirected
+// to the active state via the macros further down, so the rest of this file (the
+// call-for-call shim port) is untouched and stays bit-exact. Single-threaded
+// callers never select a state: the first access on a thread lazily creates one,
+// reproducing the old single-global behavior exactly.
+struct P5State {
+  uint32_t _h = 0;
+  int _width = 0, _height = 0;
+  int _rasterRes = 0;   // device res; 0 => render at logical size
+  int _frameCount = 0;
+  double _devSx = 1.0, _devSy = 1.0;   // logical->device scale of the MAIN canvas (for image())
+  std::vector<uint32_t> _targetStack;  // saved _h across setTarget/clearTarget
+
+  Color _fill{255, 255, 255, 255};
+  Color _stroke{0, 0, 0, 255};
+  bool _strokeEnabled = true;
+  double _strokeW = 1.0;
+  int _rectMode = CORNER;
+  int _ellipseMode = CENTER;
+
+  // style cache (mirrors the shim's _ctxFill/_ctxStroke/_ctxLineW reparse guard)
+  bool _cacheValid = false;
+  Color _ctxFill{-1, -1, -1, -1};
+  Color _ctxStroke{-1, -1, -1, -1};
+  double _ctxLineW = -1;
+
+  std::vector<StyleSnap> _styleStack;
+  std::vector<std::pair<double, double>> _shapeVerts;
+
+  bool _keys[256] = {false};
+};
+
+static thread_local P5State* _cur = nullptr;
+static inline P5State& _S() {
+  if (!_cur) _cur = new P5State();   // leaked per-thread default; matches old singleton
+  return *_cur;
+}
+
+// Selectable per-env state API (used by native/qjs/qjs_vec_host.cpp). newState()
+// creates a state without selecting it; selectState() makes it active for the
+// calling thread; freeState() releases one that is not currently selected anywhere.
+void* newState() { return (void*)new P5State(); }
+void selectState(void* s) { _cur = (P5State*)s; }
+void freeState(void* s) { delete (P5State*)s; }
+
+// Redirect the shim's field identifiers to the active state. Declared AFTER the
+// struct so its member declarations are unaffected; every function body below then
+// transparently reads/writes the selected P5State.
+#define _h            (_S()._h)
+#define _width        (_S()._width)
+#define _height       (_S()._height)
+#define _rasterRes    (_S()._rasterRes)
+#define _frameCount   (_S()._frameCount)
+#define _devSx        (_S()._devSx)
+#define _devSy        (_S()._devSy)
+#define _targetStack  (_S()._targetStack)
+#define _fill         (_S()._fill)
+#define _stroke       (_S()._stroke)
+#define _strokeEnabled (_S()._strokeEnabled)
+#define _strokeW      (_S()._strokeW)
+#define _rectMode     (_S()._rectMode)
+#define _ellipseMode  (_S()._ellipseMode)
+#define _cacheValid   (_S()._cacheValid)
+#define _ctxFill      (_S()._ctxFill)
+#define _ctxStroke    (_S()._ctxStroke)
+#define _ctxLineW     (_S()._ctxLineW)
+#define _styleStack   (_S()._styleStack)
+#define _shapeVerts   (_S()._shapeVerts)
+#define _keys         (_S()._keys)
 
 // ---- color pipeline (colorArgs + parseColor rounding) ----
 static inline double clamp01(double x) { return js::min(1.0, js::max(0.0, x)); }

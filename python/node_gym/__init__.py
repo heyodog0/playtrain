@@ -20,6 +20,12 @@ except Exception:  # qjs_host not built yet — fall back to the Node backend.
     QuickJSEnv = None
     GameEnv = NodeGymEnv
 
+try:
+    # envpool-class vectorized backend (in-process C++ threadpool over QuickJS).
+    from .native_vec_env import NativeVecEnv
+except Exception:  # libqjs_vec not built yet
+    NativeVecEnv = None
+
 __version__ = "0.2.0"
 
 __all__ = [
@@ -28,6 +34,7 @@ __all__ = [
     "NodeGymEnv",
     "NodeGymThreeEnv",
     "NodeVecEnv",
+    "NativeVecEnv",
     "SeedRangeWrapper",
     "list_available_games",
     "list_available_threejs_games",
