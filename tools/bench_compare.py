@@ -40,6 +40,9 @@ ATARI = {
     "freeway": "FreewayNoFrameskip-v4",
     "frostbite": "FrostbiteNoFrameskip-v4",
     "asteroids": "AsteroidsNoFrameskip-v4",
+    "qbert": "QbertNoFrameskip-v4",
+    "seaquest": "SeaquestNoFrameskip-v4",
+    "pong": "PongNoFrameskip-v4",
 }
 PROCGEN = ["bigfish", "bossfight", "caveflyer", "chaser", "climber", "coinrun",
            "dodgeball", "fruitbot", "heist", "jumper", "leaper", "maze",
