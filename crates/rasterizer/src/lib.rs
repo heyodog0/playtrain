@@ -100,6 +100,7 @@ static mut LAST_HASH: u64 = 0;
 static mut HAS_LAST: bool = false;
 static mut CUR_H: u32 = 0;
 static mut FRAME_OPAQUE: bool = true;   // false if any a<255 fill/stroke this frame
+static mut FORCESKIP: bool = false;     // measurement: skip all render after frame 1
 
 // record guard placed at the top of every draw op: returns true (op should return early) iff
 // we're capturing this frame's commands.
@@ -122,7 +123,8 @@ fn rec(tag: u8, a: [f64; 6]) -> bool {
 
 #[no_mangle]
 pub extern "C" fn rs_set_dirty(on: i32) {
-    unsafe { DIRTY = on != 0; HAS_LAST = false; }   // reset cache when toggled
+    unsafe { DIRTY = on != 0; HAS_LAST = false;
+        FORCESKIP = std::env::var("RS_FORCESKIP").is_ok(); }   // reset cache when toggled
 }
 
 #[no_mangle]
@@ -173,6 +175,9 @@ pub extern "C" fn rs_frame_end() -> i32 {
         if HAS_LAST && hsh == LAST_HASH && FRAME_OPAQUE {
             return 1; // identical opaque frame -> re-render is idempotent -> px unchanged
         }
+        // measurement hook: RS_FORCESKIP=1 skips ALL rendering after frame 1 (obs is bogus)
+        // to isolate pure logic+record cost vs fill. Not a correctness path.
+        if HAS_LAST && FORCESKIP { LAST_HASH = hsh; return 1; }
         let h = CUR_H;
         let cmds = core::mem::take(&mut REC);
         for (t, a) in cmds.iter() {

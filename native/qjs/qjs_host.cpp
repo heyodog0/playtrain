@@ -36,7 +36,9 @@ static p5::Color colorFromArgs(JSContext* ctx, int argc, JSValueConst* argv) {
   return p5::color(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]));
 }
 
+static bool g_nodraw = false;  // measurement: draw bindings return immediately (JS+call cost only)
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
+#define NODRAW if (g_nodraw) return JS_UNDEFINED;
 
 FN(js_createCanvas) {
   p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
@@ -46,9 +48,9 @@ FN(js_createCanvas) {
   JS_FreeValue(ctx, g);
   return JS_UNDEFINED;
 }
-FN(js_background) { p5::background(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_fill)   { p5::fill(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_stroke) { p5::stroke(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_background) { NODRAW p5::background(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_fill)   { NODRAW p5::fill(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_stroke) { NODRAW p5::stroke(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
 FN(js_color)  { p5::Color c = colorFromArgs(ctx, argc, argv);
   JSValue a = JS_NewArray(ctx);
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
@@ -57,14 +59,14 @@ FN(js_color)  { p5::Color c = colorFromArgs(ctx, argc, argv);
 FN(js_noStroke) { p5::noStroke(); return JS_UNDEFINED; }
 FN(js_noFill) { p5::noFill(); return JS_UNDEFINED; }
 FN(js_strokeWeight) { p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_rect) { if (argc >= 5) p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]));
+FN(js_rect) { NODRAW if (argc >= 5) p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]));
   else p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
-FN(js_ellipse) { if (argc >= 4) p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]));
+FN(js_ellipse) { NODRAW if (argc >= 4) p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]));
   else p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_circle) { p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_triangle) { p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
-FN(js_quad) { p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
-FN(js_line) { p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
+FN(js_circle) { NODRAW p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
+FN(js_triangle) { NODRAW p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
+FN(js_quad) { NODRAW p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
+FN(js_line) { NODRAW p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
 FN(js_rectMode) { p5::rectMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_ellipseMode) { p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_push) { p5::push(); return JS_UNDEFINED; }
@@ -72,9 +74,9 @@ FN(js_pop) { p5::pop(); return JS_UNDEFINED; }
 FN(js_translate) { p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
 FN(js_rotate) { p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
 FN(js_scale) { if (argc >= 2) p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); else p5::scale(argd(ctx,argv[0])); return JS_UNDEFINED; }
-FN(js_beginShape) { p5::beginShape(); return JS_UNDEFINED; }
-FN(js_vertex) { p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
-FN(js_endShape) { if (argc >= 1) p5::endShape((int)argd(ctx, argv[0])); else p5::endShape(); return JS_UNDEFINED; }
+FN(js_beginShape) { NODRAW p5::beginShape(); return JS_UNDEFINED; }
+FN(js_vertex) { NODRAW p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_endShape) { NODRAW if (argc >= 1) p5::endShape((int)argd(ctx, argv[0])); else p5::endShape(); return JS_UNDEFINED; }
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 
@@ -170,6 +172,7 @@ int main(int argc, char** argv) {
   // init (mirror env.init / game-env loadGame)
   call0(jsSetup);
   if (getenv("QJS_DIRTY")) p5::setDirty(true);   // opt-in dirty-rect whole-frame skip
+  if (getenv("QJS_NODRAW")) g_nodraw = true;     // measurement: skip draw-binding bodies
   resetGame(0); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
 
   std::vector<uint8_t> obs((size_t)OBS * OBS * 3);
