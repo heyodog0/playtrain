@@ -195,6 +195,28 @@ int main(int argc, char** argv) {
     if (!strcmp(s, "GAMEOVER")) return 2; if (!strcmp(s, "EXIT")) return 3; return 4;
   };
 
+  if (!strcmp(mode, "framediff")) {
+    // Measure the dirty-rect ceiling: what fraction of obs pixels change frame-to-frame?
+    const size_t N = (size_t)OBS * OBS * 3;
+    std::vector<uint8_t> prev(N), cur(N);
+    p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+    resetGame(seed); setFrame(++frameCount); call0(jsDraw);
+    p5::render_obs_rgb(prev.data());
+    double sumFrac = 0; long cnt = 0, identical = 0;
+    double sc, lv; bool term; const char* nm;
+    for (long i = 0; i < nsteps; i++) {
+      stepEnv(action_at(i), sc, lv, term, nm);
+      p5::render_obs_rgb(cur.data());
+      size_t changed = 0; for (size_t k = 0; k < N; k++) if (cur[k] != prev[k]) changed++;
+      sumFrac += (double)changed / N; cnt++;
+      if (changed == 0) identical++;
+      prev.swap(cur);
+      if (term) { resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw); p5::render_obs_rgb(prev.data()); }
+    }
+    printf("%-40s avg pixel-change/frame = %5.1f%%   identical-frames = %ld/%ld\n",
+           gamePath, cnt ? 100.0 * sumFrac / cnt : 0.0, identical, cnt);
+    return 0;
+  }
   if (!strcmp(mode, "serve")) {
     // Binary request/response protocol for the Python env (qjs_env.py).
     //  request  (5 bytes): [cmd:u8][arg:i32le]   cmd 0=reset(arg=seed) 1=step(arg=action) 2=close
