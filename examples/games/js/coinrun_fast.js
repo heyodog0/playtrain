@@ -56,19 +56,28 @@ function draw() {
 
   for (let x = startCol; x <= endCol; x++) {
     let base = x * GH;
-    for (let y = 0; y < GH; y++) {
+    let y = 0;
+    while (y < GH) {
       let t = grid[base + y];
-      if (!t) continue;
+      if (!t) { y++; continue; }
 
       if (t === T_GROUND || t === T_DIRT) {
+        // collapse a contiguous GROUND/DIRT run (same green, full tiles) into ONE rect —
+        // pixel-identical to the per-tile rects, far fewer draw calls.
+        let y0 = y;
+        while (y < GH && (grid[base + y] === T_GROUND || grid[base + y] === T_DIRT)) y++;
         fill(80, 140, 60);
-        rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        rect(x * TILE_SIZE, y0 * TILE_SIZE, TILE_SIZE, (y - y0) * TILE_SIZE);
       } else if (t === T_CRATE) {
         fill(200, 120, 40);
         rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        y++;
       } else if (t === T_LAVA) {
         fill(240, 60, 20);
         rect(x * TILE_SIZE, y * TILE_SIZE + 4, TILE_SIZE, TILE_SIZE - 4);
+        y++;
+      } else {
+        y++;
       }
     }
   }
