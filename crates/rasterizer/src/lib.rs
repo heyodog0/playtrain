@@ -303,9 +303,12 @@ fn span(c: &mut Canvas, y: usize, xa: f64, xb: f64, col: [u8; 4]) {
 }
 
 fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
+    // Borrow the path OUT of `c` (a pointer swap, no per-fill clone) so we can read its
+    // points while span() takes &mut c.px. Restored before every return.
+    let path = core::mem::take(&mut c.path);
     let mut min_y = f64::INFINITY;
     let mut max_y = f64::NEG_INFINITY;
-    for sp in &c.path {
+    for sp in &path {
         for p in &sp.pts {
             if p.1 < min_y {
                 min_y = p.1;
@@ -316,17 +319,17 @@ fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
         }
     }
     if !min_y.is_finite() {
+        c.path = path;
         return;
     }
     let y0 = min_y.floor().max(0.0) as usize;
     let y1 = (max_y.ceil().min((c.dh - 1) as f64)).max(0.0) as usize;
-    // snapshot edges (avoid borrow conflict with span's &mut c)
-    let path_edges: Vec<Vec<(f64, f64)>> = c.path.iter().map(|sp| sp.pts.clone()).collect();
     let mut xs: Vec<(f64, i32)> = Vec::new();
     for y in y0..=y1 {
         let sy = y as f64 + 0.5;
         xs.clear();
-        for pts in &path_edges {
+        for sp in &path {
+            let pts = &sp.pts;
             let n = pts.len();
             for i in 0..n {
                 let a = pts[i];
@@ -350,6 +353,7 @@ fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
             }
         }
     }
+    c.path = path;   // restore (unchanged from entry) — matches the old clone-based behavior
 }
 
 #[no_mangle]
@@ -401,10 +405,8 @@ fn plot(c: &mut Canvas, cx: i64, cy: i64, rad: i64, col: [u8; 4]) {
             }
             let o = ((y * w + x) * 4) as usize;
             if a >= 255 {
-                c.px[o] = r;
-                c.px[o + 1] = g;
-                c.px[o + 2] = b;
-                c.px[o + 3] = 255;
+                let packed = u32::from_ne_bytes([r, g, b, 255]);   // one store vs 4 checked bytes
+                unsafe { (c.px.as_mut_ptr().add(o) as *mut u32).write_unaligned(packed); }
             } else if a > 0 {
                 let ia = a as f64 / 255.0;
                 let na = 1.0 - ia;
