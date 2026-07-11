@@ -21,23 +21,15 @@ if [ ! -f frozenmath/libfrozenmath.a ]; then
 fi
 FROZEN="frozenmath/libfrozenmath.a"
 
-# QuickJS static lib (clone quickjs-ng if absent; apply qjit instrumentation
-# patch; build core objects + qjit.o -> .a). jit/quickjs-qjit.patch adds the
-# tracing-JIT hooks (hot-loop back-edge counters) to the interpreter.
+# QuickJS static lib — STOCK quickjs-ng (the custom tracing JIT was archived to
+# native/archive/jit/ on 2026-07-11: off-by-default and a net slowdown on the
+# render-bound games; see native/HANDOFF-coinrun-perf.md. To restore, see
+# native/archive/jit/README.md).
 if [ ! -f qjs/bld/libqjs.a ]; then
   [ -d qjs/src ] || git clone --depth 1 https://github.com/quickjs-ng/quickjs.git qjs/src
-  ( cd qjs/src && git apply --reverse --check ../../jit/quickjs-qjit.patch 2>/dev/null \
-    || git apply ../../jit/quickjs-qjit.patch )   # apply once (idempotent-ish)
   mkdir -p qjs/bld
-  ( cd qjs/src && clang -c -O2 -DNDEBUG -D_GNU_SOURCE -I. -I../../jit quickjs.c libregexp.c libunicode.c dtoa.c )
-  # qjit objects: qjit.c (hot detection/recorder), qjit_ir.c (MIR codegen — needs mir.h),
-  # qjit_build.c (recorded-trace -> SSA IR). ALL must be built against the SAME jit/qjit_ir.h
-  # (the IROp enum is a cross-object ABI — a stale .o miscompiles the loop back-edge).
-  clang -c -O2 -I jit jit/qjit.c -o jit/qjit.o
-  clang -c -O2 -I jit -I jit/mir jit/qjit_ir.c -o jit/qjit_ir.o
-  clang -c -O2 -I jit jit/qjit_build.c -o jit/qjit_build.o
-  ar rcs qjs/bld/libqjs.a qjs/src/quickjs.o qjs/src/libregexp.o qjs/src/libunicode.o qjs/src/dtoa.o \
-    jit/qjit.o jit/qjit_ir.o jit/qjit_build.o
+  ( cd qjs/src && clang -c -O2 -DNDEBUG -D_GNU_SOURCE -I. quickjs.c libregexp.c libunicode.c dtoa.c )
+  ar rcs qjs/bld/libqjs.a qjs/src/quickjs.o qjs/src/libregexp.o qjs/src/libunicode.o qjs/src/dtoa.o
 fi
 
 mkdir -p build
@@ -45,8 +37,8 @@ mkdir -p build
 EXTRA=""
 case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
 clang++ -std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing \
-  -I runtime -I qjs/src -I jit \
-  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" jit/mir/libmir.a $EXTRA \
+  -I runtime -I qjs/src \
+  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
   -o build/qjs_host
 
 echo "built build/qjs_host"

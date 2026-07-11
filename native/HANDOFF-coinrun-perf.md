@@ -1,5 +1,30 @@
 # Handoff — coinrun perf / layer-caching / shim safety (2026-07-10)
 
+## UPDATE 2026-07-11 — custom JIT archived, game catalog simplified, fresh sweep
+- **Custom tracing JIT archived** to `native/archive/jit/` (build now uses **stock
+  quickjs-ng**; `build_qjs.sh` + `qjs_host.cpp` stripped of qjit/MIR). It was
+  off-by-default and a net slowdown; removing its always-on instrumentation
+  (per-back-edge counter + per-op `QJIT_REC`) was itself a **speedup**. See
+  `native/archive/jit/README.md` for restore steps.
+- **coinrun variants archived** to `examples/games/archive/` — only plain
+  `coinrun.js` ships now (catalog = one canonical version per game).
+- **Fresh 16-game sweep (Apple Silicon, `qjs_host bench`, 20k steps, JIT gone):**
+  mean **89,295 sps** (was 78,062 with JIT instrumentation present → **+14%**).
+  coinrun alone 19.2k → **24.6k (+28%)**. Per-game: plunder 295k, bigfish 212k,
+  bossfight 189k, ninja 170k, starpilot 141k, leaper 84k, heist 59k, maze 40k,
+  caveflyer 42k, dodgeball 38k, jumper 34k, chaser 37k, climber 25k, coinrun 24k,
+  fruitbot 22k, miner 16k.
+- **vs ProcGen:** the 27.5k-QJS-vs-23.2k-PG mean (1.19×) was **FASRC Sapphire**;
+  these Apple-Silicon numbers are NOT comparable in absolute terms (this workload
+  is ~2–3×/core faster on Apple Silicon). But every change since that sweep
+  (rasterizer packed-u32 fill/alloc-kills + JIT removal) is a **pure QuickJS-side
+  speedup with ProcGen unchanged**, so the 1.19× margin can only have widened.
+  To restate the definitive QJS-vs-PG mean, re-run the ratio sweep on one machine
+  (FASRC `~/sweep2.sh`).
+
+---
+
+
 ## TL;DR
 Chasing "run every ProcGen clone faster than the original" in the **native QuickJS path**
 (`qjs_host` + `native/runtime/p5.cpp` + native rasterizer staticlib). coinrun/miner are
