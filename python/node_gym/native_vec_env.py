@@ -56,6 +56,8 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_close.argtypes = [P]
     lib.vec_set_frame_skip.restype = None
     lib.vec_set_frame_skip.argtypes = [P, ctypes.c_int]
+    lib.vec_set_render_skip.restype = None
+    lib.vec_set_render_skip.argtypes = [P, ctypes.c_int]
     lib.vec_set_autoreset_seeds.restype = None
     lib.vec_set_autoreset_seeds.argtypes = [P, ctypes.c_int, P, ctypes.c_int,
                                             ctypes.c_uint64]
@@ -81,6 +83,7 @@ class NativeVecEnv:
     def __init__(self, game: str = "bigfish", num_envs: int = 8, *,
                  obs_size: int = 64, max_steps: int = 2000, num_threads: int = 0,
                  autoreset: bool = False, frame_skip: int = 1,
+                 render_skip: bool = False,
                  games_dir: str | os.PathLike | None = None,
                  lib_path: str | os.PathLike | None = None):
         self.game = game
@@ -104,6 +107,16 @@ class NativeVecEnv:
             raise RuntimeError(f"vec_create failed for {game_path}")
         if self.frame_skip > 1:
             self._lib.vec_set_frame_skip(self._h, self.frame_skip)
+        # Render-skip: draw calls no-oped on all but the final tick of each
+        # skip. Bit-exact for every surfaced value ONLY under autoreset (an
+        # episode ending mid-skip has a stale canvas, but SAME_STEP autoreset
+        # replaces the obs with the fully-rendered reset frame).
+        self.render_skip = bool(render_skip) and self.frame_skip > 1
+        if self.render_skip:
+            if not self.autoreset:
+                raise ValueError("render_skip requires autoreset=True "
+                                 "(terminal obs would be stale otherwise)")
+            self._lib.vec_set_render_skip(self._h, 1)
         self.num_threads = self._lib.vec_num_threads(self._h)
 
         # pre-allocated batch buffers (contiguous, C-order)

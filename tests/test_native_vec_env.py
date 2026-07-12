@@ -267,3 +267,40 @@ def test_autoreset_seed_fixed():
     finally:
         env.close()
         ref.close()
+
+
+def test_render_skip_is_invisible():
+    """render_skip must change NOTHING observable: obs, reward, term, trunc
+    identical to a non-skipping env across many steps INCLUDING episode ends
+    (tiny max_steps forces truncations mid-run, exercising the autoreset
+    overwrite path)."""
+    K, N, STEPS = 7, 4, 300
+    seeds = np.array([7, 42, 1234, 99999], dtype=np.int32)
+    kw = dict(num_envs=N, frame_skip=K, autoreset=True, max_steps=140)
+    ref = NativeVecEnv("analogen_cavequest_easy", render_skip=False, **kw)
+    fast = NativeVecEnv("analogen_cavequest_easy", render_skip=True, **kw)
+    try:
+        o1 = ref.reset(seeds=seeds).copy()
+        o2 = fast.reset(seeds=seeds).copy()
+        assert np.array_equal(o1, o2)
+        rng = np.random.default_rng(0)
+        saw_done = False
+        for t in range(STEPS):
+            acts = rng.integers(0, 8, size=N).astype(np.int32)
+            a1 = ref.step(acts)
+            a2 = fast.step(acts)
+            assert np.array_equal(a1[0], a2[0]), f"obs mismatch t={t}"
+            np.testing.assert_array_equal(a1[1], a2[1])
+            assert (a1[2] == a2[2]).all() and (a1[3] == a2[3]).all()
+            saw_done = saw_done or bool((a1[2] | a1[3]).any())
+        assert saw_done, "test must exercise autoreset boundaries"
+    finally:
+        ref.close()
+        fast.close()
+
+
+def test_render_skip_requires_autoreset():
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        NativeVecEnv("bigfish", num_envs=1, frame_skip=4, render_skip=True,
+                     autoreset=False)

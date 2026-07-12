@@ -54,7 +54,10 @@ static p5::Color colorFromArgs(JSContext* ctx, int argc, JSValueConst* argv) {
   return p5::color(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]));
 }
 
-static bool g_nodraw = false;
+// thread_local: render-skip (below) toggles this per frame from worker
+// threads; envs are stepped by exactly one thread at a time, so a
+// thread-local flag is race-free in both sync (pinned) and async modes.
+static thread_local bool g_nodraw = false;
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
 #define NODRAW if (g_nodraw) return JS_UNDEFINED;
 
@@ -290,6 +293,17 @@ struct VecHost {
   // with early break, `steps`/`max_steps` count FRAMES, reward = end-score -
   // start-score, obs rendered once after the last tick). 1 == original behavior.
   int frame_skip = 1;
+  // Render-skip: with frame_skip>1, only the LAST tick of each skip renders
+  // pixels — the intermediate frames' draw calls are no-oped (game LOGIC runs
+  // untouched: fill/push/translate and all state still execute; these games
+  // repaint from scratch after background() every frame and never read
+  // pixels, so the final rendered frame is bit-identical). ONLY valid with
+  // autoreset: an episode ending mid-skip leaves a stale canvas, but
+  // SAME_STEP autoreset overwrites the obs with the fully-rendered reset
+  // frame before anything is surfaced. Enforced by the Python wrapper.
+  // Exception class (none in the analogen catalog): games accumulating into
+  // createGraphics layers across frames.
+  int render_skip = 0;
   // Autoreset seeding policy (SAME_STEP autoreset + vec_reset fallbacks):
   //   mode 0 = legacy formula idx*100003+steps+1 (default, original behavior)
   //   mode 1 = fixed_seed on every autoreset (analogen fixed_env_seed)
@@ -365,6 +379,7 @@ static void env_init(VecHost* H, Env& e, int idx) {
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
 static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
+  g_nodraw = false;  // reset frames always render fully
   p5::setKeysDown(nullptr, 0);
   e.frameCount = 0; e.setFrame(0);
   e.resetGame(seed);
@@ -407,6 +422,8 @@ static void env_step(VecHost* H, Env& e, int idx, int action) {
   double score = 0, lives = 0; uint8_t gs = 0;
   bool term = false, trunc = false;
   for (int k = 0; k < H->frame_skip; k++) {
+    // Render-skip: no-op draw calls on all but the final tick of the skip.
+    g_nodraw = H->render_skip && (k + 1 < H->frame_skip);
     e.frameCount++; e.setFrame(e.frameCount);
     p5::frameBegin(); e.call0(e.jsDraw); p5::frameEnd();
     term = e.readState(score, lives, gs);
@@ -414,6 +431,7 @@ static void env_step(VecHost* H, Env& e, int idx, int action) {
     trunc = (!term && e.steps >= H->max_steps);
     if (term || trunc) break;   // stop ticking a finished episode
   }
+  g_nodraw = false;
   double reward = score - e.lastScore; e.lastScore = score;  // summed delta over the skip
   H->out_rew[idx]   = (float)reward;
   H->out_term[idx]  = term ? 1 : 0;
@@ -560,6 +578,13 @@ void vec_reset_subset(void* h, const int32_t* ids, const int32_t* seeds,
 void vec_set_frame_skip(void* h, int k) {
   VecHost* H = (VecHost*)h;
   H->frame_skip = k > 1 ? k : 1;
+}
+
+// Enable render-skip (see VecHost.render_skip). Requires autoreset; the
+// Python wrapper enforces that invariant.
+void vec_set_render_skip(void* h, int on) {
+  VecHost* H = (VecHost*)h;
+  H->render_skip = on ? 1 : 0;
 }
 
 // Configure the autoreset seeding policy (see VecHost.seed_mode):
