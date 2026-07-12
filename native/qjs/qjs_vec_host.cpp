@@ -28,6 +28,9 @@
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
 #endif
+#if defined(__linux__)
+#include <sched.h>
+#endif
 #include "quickjs.h"
 #include "../runtime/p5.hpp"
 #include "../runtime/raster_abi.h"
@@ -165,6 +168,17 @@ static int default_threads() {
   int n = 0; size_t sz = sizeof(n);
   if (sysctlbyname("hw.perflevel0.logicalcpu", &n, &sz, nullptr, 0) == 0 && n > 0)
     return n;
+#endif
+#if defined(__linux__)
+  // Respect the cgroup/affinity limit (SLURM --cpus-per-task), NOT the node's
+  // full core count: hardware_concurrency() reported 96 inside a 47-core
+  // allocation and the oversubscribed spin barrier collapsed throughput ~70x
+  // (measured: 1.4k vs 104k decisions/s, H100 bench job 30281357).
+  cpu_set_t set;
+  if (sched_getaffinity(0, sizeof(set), &set) == 0) {
+    int n = CPU_COUNT(&set);
+    if (n > 0) return n;
+  }
 #endif
   int hw = (int)std::thread::hardware_concurrency();
   return hw > 0 ? hw : 1;
