@@ -44,11 +44,15 @@ def geo(xs):
     return math.exp(st.fmean(math.log(x) for x in xs))
 
 
+TRIALS = 7   # per-game std was measured over 7 trials -> SE = std / sqrt(TRIALS)
+
+
 def panel(ax, rows, base_label, base_color, rotate):
     rows = sorted(rows, key=lambda r: r[1], reverse=True)
     games = [r[0] for r in rows]
-    qj = [r[1] for r in rows]; qe = [r[2] for r in rows]
-    bj = [r[3] for r in rows]; be = [r[4] for r in rows]
+    se = TRIALS ** 0.5
+    qj = [r[1] for r in rows]; qe = [r[2] / se for r in rows]
+    bj = [r[3] for r in rows]; be = [r[4] / se for r in rows]
     gq, gb = geo(qj), geo(bj)
 
     labels = [g.replace("_", " ") for g in games] + ["mean"]

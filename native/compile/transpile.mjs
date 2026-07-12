@@ -258,7 +258,7 @@ function emitExpr(node) {
       return `{${node.elements.map(emitExpr).join(', ')}}`;
     case 'SequenceExpression': return `(${node.expressions.map(emitExpr).join(', ')})`;
     default:
-      throw new Error(`emitExpr: unsupported ${node.type}`);
+      throw new Error(`UNSUPPORTED: expression ${node.type}`);
   }
 }
 
@@ -323,7 +323,7 @@ function emitMember(node) {
 
 function emitObject(node) {
   const st = structForObj(node);
-  if (!st) throw new Error('emitObject: unknown struct shape ' + sig(node));
+  if (!st) throw new Error('UNSUPPORTED: dynamic/empty object shape {' + sig(node) + '}');
   const byKey = new Map(node.properties.map(p => [p.key.name || p.key.value, p.value]));
   const vals = st.fields.map(f => emitExpr(byKey.get(f)));
   return `${st.name}{${vals.join(', ')}}`;
@@ -338,7 +338,7 @@ function emitCall(node) {
     if (fn === 'imul') return `(double)js::imul(js::to_int32(${args[0]}), js::to_int32(${args[1]}))`;
     if (fn === 'random') return 'js::random()';
     if (MATH_FN[fn]) return `${MATH_FN[fn]}(${args.join(', ')})`;
-    throw new Error('unsupported Math.' + fn);
+    throw new Error('UNSUPPORTED: Math.' + fn);
   }
   // method calls on arrays
   if (c.type === 'MemberExpression' && c.computed === false) {
@@ -502,7 +502,7 @@ function emitStmt(node, indent) {
     }
     case 'EmptyStatement': return '';
     default:
-      throw new Error(`emitStmt: unsupported ${node.type}`);
+      throw new Error(`UNSUPPORTED: statement ${node.type}`);
   }
 }
 function emitBlock(node, indent) {

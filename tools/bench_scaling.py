@@ -77,13 +77,17 @@ def pg_agg(game, C):
     return best
 
 
-def ale_agg(task, C):
+ATARI_KW = dict(img_height=84, img_width=84, gray_scale=True, stack_num=1, frame_skip=1)
+PROCGEN_EP = {g: g.capitalize() + "Hard-v0" for g in PROCGEN}   # envpool procgen ids (64x64 RGB)
+
+
+def ale_agg(task, C, kw=None):
     import envpool
+    kw = ATARI_KW if kw is None else kw
     best = 0.0
     # sync
     try:
-        e = envpool.make(task, env_type="gymnasium", num_envs=2 * C, num_threads=C,
-                         img_height=84, img_width=84, gray_scale=True, stack_num=1, frame_skip=1)
+        e = envpool.make(task, env_type="gymnasium", num_envs=2 * C, num_threads=C, **kw)
         e.reset()
         a = np.random.randint(0, e.action_space.n, size=2 * C).astype(np.int32)
         best = max(best, _time(lambda: e.step(a), 30, 2 * C, 84))
@@ -96,8 +100,7 @@ def ale_agg(task, C):
             if B < 1 or M <= B:
                 continue
             try:
-                e = envpool.make(task, env_type="gym", num_envs=M, batch_size=B, num_threads=T,
-                                 img_height=84, img_width=84, gray_scale=True, stack_num=1, frame_skip=1)
+                e = envpool.make(task, env_type="gym", num_envs=M, batch_size=B, num_threads=T, **kw)
                 n_act = e.action_space.n
                 e.async_reset()
                 done = 0
@@ -117,7 +120,7 @@ def ale_agg(task, C):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["procgen", "atari"], required=True)
+    ap.add_argument("--mode", choices=["procgen", "atari", "procgen_envpool"], required=True)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     out = args.out or str(_ROOT / "outputs" / "compare" / f"scaling_{args.mode}.json")
@@ -131,13 +134,20 @@ def main():
             pg = geo([pg_agg(g, C) for g in PROCGEN])
             result["playtrain"].append(ng); result["baseline"].append(pg)
             print(f"  C={C:<4} PlayTrain={ng:>12,.0f}   ProcGen={pg:>12,.0f}", flush=True)
-    else:
+    elif args.mode == "atari":
         obs = 84
         for C in CS:
             ng = geo([ng_agg(g, C, obs) for g in ATARI])
             al = geo([ale_agg(t, C) for t in ATARI.values()])
             result["playtrain"].append(ng); result["baseline"].append(al)
             print(f"  C={C:<4} PlayTrain={ng:>12,.0f}   ALE={al:>12,.0f}", flush=True)
+    else:  # procgen_envpool: same 16 games, envpool's procgen wrapper (64x64 RGB)
+        obs = 64
+        for C in CS:
+            ng = geo([ng_agg(g, C, obs) for g in PROCGEN])
+            ep = geo([ale_agg(PROCGEN_EP[g], C, kw={}) for g in PROCGEN])
+            result["playtrain"].append(ng); result["baseline"].append(ep)
+            print(f"  C={C:<4} PlayTrain={ng:>12,.0f}   envpool-ProcGen={ep:>12,.0f}", flush=True)
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     json.dump(result, open(out, "w"), indent=2)

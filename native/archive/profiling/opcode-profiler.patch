@@ -1,0 +1,27 @@
+diff --git a/quickjs.c b/quickjs.c
+index 7ec0c25..dfa05db 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -17939,6 +17939,13 @@ static bool needs_backtrace(JSValue exc)
+     return can_store_error_stack(exc) || can_add_backtrace(exc);
+ }
+ 
++/* --- opcode-execution profiler (temporary instrumentation) --- */
++uint64_t g_opcount[256];
++void qjs_opcount_dump(void) {
++    for (int i = 0; i < 256; i++)
++        if (g_opcount[i]) fprintf(stderr, "OPC %d %llu\n", i, (unsigned long long)g_opcount[i]);
++}
++
+ /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
+ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+                                JSValueConst this_obj, JSValueConst new_target,
+@@ -17974,7 +17981,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
+ #include "quickjs-opcode.h"
+         [ OP_COUNT ... 255 ] = &&case_default
+     };
+-#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) __extension__ ({ goto *dispatch_table[opcode = *pc++]; });
++#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) __extension__ ({ opcode = *pc++; g_opcount[opcode]++; goto *dispatch_table[opcode]; });
+ #define CASE(op)        case_ ## op
+ #define DEFAULT         case_default
+ #define BREAK           SWITCH(pc)
