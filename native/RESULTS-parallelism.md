@@ -38,6 +38,11 @@ the QuickJS + native-rasterizer backend — the same architecture envpool uses.
    Workers pull envs off a queue, step them, publish finished ids; `recv` returns
    the first `batch_size` — a slow env never stalls the batch. Supports a
    **heterogeneous pool** (one game per env) via `vec_create_async_multi`.
+6. **`NativeVectorEnv`** (`python/node_gym/native_vector_env.py`) — the backend
+   behind the Gymnasium 1.0 `VectorEnv` API (spaces, seeding, NEXT_STEP /
+   SAME_STEP / DISABLED autoreset via a per-env `vec_reset_subset`), a drop-in
+   for `SubprocVecEnv`/CleanRL. ~80% of raw `NativeVecEnv` throughput (the Python
+   autoreset layer); training is learner-bound, so that's free in practice.
 
 ## Correctness
 
@@ -120,9 +125,23 @@ game, regardless of env speed** — that's the GIL wall the handoff predicted (i
 coordinator can't use a big node. native-vec removes it: one process reaches
 **5.34M sps**, 64% of what 112 independent processes get (77–89% on realistic
 games; cheaper frames pay more for the 112-way barrier, same monotone pattern as
-the M4). Peak single-node aggregate here: **plunder 5.34M steps/s.**
-(`native-vec@2N` was noisy on this run — bigfish/miner thrashed at 224 live envs —
-so the clean `@112` column is the headline; rerun with more memory headroom.)
+the M4).
+
+**Scaling past core count (1007 GB node, `--threads=112`):**
+
+| game    | N=112 | N=168 (1.5×) | N=224 (2×) | N=336 (3×) |
+|---------|------:|-------------:|-----------:|-----------:|
+| plunder | 5.51M |   5.18M      |  6.77M     | **7.32M**  |
+| bigfish | 3.18M |   3.15M      |  3.87M     |  4.31M     |
+| maze    | 1.36M |   1.10M      |  1.44M     |  1.47M     |
+| miner   | 507k  |    205k      |  490k      |  502k      |
+
+Peak single-node aggregate: **plunder 7.3M steps/s** at N=3× cores. Two notes:
+(1) an earlier run reported bigfish/miner @2N near ~260–310k — a **transient
+fluke** (co-scheduling), not memory: the node has 1 TB RAM and the rerun is
+healthy. (2) **N should be a multiple of the thread count** — the N=168 (1.5×)
+dips are sync-barrier load imbalance (some threads step 2 envs, others 1, and the
+barrier waits for the slow ones); N=224/336 rebalance and recover.
 
 ## Build
 

@@ -112,3 +112,46 @@ def test_async_heterogeneous_pool():
         assert o.shape == (2, 64, 64, 3)
     finally:
         env.close()
+
+
+# ---------------------------------------------------------------------------
+# Gymnasium VectorEnv wrapper
+# ---------------------------------------------------------------------------
+
+
+def test_vectorenv_api_conformance():
+    from gymnasium.vector import AutoresetMode, VectorEnv
+    from node_gym.native_vector_env import NativeVectorEnv
+    env = NativeVectorEnv("coinrun", num_envs=4, autoreset_seed=0)
+    try:
+        assert isinstance(env, VectorEnv)
+        assert env.num_envs == 4
+        assert env.observation_space.shape == (4, 64, 64, 3)
+        assert env.metadata["autoreset_mode"] == AutoresetMode.NEXT_STEP
+        obs, info = env.reset(seed=42)
+        assert obs.shape == (4, 64, 64, 3) and obs.dtype == np.uint8
+        for _ in range(50):
+            o, r, term, trunc, info = env.step(env.action_space.sample())
+            assert o.shape == (4, 64, 64, 3)
+            assert r.shape == (4,) and term.shape == (4,) and trunc.shape == (4,)
+    finally:
+        env.close()
+
+
+def test_vectorenv_same_step_final_observation():
+    from node_gym.native_vector_env import NativeVectorEnv
+    # SAME_STEP (SB3-style): a terminal step must surface final_observation.
+    env = NativeVectorEnv("bigfish", num_envs=4, autoreset_mode="same_step",
+                          max_steps=8, autoreset_seed=0)  # tiny horizon -> truncations
+    try:
+        env.reset(seed=1)
+        saw_final = False
+        for _ in range(40):
+            o, r, term, trunc, info = env.step(env.action_space.sample())
+            if "final_observation" in info:
+                saw_final = True
+                assert info["_final_observation"].shape == (4,)
+                assert (term | trunc)[info["_final_observation"]].all()
+        assert saw_final, "max_steps=8 should have produced truncations with final_observation"
+    finally:
+        env.close()

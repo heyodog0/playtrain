@@ -482,6 +482,19 @@ void vec_step(void* h, const int32_t* actions, uint8_t* obs,
   dispatch(H);
 }
 
+// Reset a SUBSET of envs (for Gymnasium autoreset). Runs on the caller thread —
+// safe because sync workers are parked on `go` between vec_step calls and touch
+// no env state. Each env's reset obs is written into `obs` at its own index.
+void vec_reset_subset(void* h, const int32_t* ids, const int32_t* seeds,
+                      int count, uint8_t* obs) {
+  VecHost* H = (VecHost*)h;
+  H->out_obs = obs;
+  for (int k = 0; k < count; k++) {
+    int i = ids[k];
+    env_reset(H, H->envs[i], i, (uint32_t)seeds[k]);
+  }
+}
+
 void vec_close(void* h) {
   if (!h) return;
   VecHost* H = (VecHost*)h;

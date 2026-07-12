@@ -50,6 +50,8 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_reset.argtypes = [P, P, P]
     lib.vec_step.restype = None
     lib.vec_step.argtypes = [P, P, P, P, P, P]
+    lib.vec_reset_subset.restype = None
+    lib.vec_reset_subset.argtypes = [P, P, P, ctypes.c_int, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
     # async (envpool send/recv)
@@ -133,6 +135,16 @@ class NativeVecEnv:
         # (avoids a per-step allocation in the hot loop).
         return (self._obs, self._rew,
                 self._term.view(bool), self._trunc.view(bool), {})
+
+    def reset_subset(self, ids, seeds):
+        """Reset just the envs in ``ids`` (int32) with ``seeds`` (int32); their
+        reset obs are written into the shared obs buffer at those indices. Used by
+        NativeVectorEnv for Gymnasium autoreset with controlled per-env seeds."""
+        ids = np.ascontiguousarray(ids, dtype=np.int32)
+        seeds = np.ascontiguousarray(seeds, dtype=np.int32)
+        self._lib.vec_reset_subset(
+            self._h, ids.ctypes.data_as(ctypes.c_void_p),
+            seeds.ctypes.data_as(ctypes.c_void_p), len(ids), self._obs_p)
 
     def close(self):
         if self._closed:
