@@ -54,6 +54,11 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_reset_subset.argtypes = [P, P, P, ctypes.c_int, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
+    lib.vec_set_frame_skip.restype = None
+    lib.vec_set_frame_skip.argtypes = [P, ctypes.c_int]
+    lib.vec_set_autoreset_seeds.restype = None
+    lib.vec_set_autoreset_seeds.argtypes = [P, ctypes.c_int, P, ctypes.c_int,
+                                            ctypes.c_uint64]
     # async (envpool send/recv)
     lib.vec_create_async.restype = ctypes.c_void_p
     lib.vec_create_async.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int,
@@ -75,13 +80,15 @@ def _load_lib(path: Path) -> ctypes.CDLL:
 class NativeVecEnv:
     def __init__(self, game: str = "bigfish", num_envs: int = 8, *,
                  obs_size: int = 64, max_steps: int = 2000, num_threads: int = 0,
-                 autoreset: bool = False, games_dir: str | os.PathLike | None = None,
+                 autoreset: bool = False, frame_skip: int = 1,
+                 games_dir: str | os.PathLike | None = None,
                  lib_path: str | os.PathLike | None = None):
         self.game = game
         self.num_envs = int(num_envs)
         self.obs_size = int(obs_size)
-        self.max_steps = int(max_steps)
+        self.max_steps = int(max_steps)  # counts FRAMES (game ticks), not steps
         self.autoreset = bool(autoreset)
+        self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
         gdir = Path(games_dir) if games_dir else _GAMES_DIR
@@ -95,6 +102,8 @@ class NativeVecEnv:
             self.max_steps, int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError(f"vec_create failed for {game_path}")
+        if self.frame_skip > 1:
+            self._lib.vec_set_frame_skip(self._h, self.frame_skip)
         self.num_threads = self._lib.vec_num_threads(self._h)
 
         # pre-allocated batch buffers (contiguous, C-order)
@@ -135,6 +144,33 @@ class NativeVecEnv:
         # (avoids a per-step allocation in the hot loop).
         return (self._obs, self._rew,
                 self._term.view(bool), self._trunc.view(bool), {})
+
+    def set_autoreset_seeds(self, mode: str, *, pool: Sequence[int] | None = None,
+                            fixed_seed: int = 0, rng_seed: int = 0):
+        """Configure how SAME_STEP autoreset picks each new episode's seed.
+
+        mode="formula": legacy per-env formula (default host behavior).
+        mode="fixed":   every autoreset uses ``fixed_seed`` (analogen's
+                        fixed_env_seed — memorize one instance).
+        mode="pool":    uniform sample from ``pool`` via deterministic per-env
+                        splitmix64 streams derived from ``rng_seed`` (analogen's
+                        train_pool / SeedSetWrapper — finite binding pool).
+        """
+        if mode == "formula":
+            self._lib.vec_set_autoreset_seeds(self._h, 0, None, 0, 0)
+        elif mode == "fixed":
+            self._lib.vec_set_autoreset_seeds(self._h, 1, None, 0,
+                                              int(fixed_seed) & 0xFFFFFFFF)
+        elif mode == "pool":
+            arr = np.ascontiguousarray(pool, dtype=np.int32)
+            if arr.size == 0:
+                raise ValueError("pool must be non-empty")
+            self._pool_keepalive = arr  # host copies, but keep it anyway
+            self._lib.vec_set_autoreset_seeds(
+                self._h, 2, arr.ctypes.data_as(ctypes.c_void_p), arr.size,
+                int(rng_seed) & 0xFFFFFFFFFFFFFFFF)
+        else:
+            raise ValueError(f"unknown mode {mode!r}")
 
     def reset_subset(self, ids, seeds):
         """Reset just the envs in ``ids`` (int32) with ``seeds`` (int32); their
@@ -187,7 +223,7 @@ class AsyncNativeVecEnv:
     def __init__(self, game: str | None = "bigfish", num_envs: int = 32, *,
                  games: Sequence[str] | None = None,
                  batch_size: int | None = None, obs_size: int = 64, max_steps: int = 2000,
-                 num_threads: int = 0, autoreset: bool = True,
+                 num_threads: int = 0, autoreset: bool = True, frame_skip: int = 1,
                  games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
         gdir = Path(games_dir) if games_dir else _GAMES_DIR
 
@@ -227,6 +263,9 @@ class AsyncNativeVecEnv:
                 int(max_steps), int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError("vec_create_async failed")
+        self.frame_skip = max(1, int(frame_skip))
+        if self.frame_skip > 1:
+            self._lib.vec_set_frame_skip(self._h, self.frame_skip)
         self.num_threads = self._lib.vec_num_threads(self._h)
 
         self._obs = np.empty((self.num_envs, self.obs_size, self.obs_size, 3), dtype=np.uint8)
@@ -249,6 +288,10 @@ class AsyncNativeVecEnv:
             seeds = np.ascontiguousarray(seeds, dtype=np.int32)
         self._lib.vec_async_reset(self._h, seeds.ctypes.data_as(ctypes.c_void_p))
         return self._obs
+
+    # Same protocol as NativeVecEnv.set_autoreset_seeds (autoreset is default-ON
+    # here, so the policy governs every episode after the first).
+    set_autoreset_seeds = NativeVecEnv.set_autoreset_seeds
 
     def send(self, env_ids, actions):
         env_ids = np.ascontiguousarray(env_ids, dtype=np.int32)

@@ -142,6 +142,10 @@ Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.a
 
 // action -> held key codes, identical to qjs_host.cpp
 static const int HELD[8][2] = {{-1,-1},{37,-1},{39,-1},{38,-1},{40,-1},{-1,32},{37,32},{39,32}};
+// D-family actions are PRESS events (game-env.mjs ACTIONS press=32): the
+// production runtime also sets the keyCode global and invokes keyPressed()
+// before the tick. See qjs_host.cpp for the full note.
+static const int PRESS[8] = {-1,-1,-1,-1,-1,32,32,32};
 
 static inline void cpu_relax() {
 #if defined(__aarch64__) || defined(__arm__)
@@ -171,7 +175,8 @@ static int default_threads() {
 struct Env {
   JSRuntime* rt = nullptr;
   JSContext* ctx = nullptr;
-  JSValue g, jsReset, jsDraw, jsState;
+  JSValue g, jsReset, jsDraw, jsState, jsKeyPressed;
+  bool hasKeyPressed = false;
   void* rstate = nullptr;   // rasterizer per-env state (rs_state_new)
   void* p5state = nullptr;  // p5 shim per-env state (p5::newState)
   int frameCount = 0;
@@ -266,6 +271,20 @@ struct VecHost {
   std::vector<Env> envs;
   std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
+  // Action-repeat: run `frame_skip` game ticks per vec_step, holding the action
+  // (semantics mirror runtime/p5/game-env.mjs: per-frame terminal/trunc check
+  // with early break, `steps`/`max_steps` count FRAMES, reward = end-score -
+  // start-score, obs rendered once after the last tick). 1 == original behavior.
+  int frame_skip = 1;
+  // Autoreset seeding policy (SAME_STEP autoreset + vec_reset fallbacks):
+  //   mode 0 = legacy formula idx*100003+steps+1 (default, original behavior)
+  //   mode 1 = fixed_seed on every autoreset (analogen fixed_env_seed)
+  //   mode 2 = sample uniformly from seed_pool via per-env splitmix64
+  //            (analogen train_pool / SeedSetWrapper)
+  int seed_mode = 0;
+  uint32_t fixed_seed = 0;
+  std::vector<int32_t> seed_pool;
+  std::vector<uint64_t> rng;       // per-env splitmix64 state (mode 2)
   int nthreads = 1;
   std::vector<std::thread> pool;      // helper threads (pool[0] is unused; caller does shard 0)
   std::vector<int> shard_start;       // size nthreads+1
@@ -323,6 +342,8 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.jsReset = JS_GetPropertyStr(ctx, g, "resetGame");
   e.jsDraw  = JS_GetPropertyStr(ctx, g, "draw");
   e.jsState = JS_GetPropertyStr(ctx, g, "getGameState");
+  e.jsKeyPressed = JS_GetPropertyStr(ctx, g, "keyPressed");
+  e.hasKeyPressed = JS_IsFunction(ctx, e.jsKeyPressed);
   e.call0(jsSetup);
   JS_FreeValue(ctx, jsSetup);
 }
@@ -341,27 +362,52 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
 }
 
-// ---- one env step (mirrors qjs_host serve cmd 1 / stepEnv) ----
+// Next autoreset seed for env idx, per the host's seeding policy.
+static inline uint32_t autoreset_seed(VecHost* H, Env& e, int idx) {
+  switch (H->seed_mode) {
+    case 1: return H->fixed_seed;
+    case 2: {
+      uint64_t& s = H->rng[idx];                       // splitmix64
+      s += 0x9E3779B97F4A7C15ULL;
+      uint64_t z = s;
+      z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+      z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+      z ^= z >> 31;
+      return (uint32_t)H->seed_pool[z % H->seed_pool.size()];
+    }
+    default: return (uint32_t)(idx * 100003u + (uint32_t)e.steps + 1u);
+  }
+}
+
+// ---- one env step (mirrors qjs_host serve cmd 1 / stepEnv; frame_skip loop
+// mirrors runtime/p5/game-env.mjs step()) ----
 static void env_step(VecHost* H, Env& e, int idx, int action) {
   e.select();
   int codes[2], n = 0;
   for (int i = 0; i < 2; i++) if (HELD[action][i] >= 0) codes[n++] = HELD[action][i];
   p5::setKeysDown(codes, n);
-  e.frameCount++; e.setFrame(e.frameCount);
-  p5::frameBegin(); e.call0(e.jsDraw); p5::frameEnd();
+  if (PRESS[action] >= 0) {
+    JS_SetPropertyStr(e.ctx, e.g, "keyCode", JS_NewInt32(e.ctx, PRESS[action]));
+    if (e.hasKeyPressed) e.call0(e.jsKeyPressed);
+  }
   double score = 0, lives = 0; uint8_t gs = 0;
-  bool term = e.readState(score, lives, gs);
-  e.steps++;
-  bool trunc = (!term && e.steps >= H->max_steps);
-  double reward = score - e.lastScore; e.lastScore = score;
+  bool term = false, trunc = false;
+  for (int k = 0; k < H->frame_skip; k++) {
+    e.frameCount++; e.setFrame(e.frameCount);
+    p5::frameBegin(); e.call0(e.jsDraw); p5::frameEnd();
+    term = e.readState(score, lives, gs);
+    e.steps++;
+    trunc = (!term && e.steps >= H->max_steps);
+    if (term || trunc) break;   // stop ticking a finished episode
+  }
+  double reward = score - e.lastScore; e.lastScore = score;  // summed delta over the skip
   H->out_rew[idx]   = (float)reward;
   H->out_term[idx]  = term ? 1 : 0;
   H->out_trunc[idx] = trunc ? 1 : 0;
   p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
   if (H->autoreset && (term || trunc)) {
     // SAME_STEP autoreset: overwrite obs with the reset frame; done flag stays set.
-    uint32_t rseed = (uint32_t)(idx * 100003u + (uint32_t)e.steps + 1u);
-    env_reset(H, e, idx, rseed);
+    env_reset(H, e, idx, autoreset_seed(H, e, idx));
   }
 }
 
@@ -495,6 +541,36 @@ void vec_reset_subset(void* h, const int32_t* ids, const int32_t* seeds,
   }
 }
 
+// Set action-repeat (>= 1; see VecHost.frame_skip). Call between batches —
+// workers are parked then, so no dispatch races. Sync and async hosts.
+void vec_set_frame_skip(void* h, int k) {
+  VecHost* H = (VecHost*)h;
+  H->frame_skip = k > 1 ? k : 1;
+}
+
+// Configure the autoreset seeding policy (see VecHost.seed_mode):
+//   mode 0: legacy formula (default)
+//   mode 1: every autoreset uses seed = (uint32)seed_arg
+//   mode 2: uniform sample from pool[count]; per-env splitmix64 streams
+//           derived from seed_arg + env index (deterministic, envs decorrelated)
+void vec_set_autoreset_seeds(void* h, int mode, const int32_t* pool, int count,
+                             uint64_t seed_arg) {
+  VecHost* H = (VecHost*)h;
+  if (mode == 2 && (!pool || count <= 0)) {
+    fprintf(stderr, "qjs_vec: seed mode 2 needs a non-empty pool\n");
+    return;
+  }
+  H->seed_mode = mode;
+  if (mode == 1) H->fixed_seed = (uint32_t)seed_arg;
+  if (mode == 2) {
+    H->seed_pool.assign(pool, pool + count);
+    H->rng.resize(H->num_envs);
+    for (int i = 0; i < H->num_envs; i++)
+      H->rng[i] = seed_arg * 0x9E3779B97F4A7C15ULL
+                + (uint64_t)(i + 1) * 0xBF58476D1CE4E5B9ULL;
+  }
+}
+
 void vec_close(void* h) {
   if (!h) return;
   VecHost* H = (VecHost*)h;
@@ -509,7 +585,8 @@ void vec_close(void* h) {
     if (e.ctx) {
       e.select();
       JS_FreeValue(e.ctx, e.jsReset); JS_FreeValue(e.ctx, e.jsDraw);
-      JS_FreeValue(e.ctx, e.jsState); JS_FreeValue(e.ctx, e.g);
+      JS_FreeValue(e.ctx, e.jsState); JS_FreeValue(e.ctx, e.jsKeyPressed);
+      JS_FreeValue(e.ctx, e.g);
       JS_FreeContext(e.ctx); JS_FreeRuntime(e.rt);
     }
     if (e.p5state) p5::freeState(e.p5state);

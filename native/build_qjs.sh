@@ -8,16 +8,25 @@ RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
 [ -f "$RASTER_LIB" ] || (cd ../crates/rasterizer && cargo rustc --release --lib --crate-type staticlib)
 
 # frozen transcendentals (vendored fdlibm/openlibm) — same source native + wasm so
-# pow/atan2 are bit-identical across platforms/engines. Exposed as fm_pow/fm_atan2.
-if [ ! -f frozenmath/libfrozenmath.a ]; then
+# pow/atan2/sin/cos are bit-identical across platforms/engines. Exposed as fm_*.
+# sin/cos were added when analogen_asteroids exposed that the psin/pcos
+# polynomial in jsmath.h diverges from V8's fdlibm sine once game logic calls
+# Math.sin (the poly is only for rasterizer-internal geometry). fm_sin/fm_cos
+# are fdlibm with full Payne-Hanek reduction — the same lineage V8 ships.
+if [ ! -f frozenmath/libfrozenmath.a ] || ! nm frozenmath/libfrozenmath.a 2>/dev/null | grep -q fm_sin; then
   [ -d frozenmath/src ] || git clone --depth 1 https://github.com/JuliaMath/openlibm.git frozenmath/src
   # rename the public symbols to fm_* so they never collide with the platform libm
   sed -i.bak -e 's/#define[[:space:]]*__ieee754_pow[[:space:]]*pow/#define __ieee754_pow fm_pow/' \
              -e 's/#define[[:space:]]*__ieee754_atan2[[:space:]]*atan2/#define __ieee754_atan2 fm_atan2/' \
              frozenmath/src/src/math_private.h
-  ( cd frozenmath && A=$(pwd)/src && clang -c -O2 -DNDEBUG -w -Datan=fm_atan -I"$A/include" -I"$A/src" \
+  ( cd frozenmath && A=$(pwd)/src && rm -f *.o libfrozenmath.a \
+    && clang -c -O2 -DNDEBUG -w -Datan=fm_atan -I"$A/include" -I"$A/src" \
       src/src/e_pow.c src/src/e_atan2.c src/src/s_atan.c src/src/s_scalbn.c \
-    && ar rcs libfrozenmath.a e_pow.o e_atan2.o s_atan.o s_scalbn.o )
+      src/src/k_sin.c src/src/k_cos.c src/src/e_rem_pio2.c src/src/k_rem_pio2.c \
+    && clang -c -O2 -DNDEBUG -w -Dsin=fm_sin -I"$A/include" -I"$A/src" -o s_sin.o src/src/s_sin.c \
+    && clang -c -O2 -DNDEBUG -w -Dcos=fm_cos -I"$A/include" -I"$A/src" -o s_cos.o src/src/s_cos.c \
+    && ar rcs libfrozenmath.a e_pow.o e_atan2.o s_atan.o s_scalbn.o \
+         s_sin.o s_cos.o k_sin.o k_cos.o e_rem_pio2.o k_rem_pio2.o )
 fi
 FROZEN="frozenmath/libfrozenmath.a"
 

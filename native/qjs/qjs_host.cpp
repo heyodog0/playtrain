@@ -186,10 +186,23 @@ int main(int argc, char** argv) {
   auto obshash = [&]() -> uint64_t { p5::render_obs_rgb(obs.data()); uint64_t h = 1469598103934665603ULL; for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; } return h; };
   auto action_at = [](long i) { return (int)((i * 3 + 1) % 8); };
   static const int HELD[8][2] = {{-1,-1},{37,-1},{39,-1},{38,-1},{40,-1},{-1,32},{37,32},{39,32}};
+  // D-family actions are PRESS events in the production runtime (game-env.mjs
+  // ACTIONS: press=32): besides key 32 being down for the frame (HELD above),
+  // simulateKeyPress sets the keyCode global and invokes the game's
+  // keyPressed() handler BEFORE the tick. 52 analogen games implement pickup
+  // etc. via keyPressed — without this the qjs backend silently drops those
+  // actions (asteroids gate divergence at the first D-overlap pickup).
+  static const int PRESS[8] = {-1,-1,-1,-1,-1,32,32,32};
+  JSValue jsKeyPressed = JS_GetPropertyStr(ctx, g, "keyPressed");
+  bool hasKeyPressed = JS_IsFunction(ctx, jsKeyPressed);
 
   auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
     int codes[2], n = 0; for (int i = 0; i < 2; i++) if (HELD[a][i] >= 0) codes[n++] = HELD[a][i];
     p5::setKeysDown(codes, n);
+    if (PRESS[a] >= 0) {
+      JS_SetPropertyStr(ctx, g, "keyCode", JS_NewInt32(ctx, PRESS[a]));
+      if (hasKeyPressed) call0(jsKeyPressed);
+    }
     setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
     // read state
     JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
@@ -299,6 +312,18 @@ int main(int argc, char** argv) {
   }
 
   if (!strcmp(mode, "trace")) {
+    // Print doubles ECMAScript-style (shortest roundtrip, like V8's template
+    // literals in reference_trace.mjs) — printf %g truncates to 6 significant
+    // digits, which false-FAILs the differential gate on games with fractional
+    // scores (e.g. a -0.005/frame step penalty). quickjs's number->string is
+    // spec-compliant, so route the value through a JSValue.
+    auto jsnum = [&](double v, char* out, size_t n) {
+      JSValue jv = JS_NewFloat64(ctx, v);
+      const char* s = JS_ToCString(ctx, jv);
+      snprintf(out, n, "%s", s ? s : "?");
+      JS_FreeCString(ctx, s); JS_FreeValue(ctx, jv);
+    };
+    char sbuf[40], lbuf[40], rbuf[40];
     // reset(seed)
     p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
     resetGame(seed); setFrame(++frameCount); call0(jsDraw);
@@ -306,17 +331,23 @@ int main(int argc, char** argv) {
       JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&score,sc); JS_FreeValue(ctx,sc);
       JSValue lv = JS_GetPropertyStr(ctx, st, "lives"); JS_ToFloat64(ctx,&lives,lv); JS_FreeValue(ctx,lv);
       JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
-      printf("reset seed=%u score=%g lives=%g state=%s obshash=%llu\n", seed, score, lives, s?s:"?", (unsigned long long)obshash());
+      jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
+      printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
       JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
     double lastScore = score;
     for (long i = 0; i < nsteps; i++) {
       int a = action_at(i); bool term; const char* name;
       stepEnv(a, score, lives, term, name);
       bool trunc = false;
-      printf("%ld a=%d reward=%g term=%d trunc=%d score=%g lives=%g state=%s obshash=%llu\n",
-             i, a, score - lastScore, term ? 1 : 0, trunc ? 1 : 0, score, lives, name, (unsigned long long)obshash());
+      jsnum(score - lastScore, rbuf, sizeof rbuf); jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
+      printf("%ld a=%d reward=%s term=%d trunc=%d score=%s lives=%s state=%s obshash=%llu\n",
+             i, a, rbuf, term ? 1 : 0, trunc ? 1 : 0, sbuf, lbuf, name, (unsigned long long)obshash());
       lastScore = score;
-      if (term) { frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
+      // In-trace episode reset: must clear held keys like GameEnv.reset
+      // (setKeysDown([])) — otherwise the first post-reset tick runs with the
+      // previous action's keys still held and ship state drifts from the V8
+      // reference (surfaced as post-episode-1 divergence in the asteroids gate).
+      if (term) { p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
         JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
     }
   } else {  // bench

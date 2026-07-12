@@ -155,3 +155,115 @@ def test_vectorenv_same_step_final_observation():
         assert saw_final, "max_steps=8 should have produced truncations with final_observation"
     finally:
         env.close()
+
+
+# ---------------------------------------------------------------------------
+# frame_skip + autoreset seed policy (added for the analogen IMPALA vec path)
+# ---------------------------------------------------------------------------
+
+def test_frame_skip_equals_k_single_steps():
+    """One fs=K vec step == K fs=1 vec steps holding the action (no episode
+    end in the horizon): identical obs, summed reward, same flags."""
+    K, N, DECISIONS = 4, 3, 40
+    seeds = np.array([7, 42, 1234][:N], dtype=np.int32)
+    skip = NativeVecEnv("analogen_cavequest_easy", num_envs=N, frame_skip=K,
+                        max_steps=100000)
+    base = NativeVecEnv("analogen_cavequest_easy", num_envs=N, frame_skip=1,
+                        max_steps=100000)
+    try:
+        so = skip.reset(seeds=seeds).copy()
+        bo = base.reset(seeds=seeds).copy()
+        assert np.array_equal(so, bo)
+        rng = np.random.default_rng(3)
+        for t in range(DECISIONS):
+            acts = rng.integers(0, 8, size=N)
+            o1, r1, te1, tr1, _ = skip.step(acts)
+            rsum = np.zeros(N, dtype=np.float64)
+            for _ in range(K):
+                o2, r2, te2, tr2, _ = base.step(acts)
+                rsum += r2.astype(np.float64)
+            assert not te1.any() and not te2.any(), "test assumes no episode end"
+            assert np.array_equal(o1, o2), f"obs mismatch at decision {t}"
+            np.testing.assert_allclose(r1.astype(np.float64), rsum, atol=1e-6)
+    finally:
+        skip.close()
+        base.close()
+
+
+def test_frame_skip_matches_v8_production_path():
+    """Cross-engine: NativeVecEnv(frame_skip=K) must match NodeGymEnv
+    (node/V8 + wasm rasterizer, the path analogen models trained on) —
+    same obs bytes, reward, and flags per decision."""
+    from node_gym.env import NodeGymEnv
+    K, STEPS = 4, 60
+    seed = 42
+    vec = NativeVecEnv("analogen_cavequest_easy", num_envs=1, frame_skip=K,
+                       max_steps=2000)
+    try:
+        v8 = NodeGymEnv(game="analogen_cavequest_easy", frame_skip=K)
+    except Exception as e:  # node runtime unavailable
+        vec.close()
+        pytest.skip(f"NodeGymEnv unavailable: {e}")
+    try:
+        vo = vec.reset(seeds=np.array([seed], dtype=np.int32)).copy()
+        no, _ = v8.reset(seed=seed)
+        assert np.array_equal(vo[0], no), "reset obs mismatch vs V8"
+        rng = np.random.default_rng(1)
+        for t in range(STEPS):
+            a = int(rng.integers(0, 8))
+            o1, r1, te1, tr1, _ = vec.step(np.array([a], dtype=np.int32))
+            o2, r2, te2, tr2, _ = v8.step(a)
+            assert np.array_equal(o1[0], o2), f"obs mismatch vs V8 at t={t}"
+            assert abs(float(r1[0]) - float(r2)) < 1e-9, f"reward mismatch t={t}"
+            assert bool(te1[0]) == bool(te2) and bool(tr1[0]) == bool(tr2)
+            if te2 or tr2:
+                break  # autoreset conventions differ past done; stop here
+    finally:
+        vec.close()
+        v8.close()
+
+
+def test_autoreset_seed_pool_single_seed():
+    """With a one-seed pool, every autoreset must land on exactly that seed:
+    the post-done obs equals a fresh reset(seed) obs."""
+    POOL_SEED = 555
+    env = NativeVecEnv("bigfish", num_envs=2, autoreset=True, max_steps=6)
+    ref = NativeVecEnv("bigfish", num_envs=2, autoreset=False)
+    try:
+        env.set_autoreset_seeds("pool", pool=[POOL_SEED], rng_seed=9)
+        ref_obs = ref.reset(seeds=np.array([POOL_SEED, POOL_SEED],
+                                           dtype=np.int32)).copy()
+        env.reset(seeds=np.array([1, 2], dtype=np.int32))
+        saw_done = False
+        for _ in range(12):
+            o, r, te, tr, _ = env.step(np.zeros(2, dtype=np.int32))
+            done = te | tr
+            for i in range(2):
+                if done[i]:
+                    saw_done = True
+                    assert np.array_equal(o[i], ref_obs[i]), (
+                        "autoreset obs != fresh reset(pool seed) obs")
+        assert saw_done, "max_steps=6 should have truncated within 12 steps"
+    finally:
+        env.close()
+        ref.close()
+
+
+def test_autoreset_seed_fixed():
+    """mode='fixed' behaves like a one-seed pool."""
+    FIXED = 4242
+    env = NativeVecEnv("bigfish", num_envs=1, autoreset=True, max_steps=5)
+    ref = NativeVecEnv("bigfish", num_envs=1, autoreset=False)
+    try:
+        env.set_autoreset_seeds("fixed", fixed_seed=FIXED)
+        ref_obs = ref.reset(seeds=np.array([FIXED], dtype=np.int32)).copy()
+        env.reset(seeds=np.array([3], dtype=np.int32))
+        for _ in range(6):
+            o, r, te, tr, _ = env.step(np.zeros(1, dtype=np.int32))
+            if (te | tr)[0]:
+                assert np.array_equal(o[0], ref_obs[0])
+                return
+        raise AssertionError("no done within 6 steps at max_steps=5")
+    finally:
+        env.close()
+        ref.close()

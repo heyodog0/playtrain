@@ -47,6 +47,8 @@ inline double jround(double x) { return std::floor(x + 0.5); }
 extern "C" {
 double fm_pow(double, double);
 double fm_atan2(double, double);
+double fm_sin(double);
+double fm_cos(double);
 }
 inline double floor(double x) { return std::floor(x); }
 inline double ceil(double x)  { return std::ceil(x); }
@@ -56,21 +58,17 @@ inline double pow(double b, double e)   { return fm_pow(b, e); }
 inline double atan2(double y, double x) { return fm_atan2(y, x); }
 inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  // deterministic (games use small coords)
 
-// psin/pcos — bit-identical to the rasterizer's psin/pcos (lib.rs) and the JS
-// shim's _rsin/_rcos. Used wherever the game calls sin/cos so game logic matches
-// the rasterizer's own geometry and V8.
+// GAME-VISIBLE sin/cos must be fdlibm (what V8 gives Math.sin), NOT the
+// psin/pcos polynomial: analogen_asteroids diverged from the V8 reference the
+// moment accumulated ship angles hit the poly's error. psin/pcos remain the
+// rasterizer's INTERNAL geometry (crates/rasterizer lib.rs, p5 shim _rsin/
+// _rcos) — that pair is bit-identical across engines because both rasterizer
+// builds use it; games never see it through Math.*.
 constexpr double TWO_PI = 6.283185307179586;
 constexpr double PI_R   = 3.141592653589793;
 constexpr double PI_H   = 1.5707963267948966;
-inline double sin(double x) {
-  x = x - TWO_PI * std::floor((x + PI_R) / TWO_PI);
-  double x2 = x * x;
-  return x * (1.0 + x2 * (-0.16666666666666666 +
-              x2 * (0.008333333333333333 +
-              x2 * (-0.0001984126984126984 +
-              x2 * 0.0000027557319223985893))));
-}
-inline double cos(double x) { return sin(x + PI_H); }
+inline double sin(double x) { return fm_sin(x); }
+inline double cos(double x) { return fm_cos(x); }
 
 // Variadic min/max matching Math.min/Math.max (2+ args in the game subset).
 inline double max(double a, double b) { return a > b ? a : b; }
