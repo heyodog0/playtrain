@@ -27,7 +27,7 @@ PROCGEN = ["bigfish", "bossfight", "caveflyer", "chaser", "climber", "coinrun",
 ATARI = {"pong": "Pong-v5", "freeway": "Freeway-v5", "seaquest": "Seaquest-v5",
          "space_invaders": "SpaceInvaders-v5", "asteroids": "Asteroids-v5",
          "frostbite": "Frostbite-v5", "breakout": "Breakout-v5", "qbert": "Qbert-v5"}
-CS = [1, 4, 16, 56, 112]
+CS = [1, 14, 28, 42, 56, 70, 84, 98, 112]   # evenly spaced for smooth linear-x curves
 STEPS, TRIALS = 2000, 2
 
 
