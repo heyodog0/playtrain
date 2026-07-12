@@ -61,6 +61,10 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_set_autoreset_seeds.restype = None
     lib.vec_set_autoreset_seeds.argtypes = [P, ctypes.c_int, P, ctypes.c_int,
                                             ctypes.c_uint64]
+    lib.vec_set_group_mode.restype = None
+    lib.vec_set_group_mode.argtypes = [P]
+    lib.vec_wait_ids.restype = None
+    lib.vec_wait_ids.argtypes = [P, P, ctypes.c_int]
     # async (envpool send/recv)
     lib.vec_create_async.restype = ctypes.c_void_p
     lib.vec_create_async.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int,
@@ -318,6 +322,110 @@ class AsyncNativeVecEnv:
         ids = self._ids
         return (ids, self._obs[ids], self._rew[ids],
                 self._term[ids].view(bool), self._trunc[ids].view(bool))
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        if getattr(self, "_h", None):
+            self._lib.vec_close(self._h)
+            self._h = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
+class PingPongVecEnv:
+    """Two env GROUPS sharing one threadpool, for double-buffered sampling
+    (Sample-Factory style): ``send(g, actions)`` dispatches group g's step and
+    returns immediately — the pool steps those envs while the caller runs
+    inference for the OTHER group — then ``wait(g)`` blocks until group g's
+    outputs are complete. Ping-pong the two groups and the GPU/Python work
+    hides behind env stepping (and vice versa).
+
+    Group g = env indices [g*group_size, (g+1)*group_size); outputs are
+    contiguous views into the shared buffers. Autoreset is always ON (this is
+    a training-loop construct; it is also what makes render_skip valid).
+    Per-env step semantics are identical to NativeVecEnv (same env_step).
+    """
+
+    def __init__(self, game: str, group_size: int, *, obs_size: int = 64,
+                 max_steps: int = 2000, num_threads: int = 0,
+                 frame_skip: int = 1, render_skip: bool = False,
+                 games_dir: str | os.PathLike | None = None,
+                 lib_path: str | os.PathLike | None = None):
+        self.group_size = int(group_size)
+        self.num_envs = 2 * self.group_size
+        self.obs_size = int(obs_size)
+        self.frame_skip = max(1, int(frame_skip))
+        self._closed = False
+
+        gdir = Path(games_dir) if games_dir else _GAMES_DIR
+        game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
+        if not Path(game_path).exists():
+            raise FileNotFoundError(f"game not found: {game_path}")
+
+        self._lib = _load_lib(Path(lib_path) if lib_path else _LIB_PATH)
+        self._h = self._lib.vec_create_async(
+            game_path.encode(), self.num_envs, self.obs_size,
+            int(max_steps), int(num_threads), 1)  # autoreset always on
+        if not self._h:
+            raise RuntimeError(f"vec_create_async failed for {game_path}")
+        self._lib.vec_set_group_mode(self._h)
+        if self.frame_skip > 1:
+            self._lib.vec_set_frame_skip(self._h, self.frame_skip)
+        self.render_skip = bool(render_skip) and self.frame_skip > 1
+        if self.render_skip:
+            self._lib.vec_set_render_skip(self._h, 1)
+        self.num_threads = self._lib.vec_num_threads(self._h)
+
+        N = self.num_envs
+        self._obs = np.empty((N, self.obs_size, self.obs_size, 3), dtype=np.uint8)
+        self._rew = np.empty(N, dtype=np.float32)
+        self._term = np.empty(N, dtype=np.uint8)
+        self._trunc = np.empty(N, dtype=np.uint8)
+        self._lib.vec_async_setup(
+            self._h, self._obs.ctypes.data_as(ctypes.c_void_p),
+            self._rew.ctypes.data_as(ctypes.c_void_p),
+            self._term.ctypes.data_as(ctypes.c_void_p),
+            self._trunc.ctypes.data_as(ctypes.c_void_p))
+        # persistent per-group id + action buffers with cached pointers
+        B = self.group_size
+        self._gids = [np.arange(0, B, dtype=np.int32),
+                      np.arange(B, 2 * B, dtype=np.int32)]
+        self._gids_p = [g.ctypes.data_as(ctypes.c_void_p) for g in self._gids]
+        self._gact = [np.zeros(B, dtype=np.int32) for _ in range(2)]
+        self._gact_p = [a.ctypes.data_as(ctypes.c_void_p) for a in self._gact]
+
+    set_autoreset_seeds = NativeVecEnv.set_autoreset_seeds
+
+    def reset(self, seeds: Sequence[int] | int | None = None):
+        if seeds is None:
+            seeds = np.arange(self.num_envs, dtype=np.int32)
+        elif isinstance(seeds, int):
+            seeds = np.full(self.num_envs, seeds, dtype=np.int32)
+        else:
+            seeds = np.ascontiguousarray(seeds, dtype=np.int32)
+        self._lib.vec_async_reset(self._h, seeds.ctypes.data_as(ctypes.c_void_p))
+        return self._obs
+
+    def send(self, group: int, actions) -> None:
+        """Dispatch group's step; returns immediately."""
+        self._gact[group][:] = actions
+        self._lib.vec_send(self._h, self._gids_p[group],
+                           self._gact_p[group], self.group_size)
+
+    def wait(self, group: int):
+        """Block until the group's step completes; returns contiguous VIEWS
+        (obs, rew, term, trunc) — copy anything you retain past next send."""
+        self._lib.vec_wait_ids(self._h, self._gids_p[group], self.group_size)
+        B = self.group_size
+        lo, hi = group * B, (group + 1) * B
+        return (self._obs[lo:hi], self._rew[lo:hi],
+                self._term[lo:hi].view(bool), self._trunc[lo:hi].view(bool))
 
     def close(self):
         if self._closed:

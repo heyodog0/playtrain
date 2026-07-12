@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <memory>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -338,6 +339,15 @@ struct VecHost {
   std::vector<int> act;   // per-env pending action
   MPMC inq;               // env ids to step (main -> workers)
   MPMC readyq;            // finished env ids (workers -> main)
+
+  // ---- group (ping-pong) mode on the async host ----
+  // vec_send + vec_wait_ids instead of vec_recv: the caller sends one GROUP
+  // of envs, overlaps Python/GPU work on the other group, then waits for
+  // exactly those ids. busy[i] is set at send and cleared by the worker
+  // after the env's outputs are fully written. group_mode disables readyq
+  // publication (nothing pops it in this mode; a full queue would deadlock).
+  bool group_mode = false;
+  std::unique_ptr<std::atomic<uint8_t>[]> busy;
 };
 
 // ---- build one env's interpreter (called ON its owning worker thread) ----
@@ -490,7 +500,13 @@ static void worker_async(VecHost* H) {
       cpu_relax();
     }
     env_step(H, H->envs[env], env, H->act[env]);
-    while (!H->readyq.push(env)) cpu_relax();   // never fails (in-flight <= num_envs)
+    if (H->group_mode) {
+      // Outputs are fully written; release-store so the waiter's acquire
+      // load observes them.
+      H->busy[env].store(0, std::memory_order_release);
+    } else {
+      while (!H->readyq.push(env)) cpu_relax(); // never fails (in-flight <= num_envs)
+    }
   }
 }
 
@@ -707,7 +723,26 @@ void vec_send(void* h, const int32_t* env_ids, const int32_t* actions, int count
   for (int k = 0; k < count; k++) {
     int id = env_ids[k];
     H->act[id] = actions[k];
+    if (H->group_mode) H->busy[id].store(1, std::memory_order_relaxed);
     while (!H->inq.push(id)) cpu_relax();
+  }
+}
+
+// Enable group (ping-pong) mode: vec_recv must NOT be used afterwards; wait
+// for sent envs with vec_wait_ids. Call once after create, before any send.
+void vec_set_group_mode(void* h) {
+  VecHost* H = (VecHost*)h;
+  H->group_mode = true;
+  H->busy.reset(new std::atomic<uint8_t>[H->num_envs]);
+  for (int i = 0; i < H->num_envs; i++) H->busy[i].store(0);
+}
+
+// Block until every listed env has finished its in-flight step. Outputs for
+// those envs are then complete in the registered buffers.
+void vec_wait_ids(void* h, const int32_t* env_ids, int count) {
+  VecHost* H = (VecHost*)h;
+  for (int k = 0; k < count; k++) {
+    while (H->busy[env_ids[k]].load(std::memory_order_acquire)) cpu_relax();
   }
 }
 

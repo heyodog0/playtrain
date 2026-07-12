@@ -304,3 +304,42 @@ def test_render_skip_requires_autoreset():
     with _pytest.raises(ValueError):
         NativeVecEnv("bigfish", num_envs=1, frame_skip=4, render_skip=True,
                      autoreset=False)
+
+
+def test_pingpong_bit_exact_vs_sync():
+    """PingPongVecEnv (group send/wait on the async host) must produce the
+    same per-env trajectories as the sync NativeVecEnv for identical
+    seeds+actions — including autoreset boundaries and render_skip."""
+    from node_gym.native_vec_env import PingPongVecEnv
+    B, STEPS, K = 3, 200, 7
+    seeds = np.array([7, 42, 1234, 9, 11, 13], dtype=np.int32)  # 2B envs
+    sync = NativeVecEnv("analogen_cavequest_easy", num_envs=2 * B,
+                        autoreset=True, frame_skip=K, render_skip=True,
+                        max_steps=280)
+    pp = PingPongVecEnv("analogen_cavequest_easy", group_size=B,
+                        frame_skip=K, render_skip=True, max_steps=280)
+    try:
+        o_sync = sync.reset(seeds=seeds).copy()
+        o_pp = pp.reset(seeds=seeds).copy()
+        assert np.array_equal(o_sync, o_pp)
+        rng = np.random.default_rng(5)
+        acts = rng.integers(0, 8, size=(STEPS, 2 * B)).astype(np.int32)
+        # sync: step all 2B together. ping-pong: send group 0, then group 1,
+        # wait each — same per-env action sequence.
+        saw_done = False
+        for t in range(STEPS):
+            so, sr, ste, str_ = sync.step(acts[t])[:4]
+            pp.send(0, acts[t, :B])
+            pp.send(1, acts[t, B:])
+            po0, pr0, pte0, ptr0 = pp.wait(0)
+            po1, pr1, pte1, ptr1 = pp.wait(1)
+            assert np.array_equal(so[:B], po0) and np.array_equal(so[B:], po1), f"obs t={t}"
+            np.testing.assert_array_equal(sr[:B], pr0)
+            np.testing.assert_array_equal(sr[B:], pr1)
+            assert (ste[:B] == pte0).all() and (ste[B:] == pte1).all()
+            assert (str_[:B] == ptr0).all() and (str_[B:] == ptr1).all()
+            saw_done = saw_done or bool(ste.any() or str_.any())
+        assert saw_done
+    finally:
+        sync.close()
+        pp.close()
