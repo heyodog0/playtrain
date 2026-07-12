@@ -177,8 +177,35 @@ Three honest takeaways:
    generated JS games unmodified, at ProcGen-class per-env cost and better
    out-of-box aggregate, where ProcGen is 16 hand-written C++ games.
 
-(vs ALE: not run here — obs sizes differ (ALE 84×84 vs 64×64), so it needs
-matched-resolution runs via envpool-Atari to be honest; deferred.)
+## Apples-to-apples vs ALE (Atari)
+
+node-gym also ships JS reimplementations of Atari games, so this is same-game vs
+the Stella 6502/TIA emulator behind envpool. Matched at 84×84, frameskip=1, metric
+= environment frames/s. **ALE given its true best: grayscale (its fast path) +
+async send/recv, best of a thread/batch sweep.** node-gym kept at RGB (3 channels
+= *more* readback than ALE's 1 — conservative for node-gym). `tools/bench_ale_async.py`.
+
+| game | node-gym (RGB) | ALE envpool (gray, async-best) | ratio |
+|------|---------------:|-------------------------------:|------:|
+| pong           | 8.31M | 558k | 14.9× |
+| freeway        | 4.24M | 415k | 10.2× |
+| seaquest       | 4.97M | 491k | 10.1× |
+| frostbite      | 3.23M | 469k |  6.9× |
+| space_invaders | 3.29M | 507k |  6.5× |
+| asteroids      | 3.16M | 528k |  6.0× |
+| breakout       | 2.44M | 470k |  5.2× |
+| qbert          | 1.06M | 529k |  2.0× |
+
+**geomean: node-gym 3.33M vs ALE 494k = 6.75×** (range 2.0–14.9×). Notes: async
+lifted envpool 268k→494k (1.8×), and 494k at fs=1 matches envpool's published
+~2M-at-fs=4 headline (÷4), so ALE is genuinely at its best. node-gym wins because
+ALE emulates the Atari CPU + TIA cycle-by-cycle (cost ~game-independent, capped
+~500k/node) while node-gym runs game logic directly and scales its threadpool.
+qbert (2.0×) is the weak spot — render-heavy isometric tiles, node-gym's known
+worst case. Honest earlier mistake: a first pass used envpool in RGB+sync+num=1,
+which inflated this to ~20×; grayscale+async is the fair number.
+
+## Build
 
 ## Build
 
