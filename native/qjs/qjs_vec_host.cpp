@@ -22,6 +22,9 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
 #endif
@@ -206,6 +209,50 @@ struct Env {
   }
 };
 
+// Bounded lock-free MPMC queue (Vyukov). Async stepping needs a queue whose
+// per-item cost is ~100 ns, not the µs-scale futex of a condition variable —
+// otherwise, at a ~5 µs frame, coordination costs more than the work (a naive
+// mutex+cv version measured *slower* than the sync barrier). Workers spin-pop, so
+// they stay hot. Capacity is a power of two ≥ num_envs+1; in-flight ids never
+// exceed num_envs (each env is in exactly one of: input queue / stepping / ready
+// queue), so push never fails.
+struct MPMC {
+  struct Cell { std::atomic<size_t> seq; int val; };
+  std::vector<Cell> buf;
+  size_t mask = 0;
+  alignas(128) std::atomic<size_t> enq{0};
+  alignas(128) std::atomic<size_t> deq{0};
+  void init(size_t cap) {
+    buf = std::vector<Cell>(cap);
+    mask = cap - 1;
+    for (size_t i = 0; i < cap; i++) buf[i].seq.store(i, std::memory_order_relaxed);
+  }
+  bool push(int v) {
+    size_t pos = enq.load(std::memory_order_relaxed);
+    for (;;) {
+      Cell& c = buf[pos & mask];
+      size_t s = c.seq.load(std::memory_order_acquire);
+      intptr_t d = (intptr_t)s - (intptr_t)pos;
+      if (d == 0) { if (enq.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) { c.val = v; c.seq.store(pos + 1, std::memory_order_release); return true; } }
+      else if (d < 0) return false;
+      else pos = enq.load(std::memory_order_relaxed);
+    }
+  }
+  bool pop(int& v) {
+    size_t pos = deq.load(std::memory_order_relaxed);
+    for (;;) {
+      Cell& c = buf[pos & mask];
+      size_t s = c.seq.load(std::memory_order_acquire);
+      intptr_t d = (intptr_t)s - (intptr_t)(pos + 1);
+      if (d == 0) { if (deq.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) { v = c.val; c.seq.store(pos + mask + 1, std::memory_order_release); return true; } }
+      else if (d < 0) return false;
+      else pos = deq.load(std::memory_order_relaxed);
+    }
+  }
+};
+
+static size_t next_pow2(size_t n) { size_t p = 1; while (p < n) p <<= 1; return p; }
+
 // Per-worker done flag, each on its own cacheline. A single shared decrement
 // counter would bounce one cacheline across all cores every step (an RMW per
 // worker), which at 1 env/thread roughly halved throughput. With per-worker
@@ -217,7 +264,7 @@ struct alignas(128) WorkerCtl {
 
 struct VecHost {
   std::vector<Env> envs;
-  std::string src;
+  std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
   int nthreads = 1;
   std::vector<std::thread> pool;      // helper threads (pool[0] is unused; caller does shard 0)
@@ -234,10 +281,21 @@ struct VecHost {
   float*   out_rew = nullptr;
   uint8_t* out_term = nullptr;
   uint8_t* out_trunc = nullptr;
+
+  // ---- async mode (envpool-style send/recv; no per-step barrier) ----
+  // Workers pull env ids off an input queue, step them at their own pace (env
+  // state is selected per-env so any worker can run any env), and publish
+  // finished ids to a ready queue. recv() waits for batch_size finished envs, so
+  // a slow env never stalls the batch — the barrier tail latency is gone.
+  bool async = false;
+  std::vector<int> act;   // per-env pending action
+  MPMC inq;               // env ids to step (main -> workers)
+  MPMC readyq;            // finished env ids (workers -> main)
 };
 
 // ---- build one env's interpreter (called ON its owning worker thread) ----
-static void env_init(VecHost* H, Env& e) {
+static void env_init(VecHost* H, Env& e, int idx) {
+  const std::string& src = H->srcs[idx];
   e.rstate = rs_state_new();
   e.p5state = p5::newState();
   e.select();
@@ -258,7 +316,7 @@ static void env_init(VecHost* H, Env& e) {
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
   p5::setRasterRes(H->obs_size);
-  { JSValue r = JS_Eval(ctx, H->src.c_str(), H->src.size(), "game.js", JS_EVAL_TYPE_GLOBAL);
+  { JSValue r = JS_Eval(ctx, src.c_str(), src.size(), "game.js", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"eval"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
   JSValue jsSetup = JS_GetPropertyStr(ctx, g, "setup");
@@ -312,7 +370,7 @@ static void run_shard(VecHost* H, int t) {
   int lo = H->shard_start[t], hi = H->shard_start[t + 1];
   for (int i = lo; i < hi; i++) {
     Env& e = H->envs[i];
-    if (H->cmd == 2)      env_init(H, e);
+    if (H->cmd == 2)      env_init(H, e, i);
     else if (H->cmd == 1) env_reset(H, e, i, (uint32_t)H->in_seeds[i]);
     else                  env_step(H, e, i, H->in_actions[i]);
   }
@@ -345,20 +403,39 @@ static void dispatch(VecHost* H) {
     while (H->done[t].done.load(std::memory_order_acquire) != g) cpu_relax();
 }
 
+// Async worker: spin-pop an env off the input queue, step it, publish it ready.
+static void worker_async(VecHost* H) {
+  for (;;) {
+    int env;
+    while (!H->inq.pop(env)) {
+      if (H->stop.load(std::memory_order_acquire)) return;
+      cpu_relax();
+    }
+    env_step(H, H->envs[env], env, H->act[env]);
+    while (!H->readyq.push(env)) cpu_relax();   // never fails (in-flight <= num_envs)
+  }
+}
+
+static bool read_file(const char* path, std::string& out) {
+  FILE* f = fopen(path, "rb");
+  if (!f) { fprintf(stderr, "qjs_vec: cannot open %s\n", path); return false; }
+  fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+  out.resize(sz);
+  bool ok = fread(&out[0], 1, sz, f) == (size_t)sz;
+  fclose(f);
+  return ok;
+}
+
 // ================================ C ABI =======================================
 extern "C" {
 
 void* vec_create(const char* game_path, int num_envs, int obs_size,
                  int max_steps, int num_threads, int autoreset) {
-  FILE* f = fopen(game_path, "rb");
-  if (!f) { fprintf(stderr, "qjs_vec: cannot open %s\n", game_path); return nullptr; }
-  fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
-  std::string src(sz, 0);
-  if (fread(&src[0], 1, sz, f) != (size_t)sz) { fclose(f); return nullptr; }
-  fclose(f);
+  std::string src;
+  if (!read_file(game_path, src)) return nullptr;
 
   VecHost* H = new VecHost();
-  H->src = std::move(src);
+  H->srcs.assign(num_envs, src);
   H->num_envs = num_envs;
   H->obs_size = obs_size;
   H->obs_bytes = obs_size * obs_size * 3;
@@ -409,8 +486,9 @@ void vec_close(void* h) {
   if (!h) return;
   VecHost* H = (VecHost*)h;
   H->stop.store(true, std::memory_order_release);
-  H->go.fetch_add(1, std::memory_order_release);
-  for (int t = 1; t < H->nthreads; t++) if (H->pool[t].joinable()) H->pool[t].join();
+  // async workers spin on inq + check stop; sync workers spin on go — bump it.
+  if (!H->async) H->go.fetch_add(1, std::memory_order_release);
+  for (auto& th : H->pool) if (th.joinable()) th.join();
   // Free each env on ITS owning thread would be cleanest, but envs are only touched
   // after all workers have stopped; free from the caller thread (select first so the
   // rasterizer/p5 frees target the right state).
@@ -425,6 +503,95 @@ void vec_close(void* h) {
     if (e.rstate) rs_state_free(e.rstate);
   }
   delete H;
+}
+
+// ---- async (envpool send/recv) ----------------------------------------------
+
+// Shared async-host constructor: `srcs` already holds one game source per env
+// (all equal for single-game). Envs are initialized on the caller thread (safe:
+// async stepping is non-pinned and never concurrent per env); T worker threads
+// then park on the input queue. Register output buffers via vec_async_setup.
+static void* make_async(std::vector<std::string>&& srcs, int num_envs, int obs_size,
+                        int max_steps, int num_threads, int autoreset) {
+  VecHost* H = new VecHost();
+  H->async = true;
+  H->srcs = std::move(srcs);
+  H->num_envs = num_envs;
+  H->obs_size = obs_size;
+  H->obs_bytes = obs_size * obs_size * 3;
+  H->max_steps = max_steps > 0 ? max_steps : 2000;
+  H->autoreset = autoreset;
+  int T = num_threads > 0 ? num_threads : default_threads();
+  if (T > num_envs) T = num_envs;
+  if (T < 1) T = 1;
+  H->nthreads = T;
+  H->envs.resize(num_envs);
+  H->act.assign(num_envs, 0);
+  size_t cap = next_pow2((size_t)num_envs + 1);  // in-flight ids never exceed num_envs
+  H->inq.init(cap);
+  H->readyq.init(cap);
+
+  for (int i = 0; i < num_envs; i++) {           // init all envs on the caller thread
+    env_init(H, H->envs[i], i);
+    if (!H->envs[i].ok) fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
+  }
+  for (int t = 0; t < T; t++) H->pool.emplace_back(worker_async, H);
+  return H;
+}
+
+// Single-game async host.
+void* vec_create_async(const char* game_path, int num_envs, int obs_size,
+                       int max_steps, int num_threads, int autoreset) {
+  std::string src;
+  if (!read_file(game_path, src)) return nullptr;
+  return make_async(std::vector<std::string>(num_envs, src), num_envs, obs_size,
+                    max_steps, num_threads, autoreset);
+}
+
+// Heterogeneous async host: one game per env (a mixed pool). This is where async
+// earns its keep — in sync mode every step waits for the slowest env's game, so
+// aggregate is capped by the slowest; async lets each env cycle at its own rate.
+void* vec_create_async_multi(const char** game_paths, int num_envs, int obs_size,
+                             int max_steps, int num_threads, int autoreset) {
+  std::vector<std::string> srcs(num_envs);
+  for (int i = 0; i < num_envs; i++)
+    if (!read_file(game_paths[i], srcs[i])) return nullptr;
+  return make_async(std::move(srcs), num_envs, obs_size, max_steps, num_threads, autoreset);
+}
+
+// Register the persistent obs/rew/term/trunc buffers async workers write into.
+void vec_async_setup(void* h, uint8_t* obs, float* rew, uint8_t* term, uint8_t* trunc) {
+  VecHost* H = (VecHost*)h;
+  H->out_obs = obs; H->out_rew = rew; H->out_term = term; H->out_trunc = trunc;
+}
+
+// Reset all envs on the caller thread (workers idle: nothing is queued yet).
+void vec_async_reset(void* h, const int32_t* seeds) {
+  VecHost* H = (VecHost*)h;
+  for (int i = 0; i < H->num_envs; i++)
+    env_reset(H, H->envs[i], i, (uint32_t)seeds[i]);
+}
+
+// Submit `count` (env_id, action) pairs to be stepped, in any order/subset.
+void vec_send(void* h, const int32_t* env_ids, const int32_t* actions, int count) {
+  VecHost* H = (VecHost*)h;
+  for (int k = 0; k < count; k++) {
+    int id = env_ids[k];
+    H->act[id] = actions[k];
+    while (!H->inq.push(id)) cpu_relax();
+  }
+}
+
+// Block until `batch_size` envs have finished; write their ids into out_env_ids
+// (obs/rew/term/trunc are already in the registered buffers, indexed by id).
+int vec_recv(void* h, int batch_size, int32_t* out_env_ids) {
+  VecHost* H = (VecHost*)h;
+  for (int k = 0; k < batch_size; k++) {
+    int v;
+    while (!H->readyq.pop(v)) cpu_relax();
+    out_env_ids[k] = v;
+  }
+  return batch_size;
 }
 
 }  // extern "C"

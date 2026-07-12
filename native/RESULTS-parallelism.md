@@ -29,15 +29,22 @@ the QuickJS + native-rasterizer backend — the same architecture envpool uses.
    per-worker-flag spin barrier. Per-env step semantics are byte-identical to
    `qjs_host serve` (which `QuickJSEnv` drives). Built as a shared lib by
    `native/build_qjs_vec.sh`.
-4. **`python/node_gym/native_vec_env.py`** — `NativeVecEnv`, a ctypes wrapper.
-   ctypes releases the GIL for the whole batch, so N envs step in parallel with
-   **no Python in the hot loop, no subprocess, no pipe.**
+4. **`python/node_gym/native_vec_env.py`** — `NativeVecEnv` (sync) +
+   `AsyncNativeVecEnv` (envpool send/recv), ctypes wrappers. ctypes releases the
+   GIL for the whole batch, so N envs step in parallel with **no Python in the
+   hot loop, no subprocess, no pipe.** The Python step caches the action pointer
+   (re-creating a ctypes pointer per call cost ~730 ns; ~7× cheaper now).
+5. **Async mode** (`vec_send`/`vec_recv`, `batch_size < N`, lock-free MPMC queue).
+   Workers pull envs off a queue, step them, publish finished ids; `recv` returns
+   the first `batch_size` — a slow env never stalls the batch. Supports a
+   **heterogeneous pool** (one game per env) via `vec_create_async_multi`.
 
 ## Correctness
 
 `tests/test_native_vec_env.py`: each env in the threadpool host is **bit-exact**
 (obs + reward + term + trunc) vs a single `QuickJSEnv` on the same
-game + seed + action sequence (bigfish, coinrun, miner; 200 steps × 4 envs).
+game + seed + action sequence (bigfish, coinrun, miner; 200 steps × 4 envs), plus
+async send/recv round-trip and heterogeneous-pool smoke tests.
 
 ## Results (Apple M4 Pro, 10 perf + 4 eff cores, N = 10 = perf-core count)
 
@@ -46,41 +53,80 @@ Reproduce: `uv run python tools/bench_native_vec.py --n 10`
 
 | game      | single/env | ceiling@10 (indep procs) | **native-vec@10** | eff  | native-vec@20 | py-coord@10 | native/py |
 |-----------|-----------:|-------------------------:|------------------:|-----:|--------------:|------------:|----------:|
-| plunder   |    297k    |  2.73M                   | **1.52M**         | 56%  | **1.86M**     | 280k        | 5.4×      |
-| bigfish   |    205k    |  1.91M                   | 904k              | 47%  | 1.02M         | 313k        | 2.9×      |
-| starpilot |    140k    |  1.31M                   | 848k              | 65%  | 906k          | 256k        | 3.3×      |
-| leaper    |     85k    |  786k                    | 631k              | 80%  | 626k          | 204k        | 3.1×      |
-| coinrun   |     25k    |  234k                    | 196k              | 84%  | 208k          | 151k        | 1.3×      |
-| maze      |     40k    |  362k                    | 305k              | 84%  | 314k          | 155k        | 2.0×      |
-| miner     |     16k    |  141k                    | 126k              | 89%  | 121k          | 92k         | 1.4×      |
+| plunder   |    309k    |  2.74M                   | **1.61M**         | 59%  | **2.08M**     | 277k        | 5.8×      |
+| bigfish   |    208k    |  1.91M                   | 1.02M             | 54%  | 1.09M         | 325k        | 3.2×      |
+| starpilot |    142k    |  1.32M                   | 938k              | 71%  | 976k          | 252k        | 3.7×      |
+| leaper    |     85k    |  809k                    | 662k              | 82%  | 628k          | 195k        | 3.4×      |
+| coinrun   |     25k    |  236k                    | 199k              | 84%  | 214k          | 153k        | 1.3×      |
+| maze      |     40k    |  363k                    | 333k              | 92%  | 328k          | 156k        | 2.1×      |
+| miner     |     16k    |  141k                    | 125k              | 89%  | 121k          |  88k        | 1.4×      |
 
-**geomean: 70% of the embarrassingly-parallel ceiling, 2.5× over the Python
-coordinator.** Peak aggregate reached: **plunder 1.86M sps, bigfish 1.02M** — in
+**geomean: 74% of the embarrassingly-parallel ceiling, 2.65× over the Python
+coordinator.** Peak aggregate reached: **plunder 2.08M sps, bigfish 1.09M** — in
 one process, one clean batched API.
 
-### The one honest caveat
+### Sync efficiency tracks frame cost (measured, not assumed)
 
-Efficiency tracks frame cost monotonically: realistic games (miner, maze,
-coinrun, leaper) hit **77–91% of the hardware ceiling** — envpool-class. Only the
-ultra-cheap-frame games (plunder/bigfish, ~5 µs/step) fall to 45–57%, because a
-**fixed ~6 µs/step coordination cost** (ctypes marshalling + Python loop + sync
-barrier) is a large fraction of a 5 µs frame. This is the exact regime where
-envpool's *synchronous* mode is also barrier-bound and needs **async mode**
-(`batch_size < num_envs`, step the first-ready M). Raising N past the thread
-count amortizes the barrier (`native-vec@20` recovers plunder to 1.9M).
+Efficiency is monotone in frame cost: realistic games (miner, maze, coinrun,
+leaper) hit **82–92% of the hardware ceiling** — envpool-class. Ultra-cheap-frame
+games (plunder/bigfish, ~5 µs/step) sit at 54–59%, because the per-step sync
+barrier is a large fraction of a 5 µs frame. Profiled fixed costs: a bare ctypes
+call is **124 ns**; the old per-step pointer marshalling was **730 ns** (now
+cached away). Both are *per batch*, i.e. ~0.1 µs/env at N=10 — so a pybind11/C
+extension is **not** worth it. Raising N past the thread count amortizes the
+barrier further (`native-vec@20`).
 
-## Next steps
+### Where async wins: heterogeneous pools
 
-1. **Async stepping** (`vec_send`/`vec_recv` with `batch_size < N`) — drops the
-   full-barrier tail-latency, the last multiple for cheap-frame games; fully
-   matches envpool's async API.
-2. **Trim the fixed per-step cost** — a small pybind11/C-extension entrypoint
-   instead of ctypes, and a leaner Python `step` (cache the actions/pointer
-   marshalling) to shave the ~6 µs floor.
-3. **Re-measure on FASRC sapphire** (homogeneous Xeon — pass `--threads` =
-   core count; no perf/eff split, so no core-heterogeneity discount) for the
-   paper's headline aggregate SPS/node.
+For a *homogeneous* pool the sync barrier at N ≥ 2× threads is already
+near-optimal, so async only reaches parity (balanced work → no straggler to
+skip). Async earns its keep on a **mixed pool**, where sync waits for the slowest
+game every step. Measured, 10× plunder + 10× miner (N=20):
+
+| mode                                   | aggregate |
+|----------------------------------------|----------:|
+| sync (capped by slowest = N miners)    |   129k    |
+| async `batch=N` (wait for all)         |   108k    |
+| async `batch=N/2`                      | **397k**  |
+| async `batch=N/4`                      | **447k**  |
+
+**async(batch=N/2) / sync = 3.07×** — fast envs cycle without waiting for slow
+ones. This is exactly envpool's async design and the right mode for multi-task
+eval / dataset collection over a mixed catalog.
+
+## FASRC sapphire (homogeneous Xeon 8480+)
+
+`tools/fasrc_parallelism.sbatch` (or `srun --exclusive --cpus-per-task=$CORES`)
+builds and runs on a homogeneous node — no perf/eff split, so `--threads` = full
+core count with no heterogeneity discount.
+
+**Node: `holy8a24601`, 2× Intel Xeon Platinum 8480CL, 112 cores (HT off), N=112.**
+
+| game      | single/env | ceiling (112 procs) | **native-vec@112** | eff  | py-coord | **native/py** |
+|-----------|-----------:|--------------------:|-------------------:|-----:|---------:|--------------:|
+| plunder   |     94k    |  10.14M             | **5.34M**          | 53%  |   194k   |  **27.6×**    |
+| bigfish   |     75k    |   7.14M             | 3.12M              | 44%  |   196k   |   16.0×       |
+| starpilot |     52k    |   4.62M             | 1.94M              | 42%  |   194k   |   10.0×       |
+| leaper    |     34k    |   3.65M             | 2.70M              | 74%  |   194k   |   13.9×       |
+| maze      |     15k    |   1.51M             | 1.35M              | 89%  |   190k   |    7.1×       |
+| coinrun   |    9.6k    |   1.01M             | 884k               | 88%  |   185k   |    4.8×       |
+| miner     |    6.3k    |   662k              | 511k               | 77%  |   155k   |    3.3×       |
+
+**geomean: 64% of the ceiling, and 9.5× over the Python coordinator (up to 27.6×).**
+
+The headline is the **`py-coord` column: it flatlines at ~155–196k sps for every
+game, regardless of env speed** — that's the GIL wall the handoff predicted (its
+"~79–92k software cap," here ~190k on faster silicon), and it's why the Python
+coordinator can't use a big node. native-vec removes it: one process reaches
+**5.34M sps**, 64% of what 112 independent processes get (77–89% on realistic
+games; cheaper frames pay more for the 112-way barrier, same monotone pattern as
+the M4). Peak single-node aggregate here: **plunder 5.34M steps/s.**
+(`native-vec@2N` was noisy on this run — bigfish/miner thrashed at 224 live envs —
+so the clean `@112` column is the headline; rerun with more memory headroom.)
+
+## Build
+
 ```
-build:  native/build_qjs.sh   (once, for the staticlibs)
-        native/build_qjs_vec.sh
+native/build_qjs.sh        # once, for the rasterizer/quickjs/frozenmath staticlibs + qjs_host
+native/build_qjs_vec.sh    # libqjs_vec.{dylib,so}  (Linux builds PIC copies of quickjs/frozenmath)
 ```

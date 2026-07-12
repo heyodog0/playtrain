@@ -52,6 +52,21 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_step.argtypes = [P, P, P, P, P, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
+    # async (envpool send/recv)
+    lib.vec_create_async.restype = ctypes.c_void_p
+    lib.vec_create_async.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int,
+                                     ctypes.c_int, ctypes.c_int, ctypes.c_int]
+    lib.vec_create_async_multi.restype = ctypes.c_void_p
+    lib.vec_create_async_multi.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_int,
+                                           ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+    lib.vec_async_setup.restype = None
+    lib.vec_async_setup.argtypes = [P, P, P, P, P]
+    lib.vec_async_reset.restype = None
+    lib.vec_async_reset.argtypes = [P, P]
+    lib.vec_send.restype = None
+    lib.vec_send.argtypes = [P, P, P, ctypes.c_int]
+    lib.vec_recv.restype = ctypes.c_int
+    lib.vec_recv.argtypes = [P, ctypes.c_int, P]
     return lib
 
 
@@ -89,6 +104,11 @@ class NativeVecEnv:
         self._rew_p = self._rew.ctypes.data_as(ctypes.c_void_p)
         self._term_p = self._term.ctypes.data_as(ctypes.c_void_p)
         self._trunc_p = self._trunc.ctypes.data_as(ctypes.c_void_p)
+        # Persistent action buffer + cached pointer. Re-creating a ctypes pointer
+        # each step (via .ctypes.data_as) costs ~730 ns; copying actions into this
+        # buffer and reusing the cached pointer is ~7x cheaper in the hot loop.
+        self._act = np.zeros(self.num_envs, dtype=np.int32)
+        self._act_p = self._act.ctypes.data_as(ctypes.c_void_p)
 
     def reset(self, seeds: Sequence[int] | int | None = None):
         if seeds is None:
@@ -103,16 +123,133 @@ class NativeVecEnv:
         return self._obs
 
     def step(self, actions):
-        actions = np.ascontiguousarray(actions, dtype=np.int32)
-        if actions.shape[0] != self.num_envs:
-            raise ValueError(f"actions length {actions.shape[0]} != num_envs {self.num_envs}")
+        # Copy into the persistent int32 buffer and reuse its cached pointer
+        # (avoids per-step ctypes pointer creation; raises on length mismatch).
+        self._act[:] = actions
         self._lib.vec_step(
-            self._h, actions.ctypes.data_as(ctypes.c_void_p),
+            self._h, self._act_p,
             self._obs_p, self._rew_p, self._term_p, self._trunc_p)
         # uint8 buffers hold only 0/1, so .view(bool) is a valid zero-copy view
         # (avoids a per-step allocation in the hot loop).
         return (self._obs, self._rew,
                 self._term.view(bool), self._trunc.view(bool), {})
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        if getattr(self, "_h", None):
+            self._lib.vec_close(self._h)
+            self._h = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
+class AsyncNativeVecEnv:
+    """Async (envpool-style) interface to the native threadpool host.
+
+    Instead of a synchronous ``step`` that waits for all N envs (barrier tail
+    latency), you ``send`` actions and ``recv`` the first ``batch_size`` envs
+    that finish. A slow env never stalls the batch — this recovers the last
+    multiple on cheap-frame games, where the per-step sync barrier dominates.
+
+    Typical loop::
+
+        env = AsyncNativeVecEnv("bigfish", num_envs=32, batch_size=16)
+        env.reset()
+        env.send(np.arange(32), np.zeros(32, np.int32))   # prime all envs
+        while True:
+            ids, obs, rew, term, trunc = env.recv()       # first 16 ready
+            acts = policy(obs)                            # obs = buffer[ids]
+            env.send(ids, acts)                           # re-submit them
+
+    ``recv`` returns a *gather* of the ready envs: ``ids`` (the env indices) and
+    ``obs/rew/term/trunc`` sliced to those ids. Autoreset defaults on (a done env
+    is reset in-place and keeps flowing), matching a throughput/eval loop.
+    """
+
+    def __init__(self, game: str | None = "bigfish", num_envs: int = 32, *,
+                 games: Sequence[str] | None = None,
+                 batch_size: int | None = None, obs_size: int = 64, max_steps: int = 2000,
+                 num_threads: int = 0, autoreset: bool = True,
+                 games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
+        gdir = Path(games_dir) if games_dir else _GAMES_DIR
+
+        def _resolve(g: str) -> str:
+            p = g if g.endswith(".js") else str(gdir / f"{g}.js")
+            if not Path(p).exists():
+                raise FileNotFoundError(f"game not found: {p}")
+            return p
+
+        # `games` (one per env, a mixed pool) takes precedence over a single `game`.
+        if games is not None:
+            self.games = list(games)
+            self.num_envs = len(self.games)
+            self.game = None
+        else:
+            self.num_envs = int(num_envs)
+            self.games = [game] * self.num_envs
+            self.game = game
+        if self.num_envs == 0:
+            raise ValueError("need at least one env")
+        self.batch_size = int(batch_size) if batch_size else self.num_envs
+        if not (1 <= self.batch_size <= self.num_envs):
+            raise ValueError(f"batch_size must be in [1, num_envs]; got {self.batch_size}")
+        self.obs_size = int(obs_size)
+        self._closed = False
+
+        self._lib = _load_lib(Path(lib_path) if lib_path else _LIB_PATH)
+        paths = [_resolve(g) for g in self.games]
+        if games is not None:
+            arr = (ctypes.c_char_p * self.num_envs)(*[p.encode() for p in paths])
+            self._h = self._lib.vec_create_async_multi(
+                arr, self.num_envs, self.obs_size,
+                int(max_steps), int(num_threads), 1 if autoreset else 0)
+        else:
+            self._h = self._lib.vec_create_async(
+                paths[0].encode(), self.num_envs, self.obs_size,
+                int(max_steps), int(num_threads), 1 if autoreset else 0)
+        if not self._h:
+            raise RuntimeError("vec_create_async failed")
+        self.num_threads = self._lib.vec_num_threads(self._h)
+
+        self._obs = np.empty((self.num_envs, self.obs_size, self.obs_size, 3), dtype=np.uint8)
+        self._rew = np.empty(self.num_envs, dtype=np.float32)
+        self._term = np.empty(self.num_envs, dtype=np.uint8)
+        self._trunc = np.empty(self.num_envs, dtype=np.uint8)
+        self._ids = np.empty(self.batch_size, dtype=np.int32)
+        self._lib.vec_async_setup(
+            self._h, self._obs.ctypes.data_as(ctypes.c_void_p),
+            self._rew.ctypes.data_as(ctypes.c_void_p),
+            self._term.ctypes.data_as(ctypes.c_void_p),
+            self._trunc.ctypes.data_as(ctypes.c_void_p))
+
+    def reset(self, seeds: Sequence[int] | int | None = None):
+        if seeds is None:
+            seeds = np.arange(self.num_envs, dtype=np.int32)
+        elif isinstance(seeds, int):
+            seeds = np.full(self.num_envs, seeds, dtype=np.int32)
+        else:
+            seeds = np.ascontiguousarray(seeds, dtype=np.int32)
+        self._lib.vec_async_reset(self._h, seeds.ctypes.data_as(ctypes.c_void_p))
+        return self._obs
+
+    def send(self, env_ids, actions):
+        env_ids = np.ascontiguousarray(env_ids, dtype=np.int32)
+        actions = np.ascontiguousarray(actions, dtype=np.int32)
+        n = env_ids.shape[0]
+        self._lib.vec_send(self._h, env_ids.ctypes.data_as(ctypes.c_void_p),
+                           actions.ctypes.data_as(ctypes.c_void_p), n)
+
+    def recv(self):
+        self._lib.vec_recv(self._h, self.batch_size, self._ids.ctypes.data_as(ctypes.c_void_p))
+        ids = self._ids
+        return (ids, self._obs[ids], self._rew[ids],
+                self._term[ids].view(bool), self._trunc[ids].view(bool))
 
     def close(self):
         if self._closed:

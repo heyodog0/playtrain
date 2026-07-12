@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from node_gym.native_vec_env import _LIB_PATH, NativeVecEnv
+from node_gym.native_vec_env import AsyncNativeVecEnv, _LIB_PATH, NativeVecEnv
 from node_gym.qjs_env import QuickJSEnv, _QJS_HOST
 
 pytestmark = pytest.mark.skipif(
@@ -71,5 +71,44 @@ def test_num_threads_capped_to_envs():
     env = NativeVecEnv("coinrun", num_envs=2, num_threads=8)
     try:
         assert env.num_threads == 2  # T is capped at num_envs
+    finally:
+        env.close()
+
+
+# ---------------------------------------------------------------------------
+# Async (envpool send/recv) backend
+# ---------------------------------------------------------------------------
+
+
+def test_async_send_recv_roundtrip():
+    env = AsyncNativeVecEnv("bigfish", num_envs=8, batch_size=4, autoreset=True)
+    try:
+        obs = env.reset()
+        assert obs.shape == (8, 64, 64, 3)
+        env.send(np.arange(8, dtype=np.int32), np.zeros(8, dtype=np.int32))
+        seen = set()
+        for _ in range(20):  # 20 recvs of 4 = 80 env-steps; every env id must appear
+            ids, o, r, te, tr = env.recv()
+            assert ids.shape == (4,) and o.shape == (4, 64, 64, 3)
+            assert r.shape == (4,) and te.dtype == bool and tr.dtype == bool
+            assert set(ids.tolist()) <= set(range(8))
+            seen |= set(ids.tolist())
+            env.send(ids, np.zeros(len(ids), dtype=np.int32))
+        assert seen == set(range(8))  # all envs cycled, no deadlock/starvation
+    finally:
+        env.close()
+
+
+def test_async_heterogeneous_pool():
+    # A mixed pool (different game per env) — the scenario async is built for.
+    pool = ["bigfish", "coinrun", "miner", "maze"]
+    env = AsyncNativeVecEnv(games=pool, batch_size=2, autoreset=True)
+    try:
+        assert env.num_envs == 4
+        obs = env.reset()
+        assert obs.shape == (4, 64, 64, 3)
+        env.send(np.arange(4, dtype=np.int32), np.zeros(4, dtype=np.int32))
+        ids, o, r, te, tr = env.recv()
+        assert o.shape == (2, 64, 64, 3)
     finally:
         env.close()
