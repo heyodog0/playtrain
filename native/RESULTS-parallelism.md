@@ -143,6 +143,43 @@ healthy. (2) **N should be a multiple of the thread count** — the N=168 (1.5×
 dips are sync-barrier load imbalance (some threads step 2 envs, others 1, and the
 barrier waits for the slow ones); N=224/336 rebalance and recover.
 
+## Apples-to-apples vs ProcGen
+
+node-gym's bigfish/coinrun/miner/… are JS reimplementations of the ProcGen games,
+so this is the same game (same 64×64 RGB, frameskip=1), JS-on-QuickJS vs ProcGen's
+original C++. Same node (Xeon 8480CL, 112 cores), each system given its best
+config. `tools/bench_vs_baselines.py` (`uv run --no-project --python 3.10 --with
+procgen --with "numpy<2" --with gymnasium python tools/bench_vs_baselines.py`).
+
+| axis | node-gym | procgen | ratio |
+|------|---------:|--------:|------:|
+| raw per-core (single env)                | — | — | **1.06×** (geomean) |
+| best in-process VectorEnv (aggregate)    | 1.55M | 272k | **5.7×** |
+| ceiling = single × cores (aggregate)     | 2.80M | 2.65M | **1.06×** |
+
+Per game, raw per-core node-gym/procgen: plunder 2.3×, bigfish 1.6×, starpilot
+1.3×, leaper 1.3×, maze 1.1×, coinrun 0.5×, miner 0.4×.
+
+Three honest takeaways:
+
+1. **Per-core, a general JS-game engine is at parity with hand-written C++**
+   (1.06× geomean) — node-gym wins render-light games, loses tile-heavy ones
+   (miner/coinrun, where its rasterizer does many small fills). The old "ProcGen
+   wins 3× raw" was the V8 era; the QuickJS + native-rasterizer backend closed it.
+2. **Out of the box, node-gym's VectorEnv beats ProcGen's 5.7×** — not because the
+   env is faster, but because ProcGen's `ProcgenGym3Env` threadpool peaks at ~32
+   threads (~344k sps) and can't use a big node, whereas node-gym's scales to
+   millions. This is the parallelism engineering, and it's what a practitioner
+   actually gets without hand-rolling a sharded launcher.
+3. **The hardware ceilings are equal** (1.06×): shard *either* system into
+   independent processes and both saturate the node. So node-gym gives up nothing
+   fundamental — the differentiator is **generality**: it runs any of thousands of
+   generated JS games unmodified, at ProcGen-class per-env cost and better
+   out-of-box aggregate, where ProcGen is 16 hand-written C++ games.
+
+(vs ALE: not run here — obs sizes differ (ALE 84×84 vs 64×64), so it needs
+matched-resolution runs via envpool-Atari to be honest; deferred.)
+
 ## Build
 
 ```
