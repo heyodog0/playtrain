@@ -140,6 +140,13 @@ function fill(...args) {
   _fillStyle = colorArgs(args);
 }
 
+// p5's noFill(): draw subsequent shapes with no fill. Implemented as a fully
+// transparent fill so no draw-primitive call sites need guarding (stroke is
+// separate, gated by _strokeEnabled).
+function noFill() {
+  _fillStyle = 'rgba(0,0,0,0)';
+}
+
 function rectMode(mode) {
   if (mode === 'center' || mode === CENTER) _rectMode = 'center';
   else _rectMode = 'corner';
@@ -409,7 +416,7 @@ const CLOSE = 'close';
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, background, fill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
+    createCanvas, background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color,
     textSize, textAlign, textFont, text,
     push, pop, translate, rotate, scale,
