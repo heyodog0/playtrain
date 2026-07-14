@@ -69,6 +69,12 @@ gen-game catalog name model="pro" mechanic="yes":
 gen-all model="pro" mechanic="yes":
     uv run python tools/generate.py --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
 
+# Closed-loop refine a generated clone against the REAL Atari ROM (needs ale-py + GEMINI_API_KEY).
+# Rolls real ROM vs clone on a shared action sequence, sends the comparison to Gemini, iterates.
+refine-vs-rom name iters="3" feedback="" model="pro":
+    uv run --extra rom AutoROM --accept-license
+    uv run --extra rom python tools/refine_vs_rom.py --game {{name}} --iters {{iters}} --model {{model}} --feedback "{{feedback}}"
+
 # Generate one Three.js game. SKIPS if file exists — see gen-three-force.
 gen-three name model="pro":
     uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref

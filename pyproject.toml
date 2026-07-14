@@ -10,6 +10,15 @@ dependencies = [
   "node-gym",
 ]
 
+[project.optional-dependencies]
+# Closed-loop refinement against the real Atari ROMs (tools/refine_vs_rom.py).
+rom = [
+  "ale-py>=0.10",
+  "autorom>=0.6",
+  "gymnasium>=1.0",
+  "pillow>=10",
+]
+
 [tool.uv.sources]
 # node-gym lives in a sibling repo. Clone both side-by-side:
 #   <parent>/gym-gen          (this repo)

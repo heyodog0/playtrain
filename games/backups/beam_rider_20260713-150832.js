@@ -34,11 +34,12 @@ let prevRight = false;
 let prevUp = false;
 
 const VP_X = 200;
-const VP_Y = 100; 
-const PLAYER_Y = 320;
+const VP_Y = 20; 
+const PLAYER_Y = 340;
+const BOTTOM_X = [20, 110, 200, 290, 380];
 
 function getScale(z) {
-  return 1 / (1 + z * 0.08);
+  return 1 / (1 + z * 0.06);
 }
 
 function getScreenY(z) {
@@ -46,8 +47,7 @@ function getScreenY(z) {
 }
 
 function getScreenX(lane, z) {
-  let bottomX = 200 + (lane - 2) * 80;
-  return VP_X + (bottomX - VP_X) * getScale(z);
+  return VP_X + (BOTTOM_X[lane] - VP_X) * getScale(z);
 }
 
 function randomInt(min, max) {
@@ -87,7 +87,7 @@ function resetGame(seed) {
     stars.push({
       x: rng() * 400,
       y: rng() * 400,
-      speed: 0.05 + rng() * 0.1
+      speed: 0.1 + rng() * 0.3
     });
   }
 }
@@ -156,7 +156,7 @@ function draw() {
   prevUp = upDown;
 
   // --- Update Grid ---
-  let baseGridSpeed = 0.015 + (sector * 0.002);
+  let baseGridSpeed = 0.04 + (sector * 0.005);
   gridOffset += baseGridSpeed;
 
   // --- Update & Spawn Enemies ---
@@ -171,12 +171,12 @@ function draw() {
       enemies.push({
         type: eType,
         lane: randomInt(0, 4),
-        z: 45,
-        prevZ: 45,
-        speed: 0.025 + (sector * 0.005) + rng() * 0.01,
+        z: 40,
+        prevZ: 40,
+        speed: 0.06 + (sector * 0.01) + rng() * 0.02,
         active: true
       });
-      spawnTimer = Math.max(60, 160 - sector * 10);
+      spawnTimer = Math.max(60, 140 - sector * 8);
     }
     
     if (saucersDestroyed >= 15 && enemies.length === 0) {
@@ -184,7 +184,7 @@ function draw() {
         x: rng() > 0.5 ? 40 : 360,
         dir: 0,
         z: 40,
-        speed: 0.8 + sector * 0.1
+        speed: 1.0 + sector * 0.2
       };
       sentinel.dir = sentinel.x < 200 ? 1 : -1;
     }
@@ -204,7 +204,7 @@ function draw() {
 
   for (let b of bullets) {
     b.prevZ = b.z;
-    b.z += (b.type === 'laser' ? 0.15 : 0.12);
+    b.z += (b.type === 'laser' ? 0.6 : 0.4);
   }
 
   // --- Collisions ---
@@ -215,7 +215,7 @@ function draw() {
       if (b.prevZ <= sentinel.z && b.z >= sentinel.z) {
         let sy = getScreenY(sentinel.z);
         let bScale = getScale(sentinel.z);
-        let bx = getScreenX(b.lane, sentinel.z);
+        let bx = VP_X + (BOTTOM_X[b.lane] - VP_X) * bScale;
         
         if (Math.abs(bx - sentinel.x) < 30) {
           score += 300 + torpedoes * 50;
@@ -263,21 +263,29 @@ function draw() {
     }
   }
 
-  bullets = bullets.filter(b => b.active && b.z < 60);
+  bullets = bullets.filter(b => b.active && b.z < 45);
   enemies = enemies.filter(e => e.active && e.z > -1.0);
 
   // --- Render Grid ---
-  stroke('#2288cc');
-  for (let i = -2; i < 45; i++) {
-    let z = (i * 2.0) - (gridOffset % 2.0);
-    if (z > -2.0 && z < 70) {
+  stroke('#3399ee');
+  for (let i = -2; i < 32; i++) {
+    let z = (i * 1.5) - (gridOffset % 1.5);
+    if (z > -2.0 && z < 42) {
       let sy = getScreenY(z);
-      if (sy > VP_Y && sy < 400) { 
-        let sx1 = getScreenX(-0.5, z);
-        let sx2 = getScreenX(4.5, z);
+      if (sy > -10 && sy < 450) { 
+        let sx1 = getScreenX(0, z);
+        let sx2 = getScreenX(4, z);
         
         strokeWeight(2);
         line(sx1, sy, sx2, sy);
+        
+        noStroke();
+        fill('#ffffff');
+        for (let lane = 0; lane <= 4; lane++) {
+          let dx = getScreenX(lane, z);
+          rect(dx - 1.5, sy - 1.5, 3, 3);
+        }
+        stroke('#3399ee'); // restore for next line
       }
     }
   }
@@ -286,58 +294,51 @@ function draw() {
   for (let e of enemies) {
     let sx = getScreenX(e.lane, e.z);
     let sy = getScreenY(e.z);
-    let sz = Math.max(4, 12 * getScale(e.z));
+    let sz = Math.max(3, 16 * getScale(e.z));
     
     noStroke();
     if (e.type === 'saucer') {
       fill('#ffffff');
       beginShape();
-      vertex(sx, sy - sz*0.6);
-      vertex(sx + sz*0.8, sy);
-      vertex(sx, sy + sz*0.6);
-      vertex(sx - sz*0.8, sy);
+      vertex(sx, sy - sz*0.8);
+      vertex(sx + sz, sy);
+      vertex(sx, sy + sz*0.8);
+      vertex(sx - sz, sy);
       endShape(CLOSE);
       fill('#00ffff');
-      circle(sx, sy, sz*0.4);
+      circle(sx, sy, sz*0.5);
     } else if (e.type === 'debris') {
       fill('#cc6600');
-      beginShape();
-      vertex(sx - sz*0.6, sy - sz*0.6);
-      vertex(sx + sz*0.5, sy - sz*0.8);
-      vertex(sx + sz*0.7, sy + sz*0.5);
-      vertex(sx - sz*0.5, sy + sz*0.7);
-      endShape(CLOSE);
+      rect(sx - sz*0.8, sy - sz*0.8, sz*1.6, sz*1.6);
     } else if (e.type === 'rejuv') {
-      fill('#ff3399');
-      rect(sx - sz*0.6, sy - sz*0.2, sz*1.2, sz*0.4);
-      rect(sx - sz*0.2, sy - sz*0.6, sz*0.4, sz*1.2);
+      fill('#00ff00');
+      rect(sx - sz*0.8, sy - sz*0.4, sz*1.6, sz*0.8);
+      rect(sx - sz*0.4, sy - sz*0.8, sz*0.8, sz*1.6);
     }
   }
 
   if (sentinel) {
     let sy = getScreenY(sentinel.z);
-    let sz = Math.max(6, 15 * getScale(sentinel.z));
+    let sz = Math.max(6, 20 * getScale(sentinel.z));
     fill('#aa00ff');
     noStroke();
-    ellipse(sentinel.x, sy, sz*3, sz*1.2);
+    rect(sentinel.x - sz*2, sy - sz, sz*4, sz*2);
     fill('#ff00ff');
-    ellipse(sentinel.x, sy, sz*1.5, sz*0.6);
+    rect(sentinel.x - sz, sy - sz*0.5, sz*2, sz);
   }
 
   for (let b of bullets) {
     let sx = getScreenX(b.lane, b.z);
     let sy = getScreenY(b.z);
-    let sz = Math.max(2, 6 * getScale(b.z));
+    let sz = Math.max(2, 10 * getScale(b.z));
     
     noStroke();
     if (b.type === 'laser') {
       fill('#ffff00');
-      rect(sx - sz/2, sy - sz, sz, sz*2);
+      rect(sx - sz/4, sy - sz, sz/2, sz*2);
     } else {
       fill('#00ffff');
-      circle(sx, sy, sz*1.5);
-      fill('#ffffff');
-      circle(sx, sy, sz*0.8);
+      circle(sx, sy, sz);
     }
   }
 
@@ -351,30 +352,28 @@ function draw() {
   
   // Outer outline
   beginShape();
-  vertex(px, py - 10);
-  vertex(px + 8, py + 6);
-  vertex(px + 4, py + 6);
-  vertex(px + 3, py + 2);
-  vertex(px - 3, py + 2);
-  vertex(px - 4, py + 6);
-  vertex(px - 8, py + 6);
+  vertex(px, py - 12);
+  vertex(px + 12, py + 8);
+  vertex(px - 12, py + 8);
   endShape(CLOSE);
   
   // Inner detail
-  fill('#FFFF00');
-  noStroke();
-  rect(px - 1.5, py - 4, 3, 6);
+  beginShape();
+  vertex(px, py - 2);
+  vertex(px + 5, py + 8);
+  vertex(px - 5, py + 8);
+  endShape(CLOSE);
 
   // --- Render HUD ---
   noStroke();
-  fill('#33cc33');
+  fill('#00ff00');
   for (let i = 0; i < lives; i++) {
-    rect(20 + i * 14, 15, 10, 10);
+    rect(20 + i * 15, 15, 10, 14);
   }
 
-  fill('#cc33cc');
+  fill('#aa00ff');
   for (let i = 0; i < torpedoes; i++) {
-    rect(370 - i * 14, 15, 10, 10);
+    rect(370 - i * 15, 15, 10, 14);
   }
 
   for (let i = 0; i < 15; i++) {
@@ -385,8 +384,8 @@ function draw() {
     if (i < saucersDestroyed) {
       fill('#ffffff');
     } else {
-      fill('#444444');
+      fill('#333333');
     }
-    rect(startX + i * spacing, 17, w, h);
+    rect(startX + i * spacing, 18, w, h);
   }
 }

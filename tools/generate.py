@@ -10,6 +10,7 @@ from pathlib import Path
 
 import httpx
 from google import genai
+from google.genai import types
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
@@ -136,6 +137,28 @@ def fetch_ref(url: str) -> str:
         return ""
 
 
+def load_image_ref(game: dict):
+    """Load a reference screenshot for the game, if the catalog entry has an
+    `image` field (URL or repo-relative path). Returns (bytes, mime) or None."""
+    ref = game.get("image")
+    if not ref:
+        return None
+    try:
+        if ref.startswith("http"):
+            resp = httpx.get(ref, follow_redirects=True, timeout=15, headers=HEADERS)
+            resp.raise_for_status()
+            data = resp.content
+            mime = resp.headers.get("content-type", "image/png").split(";")[0]
+        else:
+            path = ROOT / ref
+            data = path.read_bytes()
+            mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+        return data, mime
+    except Exception as e:
+        print(f"    Warning: could not load image {ref}: {e}")
+        return None
+
+
 def strip_fences(text: str) -> str:
     """Remove markdown code fences if present."""
     m = re.search(r"```(?:javascript|js)?\s*\n(.*?)```", text, re.DOTALL)
@@ -154,13 +177,21 @@ def load_source_context(name: str) -> str:
     return text
 
 
-def build_prompt(game: dict, template: str, ref_text: str, source_text: str, include_mechanic: bool = True) -> str:
+def build_prompt(game: dict, template: str, ref_text: str, source_text: str, include_mechanic: bool = True, has_image: bool = False) -> str:
     name = game["name"]
     mechanic = game.get("mechanic", "")
     actions = ", ".join(game.get("actions_used", []))
     physics = game.get("physics", "")
 
     mechanic_line = f"Mechanic: {mechanic}\n" if include_mechanic and mechanic else ""
+
+    image_note = (
+        "A reference screenshot of the original game is attached. Match its overall "
+        "look and feel — screen layout, the shape/style of the playfield, colors, and "
+        "proportions — so the result is recognizably this game. You may adapt exact "
+        "details to fit the template constraints below; do not copy pixel-for-pixel.\n"
+        if has_image else ""
+    )
 
     ref_section = ""
     if ref_text:
@@ -180,7 +211,7 @@ Reference implementation source code:
 
     prompt = f"""Generate a p5.js game implementing "{name}".
 
-{mechanic_line}Actions this game should use: {actions}
+{image_note}{mechanic_line}Actions this game should use: {actions}
 {"This game requires Matter.js physics (available as global `Matter`)." if physics else ""}
 {ref_section}
 {source_section}
@@ -242,11 +273,20 @@ def generate_one(client: genai.Client, game: dict, template: str, model: str, ou
     if source_text:
         print("using source...", end=" ", flush=True)
 
-    prompt = build_prompt(game, template, ref_text, source_text, include_mechanic)
+    image = load_image_ref(game)
+    if image:
+        print("using image...", end=" ", flush=True)
+
+    prompt = build_prompt(game, template, ref_text, source_text, include_mechanic, has_image=bool(image))
+
+    if image:
+        contents = [types.Part.from_bytes(data=image[0], mime_type=image[1]), prompt]
+    else:
+        contents = prompt
 
     try:
         t0 = time.time()
-        response = client.models.generate_content(model=model, contents=prompt)
+        response = client.models.generate_content(model=model, contents=contents)
         duration = time.time() - t0
 
         raw_output = response.text

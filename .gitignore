@@ -19,3 +19,6 @@ outputs/verify-*.json
 
 # External reference clones (not part of this repo)
 reference/bigger_better_faster_repo/
+
+# Closed-loop refinement artifacts (generated)
+outputs/refine_vs_rom/
