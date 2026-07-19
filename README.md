@@ -132,7 +132,7 @@ Drop your own p5.js / Matter.js game into a directory and point at it:
 env = NodeGymEnv(game="my_game", games_dir="/path/to/my/games")
 ```
 
-Each game is a single `.js` file exposing `setup()`, `draw()`, `resetGame()`, and `getGameState()`. See [`examples/games/flappy_bird.js`](examples/games/flappy_bird.js) for the simplest example.
+Each game is a single `.js` file exposing `setup()`, `draw()`, `resetGame()`, and `getGameState()`. See [`examples/games/js/flappy_bird.js`](examples/games/js/flappy_bird.js) for the simplest example.
 
 ## Train/test seed splits
 
