@@ -65,14 +65,14 @@ function matterBundle() {
   return _matter;
 }
 
-export function pickerPage(games, autoOpen, { gameHref } = {}) {
+export function pickerPage(games, autoOpen, { gameHref, title = 'PlayTrain tester' } = {}) {
   const hrefFor = gameHref || (g => `/game/${g}`);
   const items = games.map(g => `<li><a href="${hrefFor(g)}">${g}</a></li>`).join('\n      ');
   const autoOpenScript = autoOpen
     ? `<script>window.location.href = ${JSON.stringify(hrefFor(autoOpen))};</script>`
     : '';
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>PlayTrain tester</title>
+<html><head><meta charset="utf-8"><title>${title}</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <style>${baseStyle}
   *, *::before, *::after { box-sizing: border-box; }
@@ -86,8 +86,8 @@ export function pickerPage(games, autoOpen, { gameHref } = {}) {
   li { padding: 0; }
 </style></head><body>
 <main>
-  <h1>PlayTrain tester</h1>
-  <p class="sub">${games.length} bundled games. Pick one to play.</p>
+  <h1>${title}</h1>
+  <p class="sub">${games.length} games. Pick one to play.</p>
   <ul>
       ${items}
   </ul>

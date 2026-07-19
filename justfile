@@ -141,6 +141,15 @@ build-pages:
 serve-pages: build-pages
     cd dist/pages && python3 -m http.server 5051
 
+# Build the self-contained tester for a games dir and deploy it to Vercel → a shareable URL.
+# One-time setup (once per machine): type `! npx vercel login` in the prompt.
+# Then:  just share                 (this project's bundled games)
+#        just share games/js        (the generated catalog)
+#        just share ../analogen/games/js
+share dir="examples/games/js":
+    node tools/build-pages.mjs --games "{{dir}}" --out dist/share
+    npx vercel deploy dist/share --prod --yes
+
 # Refresh analogen-tree games from the sibling ../analogen/games/js/.
 sync-analogen:
     #!/usr/bin/env bash

@@ -1,26 +1,51 @@
 #!/usr/bin/env node
-// Build a static playtest site mirroring `just play`, for deployment to
-// Vercel (or any static host). Writes:
+// Build a fully self-contained static playtest site from a directory of p5 games.
+// Every page inlines PlayTrain's rasterizer (+ matter.js for Matter games) — zero
+// external requests — so the output can be served from any static host as-is.
 //
-//   dist/pages/index.html              - game picker
-//   dist/pages/game/<name>/index.html  - one page per bundled p5 game
+//   <out>/index.html              - game picker
+//   <out>/game/<name>/index.html  - one page per game
 //
-// Uses the same HTML templates as tools/play.mjs (see play-templates.mjs),
-// so local `just play` and the deployed site stay in lockstep.
+// Usage:
+//   node tools/build-pages.mjs                                     # examples/games/js -> dist/pages
+//   node tools/build-pages.mjs --games games/js --out dist/share --title "analogen games"
+//
+// Uses the same HTML templates as tools/play.mjs, so local `just play` and the
+// deployed site render identically.
 
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync, existsSync } from 'fs';
-import { dirname, resolve, join } from 'path';
+import { dirname, resolve, join, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { pickerPage, playPage } from './play-templates.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
-const GAMES_DIR = join(REPO_ROOT, 'examples', 'games', 'js');
-const OUT_DIR = join(REPO_ROOT, 'dist', 'pages');
+
+function arg(flag, def) {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
+}
+
+const GAMES_DIR = resolve(arg('--games', join(REPO_ROOT, 'examples', 'games', 'js')));
+const OUT_DIR = resolve(arg('--out', join(REPO_ROOT, 'dist', 'pages')));
+// Default title = the project name: walk up from the games dir past container dirs.
+// …/analogen/games/js -> "analogen"; …/playtrain/examples/games/js -> "playtrain".
+function projectName(dir) {
+  const skip = new Set(['js', 'games', 'examples', 'src', 'catalogs']);
+  const parts = dir.split(sep).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) if (!skip.has(parts[i])) return parts[i];
+  return 'PlayTrain';
+}
+const TITLE = arg('--title', `${projectName(GAMES_DIR)} tester`);
+
+if (!existsSync(GAMES_DIR)) {
+  console.error(`games dir not found: ${GAMES_DIR}`);
+  process.exit(1);
+}
 
 function listGames() {
   return readdirSync(GAMES_DIR)
-    .filter(f => f.endsWith('.js'))
+    .filter(f => f.endsWith('.js') && !f.endsWith('_dbg.js'))
     .map(f => f.replace(/\.js$/, ''))
     .sort();
 }
@@ -38,7 +63,7 @@ const games = listGames();
 // `game/<name>/index.html` works everywhere without rewrites.
 const gameHref = g => `/game/${g}/`;
 
-writeFile(join(OUT_DIR, 'index.html'), pickerPage(games, null, { gameHref }));
+writeFile(join(OUT_DIR, 'index.html'), pickerPage(games, null, { gameHref, title: TITLE }));
 writeFile(join(OUT_DIR, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
 
 for (const name of games) {
