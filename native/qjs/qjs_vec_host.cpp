@@ -1,11 +1,11 @@
-// qjs_vec_host.cpp — the envpool-class vectorized backend for node-gym.
+// qjs_vec_host.cpp — the envpool-class vectorized backend for PlayTrain.
 //
 // One process, N QuickJS+rasterizer envs, a fixed thread pool. Each env owns its
 // own JSContext + rasterizer state + p5 shim state (all made per-env selectable in
 // crates/rasterizer/src/lib.rs and native/runtime/p5.cpp) and is PINNED to one
 // worker thread, so no two threads ever touch the same interpreter or rasterizer
 // state. A batched `vec_step(actions) -> (obs, rew, term, trunc)` steps every env
-// in parallel across the pool; the Python side (python/node_gym/native_vec_env.py)
+// in parallel across the pool; the Python side (src/playtrain/runtime/native_vec_env.py)
 // calls it through ctypes, which releases the GIL for the whole batch. No
 // subprocess, no pipe, no Python in the hot loop — the same architecture envpool
 // uses to get near-linear scaling.

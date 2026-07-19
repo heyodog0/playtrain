@@ -6,16 +6,16 @@
  *   meta:   meta_length bytes of UTF-8 JSON
  *   binary: binary_length bytes (the obs frame, or empty)
  *
- * Driven by Python's NodeGymThreeEnv via stdin/stdout.
+ * Driven by Python's PlayTrainThreeEnv via stdin/stdout.
  */
 
 import { openSync, writeSync, closeSync } from 'fs';
 import { ThreeGameEnv } from './game-env.mjs';
 
-// If Python passed NODE_GYM_THREE_MMAP_PATH, open the shared file for fast
+// If Python passed PLAYTRAIN_THREE_MMAP_PATH, open the shared file for fast
 // obs transfer. Worker writes step header + obs to this file; Python reads
 // from its mmap. Pipe carries only the 8-byte sync header.
-const MMAP_PATH = process.env.NODE_GYM_THREE_MMAP_PATH || null;
+const MMAP_PATH = process.env.PLAYTRAIN_THREE_MMAP_PATH || null;
 let MMAP_FD = null;
 if (MMAP_PATH) {
   try {
@@ -43,7 +43,7 @@ function parseArgs() {
 
 const opts = parseArgs();
 
-// The shim reads NODE_GYM_THREE_OBS_SIZE at import time. By the time
+// The shim reads PLAYTRAIN_THREE_OBS_SIZE at import time. By the time
 // THREE / shims is dynamically imported inside ThreeGameEnv, the env var
 // must already be set — which it will be because the parent (Python env)
 // passes it in its env, and we read opts.obsSize purely for sanity check.
@@ -144,7 +144,7 @@ async function handleRequest(request, binaryLength) {
 
   if (request.cmd === 'step') {
     const result = await env.step(request.action, request.num_steps || 1);
-    if (process.env.NODE_GYM_THREE_FORCE_JSON === '1') {
+    if (process.env.PLAYTRAIN_THREE_FORCE_JSON === '1') {
       // Bench-only fallback: send the original JSON-meta + obs response.
       return ok({
         reward: result.reward,

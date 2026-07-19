@@ -14,8 +14,8 @@
 //       then string keys in INSERTION order (std::unordered_map would NOT do this
 //       and would reorder draw calls -> frame divergence),
 //   (3) delete removes the key from the ordering.
-#ifndef NODE_GYM_JSVALUE_H
-#define NODE_GYM_JSVALUE_H
+#ifndef PLAYTRAIN_JSVALUE_H
+#define PLAYTRAIN_JSVALUE_H
 
 #include <string>
 #include <vector>
@@ -134,4 +134,4 @@ inline std::shared_ptr<Object> newObject() { return std::make_shared<Object>(); 
 
 }  // namespace js
 
-#endif  // NODE_GYM_JSVALUE_H
+#endif  // PLAYTRAIN_JSVALUE_H

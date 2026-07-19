@@ -9,8 +9,8 @@
 //   - pow/atan/atan2/hypot: the transcendentals flagged as needing a v8-libm
 //     port. Currently forwarded to std:: — the differential gate is the arbiter;
 //     if a game diverges, replace the forward here with a bit-exact fdlibm port.
-#ifndef NODE_GYM_JSMATH_H
-#define NODE_GYM_JSMATH_H
+#ifndef PLAYTRAIN_JSMATH_H
+#define PLAYTRAIN_JSMATH_H
 
 #include <cstdint>
 #include <cmath>
@@ -103,4 +103,4 @@ inline double map(double v, double s1, double e1, double s2, double e2) {
 
 }  // namespace js
 
-#endif  // NODE_GYM_JSMATH_H
+#endif  // PLAYTRAIN_JSMATH_H

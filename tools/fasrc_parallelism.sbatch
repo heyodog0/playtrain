@@ -51,7 +51,7 @@ echo "=== async mixed-pool throughput (batch_size < N) ==="
 uv run --with numpy --with gymnasium python - "$CORES" <<'PY'
 import sys, time
 import numpy as np
-from node_gym.native_vec_env import AsyncNativeVecEnv, NativeVecEnv
+from playtrain.runtime.native_vec_env import AsyncNativeVecEnv, NativeVecEnv
 cores = int(sys.argv[1])
 N = 2 * cores
 pool = (["plunder"] * (N // 2)) + (["miner"] * (N // 2))   # fast + slow mix

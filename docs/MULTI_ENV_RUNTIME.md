@@ -45,8 +45,8 @@ pickle layer — the one component that's actually fixable.**
 
 The current architecture spawns one Node subprocess per env via
 SB3's `SubprocVecEnv`. At n_envs=16 on a CUDA training box this gives
-node-gym ~74% of ALE's aggregate sps on matched PPO settings (analogen
-job 12720391: ALE 2064 / node-gym-grid 1522 sps). The 26% gap is paid
+PlayTrain ~74% of ALE's aggregate sps on matched PPO settings (analogen
+job 12720391: ALE 2064 / PlayTrain-grid 1522 sps). The 26% gap is paid
 in two places:
 
 1. **Per-env Node process overhead.** 16 separate V8 heaps, 16 GCs,
@@ -54,19 +54,19 @@ in two places:
    costs add up at startup but are amortized over training.
 2. **`SubprocVecEnv` Python-side coordination.** SB3 pickles per-env
    obs returned from each child Python process to the main Python
-   process, on top of the Node→child-Python mmap path that node-gym
+   process, on top of the Node→child-Python mmap path that PlayTrain
    already provides. The double-pickle + 16 pipe round-trips per step
    is the dominant component of the 26% gap.
 
 After this branch's earlier shipped work — Cairo-side obs downsample
 (commit `04f197a`, +1.75–3.10×) and fillStyle/strokeStyle caching
-(commit `4355541`, +3–9%) — per-env step time in node-gym is no longer
+(commit `4355541`, +3–9%) — per-env step time in PlayTrain is no longer
 the bottleneck. What remains is the coordination overhead above.
 
 ### Non-goals
 
 - A C++ env runtime (EnvPool-style). EnvPool wraps existing C++ envs;
-  node-gym envs are JS, so wrapping V8 in C++ gives the maintenance
+  PlayTrain envs are JS, so wrapping V8 in C++ gives the maintenance
   pain without the perf win.
 - Replacing the rendering backend. node-canvas / Cairo stays.
 - Changing per-env step semantics. Existing bundled games and any
@@ -83,10 +83,10 @@ the bottleneck. What remains is the coordination overhead above.
 ```
 Python (main process)
   ├── SubprocVecEnv
-  │     ├── child Python 0 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 0
-  │     ├── child Python 1 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 1
+  │     ├── child Python 0 ──pickle/pipe── PlayTrainEnv ──mmap── Node worker 0
+  │     ├── child Python 1 ──pickle/pipe── PlayTrainEnv ──mmap── Node worker 1
   │     ├── ...
-  │     └── child Python 15 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 15
+  │     └── child Python 15 ──pickle/pipe── PlayTrainEnv ──mmap── Node worker 15
   └── PPO loop
 ```
 
@@ -142,7 +142,7 @@ given current C-level library constraints.
 
 ```
 Python (main process)
-  ├── NodeVecEnv (this branch's new code)
+  ├── PlayTrainVecEnv (this branch's new code)
   │     ├── direct stdin/stdout pipe → Node worker 0 ──mmap── obs region 0
   │     ├── direct stdin/stdout pipe → Node worker 1 ──mmap── obs region 1
   │     ├── ...
@@ -183,7 +183,7 @@ Python-side coordination overhead.
 
 #### Honest expected magnitude
 
-The 173 μs/step gap between ALE and node-gym (from analogen job
+The 173 μs/step gap between ALE and PlayTrain (from analogen job
 12720391) decomposes roughly as:
 
 - ~80 μs: actual env compute (Cairo render + obs preprocess, confirmed
@@ -243,7 +243,7 @@ guide architecture:
 ### 4.3 What remains as the contention source
 
 Likely candidates (in order of plausibility), none of which we can
-practically fix from node-gym's side:
+practically fix from PlayTrain's side:
 
 - **libpixman shared SIMD-dispatch state or scan-converter caches**
   (both Cairo and skia-canvas use pixman for some operations)
@@ -274,7 +274,7 @@ needed to learn at the cost of probes, not implementations.
 
 ```
 Python (main)                                  Node worker 0
-  NodeVecEnv                                   ┌─────────────────┐
+  PlayTrainVecEnv                                   ┌─────────────────┐
     ├── pipe.stdin ────────────────────────────► action byte → step
     ├── pipe.stdout ◄──────────────────────────── step header
     └── mmap region 0 ◄──── obs write ──────────┤  (already exists today)
@@ -286,7 +286,7 @@ Python (main)                                  Node worker 0
     └── (× 16)
 ```
 
-Implementation surface: **only Python-side new code** (`NodeVecEnv`
+Implementation surface: **only Python-side new code** (`PlayTrainVecEnv`
 class). The Node-side worker stays unchanged — it already writes obs
 to its mmap region and step headers to stdout. We're just reading them
 from a single Python process instead of from 16 child Python processes.
@@ -306,20 +306,20 @@ from a single Python process instead of from 16 child Python processes.
 
 ### 5.3 Python-side API
 
-`NodeVecEnv` mirrors Gymnasium's `VectorEnv`:
+`PlayTrainVecEnv` mirrors Gymnasium's `VectorEnv`:
 
 ```python
-from node_gym import NodeVecEnv
+from playtrain import PlayTrainVecEnv
 
-venv = NodeVecEnv(games=["flappy_bird"] * 16,
+venv = PlayTrainVecEnv(games=["flappy_bird"] * 16,
                   obs_size=64, obs_mode="rgb")
 obs, info = venv.reset(seeds=[0,1,...])
 obs, rewards, term, trunc, infos = venv.step(actions)
 venv.close()
 ```
 
-Drop-in replacement for `SubprocVecEnv([NodeGymEnv(g) for g in games])`
-on the training side. `NodeGymEnv` (single env) stays available for
+Drop-in replacement for `SubprocVecEnv([PlayTrainEnv(g) for g in games])`
+on the training side. `PlayTrainEnv` (single env) stays available for
 single-env use cases (`tools/play.mjs`, `tools/rollout.py`, tests).
 
 ### 5.4 Pipe-multiplexing strategy
@@ -337,13 +337,13 @@ Recommended: start with `select.select()`, benchmark, switch if needed.
 
 ### 5.5 Compatibility
 
-- `NodeGymEnv` (single env): unchanged.
-- `NodeVecEnv` (N envs): new.
+- `PlayTrainEnv` (single env): unchanged.
+- `PlayTrainVecEnv` (N envs): new.
 - Games: unchanged. Same `setup() / draw() / resetGame() / getGameState()`
   contract in each Node worker.
 - analogen's `train_ppo_clean.py`: change one line — replace
   `SubprocVecEnv([make_env(...) for _ in range(N)])` with
-  `NodeVecEnv(games=[cfg.game] * N, ...)`.
+  `PlayTrainVecEnv(games=[cfg.game] * N, ...)`.
 
 ---
 
@@ -351,17 +351,17 @@ Recommended: start with `select.select()`, benchmark, switch if needed.
 
 ### Phase 1: Two-env prototype (2 days)
 
-- New file: `python/node_gym/vec_env.py` containing `NodeVecEnv`.
+- New file: `python/playtrain/vec_env.py` containing `PlayTrainVecEnv`.
 - Hardcoded N=2, single game (flappy_bird × 2).
 - Spawn 2 Node workers directly from one Python process.
 - One round-trip step → batched (2, 64, 64, 3) obs.
-- A/B against `SubprocVecEnv([NodeGymEnv]*2)` on bench.
+- A/B against `SubprocVecEnv([PlayTrainEnv]*2)` on bench.
 - Determinism check: replay twice, byte-compare obs sequence.
 
 ### Phase 2: General N + heterogeneous catalogs (2 days)
 
 - Parameterize N.
-- Support `NodeVecEnv(games=[...])` with arbitrary game list.
+- Support `PlayTrainVecEnv(games=[...])` with arbitrary game list.
 - Validate.py-equivalent across all 39 bundled games, homogeneous
   N=8 batches.
 
@@ -375,7 +375,7 @@ Recommended: start with `select.select()`, benchmark, switch if needed.
 
 - Choose pipe-multiplexing strategy by measurement (`select` vs
   threads vs asyncio).
-- A/B against `SubprocVecEnv([NodeGymEnv]*16)` on analogen
+- A/B against `SubprocVecEnv([PlayTrainEnv]*16)` on analogen
   `train_ppo_clean.py` — full PPO training step, measure sps delta.
 - Acceptance: ≥10% sps improvement over current SubprocVecEnv at
   n_envs=16.
@@ -383,7 +383,7 @@ Recommended: start with `select.select()`, benchmark, switch if needed.
 ### Phase 5: Integration (1 day)
 
 - Update `analogen/src/analogen/train_ppo_clean.py` to use
-  `NodeVecEnv` (behind a config flag for A/B safety).
+  `PlayTrainVecEnv` (behind a config flag for A/B safety).
 - Documentation pass (`README.md`, `docs/PROTOCOL.md`).
 - Merge to main.
 
@@ -400,11 +400,11 @@ The new runtime is acceptable for merging to main iff:
 1. **Determinism**: `validate.py`-equivalent strict byte-equality
    across replays, on all 39 bundled games, N=8 homogeneous batches.
 2. **Throughput**: at N=16 on a CUDA training box (FASRC), aggregate
-   sps ≥ 1.10× the current `SubprocVecEnv([NodeGymEnv]*16)` baseline
+   sps ≥ 1.10× the current `SubprocVecEnv([PlayTrainEnv]*16)` baseline
    on analogen's grid envs. (Acceptance bar set deliberately lower
    than Worker Threads' would have been, since the architectural
    ceiling is also lower.)
-3. **No regression**: single-env `NodeGymEnv` path is unchanged and
+3. **No regression**: single-env `PlayTrainEnv` path is unchanged and
    its bench numbers don't move.
 4. **Crash isolation**: a deliberately-throwing game in slot 7 doesn't
    hang or crash the other 15 envs; surfaces a clean Python error.
@@ -473,7 +473,7 @@ Cairo contends" is a much weaker design-tradeoffs claim than
 | 3 | **Library version inspection** (`ldd`, `pkg-config`, `nm`) | Confirms which libpixman / libcairo versions FASRC's node-canvas links against. Old pixman has known threading issues. | 30 min |
 | 4 | **Micro-probe variants** (`single_fillrect`, `text_only`, `create_destroy`) | Narrows the contention to specific Cairo call paths. If `single_fillrect` scales but `full` doesn't, the issue is one specific primitive. | 4 hours |
 | 5 | **Minimal raw N-API addon** (no node-canvas, just direct Cairo calls) | Distinguishes node-canvas binding contention from underlying Cairo/pixman contention. | 1–2 days |
-| 6 | **Compare against ALE multi-env** at N=16 on FASRC | If ALE *also* caps at ~4× aggregate, the issue is Python/Linux pipeline, not anything node-gym. | 2 hours |
+| 6 | **Compare against ALE multi-env** at N=16 on FASRC | If ALE *also* caps at ~4× aggregate, the issue is Python/Linux pipeline, not anything PlayTrain. | 2 hours |
 
 Experiments 1–4 are high-info, low-cost; do those first. Experiment 5
 is heavier but definitive if 1–4 don't conclude. Experiment 6 is a
@@ -496,9 +496,9 @@ binding layer, not in pixman/Cairo         (Architecture C, below);
 Bottleneck is genuinely deep             → DirectVecEnv (Architecture
 (pixman global state, kernel-level         B), with paper-quality
 mmap_sem, etc.), unfixable from            evidence for why
-node-gym's side
+PlayTrain's side
 ─────────────────────────────────────────────────────────────────
-ALE also caps at ~4× on same             → Issue is below node-gym
+ALE also caps at ~4× on same             → Issue is below PlayTrain
 hardware                                   entirely; both architectures
                                            hit the same wall;
                                            DirectVecEnv is still right
@@ -509,7 +509,7 @@ hardware                                   entirely; both architectures
 
 Only viable if Phase 0.5 (experiment 5) shows node-canvas's binding
 layer is the bottleneck and underlying Cairo is fine. A minimal
-N-API addon would expose just the operations node-gym needs (init
+N-API addon would expose just the operations PlayTrain needs (init
 surface, fillRect, drawImage, toBuffer raw) without node-canvas's
 full API. ~1–2 weeks of work; we don't commit to this until and
 unless the data supports it.
@@ -558,7 +558,7 @@ candidates:
   dispatch or memory allocator hot paths
 - Memory controller / inter-core coherence saturation on shared cache lines
 
-**None of these are fixable from node-gym's side.** They're properties
+**None of these are fixable from PlayTrain's side.** They're properties
 of the workload × hardware × library stack — fundamentally bounded.
 
 ### 10.6 What this means for the architecture decision
@@ -690,7 +690,7 @@ architecture.** The investigation closes here; Phase 1 begins next.
   hardware-level contention" claim by showing ALE hits the same
   ceiling. Nice-to-have for paper framing but not load-bearing —
   the Cairo vs Skia comparison already proves the same point within
-  node-gym's stack.
+  PlayTrain's stack.
 - **Raw N-API addon**: was contingent on finding evidence the
   binding layer was the bottleneck. cpuprofiles in job 12891926
   showed 97.4% of Worker self-time in the JS workload function with
@@ -712,7 +712,7 @@ receipt trail spans 12+ commits and 5 FASRC SLURM jobs.
 ## 10.12 Expected impact on training workloads (vs framework-bench numbers)
 
 The 134k → 203k iters/s improvement at N=24 (Job 12929486) is the
-**framework throughput** number — what node-gym in isolation can do.
+**framework throughput** number — what PlayTrain in isolation can do.
 For training workloads, the impact depends on the env-phase fraction
 of step time, which itself depends on what else has been optimized
 in the trainer.
@@ -720,8 +720,8 @@ in the trainer.
 ### Naive ceiling (current trainer config)
 
 From analogen's matched-throughput data (job 12720391, n_envs=8 on
-FASRC GPU): node-gym contributes ~173 μs/step out of ~657 μs total
-(~26%). At this config, even making node-gym free caps the gain at
+FASRC GPU): PlayTrain contributes ~173 μs/step out of ~657 μs total
+(~26%). At this config, even making PlayTrain free caps the gain at
 ~35% on training sps.
 
 | Build | env-phase μs/step | total step μs | total sps | Δ vs current |
@@ -767,7 +767,7 @@ running.
 
 `torch.compile` lifts all backends. C₁ attacks the term that
 specifically distinguishes analogen from ALE (the 173 μs env phase).
-Closing the gap to ALE is paper-quality evidence that node-gym is
+Closing the gap to ALE is paper-quality evidence that PlayTrain is
 competitive with established C/C++ environments at training-loop
 scale.
 
@@ -775,7 +775,7 @@ scale.
 
 Two distinct numbers, both real, both belong:
 
-- **Framework throughput table** (node-gym in isolation, no
+- **Framework throughput table** (PlayTrain in isolation, no
   training loop): 134k → 203k iters/s at N=24 (3.8× over unbatched
   Cairo, 1.7× over best-prior-Cairo). This is the framework
   contribution.
@@ -891,12 +891,12 @@ re-promoted since the contention analysis cleared the way):
   isolated per thread automatically), own `canvas` instance
 - Shared: `SharedArrayBuffer` layout per §11.2 of the appendix
 - Synchronization: `Atomics.wait`/`Atomics.notify` per §11.3 of the appendix
-- Python-side: new `python/node_gym/vec_env.py` containing `NodeVecEnv`
+- Python-side: new `python/playtrain/vec_env.py` containing `PlayTrainVecEnv`
 - Default cap: N=24 (matches the measured throughput peak from job 12929486)
 
 ### 11.5 Phase 1e: A/B vs analogen's training loop (2 days)
 
-Replace `SubprocVecEnv` with `NodeVecEnv` in
+Replace `SubprocVecEnv` with `PlayTrainVecEnv` in
 `analogen/src/analogen/train_ppo_clean.py` (single-line change behind
 a config flag for safety). Run a 1M-step PPO training and compare
 sps against the SubprocVecEnv baseline.
@@ -910,9 +910,9 @@ overall improvement is realistic and meaningful).
 1. `validate.py`-equivalent strict byte-equality across replays, all
    39 bundled games, N=8 homogeneous batches.
 2. At N=24 on FASRC, aggregate sps ≥ 1.5× current
-   `SubprocVecEnv([NodeGymEnv]*16)` baseline (set the bar by the
+   `SubprocVecEnv([PlayTrainEnv]*16)` baseline (set the bar by the
    measured Job 12929486 peak).
-3. No regression: single-env `NodeGymEnv` path unchanged, its bench
+3. No regression: single-env `PlayTrainEnv` path unchanged, its bench
    numbers don't move.
 4. Crash isolation: one game throwing in a Worker Thread surfaces a
    clean Python error, doesn't deadlock the other Workers.

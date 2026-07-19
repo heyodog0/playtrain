@@ -1,6 +1,6 @@
-# VGDL Runtime for node-gym
+# VGDL Runtime for PlayTrain
 
-A plan for building a JS-native interpreter for the Video Game Description Language (VGDL) inside node-gym, bringing the full Schaul/GVGAI corpus into the substrate. This expands the catalog ~5-10× with no per-game LLM authoring cost, creates direct continuity with the Tsividis theory-based-RL line that `DISSERTATION_ARC.md` cites as foundational, and (as a bonus) provides a JIT-friendly intermediate DSL for the longer-term V8-to-GPU compilation direction in `GPU_RUNTIME_PLAN.md`.
+A plan for building a JS-native interpreter for the Video Game Description Language (VGDL) inside PlayTrain, bringing the full Schaul/GVGAI corpus into the substrate. This expands the catalog ~5-10× with no per-game LLM authoring cost, creates direct continuity with the Tsividis theory-based-RL line that `DISSERTATION_ARC.md` cites as foundational, and (as a bonus) provides a JIT-friendly intermediate DSL for the longer-term V8-to-GPU compilation direction in `GPU_RUNTIME_PLAN.md`.
 
 ## Background on VGDL
 
@@ -20,7 +20,7 @@ VGDL's relationship to modern deep RL is conspicuously underdeveloped:
 - ALE / ProcGen / MiniGrid / Crafter / NetHack / MineRL dominate the modern benchmark landscape; VGDL is conspicuously absent despite the GVGAI framework having "over twice the number of games as ALE"
 - **No end-to-end deep RL evaluation across the full VGDL corpus has been published.** This is open ground.
 
-## Why VGDL pairs uniquely well with node-gym
+## Why VGDL pairs uniquely well with PlayTrain
 
 Five structural reasons:
 
@@ -28,26 +28,26 @@ Five structural reasons:
 
 2. **VGDL is LLM-fluent.** The DSL syntax is small, declarative, and well-documented. LLMs author VGDL specs fluently in a way they cannot author PDDL or general game-engine code. The "LLM-authored substrate" framing of paper 1 *survives* VGDL inclusion: LLMs author both p5 sketches and VGDL specs/variants, and the legacy GVGAI corpus provides the bootstrap.
 
-3. **Direct continuity with Theory-Based RL** (Tsividis lineage). The substrate VGDL represents is the same one the dissertation arc engages with cognitively. Adding it to node-gym is substrate completion, not substrate change.
+3. **Direct continuity with Theory-Based RL** (Tsividis lineage). The substrate VGDL represents is the same one the dissertation arc engages with cognitively. Adding it to PlayTrain is substrate completion, not substrate change.
 
 4. **VGDL is a JIT-friendly intermediate DSL.** It is *much* smaller than general JavaScript. If/when the V8-tracing-JIT-to-GPU direction (paper 3 alt in `GPU_RUNTIME_PLAN.md`) proves harder than hoped for general shim-bounded JS, **VGDL is a natural intermediate compilation target**: small declarative spec → JAX kernel is significantly more tractable than imperative-JS → JAX kernel. VGDL → JAX could stand alone as a publishable compiler before the harder JS-to-JAX path is attempted.
 
-5. **VGDL inherits all of node-gym's substrate properties for free.** Byte-exact determinism, cross-runtime equivalence, browser-headless playtest equivalence, Worker-Threads multi-env runtime, validation harness — all apply to VGDL games as soon as the interpreter is in place. No per-game infrastructure work.
+5. **VGDL inherits all of PlayTrain's substrate properties for free.** Byte-exact determinism, cross-runtime equivalence, browser-headless playtest equivalence, Worker-Threads multi-env runtime, validation harness — all apply to VGDL games as soon as the interpreter is in place. No per-game infrastructure work.
 
 ## Technical design
 
-Build VGDL as an **interpreter inside the node-gym JS runtime**, not a per-game transpiler. One JS file (~1500-3000 LOC, well within the shim profile) that:
+Build VGDL as an **interpreter inside the PlayTrain JS runtime**, not a per-game transpiler. One JS file (~1500-3000 LOC, well within the shim profile) that:
 
 - Parses VGDL game DSL + ASCII level layouts
 - Maintains sprite registry, interaction rules (collisions, conditional effects), and termination conditions
 - Renders via shim primitives (`rect` + sprite atlases — already supported)
-- Exposes the standard node-gym `setup()` / `draw()` / `keyIsDown` API
+- Exposes the standard PlayTrain `setup()` / `draw()` / `keyIsDown` API
 - Accepts a VGDL game spec as a string parameter at construction
 
 The full corpus loads as data files (`games/vgdl/*.txt`); the interpreter is the single game-as-code. Adding a new VGDL game means dropping in a spec file; no per-game JS authoring needed.
 
 ```
-node-gym/runtime/vgdl/
+PlayTrain/runtime/vgdl/
 ├── parser.mjs              # VGDL DSL parser
 ├── interpreter.mjs         # game-loop + interaction rules
 ├── sprites.mjs             # sprite types and properties
@@ -95,7 +95,7 @@ LLMs author all of these variants fluently because VGDL's DSL is small and const
 
 Three options for slotting this into the paper plan from `DISSERTATION_ARC.md`:
 
-**Option A — Paper 1.5 / methods extension.** Short paper after paper 1: *"node-gym-VGDL: First end-to-end deep RL evaluation across the full Video Game Description Language corpus."* Benchmark contribution. ~3-6 months after paper 1. Venue: NeurIPS Datasets & Benchmarks, TMLR, or as the substrate-methods half of a paper paired with cognitive-science findings.
+**Option A — Paper 1.5 / methods extension.** Short paper after paper 1: *"PlayTrain-VGDL: First end-to-end deep RL evaluation across the full Video Game Description Language corpus."* Benchmark contribution. ~3-6 months after paper 1. Venue: NeurIPS Datasets & Benchmarks, TMLR, or as the substrate-methods half of a paper paired with cognitive-science findings.
 
 **Option B — Substrate expansion for paper 3 (resource-rational).** The expanded task surface makes the resource-rational story dramatically stronger. AnaloGen variants probe analogical structure-mapping specifically; the full VGDL corpus stretches across navigation, puzzle, shooter, action, sokoban-like, frogger-like — a much wider cognitive-task surface. Resource-rational analyses fit per-game-class would be a richer empirical finding than analyses fit only across AnaloGen variants. This is also where the **Tsividis-line theory-based-RL replication** naturally lives: take Tsividis's VGDL results, train deep RL + cognitively-grounded RL agents on the same games, compare.
 
@@ -118,7 +118,7 @@ SIPS-style goal inference, resource-rational fitting, Bayesian rule induction al
 1. **VGDL semantic edge cases.** The original Schaul Python implementation accumulated specific behaviors over years; matching them exactly requires careful differential testing. Budget more time than the parser + rules suggests.
 2. **Corpus heterogeneity.** Some GVGAI games are buggy, underspecified, or trivially easy/hard. Curation is a real cost. Likely end with a curated subset of ~50-100 high-quality games rather than the full ~200.
 3. **GVGAI community dormancy.** The competition wound down ~2019. You're building on a substrate that no active community is investing in — good for scoop risk, bad for momentum. Counter-evidence: cog-sci use of VGDL (Tsividis line) is still active.
-4. **Continuous-time / real-time games.** A handful of VGDL games use real-time controls (shooters, action). The fixed-tick / discrete-action node-gym framework needs to handle these cleanly — solvable but worth scoping.
+4. **Continuous-time / real-time games.** A handful of VGDL games use real-time controls (shooters, action). The fixed-tick / discrete-action PlayTrain framework needs to handle these cleanly — solvable but worth scoping.
 5. **Framing tension with "LLM-authored."** Partial — resolved by reframing the substrate's authoring story as "single-source-JS, LLM-friendly, multiple authoring channels (p5 sketches, VGDL specs, future DSLs)." LLMs can author VGDL variants fluently, so the LLM-authoring story scales rather than getting diluted.
 
 ## Open questions
@@ -126,7 +126,7 @@ SIPS-style goal inference, resource-rational fitting, Bayesian rule induction al
 1. **Curation criteria.** What defines "high-quality" for the VGDL subset? Game balance? Solvability? Educational value for cognitive theories? Likely requires a curation pass with Tsividis or another VGDL-knowledgeable collaborator.
 2. **Reward signal homogenization.** VGDL games have idiosyncratic scoring; standardizing reward across the corpus for cross-game agent training is a non-trivial design choice. Multiple normalization schemes exist (per-game min/max, percentile-rank, terminal-only) and the choice affects what an RL agent learns.
 3. **How much of the original py-vgdl semantics is worth matching exactly?** Some idiosyncrasies are bugs, not features. A clean reimplementation may be better than a faithful one — but breaks the differential test against the reference. Tradeoff between cleanness and validation rigor.
-4. **Three.js-arm interaction.** Should the VGDL interpreter eventually extend to 3D via the Three.js arm of node-gym? Probably not — VGDL is inherently 2D — but worth noting that the interpreter design should not preclude 3D variants if a research question demands them.
+4. **Three.js-arm interaction.** Should the VGDL interpreter eventually extend to 3D via the Three.js arm of PlayTrain? Probably not — VGDL is inherently 2D — but worth noting that the interpreter design should not preclude 3D variants if a research question demands them.
 
 ## Sources and references
 

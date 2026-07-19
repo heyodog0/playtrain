@@ -11,10 +11,10 @@ const adapter = await gpu.requestAdapter();
 if (!adapter) throw new Error('Failed to get GPU adapter');
 const device = await adapter.requestDevice();
 
-// Canvas dimensions — overridable via NODE_GYM_THREE_OBS_SIZE env var so the
+// Canvas dimensions — overridable via PLAYTRAIN_THREE_OBS_SIZE env var so the
 // worker can match whatever obs_size the Python env requested.
-const WIDTH  = parseInt(process.env.NODE_GYM_THREE_OBS_SIZE || '84', 10);
-const HEIGHT = parseInt(process.env.NODE_GYM_THREE_OBS_SIZE || '84', 10);
+const WIDTH  = parseInt(process.env.PLAYTRAIN_THREE_OBS_SIZE || '84', 10);
+const HEIGHT = parseInt(process.env.PLAYTRAIN_THREE_OBS_SIZE || '84', 10);
 
 // Fake GPUCanvasContext — creates the render texture lazily when Three.js
 // calls configure(), so format and usage flags match what it expects

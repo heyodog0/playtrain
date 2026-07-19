@@ -1,6 +1,6 @@
 # Why JS, not Python
 
-**TL;DR:** `node-gym` + `gym-gen` + `analogen` is one closed loop — an LLM authors a game in p5.js, a human playtests it in a browser, validation gates it into a catalog, and PPO trains on it headlessly at ALE-parity FPS. The substrate choice isn't *JS over Python*. It's *the only runtime where authoring, playtesting, training, and shipping happen in one artifact*. Python doesn't lose on any single axis — it loses on the conjunction.
+**TL;DR:** `PlayTrain` + `gym-gen` + `analogen` is one closed loop — an LLM authors a game in p5.js, a human playtests it in a browser, validation gates it into a catalog, and PPO trains on it headlessly at ALE-parity FPS. The substrate choice isn't *JS over Python*. It's *the only runtime where authoring, playtesting, training, and shipping happen in one artifact*. Python doesn't lose on any single axis — it loses on the conjunction.
 
 ## 1. Corpus → LLM fluency → generator quality
 
@@ -20,13 +20,13 @@ The browser stack collapses all five into one runtime. Python splits them across
 
 ## 3. Dependencies are per-artifact, not per-environment
 
-In JS, `<script src="cdn/matter.js">` is a complete dep declaration. The universal client (browser, or `node-gym` + node-canvas[^nodecanvas]) resolves it at load time, sandboxed. Two of `gym-gen`'s 30 games use Matter.js; the other 28 don't; adding it touched zero other games and zero installs on any user's machine.
+In JS, `<script src="cdn/matter.js">` is a complete dep declaration. The universal client (browser, or `PlayTrain` + node-canvas[^nodecanvas]) resolves it at load time, sandboxed. Two of `gym-gen`'s 30 games use Matter.js; the other 28 don't; adding it touched zero other games and zero installs on any user's machine.
 
-In Python, deps are per-environment: pygame needs SDL2, pymunk needs a C++ compiler, Box2D bindings have multiple incompatible forks. Every game in the catalog shares one global interpreter with the training stack. Catalog grows → dep conflicts grow → reproducibility decays. The cluster (`analogen` runs on FASRC) needs a separate dep tree from a laptop. `node-gym` fetches+caches JS deps once and runs the same code on M4 (MPS) and CUDA; there's no per-game native install.
+In Python, deps are per-environment: pygame needs SDL2, pymunk needs a C++ compiler, Box2D bindings have multiple incompatible forks. Every game in the catalog shares one global interpreter with the training stack. Catalog grows → dep conflicts grow → reproducibility decays. The cluster (`analogen` runs on FASRC) needs a separate dep tree from a laptop. `PlayTrain` fetches+caches JS deps once and runs the same code on M4 (MPS) and CUDA; there's no per-game native install.
 
 ## 4. The throughput tax doesn't exist anymore
 
-"Python is faster" only matters if Python is faster *for this workload*. The Arcade Learning Environment has been the de facto throughput baseline for Atari-style RL since 2013[^ale]. `node-gym` matches ALE-class FPS via headless Node + node-canvas (see `docs/notebooks/all_games_benchmark.py`). Once you've hit ALE parity in JS, the tax is zero.
+"Python is faster" only matters if Python is faster *for this workload*. The Arcade Learning Environment has been the de facto throughput baseline for Atari-style RL since 2013[^ale]. `PlayTrain` matches ALE-class FPS via headless Node + node-canvas (see `docs/notebooks/all_games_benchmark.py`). Once you've hit ALE parity in JS, the tax is zero.
 
 If a specific validated env ever needs faster speeds — e.g., billion-step training à la Craftax, which achieves a 257× speedup over Python-native Crafter by rewriting in JAX[^craftax] — you transpile downstream. You don't author in JAX upstream and surrender corpus, ergonomics, and the playtest loop.
 
@@ -41,7 +41,7 @@ Griddly is the proof. Built by Chris Bamford et al. (2021) as "an all-encompassi
 | ALE[^ale] | Atari (1979 games for kids) |
 | ProcGen[^procgen] | OpenAI's in-house game engine |
 | MineRL[^minerl] | Minecraft (~200M players) |
-| `node-gym` | p5 + browser + creative-coding corpus |
+| `PlayTrain` | p5 + browser + creative-coding corpus |
 | Griddly[^griddly], Jumanji[^jumanji], Craftax[^craftax] | nothing — bounded by the RL community |
 
 Frameworks in the last row are technically excellent and often faster, but their corpus is bounded by the RL researchers using them. Envs in the rows above inherit corpus, ergonomics, and shareability from a community orders of magnitude larger than RL.

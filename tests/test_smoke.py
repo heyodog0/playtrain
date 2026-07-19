@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 from playtrain.runtime import (
-    NodeGymEnv,
-    NodeGymThreeEnv,
+    PlayTrainEnv,
+    PlayTrainThreeEnv,
     list_available_games,
     list_available_threejs_games,
 )
@@ -14,7 +14,7 @@ from playtrain.runtime import (
 
 @pytest.fixture
 def env():
-    e = NodeGymEnv(game="flappy_bird", obs_size=64, obs_mode="rgb")
+    e = PlayTrainEnv(game="flappy_bird", obs_size=64, obs_mode="rgb")
     yield e
     e.close()
 
@@ -52,7 +52,7 @@ def test_observation_space_matches(env):
 
 
 def test_grayscale_mode():
-    env = NodeGymEnv(game="flappy_bird", obs_size=32, obs_mode="grayscale")
+    env = PlayTrainEnv(game="flappy_bird", obs_size=32, obs_mode="grayscale")
     try:
         obs, _ = env.reset(seed=0)
         assert obs.shape == (32, 32, 1) or obs.shape == (32, 32)
@@ -61,7 +61,7 @@ def test_grayscale_mode():
 
 
 def test_frame_stack():
-    env = NodeGymEnv(game="flappy_bird", obs_size=64, frame_stack=4)
+    env = PlayTrainEnv(game="flappy_bird", obs_size=64, frame_stack=4)
     try:
         obs, _ = env.reset(seed=0)
         assert obs.shape == (64, 64, 12)
@@ -72,7 +72,7 @@ def test_frame_stack():
 @pytest.mark.parametrize("game", list_available_games())
 def test_every_bundled_game_boots(game):
     """Each bundled p5 game must reset + take 10 random steps without crashing."""
-    env = NodeGymEnv(game=game, obs_size=64, obs_mode="rgb")
+    env = PlayTrainEnv(game=game, obs_size=64, obs_mode="rgb")
     try:
         obs, info = env.reset(seed=0)
         assert obs.shape == (64, 64, 3)
@@ -88,7 +88,7 @@ def test_every_bundled_game_boots(game):
 
 
 # ---------------------------------------------------------------------------
-# Three.js (NodeGymThreeEnv) smoke tests
+# Three.js (PlayTrainThreeEnv) smoke tests
 # ---------------------------------------------------------------------------
 
 def test_list_available_threejs_games_nonempty():
@@ -99,7 +99,7 @@ def test_list_available_threejs_games_nonempty():
 @pytest.mark.parametrize("game", list_available_threejs_games())
 def test_every_bundled_threejs_game_boots(game):
     """Each bundled three.js game must reset + take 5 random steps without crashing."""
-    env = NodeGymThreeEnv(game=game)
+    env = PlayTrainThreeEnv(game=game)
     try:
         obs, info = env.reset(seed=0)
         assert obs.shape == (env.obs_size, env.obs_size, 3)

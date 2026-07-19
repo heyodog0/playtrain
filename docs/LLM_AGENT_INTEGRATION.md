@@ -1,6 +1,6 @@
 # LLM/VLM Agent Integration Plan
 
-A plan for making node-gym a first-class substrate for LLM and VLM game-playing agents, enabling **tri-modal agent comparison** (humans + RL-trained agents + LLM/VLM agents) on byte-exact identical environments under controlled variant manipulations.
+A plan for making PlayTrain a first-class substrate for LLM and VLM game-playing agents, enabling **tri-modal agent comparison** (humans + RL-trained agents + LLM/VLM agents) on byte-exact identical environments under controlled variant manipulations.
 
 This is parallel to (not part of) `VGDL_PLAN.md`. VGDL expands *what games* the substrate covers; this plan expands *which agent classes* can consume the substrate.
 
@@ -23,7 +23,7 @@ Concrete predictions to test:
 - RL agents do the opposite — robust to parametric variation, brittle to visual changes
 - LLM/VLM agents may *understand* the task verbally but still fail behaviorally (the "knows-the-rule-but-can't-execute" gap)
 
-These are falsifiable predictions, and node-gym's variant axes are the right stimulus apparatus to test them.
+These are falsifiable predictions, and PlayTrain's variant axes are the right stimulus apparatus to test them.
 
 ## Landscape of existing LLM/VLM game-agent harnesses
 
@@ -39,7 +39,7 @@ Survey of how current harnesses interface with environments:
 | **Cradle**[^cradle] | OS-level GUI applications | Screenshot + mouse/keyboard | Open-world; uncontrolled |
 | **Anthropic / OpenAI Computer Use** | Generic desktop OS | Screenshot + mouse/keyboard | Same |
 
-Common pattern: **whoever has the cleanest screenshot + action + reset interface with permissive licensing wins adoption**. ROM-based benchmarks are increasingly painful (licensing, deterministic eval, reproducible state). node-gym sits in the sweet spot — if the integration layer exists.
+Common pattern: **whoever has the cleanest screenshot + action + reset interface with permissive licensing wins adoption**. ROM-based benchmarks are increasingly painful (licensing, deterministic eval, reproducible state). PlayTrain sits in the sweet spot — if the integration layer exists.
 
 What's structurally missing across all existing harnesses:
 
@@ -48,9 +48,9 @@ What's structurally missing across all existing harnesses:
 3. **Cheap re-rollout determinism.** LLM tokens are expensive. If the env is non-deterministic or non-replayable, every analysis costs new tokens.
 4. **No ROM/IP encumbrance for derivative training or eval distribution.**
 
-node-gym addresses all four, and the integration work is glue rather than substantive new substrate.
+PlayTrain addresses all four, and the integration work is glue rather than substantive new substrate.
 
-## What node-gym already provides
+## What PlayTrain already provides
 
 Most of the substrate is in place; the LLM-agent angle is largely an exposure problem:
 
@@ -64,7 +64,7 @@ Most of the substrate is in place; the LLM-agent angle is largely an exposure pr
 
 ## What integration glue is needed
 
-The gap between "node-gym exists" and "any LLM agent harness can plug it in" is small but specific:
+The gap between "PlayTrain exists" and "any LLM agent harness can plug it in" is small but specific:
 
 ### 1. HTTP/WebSocket bridge for non-Python harnesses
 
@@ -131,9 +131,9 @@ LLM-authored via gym-gen; ~5 minutes per base game; variants inherit from the ba
 
 ### 5. Adapter packages for 2-3 popular harnesses
 
-- `node-gym-balrog` — drop-in BALROG-compatible gym wrapper exposing node-gym envs in BALROG's expected format
-- `node-gym-videogamebench` — VideoGameBench-compatible "screenshot + button press" wrapper for the subset of node-gym games that fit the format
-- `node-gym-anthropic-computer-use` — reference integration showing Claude with Computer Use tools driving a node-gym game via the HTTP bridge
+- `PlayTrain-balrog` — drop-in BALROG-compatible gym wrapper exposing PlayTrain envs in BALROG's expected format
+- `PlayTrain-videogamebench` — VideoGameBench-compatible "screenshot + button press" wrapper for the subset of PlayTrain games that fit the format
+- `PlayTrain-anthropic-computer-use` — reference integration showing Claude with Computer Use tools driving a PlayTrain game via the HTTP bridge
 
 Each is ~1-2 days of work after the bridge exists.
 
@@ -163,13 +163,13 @@ LLM-agent eval is expensive; deterministic replay lets you re-analyze trajectori
 | Trajectory recording + replay format | 1-2 days |
 | Documentation + examples | 2-3 days |
 
-**Total: ~2-3 weeks** of focused work for a clean, harness-friendly node-gym agent bridge with 2-3 reference adapters and 10 task-described games.
+**Total: ~2-3 weeks** of focused work for a clean, harness-friendly PlayTrain agent bridge with 2-3 reference adapters and 10 task-described games.
 
 ## Tri-modal agent comparison as research methodology
 
 The cog-sci payoff — where this connects back to the dissertation arc — is a structured empirical methodology:
 
-> *On the same node-gym envs under identical variant manipulations, compare:*
+> *On the same PlayTrain envs under identical variant manipulations, compare:*
 >
 > 1. **Humans** (via browser playtest on Prolific/MTurk)
 > 2. **RL-trained agents** (PPO + IMPALA-CNN, possibly Slot-Attention or other architectures)
@@ -213,9 +213,9 @@ Add to `DISSERTATION_ARC.md` Infrastructure Roadmap Phase 2:
 
 The bridge + tri-modal methodology is *directly* relevant to:
 
-- **Anthropic** (Computer Use team) — node-gym is a controlled-variant testbed for Computer Use evals beyond OS apps
+- **Anthropic** (Computer Use team) — PlayTrain is a controlled-variant testbed for Computer Use evals beyond OS apps
 - **OpenAI** (agents team) — same
-- **DeepMind** (Genie / agentic-RL teams) — Genie produces uncontrolled diversity; node-gym produces controlled diversity for evals
+- **DeepMind** (Genie / agentic-RL teams) — Genie produces uncontrolled diversity; PlayTrain produces controlled diversity for evals
 - **BALROG / VideoGameBench authors** — possible upstream contribution rather than just a parallel benchmark
 
 This is the engineering-side internship pitch from `DISSERTATION_ARC.md`'s Strategic Positioning section, made concrete with deployable infrastructure.
@@ -224,15 +224,15 @@ This is the engineering-side internship pitch from `DISSERTATION_ARC.md`'s Strat
 
 1. **Token cost for LLM-agent evals.** A full variant-axis sweep across N variants × M models × K seeds gets expensive quickly. Trajectory recording + replay mitigates re-analysis cost but not initial-run cost. Budget needed; possibly model-provider grant outreach.
 2. **LLM-agent harness API drift.** Anthropic/OpenAI/Google APIs change; the adapter layer needs maintenance. Keep adapters thin and the bridge stable.
-3. **VLM resolution / token-budget issues.** node-gym renders at 64×64 by default; some VLMs perform better on higher resolutions. May need a config knob for render resolution in the bridge.
+3. **VLM resolution / token-budget issues.** PlayTrain renders at 64×64 by default; some VLMs perform better on higher resolutions. May need a config knob for render resolution in the bridge.
 4. **Real-time games don't fit LLM latency.** LLMs respond in ~1-5 seconds per call; games requiring sub-second reaction (a few VGDL games, possibly some p5 games) are not testable with current API-based LLM agents. Curate accordingly or implement a "step paused while agent thinks" mode (which VideoGameBench Lite also uses).
 5. **Agent class fairness.** Comparing LLM agents to RL agents trained for millions of steps isn't apples-to-apples. The variant-axis methodology partially addresses this (both are tested on unseen variants), but framing matters in writeup.
 
 ## Open questions
 
-1. **Should the bridge be node-gym-internal or its own project?** If other JS-based RL envs adopt similar interfaces, a generic `js-rl-agent-bridge` package serves the community better than a node-gym-specific one. Defer this decision until after the bridge exists.
+1. **Should the bridge be PlayTrain-internal or its own project?** If other JS-based RL envs adopt similar interfaces, a generic `js-rl-agent-bridge` package serves the community better than a PlayTrain-specific one. Defer this decision until after the bridge exists.
 2. **Should LLM-emitted-code (Voyager-style skills) be supported?** Currently the integration is screenshot-in / action-out. Voyager-style "LLM emits JS skill, env executes it" is a much richer interaction model. The shim profile makes this tractable in principle (LLM emits shim-bounded JS, sandbox executes within the runtime). Defer until v2.
-3. **Per-game prompt templates vs. universal prompts.** Some harnesses use universal prompts; others have per-game scaffolding. Which is the right default for node-gym's task descriptions? Likely both — short universal description + per-game hints.
+3. **Per-game prompt templates vs. universal prompts.** Some harnesses use universal prompts; others have per-game scaffolding. Which is the right default for PlayTrain's task descriptions? Likely both — short universal description + per-game hints.
 4. **Should the bridge expose intermediate state (inventory, score, internal flags) or only pixels?** Some LLM-agent harnesses augment pixels with structured state ("you are carrying: key, sword"). Strictly more information; arguably less interesting cognitively. Configurable, with pixel-only as the default.
 5. **Reward signal exposure.** Some harnesses pass reward to the LLM agent each step; others only at episode end. Affects what agents learn / can react to. Configurable.
 

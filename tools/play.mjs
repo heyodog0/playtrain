@@ -94,7 +94,7 @@ server.listen(PORT, () => {
     console.log(`\n  Playing ${customGame.name} at http://localhost:${PORT}`);
     console.log(`  Source: ${customGame.path}`);
   } else {
-    console.log(`\n  node-gym tester at http://localhost:${PORT}`);
+    console.log(`\n  PlayTrain tester at http://localhost:${PORT}`);
     if (autoOpen) console.log(`  Auto-opening: ${autoOpen}`);
   }
   console.log(`  Ctrl-C to stop.\n`);

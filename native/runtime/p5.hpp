@@ -5,8 +5,8 @@
 // the shim call-for-call so the rasterizer receives the identical primitive
 // stream and produces byte-identical frames. Colors are rounded exactly as the
 // shim's colorArgs()+parseColor() pipeline does (see p5.cpp).
-#ifndef NODE_GYM_P5_HPP
-#define NODE_GYM_P5_HPP
+#ifndef PLAYTRAIN_P5_HPP
+#define PLAYTRAIN_P5_HPP
 
 #include <cstdint>
 #include <string>
@@ -132,4 +132,4 @@ constexpr double HALF_PI = 1.5707963267948966;
 
 }  // namespace p5
 
-#endif  // NODE_GYM_P5_HPP
+#endif  // PLAYTRAIN_P5_HPP

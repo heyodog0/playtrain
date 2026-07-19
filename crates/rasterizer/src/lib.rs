@@ -1,4 +1,4 @@
-// node-gym-rasterizer — a tiny 2D rasterizer for the p5-shim primitive surface.
+// playtrain-rasterizer — a tiny 2D rasterizer for the p5-shim primitive surface.
 //
 // Direct port of runtime/p5/raster.mjs (which is its spec + differential-test oracle).
 // Compiles to wasm32-unknown-unknown with a raw extern "C" numeric API (no wasm-bindgen):

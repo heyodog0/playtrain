@@ -1,12 +1,12 @@
 import { openSync, writeSync } from 'fs';
 import { GameEnv, _profileTimings } from './game-env.mjs';
 
-const PROFILE = process.env.NODE_GYM_P5_PROFILE === '1';
+const PROFILE = process.env.PLAYTRAIN_P5_PROFILE === '1';
 const _framingNs = { ns: 0n, n: 0 };
 const _hrtime = process.hrtime.bigint;
 
 // mmap-shared obs file (optional; set by Python via env var)
-const MMAP_PATH = process.env.NODE_GYM_P5_MMAP_PATH || null;
+const MMAP_PATH = process.env.PLAYTRAIN_P5_MMAP_PATH || null;
 let MMAP_FD = null;
 if (MMAP_PATH) {
   try {
@@ -145,7 +145,7 @@ function handleRequest(request, binaryLength) {
 
   if (request.cmd === 'step') {
     const result = env.step(request.action);
-    if (process.env.NODE_GYM_P5_FORCE_JSON === '1') {
+    if (process.env.PLAYTRAIN_P5_FORCE_JSON === '1') {
       // Bench-only fallback: original JSON-meta + obs response.
       ok({
         reward: result.reward,

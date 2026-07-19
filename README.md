@@ -24,9 +24,9 @@ just test           # runtime smoke tests
 ## Quickstart
 
 ```python
-from playtrain.runtime import NodeGymEnv
+from playtrain.runtime import PlayTrainEnv
 
-env = NodeGymEnv(game="flappy_bird")
+env = PlayTrainEnv(game="flappy_bird")
 obs, info = env.reset(seed=0)
 for _ in range(1000):
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
@@ -35,7 +35,7 @@ for _ in range(1000):
 env.close()
 ```
 
-`obs` is a `(64, 64, 3)` uint8 array; `action` is a discrete int in `[0, 8)`. For RL training use the vectorized `from playtrain.runtime import NodeVecEnv` (one process, N Node workers, zero-copy mmap batch), or the native C++ backend `NativeVecEnv` once built (see below).
+`obs` is a `(64, 64, 3)` uint8 array; `action` is a discrete int in `[0, 8)`. For RL training use the vectorized `from playtrain.runtime import PlayTrainVecEnv` (one process, N Node workers, zero-copy mmap batch), or the native C++ backend `NativeVecEnv` once built (see below).
 
 ## Common tasks
 
@@ -58,7 +58,7 @@ Run `just` with no args to see every recipe.
 
 ```text
 src/playtrain/
-  runtime/        headless env classes (NodeGymEnv, QuickJSEnv, NodeVecEnv, NativeVecEnv, …)
+  runtime/        headless env classes (PlayTrainEnv, QuickJSEnv, PlayTrainVecEnv, NativeVecEnv, …)
   gen/            generation catalog + ProcGen-style validation harness
 runtime/          the JS runtime (p5 / three.js workers + shims) that the Python envs spawn
 native/           C++/QuickJS native backend (embedded engine + rasterizer, envpool-class vec host)

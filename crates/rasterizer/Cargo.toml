@@ -1,8 +1,8 @@
 [package]
-name = "node-gym-rasterizer"
+name = "playtrain-rasterizer"
 version = "0.1.0"
 edition = "2021"
-description = "Tiny 2D rasterizer for the node-gym p5 shim primitive surface. Compiles to wasm32 (in-process, no system deps) and native. Port of runtime/p5/raster.mjs; differential-tested against it."
+description = "Tiny 2D rasterizer for the PlayTrain p5 shim primitive surface. Compiles to wasm32 (in-process, no system deps) and native. Port of runtime/p5/raster.mjs; differential-tested against it."
 
 [lib]
 # cdylib -> wasm32 (in-process rasterizer for the JS runtime)

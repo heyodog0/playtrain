@@ -1,9 +1,9 @@
 """Honest ALE comparison: envpool at its TRUE best (grayscale 84x84, ASYNC
-send/recv, fs=1, swept over thread/batch configs) vs node-gym's best VectorEnv.
+send/recv, fs=1, swept over thread/batch configs) vs PlayTrain's best VectorEnv.
 
 Caveats made explicit: envpool uses grayscale (ALE's standard + its fast path);
-node-gym outputs RGB (3 channels, i.e. MORE readback work) — so this is
-conservative for node-gym on the obs axis. Metric = environment frames/s (fs=1),
+PlayTrain outputs RGB (3 channels, i.e. MORE readback work) — so this is
+conservative for PlayTrain on the obs axis. Metric = environment frames/s (fs=1),
 112-core node.
 
   uv run --no-project --python 3.10 --with envpool --with "numpy<2" --with gym \
@@ -100,7 +100,7 @@ def main():
     ap.add_argument("--out", default=str(_ROOT / "outputs" / "compare" / "vs_ale_fair.json"))
     args = ap.parse_args()
     C = args.cores or int(os.environ.get("SLURM_CPUS_ON_NODE", 0)) or os.cpu_count()
-    print(f"cores={C}, 84x84 fs=1, env-frames/s. node-gym=RGB(best vec), "
+    print(f"cores={C}, 84x84 fs=1, env-frames/s. PlayTrain=RGB(best vec), "
           f"ALE=envpool grayscale (sync + async-best)\n", flush=True)
     print(f"{'game':<15}{'ng-vec(RGB)':>13}{'ale-sync':>11}{'ale-async':>11}{'cfg(T,B,M)':>16}{'ng/ale':>9}", flush=True)
     rows = []
@@ -116,9 +116,9 @@ def main():
         xs = [f(r) for r in rows if f(r) > 0]
         return float(np.exp(np.mean(np.log(xs)))) if xs else 0.0
     print("\n" + "-" * 70, flush=True)
-    print(f"  node-gym best-vec (RGB)      geomean: {geo(lambda r: r['ng_vec']):,.0f} frames/s", flush=True)
+    print(f"  PlayTrain best-vec (RGB)      geomean: {geo(lambda r: r['ng_vec']):,.0f} frames/s", flush=True)
     print(f"  ALE envpool best (gray,async) geomean: {geo(lambda r: r['ale_best']):,.0f} frames/s", flush=True)
-    print(f"  node-gym / ALE(best) geomean: {geo(lambda r: r['ng_vec']/r['ale_best']):.2f}x", flush=True)
+    print(f"  PlayTrain / ALE(best) geomean: {geo(lambda r: r['ng_vec']/r['ale_best']):.2f}x", flush=True)
 
     outp = Path(args.out); outp.parent.mkdir(parents=True, exist_ok=True)
     json.dump({"cores": C, "obs": OBS, "rows": rows}, open(outp, "w"), indent=2)

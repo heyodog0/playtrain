@@ -12,7 +12,7 @@ import { openSync, writeSync } from 'fs';
 import { VecGameEnv } from './vec-game-env.mjs';
 
 // Optional shared-memory fast path for the batched step payload.
-const MMAP_PATH = process.env.NODE_GYM_VEC_MMAP_PATH || null;
+const MMAP_PATH = process.env.PLAYTRAIN_VEC_MMAP_PATH || null;
 let MMAP_FD = null;
 if (MMAP_PATH) {
   try { MMAP_FD = openSync(MMAP_PATH, 'r+'); }

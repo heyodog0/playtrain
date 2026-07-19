@@ -7,15 +7,15 @@ see [`MULTI_ENV_RUNTIME.md`](MULTI_ENV_RUNTIME.md).
 
 ---
 
-## What's shipped: `NodeVecEnv`
+## What's shipped: `PlayTrainVecEnv`
 
-`python/node_gym/vec_env.py`. Subclasses `gymnasium.vector.VectorEnv`
+`python/playtrain/vec_env.py`. Subclasses `gymnasium.vector.VectorEnv`
 (Gymnasium 1.0 API). One Python process drives N Node workers directly
 via stdin/stdout pipes + per-worker mmap regions for obs.
 
 ```
 Python (main)                          Node worker 0
-  NodeVecEnv                           ┌──────────────────┐
+  PlayTrainVecEnv                           ┌──────────────────┐
     ├── pipe.stdin ─── action ────────►│ step game        │
     ├── pipe.stdout ◄── step header ───│                  │
     └── mmap region 0 ◄── obs write ───│                  │
@@ -41,23 +41,23 @@ Autoreset modes: `next_step` (Gymnasium 1.0 default), `same_step`
 
 ## What it replaced: `SubprocVecEnv` (SB3's pattern)
 
-Before `NodeVecEnv`, the recommended vectorisation was Stable-Baselines3's
-`SubprocVecEnv([NodeGymEnv(g) for g in games])`. We keep a hand-rolled
-equivalent at `python/node_gym/_subproc_vec_env.py` purely as a benchmark
+Before `PlayTrainVecEnv`, the recommended vectorisation was Stable-Baselines3's
+`SubprocVecEnv([PlayTrainEnv(g) for g in games])`. We keep a hand-rolled
+equivalent at `python/playtrain/_subproc_vec_env.py` purely as a benchmark
 A/B target — it's not for production use.
 
 ```
 Python (main)
   ├── SubprocVecEnv
-  │     ├── child Python 0 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 0
-  │     ├── child Python 1 ──pickle/pipe── NodeGymEnv ──mmap── Node worker 1
+  │     ├── child Python 0 ──pickle/pipe── PlayTrainEnv ──mmap── Node worker 0
+  │     ├── child Python 1 ──pickle/pipe── PlayTrainEnv ──mmap── Node worker 1
   │     └── (× N)
 ```
 
 **Per step, per env:**
 - Main Python sends the action over a `multiprocessing.Pipe` to a child
   Python process (pickle)
-- Child Python calls `NodeGymEnv.step()`, which talks to its Node worker
+- Child Python calls `PlayTrainEnv.step()`, which talks to its Node worker
   over stdin/stdout + mmap (this part is the same as today)
 - Child Python pickles the obs back to main Python over the pipe
 
@@ -66,7 +66,7 @@ Python (main)
    round-trip per step
 2. The N pipes between main Python and the children
 
-`NodeVecEnv` removes (1) and (2) entirely — main Python talks directly
+`PlayTrainVecEnv` removes (1) and (2) entirely — main Python talks directly
 to the Node workers — and keeps the per-worker mmap (which was already
 the fast path). The Node workers themselves are unchanged.
 
@@ -79,7 +79,7 @@ per training step instead of N, zero pickle, one V8 heap. On paper, the
 biggest possible win.
 
 It didn't ship. The trajectory is worth understanding because the
-investigation produced the data that informed `NodeVecEnv`'s shape and
+investigation produced the data that informed `PlayTrainVecEnv`'s shape and
 is still load-bearing for any future revival.
 
 ### Phase 0 — proposed, then rejected by data
@@ -102,16 +102,16 @@ to clearly beat `SubprocVecEnv`. Ruled out as a cause, in order:
 **~15% userspace lock contention** (`futex` on libcairo / libpixman /
 N-API binding mutexes) and **~85% non-syscall slowdown** — Workers on
 CPU but each canvas call running 3× slower. The 85% looked
-unfixable from node-gym's side (L3 eviction, TLB pressure, atomic-counter
+unfixable from PlayTrain's side (L3 eviction, TLB pressure, atomic-counter
 contention inside pixman's SIMD dispatch).
 
-**Decision at end of Phase 0**: ship `NodeVecEnv` (Architecture B in the
+**Decision at end of Phase 0**: ship `PlayTrainVecEnv` (Architecture B in the
 design doc). Keep the separate-process model that already scales linearly,
 remove only the Python-side pickle layer. That's what's in production now.
 
 ### Phase 0.5 — the diagnosis flipped
 
-After `NodeVecEnv` shipped, the investigation continued with
+After `PlayTrainVecEnv` shipped, the investigation continued with
 Skia configuration tuning (job `12895792`) and a striking result: a Skia
 `path2d_batch` variant that paints the same pixels but groups 50 separate
 `fillRect` calls into 1 `Path2D` + 1 `fill()` (~4 native calls per iter)
@@ -128,7 +128,7 @@ production rasterizer: `path2d_per_color` (50 rects, ~9 path-batched
 fills, multi-color preserved) hit 66% efficiency at N=16. A high-N sweep
 (job `12929486`) found the throughput peak at **N=24 with 203k iters/s
 aggregate** — 3.8× unbatched Cairo, decisively beating both the current
-`SubprocVecEnv` baseline and the projected `NodeVecEnv` ceiling.
+`SubprocVecEnv` baseline and the projected `PlayTrainVecEnv` ceiling.
 
 ### Where it stands
 
@@ -142,17 +142,17 @@ sketches a Phase 1 implementation plan:
    recommended: batch only consecutive same-color runs first.
 2. **`validate.py` determinism gate** — all 39 bundled games must still
    pass strict byte-equality across replays after the shim refactor.
-3. **Bench batched-shim under current `NodeVecEnv` / `SubprocVecEnv`** —
+3. **Bench batched-shim under current `PlayTrainVecEnv` / `SubprocVecEnv`** —
    the shim is independently useful even before Worker Threads land
    (~30% expected per-env speedup on draw-heavy games).
 4. **Worker Threads scaffold** — one Node process, N threads, one
    `SharedArrayBuffer`, `Atomics.wait`/`Atomics.notify` per step.
 5. **A/B vs analogen's PPO training loop** — acceptance bar 1.5×
-   training sps over current `NodeVecEnv` at N=16+.
+   training sps over current `PlayTrainVecEnv` at N=16+.
 
 **Why this hasn't shipped yet**: Phase 1a is a non-trivial refactor with
 a real correctness gate (Z-order preservation across all bundled games).
-The shipped `NodeVecEnv` already realised most of the practically
+The shipped `PlayTrainVecEnv` already realised most of the practically
 available win; Worker Threads is incremental on top, not a rescue. The
 right time to do it is when training throughput becomes a real
 bottleneck again, or when the framework throughput number ("203k iters/s
@@ -160,7 +160,7 @@ at N=24, 3.8× over unbatched Cairo") becomes load-bearing for the paper.
 
 ## Three-line summary
 
-- **`NodeVecEnv`** (shipped): N Node processes, 1 Python process, direct
+- **`PlayTrainVecEnv`** (shipped): N Node processes, 1 Python process, direct
   pipes, mmap obs. +14% trainer sps over the SB3 baseline.
 - **`SubprocVecEnv`** (the predecessor it replaced): N Node processes,
   N+1 Python processes, pickle through pipes — coordination overhead

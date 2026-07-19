@@ -38,14 +38,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.backend == "p5":
-        from playtrain.runtime import NodeGymEnv, list_available_games
-        env_factory = NodeGymEnv
+        from playtrain.runtime import PlayTrainEnv, list_available_games
+        env_factory = PlayTrainEnv
         games = [args.game] if args.game else list_available_games()
         n_actions = 8
         frames = args.frames if args.frames is not None else 500
     else:
-        from playtrain.runtime import NodeGymThreeEnv, list_available_threejs_games
-        env_factory = NodeGymThreeEnv
+        from playtrain.runtime import PlayTrainThreeEnv, list_available_threejs_games
+        env_factory = PlayTrainThreeEnv
         games = [args.game] if args.game else list_available_threejs_games()
         n_actions = 15
         frames = args.frames if args.frames is not None else 200

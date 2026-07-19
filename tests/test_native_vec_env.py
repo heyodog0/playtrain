@@ -191,19 +191,19 @@ def test_frame_skip_equals_k_single_steps():
 
 
 def test_frame_skip_matches_v8_production_path():
-    """Cross-engine: NativeVecEnv(frame_skip=K) must match NodeGymEnv
+    """Cross-engine: NativeVecEnv(frame_skip=K) must match PlayTrainEnv
     (node/V8 + wasm rasterizer, the path analogen models trained on) —
     same obs bytes, reward, and flags per decision."""
-    from playtrain.runtime.env import NodeGymEnv
+    from playtrain.runtime.env import PlayTrainEnv
     K, STEPS = 4, 60
     seed = 42
     vec = NativeVecEnv("analogen_cavequest_easy", num_envs=1, frame_skip=K,
                        max_steps=2000)
     try:
-        v8 = NodeGymEnv(game="analogen_cavequest_easy", frame_skip=K)
+        v8 = PlayTrainEnv(game="analogen_cavequest_easy", frame_skip=K)
     except Exception as e:  # node runtime unavailable
         vec.close()
-        pytest.skip(f"NodeGymEnv unavailable: {e}")
+        pytest.skip(f"PlayTrainEnv unavailable: {e}")
     try:
         vo = vec.reset(seeds=np.array([seed], dtype=np.int32)).copy()
         no, _ = v8.reset(seed=seed)

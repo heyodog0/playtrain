@@ -19,8 +19,8 @@ import {
   bgraBufferToRGB,
 } from './obs.mjs';
 
-const FAST_OBS = process.env.NODE_GYM_P5_FAST_OBS !== '0';
-const PROFILE = process.env.NODE_GYM_P5_PROFILE === '1';
+const FAST_OBS = process.env.PLAYTRAIN_P5_FAST_OBS !== '0';
+const PROFILE = process.env.PLAYTRAIN_P5_PROFILE === '1';
 
 // Per-phase wall-clock accumulators (BigInt nanoseconds). Only written when
 // PROFILE is on. Summary is printed on env.close() to stderr.

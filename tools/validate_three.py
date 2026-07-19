@@ -6,7 +6,7 @@ Usage:
     uv run python tools/validate_three.py --all
     uv run python tools/validate_three.py --game ball_roller --skip-throughput
 
-NOTE: NodeGymThreeEnv quantizes obs to 7 bits/channel by default to absorb
+NOTE: PlayTrainThreeEnv quantizes obs to 7 bits/channel by default to absorb
 Dawn/WebGPU rasterization jitter, so strict determinism (tolerance=0) is the
 default here. Use --legacy-tolerance to allow ≤1 LSB mean diff (relevant only
 if you instantiate the env with obs_quantize_bits=8).
@@ -18,7 +18,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from playtrain.runtime import NodeGymThreeEnv, list_available_threejs_games
+from playtrain.runtime import PlayTrainThreeEnv, list_available_threejs_games
 from playtrain.runtime.validate import run_validation
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "validation_three"
@@ -40,7 +40,7 @@ def main() -> int:
     args = parse_args()
     games = [args.game] if args.game else list_available_threejs_games()
     return run_validation(
-        env_factory=NodeGymThreeEnv,
+        env_factory=PlayTrainThreeEnv,
         games=games,
         expected_shape=(84, 84, 3),
         n_actions=15,

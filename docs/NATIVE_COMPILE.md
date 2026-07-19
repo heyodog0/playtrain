@@ -173,7 +173,7 @@ No hand-porting; adding coverage = extend the p5 table or the subset, re-run the
 
 - **Per-core:** parity with ProcGen (you *become* native for compiled games).
 - **Aggregate:** parity via sharding/independent processes (the coordinator, not the
-  substrate, was node-gym's ~79k cap; sharded node-gym already hit ~295k).
+  substrate, was PlayTrain's ~79k cap; sharded PlayTrain already hit ~295k).
 - **"Faster than ProcGen"** only via the *further* dirty-rectangle rasterizer edge
   (render only changed regions vs ProcGen's full-frame redraw) — a separate, stackable win.
 - **Cost:** a real multi-month compiler (P1–P4), narrower than Bun (a few dozen p5 calls,

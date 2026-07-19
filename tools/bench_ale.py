@@ -1,5 +1,5 @@
-"""node-gym (PlayTrain) vs ALE (via envpool) on the SAME Atari games at MATCHED
-resolution — both 84x84 RGB, frameskip=1, single frame (no stack). node-gym has
+"""PlayTrain (PlayTrain) vs ALE (via envpool) on the SAME Atari games at MATCHED
+resolution — both 84x84 RGB, frameskip=1, single frame (no stack). PlayTrain has
 JS reimplementations of these Atari games, so this is same-game, JS-on-QuickJS +
 native rasterizer vs the Stella 6502/TIA emulator behind envpool's C++ threadpool.
 
@@ -15,7 +15,7 @@ import numpy as np
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "python"))
 
-# node-gym game -> envpool Atari task id
+# PlayTrain game -> envpool Atari task id
 GAMES = {
     "pong": "Pong-v5", "breakout": "Breakout-v5", "seaquest": "Seaquest-v5",
     "space_invaders": "SpaceInvaders-v5", "qbert": "Qbert-v5",
@@ -81,9 +81,9 @@ def main():
         xs = [f(r) for r in rows if f(r) > 0]
         return float(np.exp(np.mean(np.log(xs)))) if xs else 0.0
     print("\n" + "-" * 66)
-    print(f"  raw per-core   node-gym/ALE geomean: {geo(lambda r: r['ng_single']/r['ale_single']):.2f}x")
-    print(f"  best VectorEnv node-gym/ALE geomean: {geo(lambda r: r['ng_vec']/r['ale_vec']):.2f}x")
-    print(f"  node-gym best-vec aggregate geomean: {geo(lambda r: r['ng_vec']):,.0f} sps/node")
+    print(f"  raw per-core   PlayTrain/ALE geomean: {geo(lambda r: r['ng_single']/r['ale_single']):.2f}x")
+    print(f"  best VectorEnv PlayTrain/ALE geomean: {geo(lambda r: r['ng_vec']/r['ale_vec']):.2f}x")
+    print(f"  PlayTrain best-vec aggregate geomean: {geo(lambda r: r['ng_vec']):,.0f} sps/node")
     print(f"  ALE(envpool) best-vec aggregate geomean: {geo(lambda r: r['ale_vec']):,.0f} sps/node")
 
     outp = Path(args.out); outp.parent.mkdir(parents=True, exist_ok=True)

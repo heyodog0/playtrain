@@ -9,7 +9,7 @@
  * Generic: the game module must export
  *     createInstance({ THREE, renderer, width, height }) ->
  *         { update(dt, action), resetGame(seed), getGameState(), getScene(), getCamera() }
- * Sized via NODE_GYM_THREE_OBS_SIZE = grid*tile (the atlas side).
+ * Sized via PLAYTRAIN_THREE_OBS_SIZE = grid*tile (the atlas side).
  */
 
 import { pathToFileURL } from 'url';
@@ -38,7 +38,7 @@ export class VecGameEnv {
     this.grid = Math.ceil(Math.sqrt(numEnvs));
     this.maxSteps = maxSteps;
     if (this.grid * tile !== WIDTH || WIDTH !== HEIGHT) {
-      throw new Error(`atlas ${this.grid * tile} != shim ${WIDTH}x${HEIGHT}; set NODE_GYM_THREE_OBS_SIZE=${this.grid * tile}`);
+      throw new Error(`atlas ${this.grid * tile} != shim ${WIDTH}x${HEIGHT}; set PLAYTRAIN_THREE_OBS_SIZE=${this.grid * tile}`);
     }
     this.steps = new Int32Array(numEnvs);
     this.lastScore = new Float64Array(numEnvs);

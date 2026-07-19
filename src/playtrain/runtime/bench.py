@@ -1,6 +1,6 @@
 """Library: per-env step throughput benchmark, parameterized over backend.
 
-Used by node-gym's tools/bench.py and by sibling repos that want to
+Used by PlayTrain's tools/bench.py and by sibling repos that want to
 benchmark their own catalogs.
 """
 

@@ -4,7 +4,7 @@
 // WHY: profiling the floor games (miner/chaser/analogen_nomemory_v1) showed 57-73% of
 // every frame is rasterization through node-canvas/Cairo — dominated by rect/ellipse/line.
 // The shim enumerates only ~10 primitives, so Cairo's general path machinery is overkill.
-// This owns exactly that surface. Enable with NODE_GYM_RASTERIZER=js.
+// This owns exactly that surface. Enable with PLAYTRAIN_RASTERIZER=js.
 //
 // v1 goal: CORRECT drop-in at the game's canvas resolution, with a fast axis-aligned rect
 // path (rect is 25-43% of floor-game frames). Rendering directly at obs resolution (the

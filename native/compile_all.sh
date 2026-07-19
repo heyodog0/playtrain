@@ -2,7 +2,7 @@
 # compile_all.sh — transpile + compile + gate a list of games; summarize which
 # reach TRANSPILE / COMPILE / GATE. Usage: ./compile_all.sh <game...>
 cd "$(dirname "$0")"
-RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
+RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 mkdir -p build/gen
 N=4000
 declare -a T_OK C_OK G_OK T_FAIL C_FAIL G_FAIL

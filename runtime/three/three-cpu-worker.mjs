@@ -1,9 +1,9 @@
 /**
  * three-cpu IPC worker. Renders a STANDARD three.js scene on the CPU (Projector
  * + rasterizer, no GPU). Same binary protocol as game-worker.mjs, so the
- * NodeGymThreeEnv client drives it unchanged.
+ * PlayTrainThreeEnv client drives it unchanged.
  *
- * Lives here (node-gym runtime) because it imports `three`; it dynamically
+ * Lives here (PlayTrain runtime) because it imports `three`; it dynamically
  * imports the dmlab level (which exports config + createCpuInstance) by path.
  */
 
@@ -19,7 +19,7 @@ const DMLAB_ACTION_MEANINGS = [
 
 function parseArgs() {
   const a = process.argv.slice(2);
-  const o = { gamePath: null, obsSize: Number(process.env.NODE_GYM_THREE_OBS_SIZE) || 84, maxSteps: 3600 };
+  const o = { gamePath: null, obsSize: Number(process.env.PLAYTRAIN_THREE_OBS_SIZE) || 84, maxSteps: 3600 };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--game') o.gamePath = a[++i];
     else if (a[i] === '--obs-size') o.obsSize = parseInt(a[++i], 10);
@@ -34,7 +34,7 @@ if (typeof level.createCpuInstance !== 'function') { process.stderr.write('level
 const renderer = new ThreeCPURenderer(opts.obsSize, opts.obsSize);
 const env = level.createCpuInstance({ THREE, renderer, width: opts.obsSize, height: opts.obsSize, maxSteps: opts.maxSteps });
 
-const MMAP_PATH = process.env.NODE_GYM_THREE_MMAP_PATH || null;
+const MMAP_PATH = process.env.PLAYTRAIN_THREE_MMAP_PATH || null;
 let MMAP_FD = null;
 if (MMAP_PATH) { try { MMAP_FD = openSync(MMAP_PATH, 'r+'); } catch (e) {} }
 const MMAP_SENTINEL = 0xFFFFFFFF, STEP_HEADER_SIZE = 16;

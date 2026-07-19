@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap script for node-gym: ensures uv, pnpm, and just are installed.
+# Bootstrap script for PlayTrain: ensures uv, pnpm, and just are installed.
 # Idempotent — skips any tool already on PATH.
 #
 # Usage:  ./bootstrap.sh
@@ -9,7 +9,7 @@ set -euo pipefail
 
 say() { printf "  \033[1;34m%s\033[0m %s\n" "$1" "$2"; }
 
-echo "==> node-gym bootstrap: ensuring uv, pnpm, just"
+echo "==> PlayTrain bootstrap: ensuring uv, pnpm, just"
 
 # ---- uv ---------------------------------------------------------------------
 if command -v uv >/dev/null 2>&1; then

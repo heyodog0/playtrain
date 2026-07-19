@@ -1,9 +1,9 @@
 """Minimalistic grouped-bar throughput plots from bench_compare.py JSONs.
 
 Generates:
-  outputs/compare/mac_atari.{png,pdf}        node-gym vs ALE   (Apple Silicon)
-  outputs/compare/sapphire_atari.{png,pdf}   node-gym vs ALE   (x86 Sapphire)
-  outputs/compare/sapphire_procgen.{png,pdf} node-gym vs procgen (x86 Sapphire)
+  outputs/compare/mac_atari.{png,pdf}        PlayTrain vs ALE   (Apple Silicon)
+  outputs/compare/sapphire_atari.{png,pdf}   PlayTrain vs ALE   (x86 Sapphire)
+  outputs/compare/sapphire_procgen.{png,pdf} PlayTrain vs procgen (x86 Sapphire)
 
 No title, no prose annotations; large labels.
 """

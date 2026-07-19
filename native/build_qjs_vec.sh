@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
+RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 [ -f "$RASTER_LIB" ] || (cd ../crates/rasterizer && cargo rustc --release --lib --crate-type staticlib)
 [ -f frozenmath/libfrozenmath.a ] || { echo "run build_qjs.sh first (frozenmath missing)"; exit 1; }
 [ -f qjs/bld/libqjs.a ] || { echo "run build_qjs.sh first (libqjs missing)"; exit 1; }

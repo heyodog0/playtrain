@@ -1,9 +1,9 @@
 """DirectVecEnv: one Python process drives N Node workers via direct pipes + mmap.
 
-Drop-in vectorised env for ``node-gym`` games. Eliminates the per-env
+Drop-in vectorised env for ``PlayTrain`` games. Eliminates the per-env
 Python child process and the obs pickle round-trip that
 ``stable_baselines3.common.vec_env.SubprocVecEnv`` pays. Each Node worker
-writes its obs to its own mmap region (same as today's NodeGymEnv); the
+writes its obs to its own mmap region (same as today's PlayTrainEnv); the
 parent reads obs zero-copy directly into a pre-allocated batch tensor.
 
 Subclasses ``gymnasium.vector.VectorEnv`` (Gymnasium 1.0 API). Supports all
@@ -43,11 +43,11 @@ _STEP_HEADER_STRUCT = struct.Struct(">fBBBBii")
 _STEP_HEADER_SIZE = 16
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT")
 _MMAP_SENTINEL = 0xFFFFFFFF
-_DEFAULT_N_ACTIONS = 8  # NodeGymEnv currently exposes Discrete(8) for all games
+_DEFAULT_N_ACTIONS = 8  # PlayTrainEnv currently exposes Discrete(8) for all games
 
 
 class _Worker:
-    """One Node subprocess + its mmap region. Internal helper for NodeVecEnv."""
+    """One Node subprocess + its mmap region. Internal helper for PlayTrainVecEnv."""
 
     __slots__ = ("idx", "game", "proc", "mmap", "mmap_file", "mmap_path",
                  "mmap_size", "stdout_fd", "_stderr_thread", "_stderr_buf",
@@ -64,7 +64,7 @@ class _Worker:
         single_frame_bytes = obs_size * obs_size * 3
         self.mmap_size = _STEP_HEADER_SIZE + single_frame_bytes
         self.mmap_file = tempfile.NamedTemporaryFile(
-            prefix=f"node_gym_p5_vec{idx}_{game}_", suffix=".bin", delete=False)
+            prefix=f"playtrain_p5_vec{idx}_{game}_", suffix=".bin", delete=False)
         self.mmap_path = Path(self.mmap_file.name)
         self.mmap_file.truncate(self.mmap_size)
         self.mmap_file.flush()
@@ -72,7 +72,7 @@ class _Worker:
                               access=mmap.ACCESS_READ)
 
         proc_env = os.environ.copy()
-        proc_env["NODE_GYM_P5_MMAP_PATH"] = str(self.mmap_path)
+        proc_env["PLAYTRAIN_P5_MMAP_PATH"] = str(self.mmap_path)
         cmd = [node_bin, *node_flags, str(worker_path),
                "--game", str(game_path),
                "--obs-mode", obs_mode,
@@ -92,7 +92,7 @@ class _Worker:
         self._stderr_lock = threading.Lock()
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr, daemon=True,
-            name=f"node-gym-stderr-{idx}-{game}")
+            name=f"PlayTrain-stderr-{idx}-{game}")
         self._stderr_thread.start()
 
     def _drain_stderr(self) -> None:
@@ -213,11 +213,11 @@ def _coerce_autoreset(mode) -> AutoresetMode:
         f"Expected AutoresetMode or one of {[m.value for m in AutoresetMode]}.")
 
 
-class NodeVecEnv(VectorEnv):
-    """Vectorised node-gym env. One Python process, N Node workers, mmap obs.
+class PlayTrainVecEnv(VectorEnv):
+    """Vectorised PlayTrain env. One Python process, N Node workers, mmap obs.
 
     Subclasses ``gymnasium.vector.VectorEnv`` (Gymnasium 1.0 API). Drop-in for
-    ``SubprocVecEnv([NodeGymEnv(g) for g in games])`` with significantly lower
+    ``SubprocVecEnv([PlayTrainEnv(g) for g in games])`` with significantly lower
     coordination overhead (FASRC bench: +71% aggregate sps for grid_v4 N=8;
     training-loop A/B: +13.8% trainer sps under realistic GPU-blocked timing).
 
@@ -227,8 +227,8 @@ class NodeVecEnv(VectorEnv):
         Game names to run, one per env. ``len(games) == num_envs``.
     games_dir, runtime_dir : path-like, optional
         Override the bundled game/runtime locations. Defaults follow the
-        ``NODE_GYM_GAMES_DIR`` / ``NODE_GYM_RUNTIME`` env vars (same as
-        ``NodeGymEnv``).
+        ``PLAYTRAIN_GAMES_DIR`` / ``PLAYTRAIN_RUNTIME`` env vars (same as
+        ``PlayTrainEnv``).
     obs_size : int
         Square observation side length (default 64).
     obs_mode : ``"rgb"`` or ``"grayscale"``
@@ -262,7 +262,7 @@ class NodeVecEnv(VectorEnv):
         the configs in the pool. Ignored when ``fixed_env_seed`` is set (that
         takes precedence) or when an explicit ``reset(seed=...)`` is given.
     n_actions : int
-        Size of the discrete action space. Defaults to 8 (matches NodeGymEnv).
+        Size of the discrete action space. Defaults to 8 (matches PlayTrainEnv).
 
     Notes
     -----
@@ -331,7 +331,7 @@ class NodeVecEnv(VectorEnv):
         self.observation_space = gym.vector.utils.batch_space(
             self.single_observation_space, self.num_envs)
 
-        node_flags = shlex.split(os.environ.get("NODE_GYM_NODE_FLAGS", ""))
+        node_flags = shlex.split(os.environ.get("PLAYTRAIN_NODE_FLAGS", ""))
         self.workers: list[_Worker] = []
         try:
             for idx, game in enumerate(self.games):

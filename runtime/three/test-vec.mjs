@@ -3,7 +3,7 @@
 
 const N = 4, TILE = 84;
 const grid = Math.ceil(Math.sqrt(N));
-process.env.NODE_GYM_THREE_OBS_SIZE = String(grid * TILE);
+process.env.PLAYTRAIN_THREE_OBS_SIZE = String(grid * TILE);
 
 const gamePath = process.argv[2];
 if (!gamePath) { console.error('usage: node test-vec.mjs <game.mjs>'); process.exit(1); }

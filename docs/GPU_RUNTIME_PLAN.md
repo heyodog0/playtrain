@@ -4,7 +4,7 @@
 
 `JAX_PORT_PLAN.md` formalizes paper 2: byte-exact cross-runtime equivalence via an owned rasterizer + JAX backend. That document is structured around a *property* (verifiability) and a *contribution* (shim-as-contract → cross-backend equivalence).
 
-This document is structured around a different question: **what does it take to get NAVIX-class GPU throughput for node-gym in practice, where do the bottlenecks actually live, and what is the longer-term destination beyond paper 2?** It is not a competing plan; it is the throughput-focused complement, with the V8-JIT direction (paper 3 territory) and an architectural restructuring proposal that paper 2 alone doesn't articulate.
+This document is structured around a different question: **what does it take to get NAVIX-class GPU throughput for PlayTrain in practice, where do the bottlenecks actually live, and what is the longer-term destination beyond paper 2?** It is not a competing plan; it is the throughput-focused complement, with the V8-JIT direction (paper 3 territory) and an architectural restructuring proposal that paper 2 alone doesn't articulate.
 
 ## Bottleneck reality
 
@@ -25,7 +25,7 @@ NAVIX[^navix] (the JAX port of MiniGrid) reports ~200,000× over Python-CPU Mini
 - **~100× per-env** from jit + pure-functional state + tile-atlas obs replacing rasterization
 - **~2000× from vmap width** at N=2048 on an A100 — hardware parallelism, not framework cleverness
 
-For node-gym to land in the NAVIX/Craftax band:
+For PlayTrain to land in the NAVIX/Craftax band:
 
 - Per-env factor requires env-on-GPU (game logic + obs computation both lifted to tensor ops). The ~100× ceiling holds whether the framework is JAX or PyTorch-with-`torch.compile`.
 - Vmap-width factor is hardware free *once the env is on GPU* and the compiled graph permits batching over N envs.
@@ -84,7 +84,7 @@ This fast path requires the env's grid state to be reachable from the GPU side. 
 | Approach | Per-game edits | Framework work | Magic level |
 |---|---|---|---|
 | Full metadata header (`tileGrid: { cellSize, dims, tiles, agentSprites, hudArea }`) | ~30-60 lines | low | explicit |
-| **One-line declaration** (`export const NODE_GYM_TILEGRID = { cellSize, dims }`) | **1 line** | low-medium | medium |
+| **One-line declaration** (`export const PLAYTRAIN_TILEGRID = { cellSize, dims }`) | **1 line** | low-medium | medium |
 | Filename convention (`*_grid_*.js` triggers detection) | 0 | medium | high |
 | Shim pattern recognition (auto-detect from draw stream) | 0 | high | very high |
 
@@ -120,7 +120,7 @@ General JS-to-GPU is an open research problem. The shim-bounded subset excludes 
 | Variable-shape collections | Shape oracle bounds them statically |
 | Reflection / `Proxy` | Not used |
 
-The shim profile is not just an API restriction — it is a **GPU-compilability contract**. Every restriction the shim adds expands the set of JS programs the JIT can lower efficiently. This co-evolution between the runtime and the games people write is the key architectural insight that makes the V8-JIT direction plausible specifically for node-gym, even though it remains hard for arbitrary JS.
+The shim profile is not just an API restriction — it is a **GPU-compilability contract**. Every restriction the shim adds expands the set of JS programs the JIT can lower efficiently. This co-evolution between the runtime and the games people write is the key architectural insight that makes the V8-JIT direction plausible specifically for PlayTrain, even though it remains hard for arbitrary JS.
 
 ### GPU code quality
 
@@ -132,7 +132,7 @@ A real concern: naive PTX emission from bytecode produces correct-but-slow GPU c
 - **Occupancy / register pressure**: too many JS locals → too many GPU registers → fewer concurrent warps
 - **Vmap-style parallelism**: each thread = one env (the N envs are the parallelism axis), not one statement within an env
 
-These are real engineering problems, not impossibilities. The shim contract has to evolve to keep games inside the patterns the compiler handles well. JAX gets this for free because authors are forced to write in JAX's functional, scan-friendly idiom. node-gym's JIT gets it by tightening the shim profile over time toward JIT-friendly JS.
+These are real engineering problems, not impossibilities. The shim contract has to evolve to keep games inside the patterns the compiler handles well. JAX gets this for free because authors are forced to write in JAX's functional, scan-friendly idiom. PlayTrain's JIT gets it by tightening the shim profile over time toward JIT-friendly JS.
 
 ### Staged research path (each stage publishable)
 
@@ -148,10 +148,10 @@ Realistic timeline for a working prototype: **~12-18 months** of focused researc
 
 ## Architectural restructuring proposal
 
-The current node-gym directory layout conflates concerns that will only get more entangled as backends multiply. A cleaner shape:
+The current PlayTrain directory layout conflates concerns that will only get more entangled as backends multiply. A cleaner shape:
 
 ```
-node-gym/
+PlayTrain/
 ├── profile/                  # the spec — what JS can do
 │   ├── api.mjs               # enumerated p5 API surface (the contract)
 │   ├── semantics.md          # what each call means deterministically
@@ -178,7 +178,7 @@ Key moves:
 
 2. **IR as first-class.** The typed, shape-bounded representation is what every non-Cairo backend consumes. Making it primary now means each new backend is just "IR → my emission" rather than a fresh rewrite from JS.
 
-3. **Backends as plugins.** Selectable at runtime via `NODE_GYM_BACKEND=...`. Differential test harness verifies they agree. Adding the JIT-PTX backend in 2027 doesn't require restructuring then; the slot already exists.
+3. **Backends as plugins.** Selectable at runtime via `PLAYTRAIN_BACKEND=...`. Differential test harness verifies they agree. Adding the JIT-PTX backend in 2027 doesn't require restructuring then; the slot already exists.
 
 4. **Policy runtimes as a sibling concern.** Decouple "what runs the env" from "what runs the policy." Today's coupling is why "JAX env requires JAX policy" feels like an architectural commitment; it should be a free combinatorial choice. Same env backend should work with torch IMPALA-CNN, JAX/Flax IMPALA-CNN, or a future JIT-native policy.
 

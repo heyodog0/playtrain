@@ -16,7 +16,7 @@ if (_IS_NODE) { _IS_LE = (await import('os')).endianness() === 'LE'; }
 // the browser uses the pure-JS rasterizer. node-canvas (cairo) and the wasm loader are imported
 // LAZILY — so the browser never touches them, and the default Node path no longer loads
 // node-canvas at all (a step toward dropping that dependency).
-let _RASTERIZER = _env('NODE_GYM_RASTERIZER') || (_IS_NODE ? 'wasm' : 'js');
+let _RASTERIZER = _env('PLAYTRAIN_RASTERIZER') || (_IS_NODE ? 'wasm' : 'js');
 let createNodeCanvas;
 if (_RASTERIZER === 'cairo') {
   createNodeCanvas = (await import('canvas')).createCanvas;
@@ -34,8 +34,8 @@ const _OWN_RASTER = _RASTERIZER === 'js' || _RASTERIZER === 'wasm';
 // game's logical canvas size (e.g. 400), then skip the downsample — 39x fewer pixels, the bulk
 // of the speedup. Precedence: explicit env override > programmatic (game-env sets it to the obs
 // size via setRasterRes) > null (full logical-res render, e.g. browser / full-frame capture).
-let _RASTER_RES = (_OWN_RASTER && _env('NODE_GYM_RASTER_RES'))
-  ? parseInt(_env('NODE_GYM_RASTER_RES'), 10) : null;
+let _RASTER_RES = (_OWN_RASTER && _env('PLAYTRAIN_RASTER_RES'))
+  ? parseInt(_env('PLAYTRAIN_RASTER_RES'), 10) : null;
 const _RASTER_RES_FROM_ENV = _RASTER_RES !== null;
 // Called by game-env BEFORE the game's setup()/createCanvas with the observation size, so the
 // agent path renders directly at obs resolution by default. Env var still wins if set.
@@ -360,7 +360,7 @@ function getCanvasBuffer() {
 // unpremul + RGBA repack, and skips the JS resample loop entirely.
 function getObsBuffer(obsW, obsH) {
   if (!_IS_LE) {
-    throw new Error('getObsBuffer assumes little-endian (BGRA byte order from Cairo). Set NODE_GYM_P5_FAST_OBS=0 on big-endian hosts.');
+    throw new Error('getObsBuffer assumes little-endian (BGRA byte order from Cairo). Set PLAYTRAIN_P5_FAST_OBS=0 on big-endian hosts.');
   }
   // js backend: when we already rasterized directly at the obs resolution, the main canvas
   // IS the obs buffer — skip the offscreen canvas + drawImage downsample entirely.

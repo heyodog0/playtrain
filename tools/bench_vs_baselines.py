@@ -1,10 +1,10 @@
-"""Definitive, fair apples-to-apples: node-gym (PlayTrain) vs ProcGen on the SAME
-games (node-gym's bigfish/coinrun/... ARE JS reimplementations of these ProcGen
+"""Definitive, fair apples-to-apples: PlayTrain (PlayTrain) vs ProcGen on the SAME
+games (PlayTrain's bigfish/coinrun/... ARE JS reimplementations of these ProcGen
 games), same 64x64 RGB, frameskip=1, same node.
 
 Each system gets its BEST config:
   * raw per-core     — single env (num=1), the fundamental env cost
-  * best VectorEnv   — the in-process C++ vec each ships. node-gym NativeVecEnv
+  * best VectorEnv   — the in-process C++ vec each ships. PlayTrain NativeVecEnv
                        (threads=cores); ProcGen ProcgenGym3Env swept over
                        num_threads (its threadpool peaks ~16 and DEGRADES past it,
                        so we take the max — giving ProcGen its fair best).
@@ -74,7 +74,7 @@ def main():
     for g in args.games:
         ng1 = ng_run(g, 1, 1, max(2000, args.steps))
         pg1 = pg_run(g, 1, 1, max(2000, args.steps))
-        ngV = ng_run(g, 2 * C, C, args.steps)                 # node-gym best vec
+        ngV = ng_run(g, 2 * C, C, args.steps)                 # PlayTrain best vec
         pgV, pg_best_nt = 0.0, 0
         for nt in PG_NT:                                       # procgen best vec
             v = pg_run(g, 2 * C, nt, args.steps)
@@ -89,11 +89,11 @@ def main():
         xs = [f(r) for r in rows if f(r) > 0]
         return float(np.exp(np.mean(np.log(xs)))) if xs else 0.0
     print("\n" + "-" * 72)
-    print(f"  raw per-core   node-gym/procgen geomean: {geo(lambda r: r['ng_single']/r['pg_single']):.2f}x")
-    print(f"  best VectorEnv node-gym/procgen geomean: {geo(lambda r: r['ng_vec']/r['pg_vec']):.2f}x")
-    print(f"  node-gym best-vec aggregate  geomean: {geo(lambda r: r['ng_vec']):,.0f} sps/node")
+    print(f"  raw per-core   PlayTrain/procgen geomean: {geo(lambda r: r['ng_single']/r['pg_single']):.2f}x")
+    print(f"  best VectorEnv PlayTrain/procgen geomean: {geo(lambda r: r['ng_vec']/r['pg_vec']):.2f}x")
+    print(f"  PlayTrain best-vec aggregate  geomean: {geo(lambda r: r['ng_vec']):,.0f} sps/node")
     print(f"  procgen  best-vec aggregate  geomean: {geo(lambda r: r['pg_vec']):,.0f} sps/node")
-    print(f"  node-gym ceiling (single x {C}) geomean: {geo(lambda r: r['ng_single']*C):,.0f} sps/node")
+    print(f"  PlayTrain ceiling (single x {C}) geomean: {geo(lambda r: r['ng_single']*C):,.0f} sps/node")
     print(f"  procgen  ceiling (single x {C}) geomean: {geo(lambda r: r['pg_single']*C):,.0f} sps/node")
 
     outp = Path(args.out); outp.parent.mkdir(parents=True, exist_ok=True)

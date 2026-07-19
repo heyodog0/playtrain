@@ -1,7 +1,7 @@
-"""Throughput benchmark for Three.js (v2) games via NodeGymThreeEnv.
+"""Throughput benchmark for Three.js (v2) games via PlayTrainThreeEnv.
 
 Replaces the older docs/benchmarks/three-fps-bench{,-single}.mjs which
-duplicated node-gym's Three.js runtime. This goes through the canonical
+duplicated PlayTrain's Three.js runtime. This goes through the canonical
 Python env, so the FPS measured here is what Python+IPC actually delivers
 (the relevant number for SB3 PPO etc.).
 
@@ -50,7 +50,7 @@ def main() -> None:
     args = parser.parse_args()
 
     games = [args.game] if args.game else list_available_threejs_games()
-    print(f"\nThree.js v2 throughput bench (via NodeGymThreeEnv)")
+    print(f"\nThree.js v2 throughput bench (via PlayTrainThreeEnv)")
     print(f"  {len(games)} games × {args.frames} frames each ({args.warmup} warmup), obs {args.obs_size}×{args.obs_size}")
     print(f"  System: {platform.system()} {platform.machine()}, Python {platform.python_version()}\n")
 

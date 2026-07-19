@@ -8,7 +8,7 @@ export const config = {
   matcher: '/:path*',
 };
 
-const REALM = 'node-gym playtest';
+const REALM = 'PlayTrain playtest';
 const USERNAME = 'playtest';
 
 export default function middleware(req) {

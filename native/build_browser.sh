@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 command -v emcc >/dev/null || { echo "emcc not found — run: source ~/emsdk/emsdk_env.sh"; exit 1; }
 
 # 1) rasterizer for emscripten (staticlib archive emcc can link)
-RAST=../crates/rasterizer/target/wasm32-unknown-emscripten/release/libnode_gym_rasterizer.a
+RAST=../crates/rasterizer/target/wasm32-unknown-emscripten/release/libplaytrain_rasterizer.a
 if [ ! -f "$RAST" ]; then
   rustup target add wasm32-unknown-emscripten
   ( cd ../crates/rasterizer && cargo rustc --release --target wasm32-unknown-emscripten --lib --crate-type staticlib )

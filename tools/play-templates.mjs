@@ -2,7 +2,7 @@
 // static-site builder (tools/build-pages.mjs). Keeping both in one file
 // guarantees `just play` and the deployed Vercel site render identically.
 //
-// Non-Matter p5 games render through node-gym's OWN rasterizer (runtime/p5/raster.mjs),
+// Non-Matter p5 games render through PlayTrain's OWN rasterizer (runtime/p5/raster.mjs),
 // the exact code the agent trains on — inlined into the page (self-contained, no module
 // serving needed). Matter.js games keep the legacy p5-from-CDN path, untouched.
 
@@ -60,7 +60,7 @@ export function pickerPage(games, autoOpen, { gameHref } = {}) {
     ? `<script>window.location.href = ${JSON.stringify(hrefFor(autoOpen))};</script>`
     : '';
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>node-gym tester</title>
+<html><head><meta charset="utf-8"><title>PlayTrain tester</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <style>${baseStyle}
   *, *::before, *::after { box-sizing: border-box; }
@@ -74,7 +74,7 @@ export function pickerPage(games, autoOpen, { gameHref } = {}) {
   li { padding: 0; }
 </style></head><body>
 <main>
-  <h1>node-gym tester</h1>
+  <h1>PlayTrain tester</h1>
   <p class="sub">${games.length} bundled games. Pick one to play.</p>
   <ul>
       ${items}
@@ -84,21 +84,21 @@ ${autoOpenScript}
 </body></html>`;
 }
 
-// Non-Matter games: rendered live by node-gym's own rasterizer (the agent's renderer).
+// Non-Matter games: rendered live by PlayTrain's own rasterizer (the agent's renderer).
 function rasterizerPage(name, source, { homeHref = '/' } = {}) {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${name} — node-gym tester</title>
+<html><head><meta charset="utf-8"><title>${name} — PlayTrain tester</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <style>${playStyle}</style></head><body>
 <div id="topbar"><a href="${homeHref}">&larr; all games</a><strong>${name}</strong></div>
 <div id="state"></div>
 <div id="stage">
-  <div class="col"><div class="label">node-gym rasterizer (what the agent renders)</div><canvas id="view"></canvas></div>
+  <div class="col"><div class="label">PlayTrain rasterizer (what the agent renders)</div><canvas id="view"></canvas></div>
   <div class="col"><div class="label">agent obs (64×64, what the policy sees)</div>
     <canvas id="obs-preview" width="64" height="64" style="width: 256px; height: 256px;"></canvas></div>
 </div>
 <div id="reset-row"><button id="reset">Reset</button></div>
-<div id="help">click the page, then play &middot; rendered by node-gym's rasterizer (60fps)</div>
+<div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (60fps)</div>
 
 <!-- game source kept inert; the module boot evals it AFTER installing the shim globals -->
 <script type="text/plain" id="game-src">${source}</script>
@@ -161,7 +161,7 @@ ${browserShimBundle()}
 // Matter.js games: legacy path (real p5 + matter.js from CDN), intentionally untouched.
 function legacyP5Page(name, source, { homeHref = '/' } = {}) {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${name} — node-gym tester</title>
+<html><head><meta charset="utf-8"><title>${name} — PlayTrain tester</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>

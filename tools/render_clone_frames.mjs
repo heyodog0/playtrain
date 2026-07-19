@@ -1,4 +1,4 @@
-// Render sampled frames from a generated p5 game via node-gym's GameEnv.
+// Render sampled frames from a generated p5 game via PlayTrain's GameEnv.
 // Invoked by tools/refine_vs_rom.py. Reads a JSON config:
 //   { gamePath, outDir, seed, res, ticks:[int], actions:[int] }
 // Writes <outDir>/clone_f<tick>.png for each tick.
@@ -6,11 +6,11 @@ import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
 import { readFileSync, writeFileSync } from 'fs';
 
-const here = dirname(fileURLToPath(import.meta.url));          // gym-gen/tools
-const NODE_GYM = resolve(here, '..', '..', 'node-gym');        // sibling repo
+const here = dirname(fileURLToPath(import.meta.url));          // PlayTrain/tools
+const REPO_ROOT = resolve(here, '..');                        // PlayTrain root
 
-const { GameEnv } = await import(join(NODE_GYM, 'runtime/p5/game-env.mjs'));
-const { createCanvas } = await import(join(NODE_GYM, 'node_modules/canvas/index.js'));
+const { GameEnv } = await import(join(REPO_ROOT, 'runtime/p5/game-env.mjs'));
+const { createCanvas } = await import(join(REPO_ROOT, 'node_modules/canvas/index.js'));
 
 const cfg = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const RES = cfg.res || 400;

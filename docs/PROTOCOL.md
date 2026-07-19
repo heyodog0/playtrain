@@ -1,6 +1,6 @@
 # Binary IPC protocol
 
-`game-worker.mjs` and `NodeGymEnv` communicate over the worker's `stdin`/`stdout` using a length-prefixed binary frame format.
+`game-worker.mjs` and `PlayTrainEnv` communicate over the worker's `stdin`/`stdout` using a length-prefixed binary frame format.
 
 ## Frame layout
 
@@ -28,7 +28,7 @@ Flags:
 - `--game <path>` — absolute path to the JS game file. Required.
 - `--obs-mode rgb|gray` — observation channels. Default `rgb`.
 - `--obs-size N` — square observation side length. Default 64.
-- `--matter` — load Matter.js into the game's VM context. Auto-detected by `NodeGymEnv` from game source.
+- `--matter` — load Matter.js into the game's VM context. Auto-detected by `PlayTrainEnv` from game source.
 
 ## Commands (Python → worker)
 

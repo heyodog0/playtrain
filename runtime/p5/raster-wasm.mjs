@@ -1,7 +1,7 @@
 // raster-wasm.mjs — JS glue for the Rust→WASM rasterizer (crates/rasterizer, built to
 // rasterizer.wasm). Exposes a node-canvas-compatible createCanvas so it drops into the shim
 // exactly like the pure-JS raster.mjs. All interop is scalar numeric; pixels live in WASM
-// linear memory and are copied out only at readback. Enable with NODE_GYM_RASTERIZER=wasm.
+// linear memory and are copied out only at readback. Enable with PLAYTRAIN_RASTERIZER=wasm.
 
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';

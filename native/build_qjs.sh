@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
+RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 [ -f "$RASTER_LIB" ] || (cd ../crates/rasterizer && cargo rustc --release --lib --crate-type staticlib)
 
 # frozen transcendentals (vendored fdlibm/openlibm) — same source native + wasm so

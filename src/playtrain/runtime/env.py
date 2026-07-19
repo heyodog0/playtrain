@@ -27,7 +27,7 @@ DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[3] / "runtime"
 def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
     if explicit is not None:
         return Path(explicit).resolve()
-    env_var = os.environ.get("NODE_GYM_RUNTIME")
+    env_var = os.environ.get("PLAYTRAIN_RUNTIME")
     if env_var:
         return Path(env_var).resolve()
     return DEFAULT_RUNTIME_DIR
@@ -36,13 +36,13 @@ def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
 def _resolve_games_dir(explicit: str | Path | None) -> Path:
     if explicit is not None:
         return Path(explicit).resolve()
-    env_var = os.environ.get("NODE_GYM_GAMES_DIR")
+    env_var = os.environ.get("PLAYTRAIN_GAMES_DIR")
     if env_var:
         return Path(env_var).resolve()
     return DEFAULT_GAMES_DIR
 
 
-class NodeGymEnv(gym.Env[np.ndarray, int]):
+class PlayTrainEnv(gym.Env[np.ndarray, int]):
     """Gymnasium env that runs a JS game headlessly in a Node.js subprocess.
 
     Each instance spawns one ``node`` worker that loads the target JS game,
@@ -55,10 +55,10 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         Game name. Resolved as ``{games_dir}/{game}.js``.
     games_dir:
         Directory containing JS game files. Defaults to bundled examples,
-        overridable via the ``NODE_GYM_GAMES_DIR`` env var.
+        overridable via the ``PLAYTRAIN_GAMES_DIR`` env var.
     runtime_dir:
         Directory containing ``game-worker.mjs`` and ``p5/`` shim. Defaults
-        to the bundled ``runtime/``, overridable via ``NODE_GYM_RUNTIME``.
+        to the bundled ``runtime/``, overridable via ``PLAYTRAIN_RUNTIME``.
     obs_size:
         Side length of the square observation. Default 64.
     obs_mode:
@@ -114,7 +114,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         if not self._worker_path.exists():
             raise FileNotFoundError(
                 f"Runtime worker not found: {self._worker_path}. "
-                "Set NODE_GYM_RUNTIME or pass runtime_dir=."
+                "Set PLAYTRAIN_RUNTIME or pass runtime_dir=."
             )
 
         if require_matter is None:
@@ -140,7 +140,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
 
         # mmap-shared obs file (same pattern as the Three.js env). Sized for
         # 16-byte step header + max possible single-frame obs (RGB).
-        self._use_mmap = os.environ.get("NODE_GYM_P5_NO_MMAP") != "1"
+        self._use_mmap = os.environ.get("PLAYTRAIN_P5_NO_MMAP") != "1"
         self._mmap = None
         self._mmap_file = None
         self._mmap_path = None
@@ -148,7 +148,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
         self._mmap_size = self._STEP_HEADER_SIZE + single_frame_bytes
         if self._use_mmap:
             self._mmap_file = tempfile.NamedTemporaryFile(
-                prefix=f"node_gym_p5_{game}_",
+                prefix=f"playtrain_p5_{game}_",
                 suffix=".bin",
                 delete=False,
             )
@@ -161,10 +161,10 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
                 access=mmap.ACCESS_READ,
             )
 
-        # NODE_GYM_NODE_FLAGS lets callers inject `node` flags (e.g.
+        # PLAYTRAIN_NODE_FLAGS lets callers inject `node` flags (e.g.
         # "--cpu-prof --cpu-prof-dir=/abs/path"). Splice between binary
         # and script so the flags apply to the worker process itself.
-        node_flags = shlex.split(os.environ.get("NODE_GYM_NODE_FLAGS", ""))
+        node_flags = shlex.split(os.environ.get("PLAYTRAIN_NODE_FLAGS", ""))
         cmd = [
             node_bin,
             *node_flags,
@@ -179,7 +179,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
 
         proc_env = os.environ.copy()
         if self._mmap_path is not None:
-            proc_env["NODE_GYM_P5_MMAP_PATH"] = str(self._mmap_path)
+            proc_env["PLAYTRAIN_P5_MMAP_PATH"] = str(self._mmap_path)
 
         self._proc = subprocess.Popen(
             cmd,
@@ -232,7 +232,7 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
 
     def _request(self, payload: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
         if self._closed:
-            raise RuntimeError("NodeGymEnv is closed")
+            raise RuntimeError("PlayTrainEnv is closed")
         if self._proc.stdin is None:
             raise RuntimeError("Game worker stdin is unavailable")
 
@@ -338,8 +338,8 @@ class NodeGymEnv(gym.Env[np.ndarray, int]):
                 self._proc.kill()
                 self._proc.wait(timeout=5)
         # If the worker printed a profile summary to stderr (only when
-        # NODE_GYM_P5_PROFILE=1), surface it so the caller can see it.
-        if os.environ.get("NODE_GYM_P5_PROFILE") == "1" and self._proc.stderr is not None:
+        # PLAYTRAIN_P5_PROFILE=1), surface it so the caller can see it.
+        if os.environ.get("PLAYTRAIN_P5_PROFILE") == "1" and self._proc.stderr is not None:
             try:
                 tail = self._proc.stderr.read()
                 if tail:

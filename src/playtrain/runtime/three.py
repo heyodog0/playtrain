@@ -1,6 +1,6 @@
-"""Three.js (WebGPU/Dawn) Gymnasium env for node-gym.
+"""Three.js (WebGPU/Dawn) Gymnasium env for PlayTrain.
 
-Parallel to ``NodeGymEnv`` (the p5 path) but spawns ``runtime/three/game-worker.mjs``
+Parallel to ``PlayTrainEnv`` (the p5 path) but spawns ``runtime/three/game-worker.mjs``
 which renders the game via Three.js + Dawn WebGPU instead of p5/node-canvas.
 
 Same binary IPC protocol; same reset/step contract; different action space
@@ -33,7 +33,7 @@ DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[3] / "runtime"
 def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
     if explicit is not None:
         return Path(explicit).resolve()
-    env_var = os.environ.get("NODE_GYM_RUNTIME")
+    env_var = os.environ.get("PLAYTRAIN_RUNTIME")
     if env_var:
         return Path(env_var).resolve()
     return DEFAULT_RUNTIME_DIR
@@ -42,13 +42,13 @@ def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
 def _resolve_games_dir(explicit: str | Path | None) -> Path:
     if explicit is not None:
         return Path(explicit).resolve()
-    env_var = os.environ.get("NODE_GYM_THREEJS_GAMES_DIR")
+    env_var = os.environ.get("PLAYTRAIN_THREEJS_GAMES_DIR")
     if env_var:
         return Path(env_var).resolve()
     return DEFAULT_THREEJS_GAMES_DIR
 
 
-class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
+class PlayTrainThreeEnv(gym.Env[np.ndarray, int]):
     """Gymnasium env that runs a Three.js (WebGPU/Dawn) game in a Node subprocess.
 
     Each instance spawns one ``node`` worker that loads the target JS game
@@ -62,10 +62,10 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         Game name. Resolved as ``{games_dir}/{game}.js``.
     games_dir:
         Directory containing JS game files. Defaults to bundled examples,
-        overridable via the ``NODE_GYM_THREEJS_GAMES_DIR`` env var.
+        overridable via the ``PLAYTRAIN_THREEJS_GAMES_DIR`` env var.
     runtime_dir:
         Directory containing ``three/game-worker.mjs``. Defaults to the
-        bundled ``runtime/``, overridable via ``NODE_GYM_RUNTIME``.
+        bundled ``runtime/``, overridable via ``PLAYTRAIN_RUNTIME``.
     obs_size:
         Side length of the square observation. Default 84 (matches the
         bench/tester historic default; the v2 contract obs is 64).
@@ -148,7 +148,7 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         if not self._worker_path.exists():
             raise FileNotFoundError(
                 f"Three.js worker not found: {self._worker_path}. "
-                "Set NODE_GYM_RUNTIME or pass runtime_dir=."
+                "Set PLAYTRAIN_RUNTIME or pass runtime_dir=."
             )
 
         # Discrete(15) by default — see THREE_GAME_TEMPLATE.md — or a caller-
@@ -162,7 +162,7 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
 
         # mmap-based obs transfer can be disabled via env var for
         # benchmarking the slower pipe-only path.
-        self._use_mmap = os.environ.get("NODE_GYM_THREE_NO_MMAP") != "1"
+        self._use_mmap = os.environ.get("PLAYTRAIN_THREE_NO_MMAP") != "1"
 
         # Create a mmap'd file for zero-copy obs transfer. Sized for
         # 16-byte step header + obs bytes (RGB uint8). Both processes open
@@ -174,7 +174,7 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         self._mmap_path = None
         if self._use_mmap:
             self._mmap_file = tempfile.NamedTemporaryFile(
-                prefix=f"node_gym_three_{game}_",
+                prefix=f"playtrain_three_{game}_",
                 suffix=".bin",
                 delete=False,
             )
@@ -199,12 +199,12 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
         # Pass the obs size and mmap path through the env so the worker
         # picks them up at startup.
         env = os.environ.copy()
-        env["NODE_GYM_THREE_OBS_SIZE"] = str(obs_size)
+        env["PLAYTRAIN_THREE_OBS_SIZE"] = str(obs_size)
         if self._async_obs:
-            env["NODE_GYM_ASYNC_OBS"] = "1"
+            env["PLAYTRAIN_ASYNC_OBS"] = "1"
         if self._mmap_path is not None:
-            env["NODE_GYM_THREE_MMAP_PATH"] = str(self._mmap_path)
-        # NODE_GYM_THREE_FORCE_JSON is honored by the worker (bench helper).
+            env["PLAYTRAIN_THREE_MMAP_PATH"] = str(self._mmap_path)
+        # PLAYTRAIN_THREE_FORCE_JSON is honored by the worker (bench helper).
         # We pass it through if set on the parent.
 
         cmd = [
@@ -263,7 +263,7 @@ class NodeGymThreeEnv(gym.Env[np.ndarray, int]):
 
     def _request(self, payload: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
         if self._closed:
-            raise RuntimeError("NodeGymThreeEnv is closed")
+            raise RuntimeError("PlayTrainThreeEnv is closed")
         if self._proc.stdin is None:
             raise RuntimeError("Three.js worker stdin is unavailable")
 

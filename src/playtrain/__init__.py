@@ -2,7 +2,7 @@
 
 Subpackages:
   - ``playtrain.runtime`` — headless Node.js / QuickJS game environments for
-    Gymnasium (NodeGymEnv, QuickJSEnv, NodeVecEnv, NativeVecEnv, …). Runs JS
+    Gymnasium (PlayTrainEnv, QuickJSEnv, PlayTrainVecEnv, NativeVecEnv, …). Runs JS
     games (p5.js, Matter.js, Three.js) as RL envs without a browser.
   - ``playtrain.gen`` — LLM (Gemini) game generation + the ProcGen-style
     validation harness that gates which generated games ship.

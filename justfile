@@ -36,7 +36,7 @@ test-one name:
 
 # Quick smoke: spawn a worker on flappy_bird, run 100 steps, print reward.
 smoke:
-    uv run python -c "from playtrain.runtime import NodeGymEnv; e = NodeGymEnv(game='flappy_bird'); e.reset(seed=0); r = sum(e.step(e.action_space.sample())[1] for _ in range(100)); print(f'reward over 100 steps: {r:.2f}'); e.close()"
+    uv run python -c "from playtrain.runtime import PlayTrainEnv; e = PlayTrainEnv(game='flappy_bird'); e.reset(seed=0); r = sum(e.step(e.action_space.sample())[1] for _ in range(100)); print(f'reward over 100 steps: {r:.2f}'); e.close()"
 
 # 5-check validation suite over all bundled p5 games (~1 min).
 validate:

@@ -13,7 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from playtrain.runtime import NodeGymEnv, list_available_games
+from playtrain.runtime import PlayTrainEnv, list_available_games
 from playtrain.runtime.bench import run_bench
 
 from playtrain.gen.constants import variant_names
@@ -42,7 +42,7 @@ def main() -> int:
 
     def env_factory(*, game, **kwargs):
         kwargs.setdefault("games_dir", GAMES_DIR)
-        return NodeGymEnv(game=game, **kwargs)
+        return PlayTrainEnv(game=game, **kwargs)
 
     games = [args.game] if args.game else [
         g for g in list_available_games(GAMES_DIR) if g not in variant_names()

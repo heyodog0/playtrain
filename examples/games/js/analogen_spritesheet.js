@@ -1,6 +1,6 @@
 // Sprite-sheet preview: renders the 36 spritepool item sprites in a 6x6 grid.
 // Not a trainable game — a canvas to review the sprite art. Load via
-// NodeGymEnv(game="analogen_spritesheet", obs_size=360) and read the reset obs.
+// PlayTrainEnv(game="analogen_spritesheet", obs_size=360) and read the reset obs.
 let gameState = 'PLAYING', score = 0, lives = 3;
 function resetGame(seed) { gameState = 'PLAYING'; score = 0; lives = 3; }
 function getGameState() { return { score, lives, gameState }; }

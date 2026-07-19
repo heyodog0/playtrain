@@ -1,8 +1,8 @@
 // env.hpp — native reimplementation of GameEnv (runtime/p5/game-env.mjs).
 // Same action vocabulary, seeding, obs, reward (score-delta), and terminal
 // semantics, so a native trajectory is comparable frame-for-frame to the JS env.
-#ifndef NODE_GYM_ENV_HPP
-#define NODE_GYM_ENV_HPP
+#ifndef PLAYTRAIN_ENV_HPP
+#define PLAYTRAIN_ENV_HPP
 
 #include <cstdint>
 #include <cstring>
@@ -103,4 +103,4 @@ class Env {
 
 }  // namespace nodegym
 
-#endif  // NODE_GYM_ENV_HPP
+#endif  // PLAYTRAIN_ENV_HPP

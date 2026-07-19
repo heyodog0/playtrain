@@ -3,12 +3,12 @@
 This is a benchmark-only artifact: a hand-rolled multiprocessing.Process +
 multiprocessing.Pipe + pickle vec env that mirrors what
 ``stable_baselines3.common.vec_env.SubprocVecEnv`` does. We use it as the
-A/B baseline against ``NodeVecEnv`` so we can measure the cost of the
+A/B baseline against ``PlayTrainVecEnv`` so we can measure the cost of the
 per-env child Python process and the obs pickle round-trip without taking
 SB3 as a dependency.
 
 Not intended for production use. Real users should pick either SB3's
-SubprocVecEnv (battle-tested) or NodeVecEnv (faster, this branch's
+SubprocVecEnv (battle-tested) or PlayTrainVecEnv (faster, this branch's
 contribution). Lives under ``src/playtrain/runtime/_subproc_vec_env.py`` (with
 the leading underscore) so it's importable from the bench scripts and
 from multiprocessing-spawned children — without putting ``tools/`` on
@@ -29,8 +29,8 @@ def _subproc_worker(remote, parent_remote, game: str, obs_size: int,
     parent_remote.close()
     # Import inside child so the parent never imports playtrain.runtime (avoid double
     # mmap setup in parent on fork-based platforms).
-    from playtrain.runtime import NodeGymEnv
-    env = NodeGymEnv(game=game, obs_size=obs_size, obs_mode=obs_mode,
+    from playtrain.runtime import PlayTrainEnv
+    env = PlayTrainEnv(game=game, obs_size=obs_size, obs_mode=obs_mode,
                      max_steps=max_steps)
     rng = np.random.default_rng(autoreset_seed)
     try:
@@ -39,7 +39,7 @@ def _subproc_worker(remote, parent_remote, game: str, obs_size: int,
             if cmd == "step":
                 obs, reward, term, trunc, info = env.step(int(data))
                 # SB3-style autoreset: do it in the child, just like SB3
-                # SubprocVecEnv. Parity with NodeVecEnv's autoreset for an
+                # SubprocVecEnv. Parity with PlayTrainVecEnv's autoreset for an
                 # honest A/B.
                 if autoreset and (term or trunc):
                     info = dict(info) if not isinstance(info, dict) else info
@@ -62,7 +62,7 @@ def _subproc_worker(remote, parent_remote, game: str, obs_size: int,
 
 
 class HandRolledSubprocVecEnv:
-    """Minimal SB3-equivalent: N child Python processes, each owns one NodeGymEnv."""
+    """Minimal SB3-equivalent: N child Python processes, each owns one PlayTrainEnv."""
 
     def __init__(self, *, games: list[str], obs_size: int = 64,
                  obs_mode: str = "rgb", max_steps: int = 2000,

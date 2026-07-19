@@ -1,9 +1,9 @@
-"""Head-to-head environment-throughput benchmark: PlayTrain (node-gym, WASM
+"""Head-to-head environment-throughput benchmark: PlayTrain (PlayTrain, WASM
 rasterizer) vs ale-py vs procgen, on matched methodology.
 
 One backend per invocation (each backend lives in its own venv):
 
-    # PlayTrain clones (run in node-gym's env; WASM rasterizer is the default):
+    # PlayTrain clones (run in PlayTrain's env; WASM rasterizer is the default):
     python tools/bench_compare.py --backend node  --suite atari
     python tools/bench_compare.py --backend node  --suite procgen
 
@@ -17,11 +17,11 @@ Each run writes outputs/compare/<backend>_<suite>.json. Merge + plot separately.
 
 Methodology (identical across backends):
   * 1 env step = 1 emulated/drawn frame (no frameskip). ALE uses the
-    NoFrameskip-v4 ids; node-gym is natively 1 draw/step; procgen is 1 frame/step.
+    NoFrameskip-v4 ids; PlayTrain is natively 1 draw/step; procgen is 1 frame/step.
   * random actions from each env's own action space.
   * `warmup` steps discarded, then `frames` timed steps, `trials` times; report
     steps/sec mean +/- pstdev. Auto-reset on terminal.
-  * observations are each system's native resolution (node-gym 64x64 RGB,
+  * observations are each system's native resolution (PlayTrain 64x64 RGB,
     ALE 210x160 RGB, procgen 64x64 RGB). Resolution differences are recorded
     in the JSON, not normalized away -- state them in the paper.
 """
@@ -33,7 +33,7 @@ import numpy as np
 
 OUT = Path(__file__).resolve().parents[1] / "outputs" / "compare"
 
-# node-gym game name -> ALE env id (NoFrameskip-v4 == frameskip 1, no sticky actions)
+# PlayTrain game name -> ALE env id (NoFrameskip-v4 == frameskip 1, no sticky actions)
 ATARI = {
     "breakout": "BreakoutNoFrameskip-v4",
     "space_invaders": "SpaceInvadersNoFrameskip-v4",
@@ -115,7 +115,7 @@ def _bench(games, make, reset, step, n_actions, frames, warmup, trials, seed, la
 
 
 def bench_node(games, frames, warmup, trials, seed):
-    from playtrain.runtime import NodeGymEnv
+    from playtrain.runtime import PlayTrainEnv
 
     def step(env, a):
         obs, _, term, trunc, _ = env.step(a)
@@ -123,7 +123,7 @@ def bench_node(games, frames, warmup, trials, seed):
         return term or trunc
 
     return _bench(games,
-                  make=lambda g: NodeGymEnv(game=g, max_steps=frames + warmup + 100),
+                  make=lambda g: PlayTrainEnv(game=g, max_steps=frames + warmup + 100),
                   reset=lambda env, s: env.reset(seed=s),
                   step=step, n_actions=8,
                   frames=frames, warmup=warmup, trials=trials, seed=seed)

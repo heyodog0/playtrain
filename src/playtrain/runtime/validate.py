@@ -1,6 +1,6 @@
 """Library: 5-check ProcGen-style validation, parameterized over backend.
 
-Used by node-gym's tools/validate.py + tools/validate_three.py and by
+Used by PlayTrain's tools/validate.py + tools/validate_three.py and by
 sibling repos (e.g. fast-llm-games) that want to run the same checks
 against their own catalogs. The CLI wrappers are ~30 lines each.
 

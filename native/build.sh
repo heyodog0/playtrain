@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 GAME="${1:-bigfish}"
-RASTER_LIB="../crates/rasterizer/target/release/libnode_gym_rasterizer.a"
+RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 
 if [ ! -f "$RASTER_LIB" ]; then
   echo "building rasterizer staticlib..."

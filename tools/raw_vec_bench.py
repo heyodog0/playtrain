@@ -1,4 +1,4 @@
-"""Raw env-only throughput ceiling: NodeVecEnv stepping random actions,
+"""Raw env-only throughput ceiling: PlayTrainVecEnv stepping random actions,
 NO model / inference / learner. Measures the CPU env SPS limit at a given
 parallelism. Aggregate frames/s = num_envs * step-calls/s (synchronous vec).
 
@@ -6,13 +6,13 @@ parallelism. Aggregate frames/s = num_envs * step-calls/s (synchronous vec).
 """
 import sys, time
 import numpy as np
-from playtrain.runtime.vec_env import NodeVecEnv
+from playtrain.runtime.vec_env import PlayTrainVecEnv
 
 N = int(sys.argv[1])
 game = sys.argv[2] if len(sys.argv) > 2 else "breakout"
 K = int(sys.argv[3]) if len(sys.argv) > 3 else 500
 
-venv = NodeVecEnv(games=[game] * N)
+venv = PlayTrainVecEnv(games=[game] * N)
 venv.reset(seed=42)
 rng = np.random.default_rng(42)
 for _ in range(50):

@@ -8,7 +8,7 @@ Each iteration:
   3. Write the revised code (auto-backup), then repeat — so the clone converges
      on the real game over N iterations.
 
-Requires: ale-py + the game ROM (AutoROM), GEMINI_API_KEY, sibling node-gym repo.
+Requires: ale-py + the game ROM (AutoROM), GEMINI_API_KEY, sibling PlayTrain repo.
 Usage:  uv run python tools/refine_vs_rom.py --game beam_rider --iters 3
 """
 

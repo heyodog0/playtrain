@@ -10,7 +10,7 @@ For each game at ``--n`` envs it reports, side by side:
   native-vec  in-process C++ threadpool, batched step via ctypes (GIL released)
   py-coord    a Python lockstep loop over N ``qjs_host serve`` subprocesses
               (same fast backend as native-vec, but coordinated from Python) —
-              the apples-to-apples stand-in for today's ``NodeVecEnv``
+              the apples-to-apples stand-in for today's ``PlayTrainVecEnv``
 
 ``eff`` is native-vec / ceiling: how close the coordinator gets to the hardware
 ceiling. On a homogeneous x86 server pass ``--threads`` = core count; on Apple

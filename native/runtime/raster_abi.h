@@ -1,9 +1,9 @@
 // raster_abi.h — C declarations for the Rust rasterizer's extern "C" surface
-// (crates/rasterizer/src/lib.rs). Built as libnode_gym_rasterizer.a and linked
+// (crates/rasterizer/src/lib.rs). Built as libplaytrain_rasterizer.a and linked
 // into the AOT-compiled native game twins. This is the SAME rasterizer the JS
 // runtime uses via wasm (raster-wasm.mjs) — bit-identical output by construction.
-#ifndef NODE_GYM_RASTER_ABI_H
-#define NODE_GYM_RASTER_ABI_H
+#ifndef PLAYTRAIN_RASTER_ABI_H
+#define PLAYTRAIN_RASTER_ABI_H
 
 #include <cstdint>
 
@@ -68,4 +68,4 @@ int  rs_frame_end(void);
 
 }  // extern "C"
 
-#endif  // NODE_GYM_RASTER_ABI_H
+#endif  // PLAYTRAIN_RASTER_ABI_H

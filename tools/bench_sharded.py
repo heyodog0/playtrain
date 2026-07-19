@@ -1,5 +1,5 @@
 """Measured sharded aggregate (not extrapolated): P independent single-env
-processes, synchronized start, wall-clock aggregate. Symmetric — both node-gym
+processes, synchronized start, wall-clock aggregate. Symmetric — both PlayTrain
 and ProcGen driven through their normal single-env Python API in one process each,
 so neither gets a coordinator advantage. This is the embarrassingly-parallel
 ceiling a practitioner reaches with a sharded launcher.
@@ -98,21 +98,21 @@ def main():
     print(f"sharded: {P} independent single-env processes, {args.steps} steps each, "
           f"synchronized start, 64x64 RGB, frameskip=1\n")
 
-    print(f"{'game':<11}{'node-gym':>14}{'procgen':>14}{'ng/pg':>8}")
+    print(f"{'game':<11}{'PlayTrain':>14}{'procgen':>14}{'ng/pg':>8}")
     rows = []
     for g in args.games:
         ng = sharded(ng_worker, g, P, args.steps)
         pg = sharded(pg_worker, g, P, args.steps)
-        rows.append(dict(game=g, node_gym=ng, procgen=pg))
+        rows.append(dict(game=g, playtrain=ng, procgen=pg))
         print(f"{g:<11}{ng:>14,.0f}{pg:>14,.0f}{ng/pg:>7.2f}x")
 
     def geo(k):
         xs = [r[k] for r in rows if r[k] > 0]
         return float(np.exp(np.mean(np.log(xs)))) if xs else 0.0
     print("\n" + "-" * 48)
-    print(f"  node-gym sharded geomean: {geo('node_gym'):,.0f} sps/node")
+    print(f"  PlayTrain sharded geomean: {geo('playtrain'):,.0f} sps/node")
     print(f"  procgen  sharded geomean: {geo('procgen'):,.0f} sps/node")
-    print(f"  node-gym/procgen geomean: {np.exp(np.mean(np.log([r['node_gym']/r['procgen'] for r in rows]))):.2f}x")
+    print(f"  PlayTrain/procgen geomean: {np.exp(np.mean(np.log([r['playtrain']/r['procgen'] for r in rows]))):.2f}x")
 
     outp = Path(args.out); outp.parent.mkdir(parents=True, exist_ok=True)
     json.dump({"procs": P, "steps": args.steps, "rows": rows}, open(outp, "w"), indent=2)

@@ -1,4 +1,4 @@
-"""Tests for NodeVecEnv (DirectVecEnv prototype).
+"""Tests for PlayTrainVecEnv (DirectVecEnv prototype).
 
 Covers:
   - basic boot (smoke test at small N)
@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 from gymnasium.vector import AutoresetMode, VectorEnv
 
-from playtrain.runtime import NodeVecEnv
+from playtrain.runtime import PlayTrainVecEnv
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ from playtrain.runtime import NodeVecEnv
 
 @pytest.fixture
 def venv2():
-    v = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64, obs_mode="rgb")
+    v = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64, obs_mode="rgb")
     yield v
     v.close()
 
@@ -117,7 +117,7 @@ def test_close_idempotent(venv2):
 
 def _run_pass(*, n: int, steps: int, autoreset_mode: str,
               autoreset_seed: int) -> tuple[list[str], int]:
-    venv = NodeVecEnv(games=["flappy_bird"] * n, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * n, obs_size=64,
                       autoreset_mode=autoreset_mode,
                       autoreset_seed=autoreset_seed)
     rng = np.random.default_rng(42)
@@ -152,7 +152,7 @@ def test_autoreset_determinism(mode):
 
 def test_disabled_autoreset_does_not_reset_after_terminal():
     """With DISABLED autoreset, the worker keeps reporting terminal states."""
-    venv = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64,
                       autoreset_mode="disabled", autoreset_seed=0)
     try:
         venv.reset(seed=0)
@@ -178,7 +178,7 @@ def test_disabled_autoreset_does_not_reset_after_terminal():
 def test_same_step_autoreset_substitutes_obs():
     """SAME_STEP: when an env terminates, returned obs is the new-episode obs,
     info['final_observation'] holds the terminal obs."""
-    venv = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64,
                       autoreset_mode="same_step", autoreset_seed=11)
     try:
         venv.reset(seed=0)
@@ -206,7 +206,7 @@ def test_same_step_autoreset_substitutes_obs():
 
 def test_next_step_autoreset_resets_on_subsequent_step():
     """NEXT_STEP: terminal obs returned this step; reset happens before next step."""
-    venv = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64,
                       autoreset_mode="next_step", autoreset_seed=11)
     try:
         venv.reset(seed=0)
@@ -241,7 +241,7 @@ def test_next_step_autoreset_resets_on_subsequent_step():
 def test_fixed_env_seed_makes_all_envs_identical():
     """fixed_env_seed forces every env (and every autoreset) to the same seed,
     so all N envs produce byte-identical obs sequences."""
-    venv = NodeVecEnv(games=["flappy_bird"] * 4, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * 4, obs_size=64,
                       autoreset_mode="same_step", autoreset_seed=0,
                       fixed_env_seed=12345)
     try:
@@ -265,7 +265,7 @@ def test_fixed_env_seed_autoreset_keeps_seed():
     match what we'd get from a fresh reset(seed=fixed_env_seed)."""
     fes = 99
     # Capture what a fresh reset with seed=fes looks like
-    venv1 = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+    venv1 = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64,
                       autoreset_mode="disabled", fixed_env_seed=fes)
     try:
         ref_obs, _ = venv1.reset()
@@ -274,7 +274,7 @@ def test_fixed_env_seed_autoreset_keeps_seed():
         venv1.close()
 
     # Now run with autoreset and force terminals; verify reset obs matches ref
-    venv2 = NodeVecEnv(games=["flappy_bird"] * 2, obs_size=64,
+    venv2 = PlayTrainVecEnv(games=["flappy_bird"] * 2, obs_size=64,
                       autoreset_mode="same_step", autoreset_seed=0,
                       fixed_env_seed=fes)
     try:
@@ -296,7 +296,7 @@ def test_fixed_env_seed_autoreset_keeps_seed():
 
 
 def test_n8_runs_without_errors():
-    venv = NodeVecEnv(games=["flappy_bird"] * 8, obs_size=64,
+    venv = PlayTrainVecEnv(games=["flappy_bird"] * 8, obs_size=64,
                       autoreset_mode="same_step", autoreset_seed=0)
     try:
         venv.reset(seed=list(range(8)))

@@ -10,7 +10,7 @@ Usage:
     uv run python tools/profile.py --game flappy_bird
     uv run python tools/profile.py --game breakout --steps 2000
     uv run python tools/profile.py --game mario --cpu-prof
-    NODE_GYM_P5_FAST_OBS=0 uv run python tools/profile.py --game flappy_bird   # profile old path
+    PLAYTRAIN_P5_FAST_OBS=0 uv run python tools/profile.py --game flappy_bird   # profile old path
 """
 
 from __future__ import annotations
@@ -39,22 +39,22 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    os.environ["NODE_GYM_P5_PROFILE"] = "1"
+    os.environ["PLAYTRAIN_P5_PROFILE"] = "1"
     if args.cpu_prof:
         PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-        existing = os.environ.get("NODE_GYM_NODE_FLAGS", "")
-        os.environ["NODE_GYM_NODE_FLAGS"] = (
+        existing = os.environ.get("PLAYTRAIN_NODE_FLAGS", "")
+        os.environ["PLAYTRAIN_NODE_FLAGS"] = (
             f"{existing} --cpu-prof --cpu-prof-dir={PROFILE_DIR}".strip()
         )
 
     # Import after env vars are set so any module-level reads pick them up.
-    from playtrain.runtime import NodeGymEnv
+    from playtrain.runtime import PlayTrainEnv
 
     print(f"Profiling {args.game}: {args.warmup} warmup + {args.steps} steps "
-          f"(fast_obs={os.environ.get('NODE_GYM_P5_FAST_OBS', '1')})",
+          f"(fast_obs={os.environ.get('PLAYTRAIN_P5_FAST_OBS', '1')})",
           file=sys.stderr)
 
-    env = NodeGymEnv(game=args.game, max_steps=args.steps + args.warmup + 100)
+    env = PlayTrainEnv(game=args.game, max_steps=args.steps + args.warmup + 100)
     try:
         env.reset(seed=args.seed)
         rng = np.random.default_rng(args.seed)

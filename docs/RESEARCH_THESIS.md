@@ -4,7 +4,7 @@
 
 ## 1. The one-sentence thesis
 
-**Every `node-gym` environment becomes a scoreable, vmappable JAX function — making the catalog a generative-model library for large-scale Bayesian inverse planning / theory-of-mind, with the variant axes as controlled cognitive manipulations.**
+**Every `PlayTrain` environment becomes a scoreable, vmappable JAX function — making the catalog a generative-model library for large-scale Bayesian inverse planning / theory-of-mind, with the variant axes as controlled cognitive manipulations.**
 
 The RL-benchmark framing (Papers 1 & 2 in the plan) is the *substrate-and-throughput* contribution. The deeper program is **rational analysis of behavior at GPU scale**: if an environment is a proper generative model, then inferring an agent's latent goals/beliefs from its behavior — `P(goal | behavior) ∝ P(behavior | goal) P(goal)` — becomes a vmap-over-particles computation instead of a Julia-speed bottleneck.
 
@@ -30,7 +30,7 @@ Two real JS advantages, stated without overclaim:
 
 1. **Corpus / LLM fluency (the generative moat).** Millions of single-file p5.js / Three.js sketches exist on the web; "a complete playable Gym environment in one file" is comparatively rare. LLMs author a working p5 game far more reliably than a working PyGame/Pymunk env. *Caveat to measure, not assert:* the relevant fluency is over the **gym-shaped, shim-restricted dialect**, a narrower distribution than raw p5 — net-positive vs Python, but bounded.
 
-2. **Browser = single-source-of-truth + zero-install human-in-the-loop.** One `.js` file is simultaneously (a) what the LLM wrote, (b) what a human playtests in a browser tab with no install or display server, and (c) via the bridge, what trains at GPU scale. Python's "human plays it" build is almost always a *separate reimplementation* — a fidelity gap and maintenance burden node-gym structurally avoids. Crowdsourced human baselines, demonstrations, and preference data fall out of "it's already a webpage."
+2. **Browser = single-source-of-truth + zero-install human-in-the-loop.** One `.js` file is simultaneously (a) what the LLM wrote, (b) what a human playtests in a browser tab with no install or display server, and (c) via the bridge, what trains at GPU scale. Python's "human plays it" build is almost always a *separate reimplementation* — a fidelity gap and maintenance burden PlayTrain structurally avoids. Crowdsourced human baselines, demonstrations, and preference data fall out of "it's already a webpage."
 
 Minor point in JS's favor: CPython has libm drift across platforms just like pre-fdlibm V8 did. **JS with a vendored fdlibm is a *cleaner* determinism story than Python**, not a worse one.
 

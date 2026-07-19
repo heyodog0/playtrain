@@ -5,7 +5,7 @@ const gamePath = process.argv[3];
 const numSteps = parseInt(process.argv[4] || '1', 10);
 const TILE = 84;
 const grid = Math.ceil(Math.sqrt(N));
-process.env.NODE_GYM_THREE_OBS_SIZE = String(grid * TILE);
+process.env.PLAYTRAIN_THREE_OBS_SIZE = String(grid * TILE);
 
 const { VecGameEnv } = await import('./vec-game-env.mjs');
 const env = new VecGameEnv({ gamePath, actionSize: 7, numEnvs: N, tile: TILE, maxSteps: 1e9 });

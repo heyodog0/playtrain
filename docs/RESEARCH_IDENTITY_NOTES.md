@@ -10,7 +10,7 @@ Patterns observed in self-reported cognitive states across different research ac
 |---|---|---|---|
 | **Aspirational** | Lower-level theoretical work mapped onto complex RL domains | Vastola-style dynamics analysis; Prat-Carrabin bounded rationality; Carvalho mechanistic RL+cog | Want to be doing this; describes as "increasingly difficult" |
 | **Natural** | Cognitive science with rich domains and observational data | Scratch repository remix trajectory analysis; AnaloGen human studies | "Completely different headspace"; comfortable; ideas generate easily |
-| **Strategic** | Engineering infrastructure with industry translatability | node-gym, C₁ multi-env runtime, JAX port, custom rasterizer | "Impactful"; "translatable"; described in strategic terms, not emotional ones |
+| **Strategic** | Engineering infrastructure with industry translatability | PlayTrain, C₁ multi-env runtime, JAX port, custom rasterizer | "Impactful"; "translatable"; described in strategic terms, not emotional ones |
 
 Key observation: these are *three different relationships to work*, not three different topics. The cognitive cost of switching between them is real and accumulates. Successful researchers typically have one primary mode with the others as secondary capabilities; trying to do all three at full intensity produces fragmented work and burnout.
 
@@ -18,7 +18,7 @@ Key observation: these are *three different relationships to work*, not three di
 
 ### The Scratch project as data
 
-I described the Scratch remix project as putting me in a "completely different headspace" than node-gym/rasterization. This is emotional/cognitive language, not strategic language. It's how people talk about work that fits them.
+I described the Scratch remix project as putting me in a "completely different headspace" than PlayTrain/rasterization. This is emotional/cognitive language, not strategic language. It's how people talk about work that fits them.
 
 The project is also *literally in my original dissertation vision* — Scratch remixing is theory generation, transfer, and updating in a developmental/social/creative cognition context. I'm already doing the dissertation work; I just haven't been framing it that way.
 
@@ -26,7 +26,7 @@ This is a research-taste signal that's hard to fake. Worth weighting heavily.
 
 ### The "impact = engineering" framing might be partially false
 
-I've been telling myself that node-gym/JAX work is more "impactful" and "industry-translatable." Critically examining this:
+I've been telling myself that PlayTrain/JAX work is more "impactful" and "industry-translatable." Critically examining this:
 
 - Anthropic's model behavior / interpretability teams hire heavily from cognitive science backgrounds, not infrastructure backgrounds
 - DeepMind's cognitive ML group (Saxe, Sheahan, etc.) does theory+behavior, not infrastructure
@@ -110,8 +110,8 @@ What doesn't work: keeping ideas private (someone else might independently arriv
 | Month | Action |
 |---|---|
 | Now (May 2026) | Talk to Sam about JAX preprint authorship norms |
-| June-July 2026 | Open-source variant tooling + C₁ with clean docs in node-gym repo |
-| July-August 2026 | Submit paper 1 (node-gym + AnaloGen + C₁) to arXiv + TMLR |
+| June-July 2026 | Open-source variant tooling + C₁ with clean docs in PlayTrain repo |
+| July-August 2026 | Submit paper 1 (PlayTrain + AnaloGen + C₁) to arXiv + TMLR |
 | August-September 2026 | Workshop submissions: RLDM 2026, NeurIPS workshops |
 | September-November 2026 | Draft + arXiv JAX-port preprint (Kazuki senior, 4-8 pages) |
 | October 2026 | Apply for summer 2027 internships |
@@ -136,7 +136,7 @@ Candidate identities, each legitimate:
 - **Theoretical / mathematical** (Vastola-adjacent) — closed-form analyses, dynamics; produces tools the field uses
 - **Mathematical psychologist** (Prat-Carrabin-adjacent) — careful behavioral experiments with rigorous model fits
 - **Mechanistic modeler** (Carvalho-adjacent) — structured computational models of specific cognitive phenomena
-- **Large-scale empirical** — comparative studies across many tasks/agents (what node-gym enables)
+- **Large-scale empirical** — comparative studies across many tasks/agents (what PlayTrain enables)
 - **Systems / engineering** — building infrastructure others use
 
 Can't be all of these deeply. Have to pick a primary; let the others be secondary capabilities.
@@ -149,7 +149,7 @@ Over the next ~4 weeks:
 
 1. **Two weeks at 80% on Scratch + AnaloGen cognitive work.** Notice: do ideas come easily? Do I want to keep working past 6pm? Is writing fluent? What's the after-hours pull?
 
-2. **Two weeks at 80% on node-gym engineering (C₁, JAX prototyping, rasterizer planning).** Same observations.
+2. **Two weeks at 80% on PlayTrain engineering (C₁, JAX prototyping, rasterizer planning).** Same observations.
 
 3. **Compare honestly.** Which felt like home? Which felt like obligation? Which produced more good ideas?
 
@@ -167,7 +167,7 @@ The experiment isn't about deciding forever. It's gathering data on myself befor
 
 5. **Would adding a co-advisor / committee diversification fix the values tension, or is the values tension fundamental?** Probably fixable for now via the multi-PI structure; might recur in 2-3 years.
 
-6. **Am I building infrastructure (node-gym + JAX) because the science needs it, or because I enjoy the engineering itself?** Both are legitimate but they imply different scopes. If "science needs it," build minimal version; if "I enjoy it," it can be a parallel project.
+6. **Am I building infrastructure (PlayTrain + JAX) because the science needs it, or because I enjoy the engineering itself?** Both are legitimate but they imply different scopes. If "science needs it," build minimal version; if "I enjoy it," it can be a parallel project.
 
 ## Things to NOT do
 
@@ -182,7 +182,7 @@ The experiment isn't about deciding forever. It's gathering data on myself befor
 
 Regardless of how the identity question resolves:
 
-- Ship paper 1 (node-gym + AnaloGen + C₁) by late summer 2026. This serves all candidate identities.
+- Ship paper 1 (PlayTrain + AnaloGen + C₁) by late summer 2026. This serves all candidate identities.
 - Open-source the infrastructure as I build it. Standard hygiene.
 - Have the structural conversation with Sam about the multi-PI / Kazuki structure within the next month.
 - Run the 4-week mode experiment honestly.

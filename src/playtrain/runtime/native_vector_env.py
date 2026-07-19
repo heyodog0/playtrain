@@ -15,7 +15,7 @@ Supports all three Gymnasium 1.0 autoreset modes:
   returned this step.
 * ``DISABLED`` — caller resets explicitly.
 
-Mirrors ``NodeVecEnv``'s seeding controls (``fixed_env_seed``, ``seed_pool``) so
+Mirrors ``PlayTrainVecEnv``'s seeding controls (``fixed_env_seed``, ``seed_pool``) so
 the two backends are interchangeable in a trainer.
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ from gymnasium.vector import AutoresetMode, VectorEnv
 
 from .native_vec_env import NativeVecEnv
 
-_N_ACTIONS = 8  # Discrete(8), matches QuickJSEnv / NodeVecEnv
+_N_ACTIONS = 8  # Discrete(8), matches QuickJSEnv / PlayTrainVecEnv
 
 
 def _coerce_autoreset(mode) -> AutoresetMode:
@@ -91,7 +91,7 @@ class NativeVectorEnv(VectorEnv):
         self._needs_reset = np.zeros(self.num_envs, dtype=bool)
         self._closed = False
 
-    # -- seed drawing (mirrors NodeVecEnv) --
+    # -- seed drawing (mirrors PlayTrainVecEnv) --
     def _autoreset_seeds(self, n: int) -> np.ndarray:
         if self.fixed_env_seed is not None:
             return np.full(n, int(self.fixed_env_seed), dtype=np.int32)

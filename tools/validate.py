@@ -13,7 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from playtrain.runtime import NodeGymEnv, list_available_games
+from playtrain.runtime import PlayTrainEnv, list_available_games
 from playtrain.runtime.validate import run_validation
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "validation"
@@ -33,7 +33,7 @@ def main() -> int:
     args = parse_args()
     games = [args.game] if args.game else list_available_games()
     return run_validation(
-        env_factory=NodeGymEnv,
+        env_factory=PlayTrainEnv,
         games=games,
         expected_shape=(64, 64, 3),
         n_actions=8,

@@ -1,9 +1,9 @@
-# node-gym-rasterizer
+# playtrain-rasterizer
 
 A tiny 2D rasterizer for the exact primitive surface the p5 shim exposes
 (`rect`/`ellipse`/`line`/`triangle`/`quad`/polygon + transform stack + fill/stroke).
 Compiles to **`wasm32-unknown-unknown`** (in-process, zero system deps — no Cairo) and is the
-default renderer for node-gym's p5 games.
+default renderer for PlayTrain's p5 games.
 
 ## Why
 
@@ -47,8 +47,8 @@ are re-baselined on this renderer.
 
 ```sh
 cargo build --target wasm32-unknown-unknown --release
-# artifact: <repo>/target/wasm32-unknown-unknown/release/node_gym_rasterizer.wasm
-cp <repo>/target/wasm32-unknown-unknown/release/node_gym_rasterizer.wasm runtime/p5/rasterizer.wasm
+# artifact: <repo>/target/wasm32-unknown-unknown/release/playtrain_rasterizer.wasm
+cp <repo>/target/wasm32-unknown-unknown/release/playtrain_rasterizer.wasm runtime/p5/rasterizer.wasm
 ```
 
 (Requires `rustup target add wasm32-unknown-unknown`. The built `rasterizer.wasm` is committed,
@@ -56,6 +56,6 @@ so end users don't need the Rust toolchain — this crate is only for rebuilding
 
 ## Backends (selected in `runtime/p5/p5-shim.mjs`)
 
-`NODE_GYM_RASTERIZER` ∈ `{ wasm` (default)`, js, cairo }`. `wasm` and `js` are bit-identical;
+`PLAYTRAIN_RASTERIZER` ∈ `{ wasm` (default)`, js, cairo }`. `wasm` and `js` are bit-identical;
 `js` is the zero-build pure-JS fallback (used automatically if the wasm fails to load) and the
 browser variant. `cairo` is the legacy node-canvas backend.

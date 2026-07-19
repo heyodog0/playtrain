@@ -49,15 +49,15 @@ let bufferSize = 0;
 // Opt-in async (pipelined) readback: returns the PREVIOUS frame's pixels so the
 // GPU map-stall overlaps the next frame's work. Observations are 1 step stale —
 // a deliberate latency-for-throughput trade. Off by default (fresh obs).
-const ASYNC_OBS = process.env.NODE_GYM_ASYNC_OBS === '1';
+const ASYNC_OBS = process.env.PLAYTRAIN_ASYNC_OBS === '1';
 let readBufferB = null;     // second buffer for the 2-deep ping-pong
 let inflight = null;        // { buf, map } pending from the previous step
 
 let gameLoaded = false;
 
-// Optional per-phase timing (set NODE_GYM_DMLAB_TIMING=1). Accumulates ns spent
+// Optional per-phase timing (set PLAYTRAIN_DMLAB_TIMING=1). Accumulates ns spent
 // in update / render / readback so a bench can attribute the gap vs IPC.
-const TIMING = process.env.NODE_GYM_DMLAB_TIMING === '1';
+const TIMING = process.env.PLAYTRAIN_DMLAB_TIMING === '1';
 let _tUpdate = 0, _tRender = 0, _tReadback = 0, _tCount = 0;
 let _tMap = 0, _tConvert = 0; // readback sub-phases: GPU map-stall vs CPU convert
 
@@ -213,11 +213,11 @@ export class ThreeGameEnv {
   constructor({ gamePath, obsWidth = WIDTH, obsHeight = HEIGHT, maxSteps = 2000 } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
     if (obsWidth !== WIDTH || obsHeight !== HEIGHT) {
-      // The shim is sized via NODE_GYM_THREE_OBS_SIZE env var at startup;
+      // The shim is sized via PLAYTRAIN_THREE_OBS_SIZE env var at startup;
       // if a different size is requested at runtime, that's a contract bug.
       throw new Error(
         `ThreeGameEnv obsWidth/obsHeight (${obsWidth}x${obsHeight}) must match shim WIDTH/HEIGHT (${WIDTH}x${HEIGHT}). ` +
-        `Set NODE_GYM_THREE_OBS_SIZE before launching the worker.`
+        `Set PLAYTRAIN_THREE_OBS_SIZE before launching the worker.`
       );
     }
     this.gamePath = gamePath;

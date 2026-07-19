@@ -1,8 +1,8 @@
-"""NativeVecEnv — envpool-class vectorized backend for node-gym.
+"""NativeVecEnv — envpool-class vectorized backend for PlayTrain.
 
 One process, N QuickJS+rasterizer envs, a native C++ thread pool
 (``native/qjs/qjs_vec_host.cpp``, built as ``libqjs_vec``). Unlike
-``NodeVecEnv`` — which drives N Node subprocesses over pipes from a pure-Python
+``PlayTrainVecEnv`` — which drives N Node subprocesses over pipes from a pure-Python
 lockstep loop under the GIL — this class calls a single batched ``vec_step``
 through ctypes. ctypes releases the GIL for the duration of the C call, so the
 whole batch steps in parallel across the pool with **no Python in the hot loop,

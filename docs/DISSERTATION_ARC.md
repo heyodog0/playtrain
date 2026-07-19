@@ -1,6 +1,6 @@
-# Dissertation Arc: node-gym, AnaloGen, and the Inductive-Bias Research Program
+# Dissertation Arc: PlayTrain, AnaloGen, and the Inductive-Bias Research Program
 
-A planning document capturing the research trajectory from `node-gym` infrastructure through a multi-year cognitive-science dissertation using it as the empirical platform.
+A planning document capturing the research trajectory from `PlayTrain` infrastructure through a multi-year cognitive-science dissertation using it as the empirical platform.
 
 ## Context
 
@@ -14,9 +14,9 @@ A planning document capturing the research trajectory from `node-gym` infrastruc
 
 ## Reframing: From Toolkit Papers to a Cognitive Science Research Program
 
-The initial framing of this work as "two infrastructure papers" (node-gym + JAX/rasterizer) was the wrong shape for a Gershman-lab PhD. Pure infrastructure papers don't serve a Psych PhD's career trajectory, and Sam would correctly push back on a second toolkit paper.
+The initial framing of this work as "two infrastructure papers" (PlayTrain + JAX/rasterizer) was the wrong shape for a Gershman-lab PhD. Pure infrastructure papers don't serve a Psych PhD's career trajectory, and Sam would correctly push back on a second toolkit paper.
 
-**The right shape**: a multi-paper dissertation where each paper pairs **substantive cognitive theory** with **controlled empirical studies enabled by node-gym infrastructure**. Infrastructure becomes methodology, not contribution.
+**The right shape**: a multi-paper dissertation where each paper pairs **substantive cognitive theory** with **controlled empirical studies enabled by PlayTrain infrastructure**. Infrastructure becomes methodology, not contribution.
 
 The thesis-level research question:
 
@@ -36,7 +36,7 @@ This is uncompelling as cognitive science because:
 
 The interesting alternative: **deep RL agents with explicit, inspectable inductive biases** (object-centric perception, compositional structure, learned world models, schema-based representations), tested comparatively across controlled variant manipulations against human behavior.
 
-## Substrate Decision: Why JS, Why node-gym
+## Substrate Decision: Why JS, Why PlayTrain
 
 Captured in detail in `WHY_NOT_PYTHON.md`. Summary:
 
@@ -70,17 +70,17 @@ Modest first cut: 3-5 base games × ~8 variants per axis × ~4 axes = 100-200 co
 
 ## Bayesian Inference as Methodological Backbone
 
-Beyond agent-architecture comparison, the substrate enables a complementary methodological dimension: **Bayesian inference over generative models of human cognition, run on the same envs the agents are trained on.** This is the dimension that converts node-gym from a throughput substrate into a cognitive-modeling apparatus.
+Beyond agent-architecture comparison, the substrate enables a complementary methodological dimension: **Bayesian inference over generative models of human cognition, run on the same envs the agents are trained on.** This is the dimension that converts PlayTrain from a throughput substrate into a cognitive-modeling apparatus.
 
 The pattern, following SIPS[^sips] and the broader Mansinghka / Tenenbaum / Goodman probabilistic-programs-of-mind tradition[^gen]:
 
-1. Author env in node-gym (single source of truth, byte-exact across runtimes)
+1. Author env in PlayTrain (single source of truth, byte-exact across runtimes)
 2. Specify a generative model of *what a human is doing while solving this env* as a probabilistic program in GenJAX[^genjax] — e.g., bounded-rational planner[^sips] parameterized by planning depth, particle count, prior over goals or role bindings, time pressure, exploration temperature
 3. Observe human behavior (Prolific/MTurk via the same browser substrate that runs the agent training; no separate stimulus pipeline)
 4. Run online Bayesian inference (SMC, particle filtering, or programmable inference via Gen's trace semantics) over latent cognitive state: *on each timestep, which role binding does the participant believe holds? How deep are they planning? What is their inferred reward function?*
 5. Compare across participants, conditions, and variant axes — including comparison to agent-architecture posteriors under the same inference scheme
 
-### Why this is uniquely enabled by node-gym's properties
+### Why this is uniquely enabled by PlayTrain's properties
 
 - **Determinism + cross-runtime equivalence** mean likelihood evaluation in the PPL is well-defined. `p(action | latent_cognitive_state, env_state)` requires reproducible env dynamics across particles; the byte-exact substrate provides this by construction. Most prior PPL-over-RL work has been restricted to toy domains precisely because rich envs introduced uncontrolled stochasticity at the framework level.
 - **Vmap-friendly env** (after the GPU backend lands) makes particle-filter inference at N_particles=10K+ tractable on a single GPU. This pushes full Bayesian cognitive modeling into the rich-env regime — previously inaccessible territory.
@@ -101,7 +101,7 @@ Earlier section critiques LLM-as-theory-generator approaches as engineering hack
 
 ### Paper 1 (target: late summer 2026): the methods + AnaloGen paper
 
-**Title (working)**: *node-gym: An LLM-authored RL environment substrate with controlled variant methodology for cognitive generalization studies*
+**Title (working)**: *PlayTrain: An LLM-authored RL environment substrate with controlled variant methodology for cognitive generalization studies*
 
 **Contributions**:
 1. **LLM-authored env substrate** — shim-as-contract; headless browser execution; 30+ p5 + 16 Three.js base games; variant-axis methodology
@@ -176,7 +176,7 @@ What gets built and when, in service of the research thread:
 
 ### Phase 1 (now → late summer 2026): paper 1 infrastructure
 
-- ✅ node-gym substrate + headless runtime
+- ✅ PlayTrain substrate + headless runtime
 - ✅ gym-gen authoring pipeline
 - ⏳ C₁ multi-env runtime (in progress, see `MULTI_ENV_RUNTIME.md`)
 - ⏳ Variant-axis methodology — 3-5 base games × 4 axes × 5-8 variants per axis
@@ -298,7 +298,7 @@ Key decisions made through the planning conversation:
 | Skepticism of LLM-harness Theory-Based RL | Engineering hack, not cognitive science; doesn't illuminate architecture |
 | Inductive biases as research thesis | Falsifiable, factorizable, cognitive-theory-aligned, Lake-manifesto-shaped |
 | Path A (hybrid PyTorch+JAX) as default | Preserves bespoke-architecture flexibility; 10-30× speedup is enough |
-| Ship paper 1 in 2026 | Plant flag before convergence; AnaloGen + node-gym is ready |
+| Ship paper 1 in 2026 | Plant flag before convergence; AnaloGen + PlayTrain is ready |
 | Custom rasterizer deferred / made optional | Build only when a research question demands byte-exact pixel parity for human-RL comparison |
 | Bayesian inference / GenJAX adopted as methodological backbone | Process-level cognitive modeling (not just behavioral comparison) is the natural form factor for a Gershman-lab PhD; the substrate's determinism + cross-runtime equivalence + LLM-authored variants are uniquely suited to PPL-over-rich-env that prior work has been blocked from |
 
