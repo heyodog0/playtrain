@@ -1,0 +1,22 @@
+.DS_Store
+__pycache__/
+*.pyc
+.env
+
+.venv/
+node_modules/
+package-lock.json  # repo standardizes on pnpm (pnpm-lock.yaml)
+
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+*.log
+outputs/
+logs/
+
+# Rust build artifacts (rasterizer crate); the built .wasm is committed at runtime/p5/
+target/
+examples/games/js/*_dbg.js
+native/jit/fuzz/
