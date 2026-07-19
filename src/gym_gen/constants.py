@@ -14,7 +14,6 @@ from pathlib import Path
 
 REPO_ROOT         = Path(__file__).resolve().parents[2]
 GAMES_DIR         = REPO_ROOT / "games" / "js"
-THREEJS_GAMES_DIR = REPO_ROOT / "games" / "threejs"
 VARIANTS_REGISTRY = REPO_ROOT / "games" / "variants.json"
 
 

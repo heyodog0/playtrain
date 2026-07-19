@@ -1,7 +1,7 @@
 [project]
 name = "gym-gen"
 version = "0.1.0"
-description = "LLM-driven generation and natural-language modification of p5.js and Three.js RL environments."
+description = "LLM-driven generation and natural-language modification of p5.js RL environments."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -26,9 +26,8 @@ rom = [
 node-gym = { path = "../node-gym", editable = true }
 
 [project.scripts]
-gym-gen-validate       = "gym_gen.validate.validate:main"
-gym-gen-validate-three = "gym_gen.validate.validate_three:main"
-gym-gen-bench          = "gym_gen.validate.bench:main"
+gym-gen-validate = "gym_gen.validate.validate:main"
+gym-gen-bench    = "gym_gen.validate.bench:main"
 
 [build-system]
 requires = ["hatchling"]

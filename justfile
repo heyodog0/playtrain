@@ -1,6 +1,6 @@
 # gym-gen — task runner
 #
-# Generates and modifies p5.js / Three.js RL environments using LLMs, and
+# Generates and modifies p5.js RL environments using LLMs, and
 # validates the resulting games against ProcGen-style criteria.
 #
 # Install just: `brew install just` (or see https://just.systems)
@@ -41,15 +41,6 @@ validate game="--all":
         uv run gym-gen-validate --game {{game}}
     fi
 
-# Run the same suite against bundled three.js games (default: all)
-validate-three game="--all":
-    #!/usr/bin/env bash
-    if [ "{{game}}" = "--all" ]; then
-        uv run gym-gen-validate-three --all
-    else
-        uv run gym-gen-validate-three --game {{game}}
-    fi
-
 # Benchmark step throughput (FPS) per game (default: all games)
 bench game="--all":
     #!/usr/bin/env bash
@@ -75,26 +66,6 @@ refine-vs-rom name iters="3" feedback="" model="pro":
     uv run --extra rom AutoROM --accept-license
     uv run --extra rom python tools/refine_vs_rom.py --game {{name}} --iters {{iters}} --model {{model}} --feedback "{{feedback}}"
 
-# Generate one Three.js game. SKIPS if file exists — see gen-three-force.
-gen-three name model="pro":
-    uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref
-
-# Generate one Three.js game, FORCING overwrite. Existing file backed up first.
-gen-three-force name model="pro":
-    uv run python tools/generate_threejs.py --name {{name}} --model {{model}} --ref --force
-
-# Generate every Three.js game in the SIMPLE catalog. Skips existing.
-gen-three-all model="pro":
-    uv run python tools/generate_threejs.py --model {{model}} --ref
-
-# Generate one Three.js (v2 complex tier) game
-gen-three-complex name model="pro":
-    uv run python tools/generate_threejs.py --catalog games/catalogs/threejs_complex_games.json --name {{name}} --model {{model}} --ref
-
-# Generate every Three.js game in the complex catalog
-gen-three-complex-all model="pro":
-    uv run python tools/generate_threejs.py --catalog games/catalogs/threejs_complex_games.json --model {{model}} --ref
-
 # === game variants (prototype forks) ===
 
 # Fork a game into a named variant via natural language (parent untouched).
@@ -118,17 +89,6 @@ unvariant name:
 
 tester:
     uv run python tools/tester.py
-
-tester-three:
-    uv run python tools/tester_threejs.py
-
-# === notebooks ===
-
-notebook name="all_games_benchmark":
-    uv run marimo edit docs/notebooks/{{name}}.py
-
-nb-export name:
-    uv run marimo export html docs/notebooks/{{name}}.py -o docs/notebooks/{{name}}.html
 
 # === CI ===
 

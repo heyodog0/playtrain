@@ -1,5 +1,0 @@
-# Clean climb-up: ladder is at x=77 (central). Descend to mid-ladder, then climb up.
-NOOP 10
-DOWN 18     # descend to ~mid ladder (stays on ladder, bottom is ~y192)
-UP 30       # climb back up -> expect dy POSITIVE (+ = up) if on ladder
-NOOP 5
