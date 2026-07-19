@@ -1,12 +1,9 @@
-"""CLI: benchmark step throughput on bundled games.
+"""CLI: benchmark step throughput on bundled p5 games.
 
 Usage:
-    just bench                          # all p5 games
-    just bench-three                    # all three.js games
-    just bench-one <game>               # one p5 game
-    just bench-three-one <game>         # one three.js game
-    uv run python tools/bench.py --backend p5    --all
-    uv run python tools/bench.py --backend three --all --frames 200 --trials 3
+    just bench                # all p5 games
+    just bench-one <game>     # one p5 game
+    uv run python tools/bench.py --all
 """
 
 from __future__ import annotations
@@ -15,6 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from playtrain.runtime import PlayTrainEnv, list_available_games
 from playtrain.runtime.bench import run_bench
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "bench"
@@ -22,12 +20,10 @@ OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "bench"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--backend", choices=["p5", "three"], required=True)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--game", type=str, help="Single game to benchmark")
     group.add_argument("--all", action="store_true", help="Benchmark all bundled games")
-    parser.add_argument("--frames", type=int, default=None,
-                        help="Frames per trial (default 500 for p5, 200 for three)")
+    parser.add_argument("--frames", type=int, default=500, help="Frames per trial")
     parser.add_argument("--warmup", type=int, default=50)
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--seed", type=int, default=42)
@@ -37,29 +33,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if args.backend == "p5":
-        from playtrain.runtime import PlayTrainEnv, list_available_games
-        env_factory = PlayTrainEnv
-        games = [args.game] if args.game else list_available_games()
-        n_actions = 8
-        frames = args.frames if args.frames is not None else 500
-    else:
-        from playtrain.runtime import PlayTrainThreeEnv, list_available_threejs_games
-        env_factory = PlayTrainThreeEnv
-        games = [args.game] if args.game else list_available_threejs_games()
-        n_actions = 15
-        frames = args.frames if args.frames is not None else 200
-
+    games = [args.game] if args.game else list_available_games()
     return run_bench(
-        env_factory=env_factory,
+        env_factory=PlayTrainEnv,
         games=games,
-        n_actions=n_actions,
-        backend_label=args.backend,
-        frames=frames,
+        n_actions=8,
+        backend_label="p5",
+        frames=args.frames,
         warmup=args.warmup,
         trials=args.trials,
         seed=args.seed,
-        output_path=None if args.no_save else OUTPUT_DIR / f"{args.backend}.json",
+        output_path=None if args.no_save else OUTPUT_DIR / "p5.json",
     )
 
 

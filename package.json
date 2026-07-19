@@ -9,10 +9,7 @@
     "./p5": "./runtime/p5/game-env.mjs",
     "./p5-worker": "./runtime/p5/game-worker.mjs",
     "./p5-shim": "./runtime/p5/p5-shim.mjs",
-    "./p5-obs": "./runtime/p5/obs.mjs",
-    "./three": "./runtime/three/game-env.mjs",
-    "./three-worker": "./runtime/three/game-worker.mjs",
-    "./three-shims": "./runtime/three/shims.mjs"
+    "./p5-obs": "./runtime/p5/obs.mjs"
   },
   "files": [
     "runtime",
@@ -28,9 +25,6 @@
     "headless",
     "p5",
     "matter-js",
-    "three.js",
-    "webgpu",
-    "dawn",
     "game",
     "benchmark"
   ],
@@ -54,9 +48,7 @@
     "canvas": "^3.2.3"
   },
   "optionalDependencies": {
-    "matter-js": "^0.20.0",
-    "three": "^0.184.0",
-    "webgpu": "^0.4.0"
+    "matter-js": "^0.20.0"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.59"

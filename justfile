@@ -14,10 +14,16 @@ default:
 
 # === setup ===
 
-# Install JS + Python dependencies for the whole monorepo.
+# Install deps AND build the native QuickJS backend (the default runtime engine).
 install:
     pnpm install
     uv sync --extra test
+    just build-native
+
+# Build the native QuickJS + rasterizer backend (QuickJSEnv / NativeVecEnv — the default).
+build-native:
+    bash native/build_qjs.sh
+    bash native/build_qjs_vec.sh
 
 # Remove caches, envs, and build artifacts.
 clean:
@@ -34,9 +40,9 @@ test:
 test-one name:
     uv run pytest tests/ -v -k {{name}}
 
-# Quick smoke: spawn a worker on flappy_bird, run 100 steps, print reward.
+# Quick smoke: spawn the default (QuickJS) backend on flappy_bird, run 100 steps.
 smoke:
-    uv run python -c "from playtrain.runtime import PlayTrainEnv; e = PlayTrainEnv(game='flappy_bird'); e.reset(seed=0); r = sum(e.step(e.action_space.sample())[1] for _ in range(100)); print(f'reward over 100 steps: {r:.2f}'); e.close()"
+    uv run python -c "from playtrain.runtime import GameEnv; e = GameEnv(game='flappy_bird'); e.reset(seed=0); r = sum(e.step(e.action_space.sample())[1] for _ in range(100)); print(f'reward over 100 steps: {r:.2f}'); e.close()"
 
 # 5-check validation suite over all bundled p5 games (~1 min).
 validate:
@@ -46,25 +52,12 @@ validate:
 validate-one game:
     uv run python tools/validate.py --game {{game}}
 
-# Same suite over all bundled three.js games (~3 min).
-validate-three:
-    uv run python tools/validate_three.py --all
-
-validate-three-one game:
-    uv run python tools/validate_three.py --game {{game}}
-
 # Benchmark step throughput across all bundled p5 games.
 bench:
-    uv run python tools/bench.py --backend p5 --all
+    uv run python tools/bench.py --all
 
 bench-one game:
-    uv run python tools/bench.py --backend p5 --game {{game}}
-
-bench-three:
-    uv run python tools/bench.py --backend three --all
-
-bench-three-one game:
-    uv run python tools/bench.py --backend three --game {{game}}
+    uv run python tools/bench.py --game {{game}}
 
 # Per-phase step profile for one p5 game.
 profile game="flappy_bird":

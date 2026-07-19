@@ -6,9 +6,7 @@ import pytest
 
 from playtrain.runtime import (
     PlayTrainEnv,
-    PlayTrainThreeEnv,
     list_available_games,
-    list_available_threejs_games,
 )
 
 
@@ -86,30 +84,3 @@ def test_every_bundled_game_boots(game):
     finally:
         env.close()
 
-
-# ---------------------------------------------------------------------------
-# Three.js (PlayTrainThreeEnv) smoke tests
-# ---------------------------------------------------------------------------
-
-def test_list_available_threejs_games_nonempty():
-    games = list_available_threejs_games()
-    assert len(games) >= 1
-
-
-@pytest.mark.parametrize("game", list_available_threejs_games())
-def test_every_bundled_threejs_game_boots(game):
-    """Each bundled three.js game must reset + take 5 random steps without crashing."""
-    env = PlayTrainThreeEnv(game=game)
-    try:
-        obs, info = env.reset(seed=0)
-        assert obs.shape == (env.obs_size, env.obs_size, 3)
-        assert obs.dtype == np.uint8
-        for _ in range(5):
-            action = int(env.action_space.sample())
-            obs, reward, terminated, truncated, info = env.step(action)
-            assert obs.shape == (env.obs_size, env.obs_size, 3)
-            assert isinstance(reward, float)
-            if terminated or truncated:
-                env.reset(seed=0)
-    finally:
-        env.close()
