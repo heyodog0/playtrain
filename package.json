@@ -36,11 +36,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/heyodog0/PlayTrain.git"
+    "url": "git+https://github.com/heyodog0/playtrain.git"
   },
-  "homepage": "https://github.com/heyodog0/PlayTrain",
+  "homepage": "https://github.com/heyodog0/playtrain",
   "bugs": {
-    "url": "https://github.com/heyodog0/PlayTrain/issues"
+    "url": "https://github.com/heyodog0/playtrain/issues"
   },
   "license": "MIT",
   "engines": {

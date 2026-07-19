@@ -14,7 +14,7 @@ PlayTrain has two halves, shipped as one installable Python package (`playtrain`
 Requires Node.js ≥18, Python ≥3.11, [`uv`](https://docs.astral.sh/uv/), [`pnpm`](https://pnpm.io), and [`just`](https://just.systems). `bootstrap.sh` installs whichever of uv/pnpm/just are missing.
 
 ```bash
-git clone https://github.com/heyodog0/PlayTrain
+git clone https://github.com/heyodog0/playtrain
 cd PlayTrain
 ./bootstrap.sh      # only if you don't already have uv / pnpm / just
 just install        # pnpm install + uv sync

@@ -98,7 +98,7 @@ uv run python -c "from playtrain import PlayTrainEnv; e = PlayTrainEnv(game='fla
 
 ## 6. Repo-name / package-name considerations
 
-- **GitHub URL.** Currently private at `github.com/heyodog0/PlayTrain`. Make public before announcing.
+- **GitHub URL.** Currently private at `github.com/heyodog0/playtrain`. Make public before announcing.
 - **Naming clash.** `bobiblazeski/js-gym` (2019, dormant, 53★) is *not* the same project, but Google searches for "js gym" still surface it. README should explicitly state the differentiator: *"PlayTrain wraps headless JS games as Python Gymnasium envs. (Not to be confused with the unrelated 2019 `js-gym` project, which implements RL algorithms in TensorFlow.js.)"*
 - **PyPI/npm reservation.** Both names are free as of 2026-04-25 — consider reserving an empty 0.0.1 placeholder soon to prevent squatting, even if the real release is months out.
 

@@ -41,9 +41,9 @@ playtrain-validate = "playtrain.gen.validate.validate:main"
 playtrain-bench    = "playtrain.gen.validate.bench:main"
 
 [project.urls]
-Homepage = "https://github.com/heyodog0/PlayTrain"
-Repository = "https://github.com/heyodog0/PlayTrain"
-Issues = "https://github.com/heyodog0/PlayTrain/issues"
+Homepage = "https://github.com/heyodog0/playtrain"
+Repository = "https://github.com/heyodog0/playtrain"
+Issues = "https://github.com/heyodog0/playtrain/issues"
 
 [build-system]
 requires = ["hatchling"]
