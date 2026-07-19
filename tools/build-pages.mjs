@@ -37,6 +37,8 @@ function projectName(dir) {
   return 'PlayTrain';
 }
 const TITLE = arg('--title', `${projectName(GAMES_DIR)} tester`);
+// Games to omit from the tester, by name (no .js). Comma-separated.
+const EXCLUDE = new Set(arg('--exclude', '').split(',').map(s => s.trim()).filter(Boolean));
 
 if (!existsSync(GAMES_DIR)) {
   console.error(`games dir not found: ${GAMES_DIR}`);
@@ -47,6 +49,7 @@ function listGames() {
   return readdirSync(GAMES_DIR)
     .filter(f => f.endsWith('.js') && !f.endsWith('_dbg.js'))
     .map(f => f.replace(/\.js$/, ''))
+    .filter(name => !EXCLUDE.has(name))
     .sort();
 }
 
