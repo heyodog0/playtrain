@@ -29,7 +29,7 @@ def _sync(barrier):
 def ng_worker(game, steps, barrier, q):
     try:
         sys.path.insert(0, str(_ROOT / "python"))
-        from node_gym.native_vec_env import NativeVecEnv
+        from playtrain.runtime.native_vec_env import NativeVecEnv
         e = NativeVecEnv(game, num_envs=1, obs_size=64, autoreset=True, num_threads=1)
         e.reset(seeds=np.array([os.getpid() % 100000], dtype=np.int32))
         a = np.ones(1, dtype=np.int32)

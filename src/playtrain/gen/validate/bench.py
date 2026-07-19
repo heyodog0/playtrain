@@ -1,6 +1,6 @@
 """CLI: benchmark step throughput on this repo's p5.js games.
 
-Thin wrapper over node_gym.bench.run_bench.
+Thin wrapper over playtrain.runtime.bench.run_bench.
 
 Usage:
     uv run gym-gen-bench --all
@@ -13,14 +13,14 @@ import argparse
 import sys
 from pathlib import Path
 
-from node_gym import NodeGymEnv, list_available_games
-from node_gym.bench import run_bench
+from playtrain.runtime import NodeGymEnv, list_available_games
+from playtrain.runtime.bench import run_bench
 
-from gym_gen.constants import variant_names
+from playtrain.gen.constants import variant_names
 
 
-GAMES_DIR  = Path(__file__).resolve().parents[3] / "games" / "js"
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "bench"
+GAMES_DIR  = Path(__file__).resolve().parents[4] / "games" / "js"
+OUTPUT_DIR = Path(__file__).resolve().parents[4] / "outputs" / "bench"
 
 
 def parse_args() -> argparse.Namespace:

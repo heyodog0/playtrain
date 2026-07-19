@@ -6,7 +6,7 @@ parallelism. Aggregate frames/s = num_envs * step-calls/s (synchronous vec).
 """
 import sys, time
 import numpy as np
-from node_gym.vec_env import NodeVecEnv
+from playtrain.runtime.vec_env import NodeVecEnv
 
 N = int(sys.argv[1])
 game = sys.argv[2] if len(sys.argv) > 2 else "breakout"

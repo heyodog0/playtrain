@@ -49,7 +49,7 @@ def _time(step, warmup, n, obs):
 
 
 def ng_agg(game, C, obs):
-    from node_gym.native_vec_env import NativeVecEnv
+    from playtrain.runtime.native_vec_env import NativeVecEnv
     N = 2 * C
     e = NativeVecEnv(game, num_envs=N, obs_size=obs, autoreset=True, num_threads=C)
     e.reset(seeds=np.arange(N, dtype=np.int32))

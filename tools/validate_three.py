@@ -18,8 +18,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from node_gym import NodeGymThreeEnv, list_available_threejs_games
-from node_gym.validate import run_validation
+from playtrain.runtime import NodeGymThreeEnv, list_available_threejs_games
+from playtrain.runtime.validate import run_validation
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "validation_three"
 

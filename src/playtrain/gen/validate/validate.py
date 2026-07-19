@@ -1,7 +1,7 @@
 """CLI: validate this repo's p5 games against ProcGen-style criteria.
 
-Thin wrapper over node_gym.validate.run_validation, pinned to this repo's
-games/js/ directory via node_gym.NodeGymEnv.
+Thin wrapper over playtrain.runtime.validate.run_validation, pinned to this repo's
+games/js/ directory via playtrain.runtime.NodeGymEnv.
 
 Usage:
     uv run gym-gen-validate --all
@@ -15,14 +15,14 @@ import sys
 from functools import partial
 from pathlib import Path
 
-from node_gym import NodeGymEnv, list_available_games
-from node_gym.validate import run_validation
+from playtrain.runtime import NodeGymEnv, list_available_games
+from playtrain.runtime.validate import run_validation
 
-from gym_gen.constants import variant_names
+from playtrain.gen.constants import variant_names
 
 
-GAMES_DIR = Path(__file__).resolve().parents[3] / "games" / "js"
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "outputs" / "validation"
+GAMES_DIR = Path(__file__).resolve().parents[4] / "games" / "js"
+OUTPUT_DIR = Path(__file__).resolve().parents[4] / "outputs" / "validation"
 
 
 def _env_factory(*, game: str, **kwargs):

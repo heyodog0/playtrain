@@ -32,7 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from node_gym.native_vec_env import NativeVecEnv
+from playtrain.runtime.native_vec_env import NativeVecEnv
 
 _ROOT = Path(__file__).resolve().parents[1]
 _HOST = _ROOT / "native" / "build" / "qjs_host"

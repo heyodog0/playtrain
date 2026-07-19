@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 from gymnasium.vector import AutoresetMode, VectorEnv
 
-from node_gym import NodeVecEnv
+from playtrain.runtime import NodeVecEnv
 
 
 # ---------------------------------------------------------------------------

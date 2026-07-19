@@ -115,7 +115,7 @@ def _bench(games, make, reset, step, n_actions, frames, warmup, trials, seed, la
 
 
 def bench_node(games, frames, warmup, trials, seed):
-    from node_gym import NodeGymEnv
+    from playtrain.runtime import NodeGymEnv
 
     def step(env, a):
         obs, _, term, trunc, _ = env.step(a)

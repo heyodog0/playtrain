@@ -14,8 +14,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from node_gym.native_vec_env import AsyncNativeVecEnv, _LIB_PATH, NativeVecEnv
-from node_gym.qjs_env import QuickJSEnv, _QJS_HOST
+from playtrain.runtime.native_vec_env import AsyncNativeVecEnv, _LIB_PATH, NativeVecEnv
+from playtrain.runtime.qjs_env import QuickJSEnv, _QJS_HOST
 
 pytestmark = pytest.mark.skipif(
     not _LIB_PATH.exists() or not _QJS_HOST.exists(),
@@ -121,7 +121,7 @@ def test_async_heterogeneous_pool():
 
 def test_vectorenv_api_conformance():
     from gymnasium.vector import AutoresetMode, VectorEnv
-    from node_gym.native_vector_env import NativeVectorEnv
+    from playtrain.runtime.native_vector_env import NativeVectorEnv
     env = NativeVectorEnv("coinrun", num_envs=4, autoreset_seed=0)
     try:
         assert isinstance(env, VectorEnv)
@@ -139,7 +139,7 @@ def test_vectorenv_api_conformance():
 
 
 def test_vectorenv_same_step_final_observation():
-    from node_gym.native_vector_env import NativeVectorEnv
+    from playtrain.runtime.native_vector_env import NativeVectorEnv
     # SAME_STEP (SB3-style): a terminal step must surface final_observation.
     env = NativeVectorEnv("bigfish", num_envs=4, autoreset_mode="same_step",
                           max_steps=8, autoreset_seed=0)  # tiny horizon -> truncations
@@ -194,7 +194,7 @@ def test_frame_skip_matches_v8_production_path():
     """Cross-engine: NativeVecEnv(frame_skip=K) must match NodeGymEnv
     (node/V8 + wasm rasterizer, the path analogen models trained on) —
     same obs bytes, reward, and flags per decision."""
-    from node_gym.env import NodeGymEnv
+    from playtrain.runtime.env import NodeGymEnv
     K, STEPS = 4, 60
     seed = 42
     vec = NativeVecEnv("analogen_cavequest_easy", num_envs=1, frame_skip=K,
@@ -310,7 +310,7 @@ def test_pingpong_bit_exact_vs_sync():
     """PingPongVecEnv (group send/wait on the async host) must produce the
     same per-env trajectories as the sync NativeVecEnv for identical
     seeds+actions — including autoreset boundaries and render_skip."""
-    from node_gym.native_vec_env import PingPongVecEnv
+    from playtrain.runtime.native_vec_env import PingPongVecEnv
     B, STEPS, K = 3, 200, 7
     seeds = np.array([7, 42, 1234, 9, 11, 13], dtype=np.int32)  # 2B envs
     sync = NativeVecEnv("analogen_cavequest_easy", num_envs=2 * B,

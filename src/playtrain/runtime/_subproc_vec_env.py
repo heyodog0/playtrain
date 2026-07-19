@@ -9,7 +9,7 @@ SB3 as a dependency.
 
 Not intended for production use. Real users should pick either SB3's
 SubprocVecEnv (battle-tested) or NodeVecEnv (faster, this branch's
-contribution). Lives under ``python/node_gym/_subproc_vec_env.py`` (with
+contribution). Lives under ``src/playtrain/runtime/_subproc_vec_env.py`` (with
 the leading underscore) so it's importable from the bench scripts and
 from multiprocessing-spawned children — without putting ``tools/`` on
 PYTHONPATH (which would shadow stdlib ``profile`` via ``tools/profile.py``).
@@ -27,9 +27,9 @@ def _subproc_worker(remote, parent_remote, game: str, obs_size: int,
                     obs_mode: str, max_steps: int, autoreset: bool,
                     autoreset_seed: int | None) -> None:
     parent_remote.close()
-    # Import inside child so the parent never imports node_gym (avoid double
+    # Import inside child so the parent never imports playtrain.runtime (avoid double
     # mmap setup in parent on fork-based platforms).
-    from node_gym import NodeGymEnv
+    from playtrain.runtime import NodeGymEnv
     env = NodeGymEnv(game=game, obs_size=obs_size, obs_mode=obs_mode,
                      max_steps=max_steps)
     rng = np.random.default_rng(autoreset_seed)

@@ -18,10 +18,10 @@ from gymnasium import spaces
 
 
 # Bundled example games that ship with the repo.
-DEFAULT_GAMES_DIR = Path(__file__).resolve().parents[2] / "examples" / "games" / "js"
+DEFAULT_GAMES_DIR = Path(__file__).resolve().parents[3] / "examples" / "games" / "js"
 
 # Bundled JS runtime (game-worker.mjs + p5/ shim).
-DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[2] / "runtime"
+DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[3] / "runtime"
 
 
 def _resolve_runtime_dir(explicit: str | Path | None) -> Path:

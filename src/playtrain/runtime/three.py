@@ -24,10 +24,10 @@ from gymnasium import spaces
 
 
 # Bundled Three.js example games.
-DEFAULT_THREEJS_GAMES_DIR = Path(__file__).resolve().parents[2] / "examples" / "games" / "threejs"
+DEFAULT_THREEJS_GAMES_DIR = Path(__file__).resolve().parents[3] / "examples" / "games" / "threejs"
 
 # Bundled JS runtime (game-worker.mjs + three/ shim + game-env.mjs).
-DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[2] / "runtime"
+DEFAULT_RUNTIME_DIR = Path(__file__).resolve().parents[3] / "runtime"
 
 
 def _resolve_runtime_dir(explicit: str | Path | None) -> Path:

@@ -25,7 +25,7 @@ from typing import Sequence
 
 import numpy as np
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[3]
 _GAMES_DIR = _ROOT / "examples" / "games" / "js"
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _ROOT / "native" / "build" / _LIBNAME

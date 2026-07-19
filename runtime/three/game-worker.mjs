@@ -75,7 +75,7 @@ function ok(meta = {}, binary = Buffer.alloc(0), cb) {
 
 // Binary step response — meta_length=0 in outer header signals to the Python
 // side to use the fast path (no JSON parse). Layout of the 16-byte step
-// header + obs follows. See protocol notes in python/node_gym/three.py.
+// header + obs follows. See protocol notes in src/playtrain/runtime/three.py.
 const STEP_HEADER_SIZE = 16;
 const GS_INDEX = { PLAYING: 0, WIN: 1, GAMEOVER: 2, EXIT: 3 };
 

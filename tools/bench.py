@@ -15,7 +15,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from node_gym.bench import run_bench
+from playtrain.runtime.bench import run_bench
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "bench"
 
@@ -38,13 +38,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.backend == "p5":
-        from node_gym import NodeGymEnv, list_available_games
+        from playtrain.runtime import NodeGymEnv, list_available_games
         env_factory = NodeGymEnv
         games = [args.game] if args.game else list_available_games()
         n_actions = 8
         frames = args.frames if args.frames is not None else 500
     else:
-        from node_gym import NodeGymThreeEnv, list_available_threejs_games
+        from playtrain.runtime import NodeGymThreeEnv, list_available_threejs_games
         env_factory = NodeGymThreeEnv
         games = [args.game] if args.game else list_available_threejs_games()
         n_actions = 15

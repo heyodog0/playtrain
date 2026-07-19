@@ -191,7 +191,7 @@ def promote_variant(name: str) -> dict:
 
     The .js file stays exactly where it is; it simply stops being treated as a
     prototype, so bulk ``--all`` runs will include it. To add it to the paper
-    sweep, also append its name to CANONICAL_GAMES in src/gym_gen/constants.py.
+    sweep, also append its name to CANONICAL_GAMES in src/playtrain/gen/constants.py.
     """
     reg = load_registry()
     if name not in reg:

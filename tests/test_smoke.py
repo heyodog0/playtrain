@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from node_gym import (
+from playtrain.runtime import (
     NodeGymEnv,
     NodeGymThreeEnv,
     list_available_games,

@@ -21,7 +21,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[3]
 _QJS_HOST = _ROOT / "native" / "build" / "qjs_host"
 _GAMES_DIR = _ROOT / "examples" / "games" / "js"
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT", "UNKNOWN")

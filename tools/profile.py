@@ -48,7 +48,7 @@ def main() -> int:
         )
 
     # Import after env vars are set so any module-level reads pick them up.
-    from node_gym import NodeGymEnv
+    from playtrain.runtime import NodeGymEnv
 
     print(f"Profiling {args.game}: {args.warmup} warmup + {args.steps} steps "
           f"(fast_obs={os.environ.get('NODE_GYM_P5_FAST_OBS', '1')})",

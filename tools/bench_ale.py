@@ -37,7 +37,7 @@ def _timeit(step, warmup, steps, n, trials=3):
 
 
 def ng_run(game, N, threads, steps):
-    from node_gym.native_vec_env import NativeVecEnv
+    from playtrain.runtime.native_vec_env import NativeVecEnv
     e = NativeVecEnv(game, num_envs=N, obs_size=OBS, autoreset=True, num_threads=threads)
     e.reset(seeds=np.arange(N, dtype=np.int32))
     a = np.random.randint(0, 8, size=N).astype(np.int32)

@@ -1,7 +1,7 @@
 """NativeVectorEnv — the native threadpool backend behind the Gymnasium 1.0
 ``VectorEnv`` API, a drop-in for ``SubprocVecEnv``/CleanRL vector envs.
 
-Wraps :class:`~node_gym.native_vec_env.NativeVecEnv` (in-process C++ threadpool,
+Wraps :class:`~playtrain.runtime.native_vec_env.NativeVecEnv` (in-process C++ threadpool,
 GIL released per batch) and adds the Gymnasium autoreset layer in Python, using
 the host's per-env ``reset_subset`` so autoreset seeds are controlled and
 reproducible and terminal observations are surfaced.

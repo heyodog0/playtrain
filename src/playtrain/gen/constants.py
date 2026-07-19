@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 
-REPO_ROOT         = Path(__file__).resolve().parents[2]
+REPO_ROOT         = Path(__file__).resolve().parents[3]
 GAMES_DIR         = REPO_ROOT / "games" / "js"
 VARIANTS_REGISTRY = REPO_ROOT / "games" / "variants.json"
 

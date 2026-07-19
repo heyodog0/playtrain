@@ -1,7 +1,7 @@
 {
-  "name": "node-gym",
+  "name": "playtrain",
   "version": "0.1.0",
-  "description": "Headless Node.js game environments for Python Gymnasium. Run JS games (p5.js, Matter.js, Three.js + WebGPU/Dawn) as RL envs without a browser.",
+  "description": "PlayTrain headless JS game runtime: run p5.js / Matter.js / Three.js games as RL environments without a browser.",
   "type": "module",
   "main": "runtime/p5/game-env.mjs",
   "exports": {
@@ -36,11 +36,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/heyodog0/node-gym.git"
+    "url": "git+https://github.com/heyodog0/PlayTrain.git"
   },
-  "homepage": "https://github.com/heyodog0/node-gym",
+  "homepage": "https://github.com/heyodog0/PlayTrain",
   "bugs": {
-    "url": "https://github.com/heyodog0/node-gym/issues"
+    "url": "https://github.com/heyodog0/PlayTrain/issues"
   },
   "license": "MIT",
   "engines": {
