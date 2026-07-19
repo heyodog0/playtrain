@@ -1,0 +1,24 @@
+.DS_Store
+__pycache__/
+*.pyc
+.env
+
+.venv/
+node_modules/
+
+outputs/models/
+outputs/evals/
+outputs/sb3/
+outputs/*latest.json
+outputs/*latest.md
+outputs/kazuki-benchmark-*.json
+outputs/kazuki-benchmark-*.md
+outputs/kazuki_gym_benchmark_*.json
+outputs/verify-*.png
+outputs/verify-*.json
+
+# External reference clones (not part of this repo)
+reference/bigger_better_faster_repo/
+
+# Closed-loop refinement artifacts (generated)
+outputs/refine_vs_rom/

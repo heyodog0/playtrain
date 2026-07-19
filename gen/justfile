@@ -1,0 +1,97 @@
+# gym-gen — task runner
+#
+# Generates and modifies p5.js RL environments using LLMs, and
+# validates the resulting games against ProcGen-style criteria.
+#
+# Install just: `brew install just` (or see https://just.systems)
+# List recipes:  `just`           (or `just --list`)
+
+set shell := ["bash", "-cu"]
+
+# === default ===
+
+default:
+    @just --list --unsorted
+
+# === setup ===
+
+# First-time setup: clone node-gym sibling if missing, install deps.
+bootstrap:
+    [ -d ../node-gym ] || git clone https://github.com/heyodog0/node-gym ../node-gym
+    just sync-all
+
+setup:
+    npm install
+    uv sync
+
+sync-all:
+    cd ../node-gym && git pull && pnpm install
+    uv sync
+
+install: setup
+
+# === validation ===
+
+# Run the 5-check ProcGen-style validation suite on p5 games (default: all)
+validate game="--all":
+    #!/usr/bin/env bash
+    if [ "{{game}}" = "--all" ]; then
+        uv run gym-gen-validate --all
+    else
+        uv run gym-gen-validate --game {{game}}
+    fi
+
+# Benchmark step throughput (FPS) per game (default: all games)
+bench game="--all":
+    #!/usr/bin/env bash
+    if [ "{{game}}" = "--all" ]; then
+        uv run gym-gen-bench --all
+    else
+        uv run gym-gen-bench --game {{game}}
+    fi
+
+# === game generation ===
+
+# Generate one Gemini-built game from a catalog. Pass mechanic="no" to omit the catalog mechanic from the prompt.
+gen-game catalog name model="pro" mechanic="yes":
+    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
+
+# Generate every game across every catalog. Pass mechanic="no" to omit catalog mechanics from prompts.
+gen-all model="pro" mechanic="yes":
+    uv run python tools/generate.py --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
+
+# Closed-loop refine a generated clone against the REAL Atari ROM (needs ale-py + GEMINI_API_KEY).
+# Rolls real ROM vs clone on a shared action sequence, sends the comparison to Gemini, iterates.
+refine-vs-rom name iters="3" feedback="" model="pro":
+    uv run --extra rom AutoROM --accept-license
+    uv run --extra rom python tools/refine_vs_rom.py --game {{name}} --iters {{iters}} --model {{model}} --feedback "{{feedback}}"
+
+# === game variants (prototype forks) ===
+
+# Fork a game into a named variant via natural language (parent untouched).
+# name is a short suffix; blank -> auto v{n}. e.g. just variant breakout "3x faster ball" fastball
+variant parent prompt name="" model="pro":
+    uv run python tools/variant.py --parent {{parent}} --prompt {{quote(prompt)}} --name {{name}} --model {{model}}
+
+# List all registered variants and the prompt that created each.
+variants:
+    uv run python tools/variant.py --list
+
+# Graduate a variant into a first-class game (include it in --all sweeps).
+promote name:
+    uv run python tools/variant.py --promote {{name}}
+
+# Delete a variant (a backup is saved first).
+unvariant name:
+    uv run python tools/variant.py --delete {{name}}
+
+# === game tester (browser UI) ===
+
+tester:
+    uv run python tools/tester.py
+
+# === CI ===
+
+ci:
+    just validate
+    just bench

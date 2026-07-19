@@ -1,0 +1,2235 @@
+{
+  "generated_at": "2026-04-08T16:54:28.635550+00:00",
+  "seed": 42,
+  "num_steps": 200,
+  "results": {
+    "api_compliance": {
+      "passed": true,
+      "message": "gymnasium check_env passed"
+    },
+    "determinism": {
+      "passed": true,
+      "message": "200 steps deterministic (seed=42)"
+    },
+    "observation_sanity": {
+      "passed": true,
+      "message": "shape=(84, 84, 4) dtype=uint8 range=[0,255] unique=34"
+    },
+    "reward_terminal": {
+      "passed": true,
+      "message": "300 steps, reward=0, truncated, gameState=PLAYING"
+    },
+    "throughput": {
+      "passed": true,
+      "message": "1663 FPS (0.601 ms/step, 1000 frames)"
+    }
+  },
+  "trajectory": [
+    {
+      "step": 0,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 320.34999999999997
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 1,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 321.7
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 2,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 323.5
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 3,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 4,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 5,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 6,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 7,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 8,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 9,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 10,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 11,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 12,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 13,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 14,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 15,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 16,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 17,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 18,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 19,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 20,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 21,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 22,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 23,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 24,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 25,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 26,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 27,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 28,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 29,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 30,
+      "action": "LEFT",
+      "player": {
+        "x": 296.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 31,
+      "action": "LEFT",
+      "player": {
+        "x": 293,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 32,
+      "action": "LEFT",
+      "player": {
+        "x": 289.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 33,
+      "action": "LEFT",
+      "player": {
+        "x": 286,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 34,
+      "action": "LEFT",
+      "player": {
+        "x": 282.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 35,
+      "action": "LEFT",
+      "player": {
+        "x": 279,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 36,
+      "action": "LEFT",
+      "player": {
+        "x": 275.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 37,
+      "action": "LEFT",
+      "player": {
+        "x": 272,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 38,
+      "action": "LEFT",
+      "player": {
+        "x": 268.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 39,
+      "action": "LEFT",
+      "player": {
+        "x": 265,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 40,
+      "action": "LEFT",
+      "player": {
+        "x": 261.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 41,
+      "action": "LEFT",
+      "player": {
+        "x": 258,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 42,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 43,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 44,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 45,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 46,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 47,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 48,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 49,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 50,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 51,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 52,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 53,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 54,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 55,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 56,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 57,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 58,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 59,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 60,
+      "action": "RIGHT",
+      "player": {
+        "x": 259.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 61,
+      "action": "RIGHT",
+      "player": {
+        "x": 263,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 62,
+      "action": "RIGHT",
+      "player": {
+        "x": 266.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 63,
+      "action": "RIGHT",
+      "player": {
+        "x": 270,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 64,
+      "action": "RIGHT",
+      "player": {
+        "x": 273.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 65,
+      "action": "RIGHT",
+      "player": {
+        "x": 277,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 66,
+      "action": "RIGHT",
+      "player": {
+        "x": 280.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 67,
+      "action": "RIGHT",
+      "player": {
+        "x": 284,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 68,
+      "action": "RIGHT",
+      "player": {
+        "x": 287.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 69,
+      "action": "RIGHT",
+      "player": {
+        "x": 291,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 70,
+      "action": "RIGHT",
+      "player": {
+        "x": 294.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 71,
+      "action": "RIGHT",
+      "player": {
+        "x": 298,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 72,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 73,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 74,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 75,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 76,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 77,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 78,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 79,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 80,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 81,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 82,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 83,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 84,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 85,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 86,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 87,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 88,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 89,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 90,
+      "action": "LEFT",
+      "player": {
+        "x": 296.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 91,
+      "action": "LEFT",
+      "player": {
+        "x": 293,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 92,
+      "action": "LEFT",
+      "player": {
+        "x": 289.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 93,
+      "action": "LEFT",
+      "player": {
+        "x": 286,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 94,
+      "action": "LEFT",
+      "player": {
+        "x": 282.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 95,
+      "action": "LEFT",
+      "player": {
+        "x": 279,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 96,
+      "action": "LEFT",
+      "player": {
+        "x": 275.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 97,
+      "action": "LEFT",
+      "player": {
+        "x": 272,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 98,
+      "action": "LEFT",
+      "player": {
+        "x": 268.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 99,
+      "action": "LEFT",
+      "player": {
+        "x": 265,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 100,
+      "action": "LEFT",
+      "player": {
+        "x": 261.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 101,
+      "action": "LEFT",
+      "player": {
+        "x": 258,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 102,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 103,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 104,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 105,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 106,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 107,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 108,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 109,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 110,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 111,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 112,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 113,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 114,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 115,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 116,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 117,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 118,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 119,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 120,
+      "action": "RIGHT",
+      "player": {
+        "x": 259.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 121,
+      "action": "RIGHT",
+      "player": {
+        "x": 263,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 122,
+      "action": "RIGHT",
+      "player": {
+        "x": 266.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 123,
+      "action": "RIGHT",
+      "player": {
+        "x": 270,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 124,
+      "action": "RIGHT",
+      "player": {
+        "x": 273.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 125,
+      "action": "RIGHT",
+      "player": {
+        "x": 277,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 126,
+      "action": "RIGHT",
+      "player": {
+        "x": 280.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 127,
+      "action": "RIGHT",
+      "player": {
+        "x": 284,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 128,
+      "action": "RIGHT",
+      "player": {
+        "x": 287.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 129,
+      "action": "RIGHT",
+      "player": {
+        "x": 291,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 130,
+      "action": "RIGHT",
+      "player": {
+        "x": 294.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 131,
+      "action": "RIGHT",
+      "player": {
+        "x": 298,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 132,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 133,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 134,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 135,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 136,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 137,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 138,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 139,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 140,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 141,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 142,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 143,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 144,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 145,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 146,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 147,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 148,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 149,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 150,
+      "action": "LEFT",
+      "player": {
+        "x": 296.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 151,
+      "action": "LEFT",
+      "player": {
+        "x": 293,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 152,
+      "action": "LEFT",
+      "player": {
+        "x": 289.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 153,
+      "action": "LEFT",
+      "player": {
+        "x": 286,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 154,
+      "action": "LEFT",
+      "player": {
+        "x": 282.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 155,
+      "action": "LEFT",
+      "player": {
+        "x": 279,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 156,
+      "action": "LEFT",
+      "player": {
+        "x": 275.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 157,
+      "action": "LEFT",
+      "player": {
+        "x": 272,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 158,
+      "action": "LEFT",
+      "player": {
+        "x": 268.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 159,
+      "action": "LEFT",
+      "player": {
+        "x": 265,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 160,
+      "action": "LEFT",
+      "player": {
+        "x": 261.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 161,
+      "action": "LEFT",
+      "player": {
+        "x": 258,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 162,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 163,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 164,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 165,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 166,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 167,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 168,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 169,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 170,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 171,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 172,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 173,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 174,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 175,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 176,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 177,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 178,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 179,
+      "action": "LEFT",
+      "player": {
+        "x": 256,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 180,
+      "action": "RIGHT",
+      "player": {
+        "x": 259.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 181,
+      "action": "RIGHT",
+      "player": {
+        "x": 263,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 182,
+      "action": "RIGHT",
+      "player": {
+        "x": 266.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 183,
+      "action": "RIGHT",
+      "player": {
+        "x": 270,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 184,
+      "action": "RIGHT",
+      "player": {
+        "x": 273.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 185,
+      "action": "RIGHT",
+      "player": {
+        "x": 277,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 186,
+      "action": "RIGHT",
+      "player": {
+        "x": 280.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 187,
+      "action": "RIGHT",
+      "player": {
+        "x": 284,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 188,
+      "action": "RIGHT",
+      "player": {
+        "x": 287.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 189,
+      "action": "RIGHT",
+      "player": {
+        "x": 291,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 190,
+      "action": "RIGHT",
+      "player": {
+        "x": 294.5,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 191,
+      "action": "RIGHT",
+      "player": {
+        "x": 298,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 192,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 193,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 194,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 195,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 196,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 197,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 198,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    },
+    {
+      "step": 199,
+      "action": "RIGHT",
+      "player": {
+        "x": 300,
+        "y": 324
+      },
+      "score": 0,
+      "reward": 0.0,
+      "gameState": "PLAYING"
+    }
+  ],
+  "artifacts": [
+    "/Users/heyodogo/code/lab/fast-llm-games/outputs/validation/observation_grid.png",
+    "/Users/heyodogo/code/lab/fast-llm-games/outputs/validation/determinism_proof.png",
+    "/Users/heyodogo/code/lab/fast-llm-games/outputs/validation/frame_stack.png"
+  ],
+  "all_passed": true
+}

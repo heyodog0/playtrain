@@ -1,0 +1,158 @@
+[
+  {
+    "name": "breakout",
+    "ref": "https://ale.farama.org/environments/breakout/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "paddle + ball + bricks"
+  },
+  {
+    "name": "space_invaders",
+    "ref": "https://ale.farama.org/environments/space_invaders/",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fixed shooter, descending enemies"
+  },
+  {
+    "name": "freeway",
+    "ref": "https://ale.farama.org/environments/freeway/",
+    "actions_used": ["UP", "DOWN"],
+    "mechanic": "lane crossing, avoid traffic"
+  },
+  {
+    "name": "frostbite",
+    "ref": "https://ale.farama.org/environments/frostbite/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "platformer, hop across ice floes"
+  },
+  {
+    "name": "asteroids",
+    "ref": "https://ale.farama.org/environments/asteroids/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "360 rotation + thrust + shoot"
+  },
+  {
+    "name": "seaquest",
+    "ref": "https://ale.farama.org/environments/seaquest/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "submarine shooter + oxygen management"
+  },
+  {
+    "name": "riverraid",
+    "ref": "https://ale.farama.org/environments/riverraid/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "vertical scroller + fuel management"
+  },
+  {
+    "name": "enduro",
+    "ref": "https://ale.farama.org/environments/enduro/",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D"],
+    "mechanic": "racing, overtake cars"
+  },
+  {
+    "name": "pong",
+    "ref": "https://ale.farama.org/environments/pong/",
+    "actions_used": ["UP", "DOWN", "D"],
+    "mechanic": "paddle vs CPU opponent"
+  },
+  {
+    "name": "boxing",
+    "ref": "https://ale.farama.org/environments/boxing/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fighting, land punches"
+  },
+  {
+    "name": "pitfall",
+    "ref": "https://ale.farama.org/environments/pitfall/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "side-scrolling adventure, jump pits + swing vines"
+  },
+  {
+    "name": "montezuma_revenge",
+    "ref": "https://ale.farama.org/environments/montezuma_revenge/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "platformer exploration, collect keys + avoid traps"
+  },
+  {
+    "name": "hero",
+    "ref": "https://ale.farama.org/environments/hero/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "descend caves, rescue miners, use dynamite"
+  },
+  {
+    "name": "kangaroo",
+    "ref": "https://ale.farama.org/environments/kangaroo/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "climb platforms, punch monkeys, rescue joey"
+  },
+  {
+    "name": "beam_rider",
+    "ref": "https://ale.farama.org/environments/beam_rider/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "shoot enemies on beam grid"
+  },
+  {
+    "name": "skiing",
+    "ref": "https://ale.farama.org/environments/skiing/",
+    "actions_used": ["LEFT", "RIGHT"],
+    "mechanic": "downhill slalom, steer between gates"
+  },
+  {
+    "name": "bank_heist",
+    "ref": "https://ale.farama.org/environments/bank_heist/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "maze driving, rob banks, drop dynamite"
+  },
+  {
+    "name": "berzerk",
+    "ref": "https://ale.farama.org/environments/berzerk/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "room-based shooter, avoid Evil Otto"
+  },
+  {
+    "name": "chopper_command",
+    "ref": "https://ale.farama.org/environments/chopper_command/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "helicopter shooter, protect trucks below"
+  },
+  {
+    "name": "demon_attack",
+    "ref": "https://ale.farama.org/environments/demon_attack/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "space shooter, enemies split when hit"
+  },
+  {
+    "name": "fishing_derby",
+    "ref": "https://ale.farama.org/environments/fishing_derby/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "competitive fishing, reel in fish, avoid shark"
+  },
+  {
+    "name": "ice_hockey",
+    "ref": "https://ale.farama.org/environments/ice_hockey/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "ice hockey, skate + shoot puck"
+  },
+  {
+    "name": "kung_fu_master",
+    "ref": "https://ale.farama.org/environments/kung_fu_master/",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "side-scrolling beat-em-up, kick + punch"
+  },
+  {
+    "name": "atlantis",
+    "ref": "https://ale.farama.org/environments/atlantis/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "defend city, aim turrets at attackers"
+  },
+  {
+    "name": "venture",
+    "ref": "https://ale.farama.org/environments/venture/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "dungeon rooms, shoot monsters + collect treasure"
+  },
+  {
+    "name": "qbert",
+    "ref": "https://ale.farama.org/environments/qbert/",
+    "actions_used": ["UP", "DOWN", "LEFT", "RIGHT"],
+    "mechanic": "diagonal-hop pyramid, flip all cube tops to target color, avoid enemies"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "gym-gen",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "matter-js": "^0.20.0"
+  }
+}
