@@ -2,9 +2,10 @@
 // static-site builder (tools/build-pages.mjs). Keeping both in one file
 // guarantees `just play` and the deployed Vercel site render identically.
 //
-// Non-Matter p5 games render through PlayTrain's OWN rasterizer (runtime/p5/raster.mjs),
-// the exact code the agent trains on — inlined into the page (self-contained, no module
-// serving needed). Matter.js games keep the legacy p5-from-CDN path, untouched.
+// All p5 games render through PlayTrain's OWN rasterizer (runtime/p5/raster.mjs) — the exact
+// code the agent trains on — inlined into the page (self-contained, zero external requests).
+// Matter.js games additionally get a vendored matter.min.js inlined, mirroring how the headless
+// runtime exposes the Matter global in runtime/p5/game-env.mjs. No CDN, no real p5.
 
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -53,6 +54,17 @@ function browserShimBundle() {
   return _bundle;
 }
 
+// --- vendored matter.js (inlined only into Matter.js game pages) ----------------------
+// Mirrors runtime/p5/game-env.mjs, which loads matter-js into the headless context so games
+// get the `Matter` global. Vendored under tools/vendor so the static build needs no
+// node_modules (Vercel skips install). UMD -> sets window.Matter when run as a classic <script>.
+const _matterPath = join(dirname(fileURLToPath(import.meta.url)), 'vendor', 'matter.min.js');
+let _matter = null;
+function matterBundle() {
+  if (_matter === null) _matter = readFileSync(_matterPath, 'utf8');
+  return _matter;
+}
+
 export function pickerPage(games, autoOpen, { gameHref } = {}) {
   const hrefFor = gameHref || (g => `/game/${g}`);
   const items = games.map(g => `<li><a href="${hrefFor(g)}">${g}</a></li>`).join('\n      ');
@@ -84,8 +96,12 @@ ${autoOpenScript}
 </body></html>`;
 }
 
-// Non-Matter games: rendered live by PlayTrain's own rasterizer (the agent's renderer).
-function rasterizerPage(name, source, { homeHref = '/' } = {}) {
+// All games render live by PlayTrain's own rasterizer (the agent's renderer). Matter.js games
+// also get matter.min.js inlined so the `Matter` global is available before the game runs.
+function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = {}) {
+  // Classic <script> executes before the deferred type="module" boot, so window.Matter is
+  // set by the time the game source is eval'd — the browser analogue of game-env.mjs.
+  const matterScript = needsMatter ? `<script>${matterBundle()}</script>\n` : '';
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${name} — PlayTrain tester</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
@@ -103,7 +119,7 @@ function rasterizerPage(name, source, { homeHref = '/' } = {}) {
 <!-- game source kept inert; the module boot evals it AFTER installing the shim globals -->
 <script type="text/plain" id="game-src">${source}</script>
 
-<script type="module">
+${matterScript}<script type="module">
 ${browserShimBundle()}
 
 // ---- boot (IIFE so its locals can't collide with shim top-level names, e.g. loop()) ----
@@ -158,74 +174,9 @@ ${browserShimBundle()}
 </body></html>`;
 }
 
-// Matter.js games: legacy path (real p5 + matter.js from CDN), intentionally untouched.
-function legacyP5Page(name, source, { homeHref = '/' } = {}) {
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${name} — PlayTrain tester</title>
-<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
-<style>${playStyle}</style></head><body>
-<div id="topbar"><a href="${homeHref}">&larr; all games</a><strong>${name}</strong></div>
-<div id="state"></div>
-<div id="stage">
-  <div class="col"><div class="label">native</div><div id="native-slot"></div></div>
-  <div class="col"><div class="label">agent obs (64×64, what the policy sees)</div>
-    <canvas id="obs-preview" width="64" height="64" style="width: 256px; height: 256px;"></canvas></div>
-</div>
-<script>
-window.addEventListener('keydown', (e) => {
-  if ([32, 37, 38, 39, 40, 68, 87, 65, 83].includes(e.keyCode)) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    e.preventDefault();
-  }
-}, { passive: false });
-</script>
-<script>
-${source}
-</script>
-<script>
-const _origSetup = typeof setup === 'function' ? setup : function(){};
-setup = function() {
-  _origSetup();
-  if (typeof resetGame === 'function') resetGame(Date.now() >>> 0);
-  const slot = document.getElementById('native-slot');
-  const game = document.querySelector('canvas.p5Canvas') || document.querySelector('canvas');
-  if (slot && game && game.id !== 'obs-preview') slot.appendChild(game);
-};
-setInterval(() => {
-  if (typeof getGameState === 'function') {
-    try {
-      const s = getGameState(); const parts = [];
-      if ('score' in s) parts.push('score: ' + s.score);
-      if ('lives' in s) parts.push('lives: ' + s.lives);
-      if ('gameState' in s) parts.push(s.gameState);
-      document.getElementById('state').textContent = parts.join('  |  ');
-    } catch (e) {}
-  }
-}, 200);
-(function mirrorObs() {
-  const obs = document.getElementById('obs-preview');
-  if (!obs) return;
-  const octx = obs.getContext('2d', { willReadFrequently: false });
-  octx.imageSmoothingEnabled = false;
-  function tick() {
-    const game = document.querySelector('canvas.p5Canvas') || document.querySelector('canvas');
-    if (game && game.id !== 'obs-preview' && game.width > 0) {
-      try { octx.drawImage(game, 0, 0, obs.width, obs.height); } catch (e) {}
-    }
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-})();
-</script>
-<div id="reset-row"><button onclick="resetGame(Date.now()>>>0); this.blur();">Reset</button></div>
-<div id="help">click canvas to focus &middot; Matter.js</div>
-</body></html>`;
-}
-
 export function playPage(name, source, opts = {}) {
-  // Matter.js games need the physics engine + real p5; keep them on the legacy path.
+  // Matter.js games get the vendored physics engine inlined; everything else is identical.
+  // p5 is always PlayTrain's own shim (rasterizer) — no real p5, no CDN.
   const needsMatter = /\bMatter\./.test(source);
-  return needsMatter ? legacyP5Page(name, source, opts) : rasterizerPage(name, source, opts);
+  return rasterizerPage(name, source, { ...opts, needsMatter });
 }
