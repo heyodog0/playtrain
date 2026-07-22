@@ -25,6 +25,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
 #include <deque>
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
@@ -322,6 +323,18 @@ struct VecHost {
   alignas(128) std::atomic<uint64_t> go{0};
   std::vector<WorkerCtl> done;        // per-helper completion generation
   std::atomic<bool> stop{false};
+  // Hybrid idle parking. Pure spin-wait is right for the hot loop (next
+  // dispatch is µs away) but wrong when the Python side blocks for seconds
+  // (e.g. waiting on the trainer's free_queue): idle helpers then burn a full
+  // core each, and on core-tight nodes that starves anything else — measured
+  // strangling a torch max-autotune compile at 23 cores. Helpers spin a
+  // bounded budget, then sleep on park_cv; producers notify only when
+  // parked > 0, so the hot path pays one relaxed load and no syscall.
+  // wait_for (not wait) bounds any theoretically-missed wake at 100 ms.
+  alignas(128) std::atomic<int> parked{0};
+  alignas(128) std::atomic<uint64_t> send_gen{0};   // bumped once per vec_send
+  std::mutex park_mu;
+  std::condition_variable park_cv;
   int cmd = 0;                         // 0 = step, 1 = reset, 2 = init
   const int32_t* in_actions = nullptr;
   const int32_t* in_seeds = nullptr;
@@ -464,18 +477,60 @@ static void run_shard(VecHost* H, int t) {
   }
 }
 
+// Spin budget before parking: must exceed normal intra-rollout waits (shard
+// imbalance is ms-scale — a 100 µs budget measured a 10% barrier regression
+// from helpers parking every step), while still bounding a true stall's burn
+// to a few ms. Clock checked only every kParkCheckSpins pauses so the hot
+// spin stays branch-cheap.
+static const int kParkCheckSpins = 4096;
+static const auto kParkAfter = std::chrono::milliseconds(5);
+
+// Returns true when the caller has spun past the park budget. `spins` and
+// `t0` are the caller's loop-local state; resets both when the budget fires.
+static inline bool park_due(int& spins, std::chrono::steady_clock::time_point& t0) {
+  if (++spins < kParkCheckSpins) return false;
+  spins = 0;
+  auto now = std::chrono::steady_clock::now();
+  if (t0 == std::chrono::steady_clock::time_point{}) { t0 = now; return false; }
+  if (now - t0 < kParkAfter) return false;
+  t0 = std::chrono::steady_clock::time_point{};
+  return true;
+}
+
 static void worker_loop(VecHost* H, int t) {
   uint64_t seen = 0;
   for (;;) {
     uint64_t g;
+    int spins = 0;
+    std::chrono::steady_clock::time_point t0{};
     while ((g = H->go.load(std::memory_order_acquire)) == seen) {
       if (H->stop.load(std::memory_order_acquire)) return;
-      cpu_relax();
+      if (!park_due(spins, t0)) { cpu_relax(); continue; }
+      // Stay parked until real work/stop arrives: re-waiting under the lock
+      // (not re-spinning the budget) keeps idle cost at one predicate check
+      // per 100 ms. The timeout only bounds a theoretically-missed wake.
+      std::unique_lock<std::mutex> lk(H->park_mu);
+      H->parked.fetch_add(1, std::memory_order_seq_cst);
+      while (H->go.load(std::memory_order_acquire) == seen &&
+             !H->stop.load(std::memory_order_acquire))
+        H->park_cv.wait_for(lk, std::chrono::milliseconds(100));
+      H->parked.fetch_sub(1, std::memory_order_relaxed);
     }
     if (H->stop.load(std::memory_order_acquire)) return;
     run_shard(H, t);
     seen = g;
     H->done[t].done.store(g, std::memory_order_release);   // publish completion
+  }
+}
+
+// Wake parked helpers after publishing new work / stop. The lock_guard
+// handshake (acquire+release, no work inside) pairs with the waiter's
+// parked++-then-recheck under the same mutex, so a wake can't slip between
+// its predicate check and its sleep.
+static inline void wake_parked(VecHost* H) {
+  if (H->parked.load(std::memory_order_acquire) > 0) {
+    { std::lock_guard<std::mutex> lk(H->park_mu); }
+    H->park_cv.notify_all();
   }
 }
 
@@ -486,6 +541,7 @@ static void dispatch(VecHost* H) {
   int T = H->nthreads;
   if (T <= 1) { run_shard(H, 0); return; }
   uint64_t g = H->go.fetch_add(1, std::memory_order_release) + 1;  // release helpers
+  wake_parked(H);
   run_shard(H, 0);                                                  // caller does shard 0
   for (int t = 1; t < T; t++)
     while (H->done[t].done.load(std::memory_order_acquire) != g) cpu_relax();
@@ -493,11 +549,25 @@ static void dispatch(VecHost* H) {
 
 // Async worker: spin-pop an env off the input queue, step it, publish it ready.
 static void worker_async(VecHost* H) {
+  uint64_t seen_send = H->send_gen.load(std::memory_order_acquire);
   for (;;) {
     int env;
+    int spins = 0;
+    std::chrono::steady_clock::time_point t0{};
     while (!H->inq.pop(env)) {
       if (H->stop.load(std::memory_order_acquire)) return;
-      cpu_relax();
+      if (!park_due(spins, t0)) { cpu_relax(); continue; }
+      // Park on the send generation: bumped once per vec_send batch, so no
+      // per-env RMW is added to the queue hot path.
+      uint64_t sg = H->send_gen.load(std::memory_order_acquire);
+      if (sg != seen_send) { seen_send = sg; continue; }
+      std::unique_lock<std::mutex> lk(H->park_mu);
+      H->parked.fetch_add(1, std::memory_order_seq_cst);
+      while (H->send_gen.load(std::memory_order_acquire) == seen_send &&
+             !H->stop.load(std::memory_order_acquire))
+        H->park_cv.wait_for(lk, std::chrono::milliseconds(100));
+      H->parked.fetch_sub(1, std::memory_order_relaxed);
+      seen_send = H->send_gen.load(std::memory_order_acquire);
     }
     env_step(H, H->envs[env], env, H->act[env]);
     if (H->group_mode) {
@@ -632,6 +702,9 @@ void vec_close(void* h) {
   H->stop.store(true, std::memory_order_release);
   // async workers spin on inq + check stop; sync workers spin on go — bump it.
   if (!H->async) H->go.fetch_add(1, std::memory_order_release);
+  else H->send_gen.fetch_add(1, std::memory_order_release);
+  { std::lock_guard<std::mutex> lk(H->park_mu); }
+  H->park_cv.notify_all();
   for (auto& th : H->pool) if (th.joinable()) th.join();
   // Free each env on ITS owning thread would be cleanest, but envs are only touched
   // after all workers have stopped; free from the caller thread (select first so the
@@ -726,6 +799,8 @@ void vec_send(void* h, const int32_t* env_ids, const int32_t* actions, int count
     if (H->group_mode) H->busy[id].store(1, std::memory_order_relaxed);
     while (!H->inq.push(id)) cpu_relax();
   }
+  H->send_gen.fetch_add(1, std::memory_order_release);
+  wake_parked(H);
 }
 
 // Enable group (ping-pong) mode: vec_recv must NOT be used afterwards; wait
