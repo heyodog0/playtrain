@@ -29,8 +29,12 @@ case "$(uname)" in
     # so build PIC copies here, kept separate from the non-PIC libs qjs_host uses.
     if [ ! -f qjs/bld_pic/libqjs.a ] || [ qjs/src/quickjs.c -nt qjs/bld_pic/libqjs.a ]; then
       mkdir -p qjs/bld_pic
+      # Same engine flags as build_qjs.sh (-O3 + x86-64-v3, no FMA): +6% env
+      # throughput, gate-passed. Keep the two builds' flags in lockstep — the
+      # gate runs qjs_host but training loads this .so.
+      QJS_ARCH=""; case "$(uname -m)" in x86_64|amd64) QJS_ARCH="-march=x86-64-v3";; esac
       for f in quickjs libregexp libunicode dtoa; do
-        clang -c -fPIC -O2 -DNDEBUG -D_GNU_SOURCE -I qjs/src qjs/src/$f.c -o qjs/bld_pic/$f.o
+        clang -c -fPIC -O3 $QJS_ARCH -ffp-contract=off -DNDEBUG -D_GNU_SOURCE -I qjs/src qjs/src/$f.c -o qjs/bld_pic/$f.o
       done
       ar rcs qjs/bld_pic/libqjs.a qjs/bld_pic/quickjs.o qjs/bld_pic/libregexp.o qjs/bld_pic/libunicode.o qjs/bld_pic/dtoa.o
     fi
