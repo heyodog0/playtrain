@@ -102,6 +102,17 @@ Color color(double r, double g, double b, double a) {
   return {js::jround(r), js::jround(g), js::jround(b), js::jround(clamp01(a / 255.0) * 255.0)};
 }
 
+Color lerpColor(const Color& c1, const Color& c2, double amt) {
+  // p5.js lerpColor(): componentwise, amt clamped to [0,1]. RGB rounded to
+  // match the mjs shim's Math.round; alpha stays fractional (both pipelines
+  // carry it unrounded until rasterization).
+  double t = clamp01(amt);
+  return {js::jround(c1.r + (c2.r - c1.r) * t),
+          js::jround(c1.g + (c2.g - c1.g) * t),
+          js::jround(c1.b + (c2.b - c1.b) * t),
+          c1.a + (c2.a - c1.a) * t};
+}
+
 // ---- style application (defer until draw, mirroring _applyFill/_applyStroke) ----
 static inline bool sameColor(const Color& a, const Color& b) {
   return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;

@@ -55,6 +55,14 @@ FN(js_color)  { p5::Color c = colorFromArgs(ctx, argc, argv);
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
   JS_SetPropertyUint32(ctx, a, 2, JS_NewFloat64(ctx, c.b)); JS_SetPropertyUint32(ctx, a, 3, JS_NewFloat64(ctx, c.a));
   return a; }
+FN(js_lerpColor) {
+  p5::Color c1 = colorFromArgs(ctx, 1, &argv[0]);
+  p5::Color c2 = colorFromArgs(ctx, 1, &argv[1]);
+  p5::Color c = p5::lerpColor(c1, c2, argd(ctx, argv[2]));
+  JSValue a = JS_NewArray(ctx);
+  JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
+  JS_SetPropertyUint32(ctx, a, 2, JS_NewFloat64(ctx, c.b)); JS_SetPropertyUint32(ctx, a, 3, JS_NewFloat64(ctx, c.a));
+  return a; }
 FN(js_noStroke) { p5::noStroke(); return JS_UNDEFINED; }
 FN(js_noFill) { p5::noFill(); return JS_UNDEFINED; }
 FN(js_strokeWeight) { p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
@@ -99,7 +107,7 @@ FN(js_m_hypot) { return JS_NewFloat64(ctx, js::hypot(argd(ctx, argv[0]), argd(ct
 struct Binding { const char* name; JSCFunction* fn; int nargs; };
 static const Binding BINDINGS[] = {
   {"createCanvas", js_createCanvas, 2}, {"background", js_background, 1},
-  {"fill", js_fill, 4}, {"stroke", js_stroke, 4}, {"color", js_color, 4},
+  {"fill", js_fill, 4}, {"stroke", js_stroke, 4}, {"color", js_color, 4}, {"lerpColor", js_lerpColor, 3},
   {"noStroke", js_noStroke, 0}, {"noFill", js_noFill, 0}, {"strokeWeight", js_strokeWeight, 1},
   {"rect", js_rect, 5}, {"ellipse", js_ellipse, 4}, {"circle", js_circle, 3}, {"arc", js_arc, 6},
   {"triangle", js_triangle, 6}, {"quad", js_quad, 8}, {"line", js_line, 4},

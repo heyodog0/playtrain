@@ -42,6 +42,10 @@ FN(b_stroke){ p5::stroke(colArgs(c,argc,a)); return JS_UNDEFINED; }
 FN(b_color){ p5::Color k=colArgs(c,argc,a); JSValue r=JS_NewArray(c);
   JS_SetPropertyUint32(c,r,0,JS_NewFloat64(c,k.r)); JS_SetPropertyUint32(c,r,1,JS_NewFloat64(c,k.g));
   JS_SetPropertyUint32(c,r,2,JS_NewFloat64(c,k.b)); JS_SetPropertyUint32(c,r,3,JS_NewFloat64(c,k.a)); return r; }
+FN(b_lerpColor){ p5::Color k1=colArgs(c,1,&a[0]); p5::Color k2=colArgs(c,1,&a[1]);
+  p5::Color k=p5::lerpColor(k1,k2,argd(c,a[2])); JSValue r=JS_NewArray(c);
+  JS_SetPropertyUint32(c,r,0,JS_NewFloat64(c,k.r)); JS_SetPropertyUint32(c,r,1,JS_NewFloat64(c,k.g));
+  JS_SetPropertyUint32(c,r,2,JS_NewFloat64(c,k.b)); JS_SetPropertyUint32(c,r,3,JS_NewFloat64(c,k.a)); return r; }
 FN(b_noStroke){ p5::noStroke(); return JS_UNDEFINED; }
 FN(b_noFill){ p5::noFill(); return JS_UNDEFINED; }
 FN(b_strokeWeight){ p5::strokeWeight(argd(c,a[0])); return JS_UNDEFINED; }
@@ -96,7 +100,7 @@ EMSCRIPTEN_KEEPALIVE int qb_init(const char* src) {
   struct B { const char* n; JSCFunction* f; int a; };
   const B bs[] = {
     {"createCanvas",b_createCanvas,2},{"background",b_background,1},{"fill",b_fill,4},{"stroke",b_stroke,4},
-    {"color",b_color,4},{"noStroke",b_noStroke,0},{"noFill",b_noFill,0},{"strokeWeight",b_strokeWeight,1},
+    {"color",b_color,4},{"lerpColor",b_lerpColor,3},{"noStroke",b_noStroke,0},{"noFill",b_noFill,0},{"strokeWeight",b_strokeWeight,1},
     {"rect",b_rect,5},{"ellipse",b_ellipse,4},{"circle",b_circle,3},{"triangle",b_triangle,6},{"quad",b_quad,8},
     {"line",b_line,4},{"rectMode",b_rectMode,1},{"ellipseMode",b_ellipseMode,1},{"push",b_push,0},{"pop",b_pop,0},
     {"translate",b_translate,2},{"rotate",b_rotate,1},{"scale",b_scale,2},{"beginShape",b_beginShape,0},

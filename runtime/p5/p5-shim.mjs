@@ -230,6 +230,25 @@ function color(...args) {
   return colorArgs(args);
 }
 
+function lerpColor(c1, c2, amt) {
+  // p5.js lerpColor(): componentwise interpolation, amt clamped to [0,1].
+  // Colors here are the rgba strings color() returns (arrays also accepted).
+  const parse = (c) => {
+    const s = Array.isArray(c) ? colorArgs([c]) : String(c);
+    const m = s.match(/rgba?\(([^)]*)\)/);
+    if (!m) return [0, 0, 0, 1];
+    const v = m[1].split(',').map(Number);
+    return [v[0] || 0, v[1] || 0, v[2] || 0, v.length > 3 ? v[3] : 1];
+  };
+  const a = parse(c1), b = parse(c2);
+  const t = Math.max(0, Math.min(1, amt));
+  const r = Math.round(a[0] + (b[0] - a[0]) * t);
+  const g = Math.round(a[1] + (b[1] - a[1]) * t);
+  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+  const al = a[3] + (b[3] - a[3]) * t;
+  return `rgba(${r},${g},${bl},${al})`;
+}
+
 function noSmooth() {
   // No-op in headless mode (disables anti-aliasing in browser)
 }
@@ -436,7 +455,7 @@ const CLOSE = 'close';
 function installGlobals() {
   const globals = {
     createCanvas, background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
-    stroke, noStroke, strokeWeight, noSmooth, color,
+    stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,
     push, pop, translate, rotate, scale,
     beginShape, vertex, endShape,

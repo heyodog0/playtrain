@@ -21,6 +21,7 @@ Color color(double gray);
 Color color(double gray, double alpha);
 Color color(double r, double g, double b);
 Color color(double r, double g, double b, double a);
+Color lerpColor(const Color& c1, const Color& c2, double amt);
 
 // Per-env shim state (for the multi-env threadpool host, qjs_vec_host.cpp).
 // newState() allocates a fresh shim state without selecting it; selectState()
