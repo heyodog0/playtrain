@@ -265,6 +265,19 @@ void ellipse(double x, double y, double w, double h) {
   afterFill();
 }
 void ellipse(double x, double y, double w) { ellipse(x, y, w, w); }
+
+void arc(double x, double y, double w, double h, double start, double stop) {
+  // p5.js arc(): sector fill + stroke via the rasterizer's angular ellipse
+  // path (rs_ellipse_path has carried a0/a1 since day one).
+  double cx = x, cy = y;
+  if (_ellipseMode == CORNER) { cx = x + w / 2; cy = y + h / 2; }
+  applyFill();
+  rs_begin_path(_h);
+  rs_ellipse_path(_h, cx, cy, w / 2, h / 2, start, stop);
+  rs_fill(_h);
+  if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
+  afterFill();
+}
 void circle(double x, double y, double d) { ellipse(x, y, d, d); }
 
 void triangle(double x1, double y1, double x2, double y2, double x3, double y3) {

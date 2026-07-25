@@ -167,6 +167,21 @@ function rect(x, y, w, h, r) {
   }
 }
 
+function arc(x, y, w, h, start, stop) {
+  // p5.js arc(): x,y center (per ellipseMode), w/h diameters, angles in
+  // radians. Maps onto the rasterizer's angular ellipse (sector fill +
+  // stroke) — the raster op has carried a0/a1 since day one; the shim just
+  // never exposed it.
+  if (h === undefined) h = w;
+  let cx = x, cy = y;
+  if (_ellipseMode === 'corner') { cx = x + w / 2; cy = y + h / 2; }
+  _applyFill();
+  _ctx.beginPath();
+  _ctx.ellipse(cx, cy, w / 2, h / 2, 0, start, stop);
+  _ctx.fill();
+  if (_strokeEnabled) { _applyStroke(); _ctx.stroke(); }
+}
+
 function ellipseMode(mode) {
   if (mode === 'corner' || mode === CORNER) _ellipseMode = 'corner';
   else _ellipseMode = 'center';
@@ -408,6 +423,10 @@ const ENTER = 13;
 const CENTER = 'center';
 const CORNER = 'corner';
 const LEFT = 'left';
+const RIGHT = 'right';
+const TOP = 'top';
+const BOTTOM = 'bottom';
+const BASELINE = 'alphabetic';
 const PI = Math.PI;
 const TWO_PI = Math.PI * 2;
 const HALF_PI = Math.PI / 2;
@@ -423,9 +442,9 @@ function installGlobals() {
     beginShape, vertex, endShape,
     map, constrain, lerp, dist,
     abs, floor, ceil, round, sqrt, pow, sin, cos, atan2, random, min, max,
-    keyIsDown, loop, noLoop, tint, millis,
+    keyIsDown, loop, noLoop, tint, millis, arc,
     LEFT_ARROW, UP_ARROW, RIGHT_ARROW, DOWN_ARROW, ENTER,
-    CENTER, CORNER, LEFT, PI, TWO_PI, HALF_PI, CLOSE,
+    CENTER, CORNER, LEFT, RIGHT, TOP, BOTTOM, BASELINE, PI, TWO_PI, HALF_PI, CLOSE,
     get width() { return _width; },
     get height() { return _height; },
     get frameCount() { return _frameCount; },

@@ -76,6 +76,7 @@ void rect(double x, double y, double w, double h);
 void rect(double x, double y, double w, double h, double r);
 void ellipse(double x, double y, double w, double h);
 void ellipse(double x, double y, double w);  // h defaults to w
+void arc(double x, double y, double w, double h, double start, double stop);
 void circle(double x, double y, double d);
 void triangle(double x1, double y1, double x2, double y2, double x3, double y3);
 void quad(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4);
@@ -125,6 +126,10 @@ constexpr int ENTER = 13;
 constexpr int CENTER = 1;   // rectMode/ellipseMode/textAlign selector
 constexpr int CORNER = 2;
 constexpr int LEFT = 3;
+constexpr int RIGHT = 4;
+constexpr int TOP = 5;
+constexpr int BOTTOM = 6;
+constexpr int BASELINE = 7;
 constexpr int CLOSE = 1;    // endShape mode
 constexpr double PI = 3.141592653589793;
 constexpr double TWO_PI = 6.283185307179586;
