@@ -56,6 +56,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/playtrain"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"runtime" = "playtrain/_assets/runtime"
+"examples/games" = "playtrain/_assets/examples/games"
+"GAME_TEMPLATE.md" = "playtrain/_assets/GAME_TEMPLATE.md"
+
 [tool.hatch.build.targets.sdist]
 include = [
   "src/playtrain",

@@ -33,7 +33,8 @@ if __package__:
 else:
     from refine import refine_game, backup_game
 
-ROOT = Path(__file__).resolve().parents[3]
+from playtrain._paths import repo_root as _repo_root
+ROOT = _repo_root() or Path.cwd()
 GAMES_DIR = ROOT / "games"
 JS_DIR = GAMES_DIR / "js"
 CATALOGS_DIR = GAMES_DIR / "catalogs"

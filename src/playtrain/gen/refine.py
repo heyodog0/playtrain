@@ -16,7 +16,8 @@ from pathlib import Path
 
 from google import genai
 
-ROOT = Path(__file__).resolve().parents[3]
+from playtrain._paths import repo_root as _repo_root
+ROOT = _repo_root() or Path.cwd()
 GAMES_DIR = ROOT / "games"
 JS_DIR = GAMES_DIR / "js"
 LOG_DIR = GAMES_DIR / "logs"

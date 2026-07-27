@@ -21,9 +21,10 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-_ROOT = Path(__file__).resolve().parents[3]
+from playtrain._paths import asset as _asset, repo_root as _repo_root
+_ROOT = _repo_root() or Path(__file__).resolve().parents[3]
 _QJS_HOST = _ROOT / "native" / "build" / "qjs_host"
-_GAMES_DIR = _ROOT / "examples" / "games" / "js"
+_GAMES_DIR = _asset("examples/games/js")
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT", "UNKNOWN")
 _ACTIONS = ("NOOP", "LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT_D", "RIGHT_D")
 _HDR = struct.Struct("<d")  # reward; rest read by offset
