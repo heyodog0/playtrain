@@ -166,9 +166,9 @@ def test_frame_skip_equals_k_single_steps():
     end in the horizon): identical obs, summed reward, same flags."""
     K, N, DECISIONS = 4, 3, 40
     seeds = np.array([7, 42, 1234][:N], dtype=np.int32)
-    skip = NativeVecEnv("analogen_cavequest_easy", num_envs=N, frame_skip=K,
+    skip = NativeVecEnv("pong", num_envs=N, frame_skip=K,
                         max_steps=100000)
-    base = NativeVecEnv("analogen_cavequest_easy", num_envs=N, frame_skip=1,
+    base = NativeVecEnv("pong", num_envs=N, frame_skip=1,
                         max_steps=100000)
     try:
         so = skip.reset(seeds=seeds).copy()
@@ -197,10 +197,10 @@ def test_frame_skip_matches_v8_production_path():
     from playtrain.runtime.env import PlayTrainEnv
     K, STEPS = 4, 60
     seed = 42
-    vec = NativeVecEnv("analogen_cavequest_easy", num_envs=1, frame_skip=K,
+    vec = NativeVecEnv("pong", num_envs=1, frame_skip=K,
                        max_steps=2000)
     try:
-        v8 = PlayTrainEnv(game="analogen_cavequest_easy", frame_skip=K)
+        v8 = PlayTrainEnv(game="pong", frame_skip=K)
     except Exception as e:  # node runtime unavailable
         vec.close()
         pytest.skip(f"PlayTrainEnv unavailable: {e}")
@@ -277,8 +277,8 @@ def test_render_skip_is_invisible():
     K, N, STEPS = 7, 4, 300
     seeds = np.array([7, 42, 1234, 99999], dtype=np.int32)
     kw = dict(num_envs=N, frame_skip=K, autoreset=True, max_steps=140)
-    ref = NativeVecEnv("analogen_cavequest_easy", render_skip=False, **kw)
-    fast = NativeVecEnv("analogen_cavequest_easy", render_skip=True, **kw)
+    ref = NativeVecEnv("pong", render_skip=False, **kw)
+    fast = NativeVecEnv("pong", render_skip=True, **kw)
     try:
         o1 = ref.reset(seeds=seeds).copy()
         o2 = fast.reset(seeds=seeds).copy()
@@ -313,10 +313,10 @@ def test_pingpong_bit_exact_vs_sync():
     from playtrain.runtime.native_vec_env import PingPongVecEnv
     B, STEPS, K = 3, 200, 7
     seeds = np.array([7, 42, 1234, 9, 11, 13], dtype=np.int32)  # 2B envs
-    sync = NativeVecEnv("analogen_cavequest_easy", num_envs=2 * B,
+    sync = NativeVecEnv("pong", num_envs=2 * B,
                         autoreset=True, frame_skip=K, render_skip=True,
                         max_steps=280)
-    pp = PingPongVecEnv("analogen_cavequest_easy", group_size=B,
+    pp = PingPongVecEnv("pong", group_size=B,
                         frame_skip=K, render_skip=True, max_steps=280)
     try:
         o_sync = sync.reset(seeds=seeds).copy()
