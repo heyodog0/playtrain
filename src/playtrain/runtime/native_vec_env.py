@@ -27,6 +27,23 @@ import numpy as np
 
 _ROOT = Path(__file__).resolve().parents[3]
 _GAMES_DIR = _ROOT / "examples" / "games" / "js"
+
+
+def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
+    """Resolve the games directory: explicit arg > $PLAYTRAIN_GAMES_DIR > bundled.
+
+    Matches PlayTrainEnv's resolution (runtime/env.py) so vec and non-vec agree —
+    games can live anywhere (e.g. a consumer repo's games/js) via the env var,
+    with no need to symlink them into playtrain's bundled examples dir.
+    """
+    if games_dir:
+        return Path(games_dir)
+    env_var = os.environ.get("PLAYTRAIN_GAMES_DIR")
+    if env_var:
+        return Path(env_var)
+    return _GAMES_DIR
+
+
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _ROOT / "native" / "build" / _LIBNAME
 
@@ -98,7 +115,7 @@ class NativeVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = Path(games_dir) if games_dir else _GAMES_DIR
+        gdir = _resolve_games_dir(games_dir)
         game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
@@ -242,7 +259,7 @@ class AsyncNativeVecEnv:
                  batch_size: int | None = None, obs_size: int = 64, max_steps: int = 2000,
                  num_threads: int = 0, autoreset: bool = True, frame_skip: int = 1,
                  games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
-        gdir = Path(games_dir) if games_dir else _GAMES_DIR
+        gdir = _resolve_games_dir(games_dir)
 
         def _resolve(g: str) -> str:
             p = g if g.endswith(".js") else str(gdir / f"{g}.js")
@@ -363,7 +380,7 @@ class PingPongVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = Path(games_dir) if games_dir else _GAMES_DIR
+        gdir = _resolve_games_dir(games_dir)
         game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
