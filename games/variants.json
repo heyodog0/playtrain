@@ -1,4 +1,15 @@
 {
+  "breakout.multi": {
+    "base_root": "breakout",
+    "created": "2026-07-25T09:08:11",
+    "duration_s": 58.47,
+    "log": "20260725-090811_breakout.multi_variant.json",
+    "model": "pro",
+    "parent": "breakout",
+    "physics": null,
+    "prompt": "Can you make the bricks smaller, the paddle bigger, and also have 2 balls in motion instead of 1?",
+    "strategy": "rewrite"
+  },
   "breakout.v1": {
     "base_root": "breakout",
     "created": "2026-07-02T05:58:21",

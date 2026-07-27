@@ -12,7 +12,7 @@ import httpx
 from google import genai
 from google.genai import types
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE_PATH = ROOT / "GAME_TEMPLATE.md"
 GAMES_DIR = ROOT / "games"
 CATALOGS_DIR = GAMES_DIR / "catalogs"

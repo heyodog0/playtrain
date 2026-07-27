@@ -57,6 +57,31 @@ just tester             # browser playtest UI + Gemini refinement
 
 Run `just` with no args to see every recipe.
 
+## From prompt to trained agent
+
+The full loop — author a game in natural language, play it, train on it:
+
+```bash
+export GEMINI_API_KEY=...   # generation only; runtime and training need no key
+
+# 1. Generate (or fork) a game
+uv run playtrain-variant --parent breakout --prompt "3 simultaneous balls, lost balls cost a life" --name breakout.multi
+uv run playtrain-refine --game breakout.multi --feedback "make random play score less"
+
+# 2. Play it yourself — same file, same engine as the agent
+just play breakout.multi
+
+# 3. Validate and train
+uv run playtrain-validate --game breakout.multi
+pip install playtrain-trainers   # or: git+https://github.com/heyodog0/playtrain-trainers
+python -m playtrain_trainers.train_impala --config configs/impala_quickstart.json
+```
+
+Generation costs are small (the six authored artifacts in the paper averaged
+under \$0.20 and under six minutes of model time each), and training runs at
+up to ~350k agent-steps/s per learner GPU pair on the vectorized backend.
+
+
 ## Repo map
 
 ```text

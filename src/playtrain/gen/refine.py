@@ -16,7 +16,7 @@ from pathlib import Path
 
 from google import genai
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 GAMES_DIR = ROOT / "games"
 JS_DIR = GAMES_DIR / "js"
 LOG_DIR = GAMES_DIR / "logs"

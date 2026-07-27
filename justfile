@@ -91,11 +91,11 @@ gen-bench game="--all":
 
 # Generate one Gemini-built game from a catalog. mechanic="no" omits the catalog mechanic.
 gen-game catalog name model="pro" mechanic="yes":
-    uv run python tools/generate.py --catalog {{catalog}} --name {{name}} --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
+    uv run playtrain-generate --catalog {{catalog}} --name {{name}} --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
 
 # Generate every game across every catalog.
 gen-all model="pro" mechanic="yes":
-    uv run python tools/generate.py --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
+    uv run playtrain-generate --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
 
 # Closed-loop refine a generated clone against the REAL Atari ROM (needs ale-py + GEMINI_API_KEY).
 refine-vs-rom name iters="3" feedback="" model="pro":
@@ -105,16 +105,16 @@ refine-vs-rom name iters="3" feedback="" model="pro":
 # === game variants (prototype forks) ===
 
 variant parent prompt name="" model="pro":
-    uv run python tools/variant.py --parent {{parent}} --prompt {{quote(prompt)}} --name {{name}} --model {{model}}
+    uv run playtrain-variant --parent {{parent}} --prompt {{quote(prompt)}} --name {{name}} --model {{model}}
 
 variants:
-    uv run python tools/variant.py --list
+    uv run playtrain-variant --list
 
 promote name:
-    uv run python tools/variant.py --promote {{name}}
+    uv run playtrain-variant --promote {{name}}
 
 unvariant name:
-    uv run python tools/variant.py --delete {{name}}
+    uv run playtrain-variant --delete {{name}}
 
 # === testers (browser UIs) ===
 
