@@ -18,3 +18,5 @@ jiteval/*_aot
 jiteval/hotloop_spec
 jit/*.o
 jit/*_test
+bld/
+bld_pic/
