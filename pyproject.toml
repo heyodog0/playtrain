@@ -69,6 +69,5 @@ include = [
   "games",
   "GAME_TEMPLATE.md",
   "README.md",
-  "docs",
   "LICENSE",
 ]

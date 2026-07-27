@@ -12,7 +12,7 @@ three Gymnasium 1.0 autoreset modes (``NEXT_STEP``, ``SAME_STEP``,
 recent ``gymnasium.utils``) and SB3-style trainers (which expect
 ``SAME_STEP`` semantics).
 
-See ``docs/MULTI_ENV_RUNTIME.md`` §5 for design context, and benchmark
+See MULTI_ENV_RUNTIME.md (internal design doc) §5 for design context, and benchmark
 receipts in ``logs/directvec_*`` (FASRC jobs 12972050 and 12978195).
 """
 

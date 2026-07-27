@@ -95,7 +95,6 @@ examples/games/   bundled p5 games (the runtime's default catalog)
 games/            the generated p5 catalog, catalogs/, procgen refs, variants
 tools/            dev scripts: generation, refinement, validation, benchmarks, tester, site build
 tests/            runtime pytest suite
-docs/             design docs, protocol, LLM prompts, validation write-ups
 GAME_TEMPLATE.md  the p5.js game contract used by the generator
 ```
 
@@ -113,7 +112,7 @@ bash native/build_qjs_vec.sh    # libqjs_vec (envpool-class threadpool backend)
 - **Action space**: Discrete(8) — abstract directional + button, identical across games.
 - **Observations**: 64×64×3 RGB, matching ProcGen conventions.
 - **Seed-based determinism**: same seed + actions ⇒ same trajectory.
-- **Validation**: shape, action-space, determinism, throughput, and episode-bounds checks; a generated game must pass all five before entering the catalog. See `GAME_TEMPLATE.md` and `docs/llm/VALIDATION.md`.
+- **Validation**: shape, action-space, determinism, throughput, and episode-bounds checks; a generated game must pass all five before entering the catalog. See `GAME_TEMPLATE.md`.
 
 ## License
 
