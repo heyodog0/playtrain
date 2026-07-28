@@ -4,10 +4,16 @@ These two scripts are the **exact submissions** that produced the figure's numbe
 recovered from the cluster (`~/sweep4.sh`, `~/sweep6.sh` on FASRC) and committed
 verbatim, renamed only to say what they sweep:
 
-| script | was | suite | node |
-|---|---|---|---|
-| `sweep_procgen16.sh` | `~/sweep4.sh` | 16 ProcGen replicas vs real ProcGen | sapphire, `-c 1`, `holy8a32607` |
-| `sweep_atari8.sh` | `~/sweep6.sh` | 8 Atari replicas vs ALE | sapphire, `-c 1`, `holy8a32603` |
+| script | was | panel | suite | node |
+|---|---|---|---|---|
+| `sweep_procgen16.sh` | `~/sweep4.sh` | (a) | 16 ProcGen replicas vs real ProcGen | sapphire, `-c 1`, `holy8a32607` |
+| `sweep_atari8.sh` | `~/sweep6.sh` | (b) | 8 Atari replicas vs ALE | sapphire, `-c 1`, `holy8a32603` |
+| `sweep_backend_ladder.sh` | `~/sweep7.sh` | (c) | Playwright → Node/V8 → QuickJS over all 24 games | sapphire, `-c 1` |
+| `pw_bench_playwright.mjs` | `~/pw_bench_fasrc.mjs` | (c) | the Playwright arm: headless Chromium via playwright-core, real p5.js, 64×64 readback | — |
+
+`ladder/` holds the earlier rungs of the same measurements (`sweep{,2,3,5}.sh`) and
+the QuickJS engine compile-flag experiments (`exp_driver.sh`, `exp_qjs_opt.sh` —
+baseline → `-O3 -march` → PGO), which did not change the published numbers.
 
 Raw output is committed in the paper repo under `results/env_throughput/`
 (`qjs_raw4.txt`, `procgen4.json`, `sweep4.out`, and the Atari equivalents). The
@@ -74,7 +80,14 @@ If you do want a symmetric per-core measurement, the right harness already exist
 num_threads=1)` against `ProcgenGym3Env(num=1)` — both in-process, both one Python
 call per step.
 
+**Panel (c) has the same shape.** Its three arms use three drivers: Playwright
+through `pw_bench_playwright.mjs` (Node + headless Chromium), Node/V8 through
+`bench_compare.py --backend node` (Python harness), QuickJS through the C loop. So
+the V8→QuickJS step carries the same ±15% driver uncertainty as panels (a)/(b). The
+ladder's qualitative claim is unaffected — a ~6× step does not become a wash at
+±15% — but the exact multiplier inherits it.
+
 **Recommendation:** keep the published numbers and add one caption clause noting
 PlayTrain was timed in its native benchmark loop while baselines were timed through
 their Python APIs, a difference measured at ±15% with no consistent direction.
-Re-running the sweep is optional, not corrective.
+Re-running the sweeps is optional, not corrective.
