@@ -33,32 +33,48 @@ Two residual caveats, neither a hardware difference:
   different jobs on different nodes; each panel is internally same-node, and that
   is the level at which the comparison holds.
 
-## The one asymmetry you need to know about
+## Driver asymmetry: real, but small, and measured
 
-The two sides of the figure were **not driven by the same harness**:
+The two sides of the figure were not stepped by the same driver:
 
-- **PlayTrain** was measured by the QuickJS host's own C benchmark loop —
-  `native/build/qjs_host <game>.js bench 0 100000`, 7 repetitions per game. No
-  Python is involved: the loop lives inside the binary.
-- **ProcGen and ALE** were measured through `../bench_compare.py`
-  (`--trials 7 --frames 1500 --warmup 200 --fixed-actions`), i.e. a Python
-  stepping loop over their Gym APIs.
+- **PlayTrain** by the QuickJS host's own C benchmark loop —
+  `native/build/qjs_host <game>.js bench 0 100000`, 7 reps/game. No Python in the
+  stepping path.
+- **ProcGen and ALE** by `../bench_compare.py`, a Python loop over their Gym APIs
+  (one Python call per step, in-process C/C++ underneath).
 
-Both are single-env, single-core, one-frame-per-step, 7 trials — so the *workload*
-is matched. What differs is per-step driver overhead: the baselines pay a Python
-call per step and PlayTrain does not. At these throughputs that is worth a few
-percent for the baselines (~25–50 µs/step, so Python's ~1–2 µs is small) but more
-for PlayTrain, whose fastest games are ~10 µs/step. It flatters PlayTrain, and by
-more on the games where PlayTrain is fastest.
+The question is how much the missing Python call is worth. Measured directly —
+same machine, same games, same QuickJS+rasterizer backend, only the driver changed:
 
-Two honest ways to close it, in order of preference:
+| game | C loop (`qjs_host bench`) | in-process Python (`NativeVecEnv` n=1, t=1) | delta |
+|---|---|---|---|
+| bigfish | 207,757 | 176,233 | −15% |
+| coinrun | 25,558 | 28,645 | **+12%** |
 
-1. **Re-measure both sides through `bench_compare.py`** — now possible, since
-   `--backend qjs` exists (it did not when these sweeps ran, which is *why* the
-   sweeps used the C loop). Symmetric Python driver on both sides. Expect
-   PlayTrain's bars to come in somewhat below the published values.
-2. **Keep the C-loop numbers and disclose the asymmetry** in the figure caption,
-   noting it favors PlayTrain.
+So the honest per-core number under a Python driver is within roughly ±15% of the
+C-loop number, **and the sign is not consistent** — coinrun measures *faster*
+through Python. There is no systematic inflation to correct. (Apple Silicon
+figures; the ratio between drivers is the quantity of interest, not the absolute
+values.)
 
-Either is defensible; silently presenting them as one harness is not. The
-published figure currently reflects option (2) without the disclosure.
+The baselines' own overhead is the same order: one Python call (~1–2 µs) against a
+25–50 µs ProcGen step is 2–5%.
+
+**Do not "fix" this with `bench_compare.py --backend qjs`.** That path builds
+`QuickJSEnv`, which talks to `qjs_host` over stdin/stdout pipes and pays a pipe
+round-trip plus a 12 KB observation read *per step* — 50,381 f/s on bigfish versus
+207,757, i.e. 4× slower. Neither the figure nor the production trainer pays that
+cost: training steps environments through the in-process C++ threadpool
+(`NativeVecEnv`), one batched ctypes call per N envs with the GIL released and a
+zero-copy observation buffer. Re-measuring through the pipe API would understate
+PlayTrain by 25–76% and describe a configuration nobody runs.
+
+If you do want a symmetric per-core measurement, the right harness already exists:
+`bench_vs_baselines.py`'s raw-per-core arm, which drives `NativeVecEnv(num_envs=1,
+num_threads=1)` against `ProcgenGym3Env(num=1)` — both in-process, both one Python
+call per step.
+
+**Recommendation:** keep the published numbers and add one caption clause noting
+PlayTrain was timed in its native benchmark loop while baselines were timed through
+their Python APIs, a difference measured at ±15% with no consistent direction.
+Re-running the sweep is optional, not corrective.

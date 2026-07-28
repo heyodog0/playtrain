@@ -11,31 +11,25 @@ measurement and lives with the trainers, in
 
 ## Which backend is being measured
 
-PlayTrain ships two single-env backends, and they differ by 1.6–3.7× depending on
-the game. Every reported number uses the first one:
+Three access paths reach the same QuickJS + native-rasterizer engine, and they
+cost very different amounts per step. Getting these confused is the single easiest
+way to misreport a number, so every script names which one it drives.
 
-- **QuickJS + native rasterizer** (`playtrain.runtime.GameEnv`) — the canonical
-  training and evaluation engine, and the default here. Needs the native build
-  (`native/build_qjs.sh`).
-- **Node.js + node-canvas** (`playtrain.runtime.PlayTrainEnv`) — a portable
-  fallback for machines with no native build. **Superseded**; its numbers are not
-  comparable and must never be mixed into a QuickJS figure.
+| path | how a step travels | measured (bigfish, Apple Silicon) | used for |
+|---|---|---|---|
+| **C loop** — `qjs_host <game>.js bench` | entirely inside the binary, no Python | 207,757 f/s | the published per-core figure |
+| **in-process** — `NativeVecEnv` (ctypes, GIL released, zero-copy obs) | one batched call per N envs | 176,233 f/s at N=1 | **the production training path**, and the aggregate numbers |
+| **pipe** — `GameEnv` / `QuickJSEnv` | subprocess over stdin/stdout, ~12 KB obs read per step | 50,381 f/s | portable single-env API: correctness, eval, no-build machines |
 
-Measured locally (Apple Silicon, 300 frames × 3 trials, median) as a sanity check
-on the gap: bigfish 50,381 vs 15,139 f/s (3.3×), coinrun 19,170 vs 12,192 (1.6×),
-flappy_bird 73,082 vs 19,832 (3.7×). The gap is largest on simple-render games,
-where the rasterizer dominates.
+The pipe path is 4× off the engine's actual cost because of the per-step IPC, and
+**no reported throughput number uses it** — the figure uses the C loop and training
+uses the in-process threadpool. It remains the honest number for anyone stepping
+`GameEnv` directly from Python, which is why `bench.py` reports it.
 
-Scripts state their backend explicitly:
-
-| backend | scripts |
-|---|---|
-| QuickJS, single env | `bench.py` (default), `bench_compare.py --backend qjs` |
-| QuickJS, C++ threadpool (`NativeVecEnv`) | `bench_vs_baselines.py`, `bench_native_vec.py`, `bench_ale.py`, `bench_ale_async.py`, `bench_scaling.py`, `bench_sharded.py` |
-| Node/canvas (legacy) | `bench.py --backend node`, `bench_compare.py --backend node`, `raw_vec_bench.py` |
-
-The backend name is written into every output JSON, so a merged figure can be
-checked for accidental mixing.
+The legacy **Node.js + node-canvas** backend (`PlayTrainEnv`) is superseded and
+slower again (bigfish 15,139 f/s through the same pipe API); its numbers must never
+be mixed into a QuickJS figure. The backend name is written into every output JSON
+so a merged figure can be checked for accidental mixing.
 
 ## Ground rules
 
@@ -72,7 +66,7 @@ These hold for every script here; deviations are called out per-script below.
 
 | script | measures | used for |
 |---|---|---|
-| `bench_compare.py` | **per-core, single env.** One backend per invocation, matched methodology, per-game median + SD over trials. The fundamental per-env cost with no coordinator involved. Use `--backend qjs`. | Figure 2(a)/(b) — vs. ProcGen (16 shared games) and vs. ALE (8 shared games) |
+| `bench_compare.py` | **per-core, single env**, one backend per invocation, per-game median + SD over trials. Produced the **baseline** bars of the published figure (`--backend procgen` / `--backend ale`); `--backend qjs` measures PlayTrain's pipe-based single-env API, which is 4× below the engine's real cost, so it is *not* the figure's PlayTrain path (that was the C loop — see `as_run/`). | Figure 2(a)/(b) baseline bars |
 | `bench_vs_baselines.py` | **PlayTrain vs ProcGen at each system's best**, three ways: raw per-core, best in-process VectorEnv, and single-env×cores ceiling. Sweeps ProcGen's `num_threads` over {8,16,32} and takes its max (its threadpool peaks near 16 and *degrades* past it). | the aggregate/near-linear-scaling claim |
 | `bench_native_vec.py` | the four-way coordinator comparison at N envs: `single` (one env, no coordinator) · `ceiling` (N independent processes) · `native-vec` (in-process C++ threadpool, GIL released) · `py-coord` (Python lockstep over N subprocesses, same backend). Isolates *coordination* cost from *env* cost. | the threadpool's share of the headline number |
 | `bench_sharded.py` | **measured, not extrapolated,** P-process aggregate with synchronized start. Symmetric: both systems driven through their ordinary single-env Python API, one env per process, so neither gets a coordinator advantage. | the embarrassingly-parallel ceiling |
@@ -110,11 +104,16 @@ uv run --no-project --python 3.10 --with procgen --with "numpy<2" --with gymnasi
 uv run --no-project --python 3.10 --with envpool --with "numpy<2" --with gym \
     python benchmarks/bench_ale_async.py
 
-# matched-methodology per-core sweep, one backend at a time
-python benchmarks/bench_compare.py --backend qjs     --suite procgen --trials 7
+# baseline per-core sweeps (the published figure's baseline bars)
 python benchmarks/bench_compare.py --backend procgen --suite procgen --trials 7
-python benchmarks/bench_compare.py --backend qjs     --suite atari   --trials 7
 python benchmarks/bench_compare.py --backend ale     --suite atari   --trials 7
+
+# PlayTrain's per-core side, as published — the engine's own loop, no Python:
+native/build/qjs_host examples/games/js/bigfish.js bench 0 100000
+
+# PlayTrain through its portable Python API instead (4x slower: per-step pipe IPC,
+# not what the figure or the trainer uses)
+python benchmarks/bench_compare.py --backend qjs     --suite procgen --trials 7
 ```
 
 Results land in `outputs/compare/<backend>_<suite>.json` (untracked). Pass
@@ -157,40 +156,35 @@ QuickJS backend with the native rasterizer, `frame_skip=1`, 64×64 RGB. Machine
 class matters: Apple Silicon runs roughly 2–3× faster per core and its absolute
 numbers are not comparable to the x86 ones.
 
-To reproduce end to end, on a single node:
+To reproduce it exactly, submit the two as-run sweeps — each measures PlayTrain
+(engine C loop) and its baseline (Python harness) inside one job:
 
 ```bash
-python benchmarks/bench_compare.py --backend qjs     --suite procgen --trials 7
-python benchmarks/bench_compare.py --backend procgen --suite procgen --trials 7
-python benchmarks/bench_compare.py --backend qjs     --suite atari   --trials 7
-python benchmarks/bench_compare.py --backend ale     --suite atari   --trials 7
+sbatch benchmarks/as_run/sweep_procgen16.sh    # 16 games vs real ProcGen
+sbatch benchmarks/as_run/sweep_atari8.sh       # 8 games vs ALE
 ```
 
-then plot the four merged JSONs.
+For a *symmetric* per-core variant — both sides in-process, one Python call per
+step — use `bench_vs_baselines.py`'s raw-per-core arm instead
+(`NativeVecEnv(num_envs=1, num_threads=1)` vs `ProcgenGym3Env(num=1)`). The driver
+difference is about ±15% with inconsistent sign; see
+[`as_run/README.md`](as_run/README.md).
 
 ### Provenance, stated plainly
 
 The published figure's data is committed: the as-run sweeps are in
 [`as_run/`](as_run/) and their raw output in the paper repo under
-`results/env_throughput/`. The values in `as_run`'s logs match the figure
-bar-for-bar.
+`results/env_throughput/`, matching the figure bar-for-bar.
 
-Two caveats travel with it, both documented in [`as_run/README.md`](as_run/README.md):
+One asymmetry travels with it, quantified in [`as_run/README.md`](as_run/README.md):
+PlayTrain was timed by the QuickJS host's own C loop, the baselines through their
+Python Gym APIs. Measured, the driver is worth about ±15% with **no consistent
+direction** (bigfish −15%, coinrun +12%), so there is no systematic inflation — a
+caption clause covers it. Note especially that this must *not* be "corrected" by
+re-measuring with `--backend qjs`: that path pipes observations over stdin/stdout
+per step and is 4× slower than either the figure's loop or the production trainer's
+in-process threadpool.
 
-1. **The two sides used different drivers.** PlayTrain was measured by the QuickJS
-   host's own C benchmark loop (`native/build/qjs_host <game>.js bench 0 100000`,
-   7 reps/game) with no Python in the stepping path; ProcGen and ALE were measured
-   through `bench_compare.py`, a Python loop over their Gym APIs. The workload is
-   matched — single env, single core, one frame per step, 7 trials — but the
-   baselines pay a Python call per step and PlayTrain does not, which flatters
-   PlayTrain by a few percent on slow games and more on fast ones. `--backend qjs`
-   did not exist when these sweeps ran, which is why the C loop was used; it exists
-   now, so the symmetric re-measurement is a single sweep away.
-2. **The figure script holds its data as inline constants** transcribed from those
-   logs, rather than reading the committed JSON. Wiring it to the data is
-   mechanical and removes the transcription from the trust chain.
-
-Neither undermines the measurement — the numbers are real, reproducible, and now
-traceable to the scripts that produced them. But (1) should be either fixed by
-re-measuring through one harness or disclosed in the caption, because presenting
-two drivers as one is the kind of thing a reviewer is right to object to.
+Remaining cosmetic item: the figure script holds its values as inline constants
+rather than reading the committed JSON. They were verified equal to within ±1 f/s
+across all 24 games, so this is about preventing future drift, not fixing an error.
