@@ -44,7 +44,7 @@ env.close()
 ```bash
 # runtime
 just validate           # 5-check suite over bundled p5 games
-just bench              # per-game FPS
+just bench              # per-game FPS (see benchmarks/README.md for methodology)
 just build-native       # rebuild the native QuickJS backend
 just play flappy_bird   # browser game picker
 
@@ -93,7 +93,8 @@ native/           C++/QuickJS native backend (embedded engine + rasterizer, envp
 crates/           Rust rasterizer crate -> runtime/p5/rasterizer.wasm
 examples/games/   bundled p5 games (the runtime's default catalog)
 games/            the generated p5 catalog, catalogs/, procgen refs, variants
-tools/            dev scripts: generation, refinement, validation, benchmarks, tester, site build
+tools/            dev scripts: generation, refinement, validation, tester, site build
+benchmarks/       throughput benchmarks + the methodology behind every reported number
 tests/            runtime pytest suite
 GAME_TEMPLATE.md  the p5.js game contract used by the generator
 ```

@@ -3,7 +3,7 @@
 Usage:
     just bench                # all p5 games
     just bench-one <game>     # one p5 game
-    uv run python tools/bench.py --all
+    uv run python benchmarks/bench.py --all
 """
 
 from __future__ import annotations

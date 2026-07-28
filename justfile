@@ -54,10 +54,14 @@ validate-one game:
 
 # Benchmark step throughput across all bundled p5 games.
 bench:
-    uv run python tools/bench.py --all
+    uv run python benchmarks/bench.py --all
 
 bench-one game:
-    uv run python tools/bench.py --game {{game}}
+    uv run python benchmarks/bench.py --game {{game}}
+
+# Aggregate throughput of the in-process C++ threadpool backend (NativeVecEnv).
+bench-vec n="8":
+    uv run python benchmarks/bench_native_vec.py --n {{n}}
 
 # Per-phase step profile for one p5 game.
 profile game="flappy_bird":
