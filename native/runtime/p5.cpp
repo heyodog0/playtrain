@@ -154,10 +154,24 @@ void createCanvas(double w, double h) {
 
 // ---- offscreen graphics (createGraphics + image); see p5.hpp ----
 int createGraphics(double w, double h) {
-  // Rasterized 1:1 (device res == logical size). image() downsamples on blit,
-  // so the layer is cached at logical res then rescaled — deliberately NOT the
-  // same pixels as direct render at obs res (the layer-cache wall).
-  return (int)rs_new_canvas(w, h, w, h);
+  // Allocate the layer at the MAIN canvas's device scale, not 1:1 logical.
+  //
+  // Previously this was rs_new_canvas(w, h, w, h): the layer rasterized at
+  // logical res while the main canvas rasterizes directly at _rasterRes (obs
+  // res, e.g. 64 for a 192 logical canvas => _devSx = 1/3). Shapes therefore
+  // landed on a 3x finer grid inside the layer and image() nearest-neighbor
+  // downsampled on blit, so a cached layer did NOT reproduce a direct draw —
+  // sub-device-pixel features shifted (measured: 61 of 2048 obs px on a 1:1
+  // no-scale blit; large rects matched, small shapes moved both directions).
+  // That silently changed observations for any game using createGraphics, and
+  // it blocked using a layer to cache static terrain.
+  //
+  // Matching the device scale makes shape rasterization use the same rounding
+  // as a direct draw AND turns image() into a 1:1 device blit with no resample.
+  // Round rather than truncate: _devSx is 64/192 = 0.3333..., so w * _devSx is
+  // 63.999... and an int cast would allocate a 63px-wide layer.
+  double dw = w * _devSx, dh = h * _devSy;
+  return (int)rs_new_canvas(w, h, std::floor(dw + 0.5), std::floor(dh + 0.5));
 }
 void setTarget(int handle) {
   _targetStack.push_back(_h);
