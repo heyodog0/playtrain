@@ -63,7 +63,10 @@ These hold for every script here; deviations are called out per-script below.
   the baseline's *maximum*. PlayTrain gets its best config by the same rule.
 - **Same node, same process count, one backend per invocation.** Each baseline
   needs its own venv (incompatible `gym`/`numpy` pins), so backends are run
-  separately and merged at plot time. Never compare JSONs from different nodes.
+  separately and merged at plot time. Never compare JSONs from different nodes —
+  the published sweeps enforce this by construction, measuring PlayTrain and its
+  baseline inside one Slurm job at the same core budget (see
+  [`as_run/README.md`](as_run/README.md)).
 
 ## What each script measures
 

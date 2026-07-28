@@ -13,6 +13,26 @@ Raw output is committed in the paper repo under `results/env_throughput/`
 (`qjs_raw4.txt`, `procgen4.json`, `sweep4.out`, and the Atari equivalents). The
 values in `sweep4.out` / `sweep6.out` match the figure bar-for-bar.
 
+## Both arms ran in the same job, on the same node
+
+Each script measures PlayTrain **and** its baseline inside a single `sbatch`
+submission: the QuickJS loop over every game, then `bench_compare.py` against the
+baseline, in the same allocation with the same `-c 1` core budget. The scripts echo
+`hostname` for the record and the logs confirm it: the entire ProcGen comparison
+ran on `holy8a32607`, the entire Atari comparison on `holy8a32603`. No bar in a
+panel is compared against a number measured on different silicon.
+
+Two residual caveats, neither a hardware difference:
+
+- The arms ran **sequentially** within the job, not concurrently, on a **shared**
+  `sapphire` partition (`-c 1`, not `--exclusive`). Neighbouring jobs could differ
+  between the two arms' time windows, so memory-bandwidth contention is a
+  second-order source of noise. The per-game trial CV was 0.14–2.25% for QuickJS
+  and up to ±14% for ProcGen, which bounds it.
+- **Do not merge across suites.** ProcGen (panel a) and Atari (panel b) came from
+  different jobs on different nodes; each panel is internally same-node, and that
+  is the level at which the comparison holds.
+
 ## The one asymmetry you need to know about
 
 The two sides of the figure were **not driven by the same harness**:
