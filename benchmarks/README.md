@@ -81,6 +81,7 @@ These hold for every script here; deviations are called out per-script below.
 | `raw_vec_bench.py` | the legacy Python vec coordinator over the Node backend — kept as the "what Python-level vectorization gets you" reference, not a current number. | historical reference |
 | `plot_compare.py` | grouped-bar plots from `bench_compare.py` JSONs. | quick looks |
 | `fasrc_parallelism.sbatch` | Slurm launcher for the parallelism sweep on a full node. FASRC-specific; adapt the SBATCH header. | cluster runs |
+| `as_run/` | the **exact** sweeps that produced the published figure, recovered from the cluster and kept verbatim, plus the driver-asymmetry note. | figure provenance |
 
 Paper-styled figures (the exact rendering used in the manuscript) live in the
 paper repo; the data they plot comes from the scripts above.
@@ -107,9 +108,9 @@ uv run --no-project --python 3.10 --with envpool --with "numpy<2" --with gym \
     python benchmarks/bench_ale_async.py
 
 # matched-methodology per-core sweep, one backend at a time
-python benchmarks/bench_compare.py --backend node    --suite procgen --trials 7
+python benchmarks/bench_compare.py --backend qjs     --suite procgen --trials 7
 python benchmarks/bench_compare.py --backend procgen --suite procgen --trials 7
-python benchmarks/bench_compare.py --backend node    --suite atari   --trials 7
+python benchmarks/bench_compare.py --backend qjs     --suite atari   --trials 7
 python benchmarks/bench_compare.py --backend ale     --suite atari   --trials 7
 ```
 
@@ -164,24 +165,29 @@ python benchmarks/bench_compare.py --backend ale     --suite atari   --trials 7
 
 then plot the four merged JSONs.
 
-### Provenance caveat, stated plainly
+### Provenance, stated plainly
 
-The baseline (ProcGen / ALE) bars in the published figure came from this harness.
-The PlayTrain bars did **not**: at the time of the measurement `bench_compare.py`
-had no QuickJS path, and the QuickJS side was measured by an ad-hoc sweep script
-in the author's cluster home directory (`~/sweep4.sh`, 7 trials/game, node
-`holy8a32607`) whose raw output was never committed. The plotted values were
-transcribed by hand into the figure script.
+The published figure's data is committed: the as-run sweeps are in
+[`as_run/`](as_run/) and their raw output in the paper repo under
+`results/env_throughput/`. The values in `as_run`'s logs match the figure
+bar-for-bar.
 
-The `--backend qjs` path above closes that gap going forward — the same harness,
-the same methodology, both sides. Two things are still outstanding and are tracked
-as such rather than papered over:
+Two caveats travel with it, both documented in [`as_run/README.md`](as_run/README.md):
 
-1. The raw sweep JSONs should be recovered from the cluster (or the sweep re-run
-   through `--backend qjs`) and committed, so the figure derives from data on disk
-   rather than from transcribed constants.
-2. The figure script should read those JSONs instead of holding inline numbers.
+1. **The two sides used different drivers.** PlayTrain was measured by the QuickJS
+   host's own C benchmark loop (`native/build/qjs_host <game>.js bench 0 100000`,
+   7 reps/game) with no Python in the stepping path; ProcGen and ALE were measured
+   through `bench_compare.py`, a Python loop over their Gym APIs. The workload is
+   matched — single env, single core, one frame per step, 7 trials — but the
+   baselines pay a Python call per step and PlayTrain does not, which flatters
+   PlayTrain by a few percent on slow games and more on fast ones. `--backend qjs`
+   did not exist when these sweeps ran, which is why the C loop was used; it exists
+   now, so the symmetric re-measurement is a single sweep away.
+2. **The figure script holds its data as inline constants** transcribed from those
+   logs, rather than reading the committed JSON. Wiring it to the data is
+   mechanical and removes the transcription from the trust chain.
 
-Until (1) lands, treat the published PlayTrain bars as measured-but-not-yet-
-reproducible-from-this-repo. The methodology they used is the methodology
-documented above; what is missing is the artifact, not the rigor.
+Neither undermines the measurement — the numbers are real, reproducible, and now
+traceable to the scripts that produced them. But (1) should be either fixed by
+re-measuring through one harness or disclosed in the caption, because presenting
+two drivers as one is the kind of thing a reviewer is right to object to.
