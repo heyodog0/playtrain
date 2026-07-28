@@ -123,7 +123,63 @@ function createCanvas(w, h) {
     ? createNodeCanvas(w, h, _RASTER_RES, _RASTER_RES)
     : createNodeCanvas(w, h);
   _ctx = _canvas.getContext('2d');
+  // logical -> device, for sizing offscreen layers and mapping image() blits
+  _devSx = _canvas.width / w;
+  _devSy = _canvas.height / h;
   return { parent() {} };
+}
+
+// ---- offscreen graphics: createGraphics + setTarget/clearTarget + image ----
+// Mirrors native/runtime/p5.cpp so the Node/browser shim and the QuickJS host
+// expose the SAME capability — a game that caches static content in a layer must
+// not simply fail to load on the portable backend (it did: all four validate
+// checks failed on analogen_platformer_easy).
+//
+// Layers are allocated at the MAIN canvas's DEVICE scale, not 1:1 logical. Both
+// backends rasterize directly at _RASTER_RES (the obs size) rather than at the
+// game's logical size, so a 1:1 logical layer would put shapes on a finer grid
+// and image() would resample on blit — a cached layer would then NOT reproduce a
+// direct draw. Matching the device scale keeps shape rounding identical and makes
+// the blit a 1:1 copy. Round, don't truncate: 192 * (64/192) is 63.999...
+let _devSx = 1;
+let _devSy = 1;
+const _layers = new Map();
+let _nextLayerId = 1;
+const _targetStack = [];
+
+function createGraphics(w, h) {
+  const dw = Math.round(w * _devSx), dh = Math.round(h * _devSy);
+  const canvas = (dw !== w || dh !== h) ? createNodeCanvas(w, h, dw, dh) : createNodeCanvas(w, h);
+  const id = _nextLayerId++;
+  _layers.set(id, { canvas, ctx: canvas.getContext('2d'), w, h });
+  return id;   // opaque handle, matching the native host's int handle
+}
+
+function setTarget(handle) {
+  const L = _layers.get(handle);
+  if (!L) return;
+  _targetStack.push({ canvas: _canvas, ctx: _ctx, width: _width, height: _height });
+  _canvas = L.canvas; _ctx = L.ctx; _width = L.w; _height = L.h;
+  _invalidateStyleCache();   // style cache tracks one ctx; the target changed
+}
+
+function clearTarget() {
+  const prev = _targetStack.pop();
+  if (!prev) return;
+  _canvas = prev.canvas; _ctx = prev.ctx; _width = prev.width; _height = prev.height;
+  _invalidateStyleCache();
+}
+
+function image(handle, x, y, w, h) {
+  const L = _layers.get(handle);
+  if (!L) return;
+  // drawImage works in DEVICE pixels on this backend, so map logical -> device.
+  _ctx.drawImage(
+    L.canvas,
+    Math.round(x * _devSx), Math.round(y * _devSy),
+    w === undefined ? L.canvas.width : Math.round(w * _devSx),
+    h === undefined ? L.canvas.height : Math.round(h * _devSy),
+  );
 }
 
 // ---- Drawing primitives ----
@@ -454,7 +510,8 @@ const CLOSE = 'close';
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
+    createCanvas, createGraphics, setTarget, clearTarget, image,
+    background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,
     push, pop, translate, rotate, scale,
