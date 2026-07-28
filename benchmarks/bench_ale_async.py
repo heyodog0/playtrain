@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 _ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_ROOT / "python"))
+sys.path.insert(0, str(_ROOT / "src"))
 GAMES = {"pong": "Pong-v5", "freeway": "Freeway-v5", "seaquest": "Seaquest-v5",
          "space_invaders": "SpaceInvaders-v5", "asteroids": "Asteroids-v5",
          "frostbite": "Frostbite-v5", "breakout": "Breakout-v5", "qbert": "Qbert-v5"}

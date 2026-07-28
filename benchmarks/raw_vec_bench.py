@@ -1,6 +1,12 @@
-"""Raw env-only throughput ceiling: PlayTrainVecEnv stepping random actions,
-NO model / inference / learner. Measures the CPU env SPS limit at a given
-parallelism. Aggregate frames/s = num_envs * step-calls/s (synchronous vec).
+"""Raw env-only aggregate throughput of the LEGACY Python vec coordinator
+(``PlayTrainVecEnv`` over the Node/canvas backend) — random actions, NO model /
+inference / learner. Aggregate frames/s = num_envs * step-calls/s (synchronous).
+
+This is not the default backend and not what the paper reports: it exists as the
+"what Python-level vectorization gets you" reference point. For the current
+default — the in-process C++ threadpool over QuickJS — use
+``bench_native_vec.py``, which reports this same quantity alongside the
+single-env, sharded-ceiling, and py-coordinator numbers.
 
     python benchmarks/raw_vec_bench.py <num_envs> [game] [steps]
 """

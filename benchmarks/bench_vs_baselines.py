@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 _ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_ROOT / "python"))
+sys.path.insert(0, str(_ROOT / "src"))
 GAMES = ["plunder", "bigfish", "starpilot", "leaper", "maze", "coinrun", "miner"]
 
 

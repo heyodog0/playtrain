@@ -1,26 +1,35 @@
-"""Head-to-head environment-throughput benchmark: PlayTrain (PlayTrain, WASM
-rasterizer) vs ale-py vs procgen, on matched methodology.
+"""Head-to-head per-core environment-throughput benchmark: PlayTrain vs ale-py
+vs procgen, on matched methodology. This is the harness behind the paper's
+environment-layer figure.
 
-One backend per invocation (each backend lives in its own venv):
+One backend per invocation (each baseline lives in its own venv, since procgen
+and envpool pin incompatible gym/numpy):
 
-    # PlayTrain clones (run in PlayTrain's env; WASM rasterizer is the default):
-    python benchmarks/bench_compare.py --backend node  --suite atari
-    python benchmarks/bench_compare.py --backend node  --suite procgen
+    # PlayTrain, QuickJS + native rasterizer -- the canonical backend, and the
+    # one the paper reports. Needs the native build (native/build_qjs.sh):
+    python benchmarks/bench_compare.py --backend qjs  --suite procgen --trials 7
+    python benchmarks/bench_compare.py --backend qjs  --suite atari   --trials 7
 
-    # Atari baseline (run in a venv with ale_py + gymnasium, e.g. analogen/.venv):
-    python benchmarks/bench_compare.py --backend ale    --suite atari
+    # PlayTrain, Node.js/node-canvas fallback -- 3-4x slower, superseded. Kept
+    # only for machines with no native build; do NOT mix into a qjs figure:
+    python benchmarks/bench_compare.py --backend node --suite procgen
+
+    # Atari baseline (venv with ale_py + gymnasium):
+    python benchmarks/bench_compare.py --backend ale     --suite atari   --trials 7
 
     # ProcGen baseline (needs the `procgen` package + old gym; see note below):
-    python benchmarks/bench_compare.py --backend procgen --suite procgen
+    python benchmarks/bench_compare.py --backend procgen --suite procgen --trials 7
 
 Each run writes outputs/compare/<backend>_<suite>.json. Merge + plot separately.
 
 Methodology (identical across backends):
   * 1 env step = 1 emulated/drawn frame (no frameskip). ALE uses the
     NoFrameskip-v4 ids; PlayTrain is natively 1 draw/step; procgen is 1 frame/step.
+  * single env, one core -- no vectorization, no coordinator, on either side.
   * random actions from each env's own action space.
   * `warmup` steps discarded, then `frames` timed steps, `trials` times; report
-    steps/sec mean +/- pstdev. Auto-reset on terminal.
+    steps/sec median (+ mean and pstdev). Fresh env per trial. Auto-reset on
+    terminal.
   * observations are each system's native resolution (PlayTrain 64x64 RGB,
     ALE 210x160 RGB, procgen 64x64 RGB). Resolution differences are recorded
     in the JSON, not normalized away -- state them in the paper.
@@ -114,19 +123,31 @@ def _bench(games, make, reset, step, n_actions, frames, warmup, trials, seed, la
     return results, {"obs_shape": _shape.get("last")}
 
 
-def bench_node(games, frames, warmup, trials, seed):
-    from playtrain.runtime import PlayTrainEnv
-
+def _bench_playtrain(env_cls, games, frames, warmup, trials, seed):
     def step(env, a):
         obs, _, term, trunc, _ = env.step(a)
         _shape["last"] = list(obs.shape)
         return term or trunc
 
     return _bench(games,
-                  make=lambda g: PlayTrainEnv(game=g, max_steps=frames + warmup + 100),
+                  make=lambda g: env_cls(game=g, max_steps=frames + warmup + 100),
                   reset=lambda env, s: env.reset(seed=s),
                   step=step, n_actions=8,
                   frames=frames, warmup=warmup, trials=trials, seed=seed)
+
+
+def bench_qjs(games, frames, warmup, trials, seed):
+    """QuickJS + native rasterizer (playtrain.runtime.GameEnv) — the canonical backend."""
+    from playtrain.runtime import GameEnv
+
+    return _bench_playtrain(GameEnv, games, frames, warmup, trials, seed)
+
+
+def bench_node(games, frames, warmup, trials, seed):
+    """Node.js + node-canvas fallback — superseded by qjs; 3-4x slower."""
+    from playtrain.runtime import PlayTrainEnv
+
+    return _bench_playtrain(PlayTrainEnv, games, frames, warmup, trials, seed)
 
 
 def bench_ale(games, frames, warmup, trials, seed):
@@ -170,7 +191,10 @@ def bench_procgen(games, frames, warmup, trials, seed):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--backend", choices=["node", "ale", "procgen"], required=True)
+    p.add_argument("--backend", choices=["qjs", "node", "ale", "procgen"], required=True,
+                   help="qjs = PlayTrain QuickJS + native rasterizer (canonical); "
+                        "node = PlayTrain Node/canvas fallback (superseded); "
+                        "ale / procgen = baselines")
     p.add_argument("--suite", choices=["atari", "procgen"], required=True)
     p.add_argument("--frames", type=int, default=500)
     p.add_argument("--warmup", type=int, default=100)
@@ -194,7 +218,8 @@ def main():
 
     print(f"=== {a.backend} / {a.suite} : {len(games)} games, "
           f"{a.frames}f x {a.trials}t, warmup {a.warmup}, seed {a.seed} ===")
-    fn = {"node": bench_node, "ale": bench_ale, "procgen": bench_procgen}[a.backend]
+    fn = {"qjs": bench_qjs, "node": bench_node,
+          "ale": bench_ale, "procgen": bench_procgen}[a.backend]
     results, meta = fn(games, a.frames, a.warmup, a.trials, a.seed)
 
     OUT.mkdir(parents=True, exist_ok=True)
