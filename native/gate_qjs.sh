@@ -4,12 +4,18 @@
 # trained on) reference and qjs_host on matched seeds+actions and asserts
 # byte-identical trajectories (reward/term/score/lives/state + obs frame hash).
 #   ./gate_qjs.sh <game> [nsteps] [seed1 seed2 ...]
-#   ./gate_qjs.sh --all-analogen [nsteps]   # every analogen_*/a-cq-* game
+#   ./gate_qjs.sh --all [nsteps]            # every game in the games dir
+#
+# Games resolve against $PLAYTRAIN_GAMES_DIR, falling back to the bundled
+# examples/games/js — matching the Python runtime's precedence. The analogen
+# games live in their own repo, so gate them by pointing the var at it:
+#   PLAYTRAIN_GAMES_DIR=../../analogen/games/js ./gate_qjs.sh --all
 set -euo pipefail
 cd "$(dirname "$0")"
 
 N=3000
 SEEDS_DEFAULT=(1 42 777)
+GAMES_DIR="${PLAYTRAIN_GAMES_DIR:-../examples/games/js}"
 
 gate_one() {
   local GAME="$1" NSTEPS="$2"; shift 2
@@ -17,7 +23,7 @@ gate_one() {
   local fail=0
   for S in "${SEEDS[@]}"; do
     node reference_trace.mjs "$GAME" "$S" "$NSTEPS" > "/tmp/gateq_js_${GAME}_${S}.txt" 2>/dev/null
-    ./build/qjs_host "../examples/games/js/${GAME}.js" trace "$S" "$NSTEPS" > "/tmp/gateq_qjs_${GAME}_${S}.txt" 2>/dev/null
+    ./build/qjs_host "${GAMES_DIR}/${GAME}.js" trace "$S" "$NSTEPS" > "/tmp/gateq_qjs_${GAME}_${S}.txt" 2>/dev/null
     if diff -q "/tmp/gateq_js_${GAME}_${S}.txt" "/tmp/gateq_qjs_${GAME}_${S}.txt" >/dev/null; then
       echo "  PASS ${GAME} seed=${S} (${NSTEPS} steps bit-exact)"
     else
@@ -29,14 +35,18 @@ gate_one() {
   return $fail
 }
 
-if [ "${1:-}" = "--all-analogen" ]; then
+if [ "${1:-}" = "--all" ] || [ "${1:-}" = "--all-analogen" ]; then
   NSTEPS="${2:-$N}"
   overall=0
-  for f in ../examples/games/js/analogen_*.js ../examples/games/js/a-cq-*.js; do
+  n=0
+  for f in "$GAMES_DIR"/*.js; do
+    [ -f "$f" ] || continue          # no literal-glob pass-through on an empty dir
+    n=$((n + 1))
     g="$(basename "$f" .js)"
     gate_one "$g" "$NSTEPS" "${SEEDS_DEFAULT[@]}" || overall=1
   done
-  [ $overall -eq 0 ] && echo "GATE PASS: all analogen games" || { echo "GATE FAIL"; exit 1; }
+  [ "$n" -gt 0 ] || { echo "GATE ERROR: no .js games in $GAMES_DIR" >&2; exit 2; }
+  [ $overall -eq 0 ] && echo "GATE PASS: all $n games in $GAMES_DIR" || { echo "GATE FAIL"; exit 1; }
 else
   GAME="${1:-bigfish}"
   NSTEPS="${2:-$N}"
