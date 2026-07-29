@@ -1,7 +1,7 @@
 // jsmath.h — JS-semantics numeric helpers for bit-exact-to-V8 game logic.
 //
-// The generated C++ maps `Math.*` and p5 math helpers here. Only the operations
-// the game subset actually uses are provided. See docs/NATIVE_COMPILE.md §5.
+// The native p5 rasterizer (runtime/p5.cpp, via p5.hpp) maps `Math.*` and p5 math
+// helpers here. Only the operations the game subset actually uses are provided.
 //
 //   - Integer / bitwise / imul / mulberry32: exact u32 wrapping (bit-identical).
 //   - sqrt, +,-,*,/: IEEE-exact (compile with -ffp-contract=off, no FMA fusion).
@@ -77,9 +77,9 @@ template <typename... R> inline double max(double a, double b, R... r) { return 
 template <typename... R> inline double min(double a, double b, R... r) { return min(min(a, b), r...); }
 
 // mulberry32 — the canonical seeded PRNG idiom in the game catalog. JS returns a
-// stateful closure `() => {...}`; the compiler recognizes the pattern and emits
-// this functor. Bit-exact: all ops are u32-wrapping; xor/shift on the bit pattern
-// reproduce JS's ToInt32/ToUint32 coercions exactly (see NATIVE_COMPILE.md §5).
+// stateful closure `() => {...}`; this functor reproduces it. Bit-exact: all ops
+// are u32-wrapping; xor/shift on the bit pattern reproduce JS's ToInt32/ToUint32
+// coercions exactly. Verified end-to-end by native/gate_qjs.sh.
 struct Mulberry32 {
   uint32_t t;
   explicit Mulberry32(uint32_t seed = 0) : t(seed) {}

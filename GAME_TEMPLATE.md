@@ -225,11 +225,11 @@ function draw() {
 ## File Structure
 
 ```
-games/
-  flappy.js          # Game source (conforms to this template)
-  crossy.js
-  angry_birds.js     # Matter.js physics game
-  suika.js           # Matter.js physics game
+examples/games/js/
+  flappy_bird.js     # Game source (conforms to this template)
+  bigfish.js         # ProcGen replica
+  qbert.js           # Atari replica
+  jump_king.js
   ...
 ```
 

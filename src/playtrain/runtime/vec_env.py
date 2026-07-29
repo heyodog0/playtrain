@@ -12,8 +12,10 @@ three Gymnasium 1.0 autoreset modes (``NEXT_STEP``, ``SAME_STEP``,
 recent ``gymnasium.utils``) and SB3-style trainers (which expect
 ``SAME_STEP`` semantics).
 
-See MULTI_ENV_RUNTIME.md (internal design doc) §5 for design context, and benchmark
-receipts in ``logs/directvec_*`` (FASRC jobs 12972050 and 12978195).
+Throughput for this backend is measured by ``benchmarks/raw_vec_bench.py``; see
+``benchmarks/README.md`` for the harness and its ground rules. (Original design
+notes and the FASRC receipts for jobs 12972050 / 12978195 are kept in the
+internal repo, not here.)
 """
 
 from __future__ import annotations
