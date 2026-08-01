@@ -109,11 +109,13 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = 
 <div id="topbar"><a href="${homeHref}">&larr; all games</a><strong>${name}</strong></div>
 <div id="state"></div>
 <div id="stage">
-  <div class="col"><div class="label">PlayTrain rasterizer (what the agent renders)</div><canvas id="view"></canvas></div>
-  <div class="col"><div class="label">agent obs (64×64, what the policy sees)</div>
+  <div class="col"><div class="label" id="view-label">PlayTrain rasterizer (what the agent renders)</div><canvas id="view"></canvas></div>
+  <div class="col"><div class="label" id="obs-label">agent obs (64×64, downsampled preview)</div>
     <canvas id="obs-preview" width="64" height="64" style="width: 256px; height: 256px;"></canvas></div>
 </div>
-<div id="reset-row"><button id="reset">Reset</button></div>
+<div id="reset-row"><button id="reset">Reset</button>
+  <label id="agentres-row"><input type="checkbox" id="agentres"> render at agent resolution (64&times;64)</label>
+</div>
 <div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (60fps)</div>
 
 <!-- game source kept inert; the module boot evals it AFTER installing the shim globals -->
@@ -125,6 +127,15 @@ ${browserShimBundle()}
 // ---- boot (IIFE so its locals can't collide with shim top-level names, e.g. loop()) ----
 // install OUR p5 globals (backed by raster.mjs), run the game, blit pixels.
 (function () {
+  // Agent-resolution mode. game-env.mjs calls setRasterRes(obsWidth) BEFORE loading
+  // the game, so the base transform bakes the logical->device scale and geometry is
+  // rasterized directly at 64. Do the same here and the view IS the observation,
+  // pixel for pixel. Default (rasterRes null) renders at logical size, in which case
+  // the obs panel is only a drawImage downsample and is labelled as such.
+  var OBS_RES = 64;
+  var AGENT_RES = new URLSearchParams(location.search).has('obs');
+  if (AGENT_RES) setRasterRes(OBS_RES);
+
   installGlobals();
   (0, eval)(document.getElementById('game-src').textContent);   // defines setup/draw/... globally
   if (typeof window.setup === 'function') window.setup();
@@ -145,6 +156,22 @@ ${browserShimBundle()}
   document.getElementById('reset').onclick = function () {
     if (typeof window.resetGame === 'function') window.resetGame((Date.now() >>> 0)); this.blur();
   };
+
+  // The raster resolution is baked in at load, so toggling reloads the page.
+  var box = document.getElementById('agentres');
+  box.checked = AGENT_RES;
+  box.onchange = function () {
+    var u = new URL(location.href);
+    if (this.checked) u.searchParams.set('obs', '1'); else u.searchParams.delete('obs');
+    location.href = u.toString();
+  };
+  if (AGENT_RES) {
+    view.style.width = '256px'; view.style.height = '256px';
+    document.getElementById('view-label').textContent =
+      'PlayTrain rasterizer at agent resolution (64×64)';
+    document.getElementById('obs-label').textContent =
+      'agent obs (64×64, exactly what the policy sees)';
+  }
 
   var FRAME_MS = 1000 / 60, last = 0;          // fixed-timestep games: pin to 60fps
   function renderLoop(now) {
