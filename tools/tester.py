@@ -7,16 +7,10 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
-if __package__:
-    from .refine import refine_game
-    from .variant import (
-        make_variant, promote_variant, delete_variant, load_registry, lookup_physics,
-    )
-else:
-    from refine import refine_game
-    from variant import (
-        make_variant, promote_variant, delete_variant, load_registry, lookup_physics,
-    )
+from playtrain.gen.refine import refine_game
+from playtrain.gen.variant import (
+    make_variant, promote_variant, delete_variant, load_registry, lookup_physics,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 GAMES_DIR = ROOT / "games"
