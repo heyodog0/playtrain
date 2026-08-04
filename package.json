@@ -41,11 +41,15 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "node tools/build-pages.mjs"
+    "build": "node tools/build-site.mjs",
+    "build:study": "node tools/build-study.mjs",
+    "verify:study": "node tools/verify-replay.mjs",
+    "build:pages": "node tools/build-pages.mjs"
   },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
-    "canvas": "^3.2.3"
+    "canvas": "^3.2.3",
+    "firebase-admin": "^13.0.0"
   },
   "optionalDependencies": {
     "matter-js": "^0.20.0"

@@ -11,7 +11,16 @@ export const config = {
 const REALM = 'PlayTrain playtest';
 const USERNAME = 'playtest';
 
+// The human-baseline study must be reachable WITHOUT the password: participants arrive
+// from Prolific and cannot be given credentials. Everything else stays gated.
+// /study/*      the participant-facing harness (tools/build-study.mjs output)
+// /api/session  its ingest endpoint (api/session.js), which has its own token check
+const PUBLIC_PREFIXES = ['/study', '/api/session'];
+
 export default function middleware(req) {
+  const path = new URL(req.url).pathname;
+  if (PUBLIC_PREFIXES.some(p => path === p || path.startsWith(p + '/'))) return;
+
   const password = process.env.SITE_PASSWORD || 'grasshopper123';
   const auth = req.headers.get('authorization');
 
