@@ -1,0 +1,74 @@
+{
+  "_comment": "Human baseline study. Games span three categories so the playability claim covers all of them: six suite replicas, one variant-pair base (flappy_bird), one brand-new game (vvvvvv). maze and freeway are deliberately excluded as too hard to be informative in 2.5 minutes.",
+  "blockSeconds": 100,
+  "frameSkip": 1,
+  "maxSteps": 2000,
+  "_actionModeComment": "'quantized' restricts the human to the agent's exact Discrete(8) via a held-key recency stack: the most recently pressed key still held wins, and SPACE merges only where legal (-> LEFT_D / RIGHT_D). Frames whose held keys cannot be expressed in Discrete(8) are counted as illegalFrames but still produce an action. 'unconstrained' passes raw keys to the game (human gets simultaneity the agent lacks) and is NOT the matched condition -- it exists only to quantify the action-space cost on seaquest/asteroids/caveflyer.",
+  "actionMode": "quantized",
+  "_controlsComment": "Shown to the participant before each block. breakout/plunder/flappy_bird never read UP/DOWN; coinrun and vvvvvv alias jump/flip onto SPACE, so movement+action is legal. seaquest, asteroids and caveflyer are the three games where Discrete(8) cannot express the natural combination -- state the limit as a game rule so quantization does not read as a broken harness.",
+  "games": [
+    {
+      "name": "breakout",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to move the paddle. SPACE to launch."
+    },
+    {
+      "name": "plunder",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to move. SPACE to fire. You can fire while moving."
+    },
+    {
+      "name": "seaquest",
+      "category": "suite",
+      "controls": "ARROW KEYS to swim, SPACE to fire. One direction at a time — no diagonals — and you cannot fire while swimming up or down."
+    },
+    {
+      "name": "caveflyer",
+      "category": "suite",
+      "controls": "LEFT / RIGHT rotate the ship, UP thrusts forward, DOWN reverses, SPACE fires. The ship can rotate or thrust, not both at once — aim first, then thrust."
+    },
+    {
+      "name": "asteroids",
+      "category": "suite",
+      "controls": "LEFT / RIGHT rotate, UP thrusts, SPACE fires. The ship can rotate or thrust, not both at once — aim first, then thrust."
+    },
+    {
+      "name": "coinrun",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to run, SPACE (or UP) to jump. You can jump while running."
+    },
+    {
+      "name": "flappy_bird",
+      "category": "variant-base",
+      "controls": "SPACE to flap. That is the only control."
+    },
+    {
+      "name": "vvvvvv",
+      "category": "new",
+      "controls": "LEFT / RIGHT to run, SPACE to flip gravity. You can flip while running."
+    }
+  ],
+  "_seedComment": "Fixed pool shared by every participant: episode i of every game uses seedBase + (i % seedCount). Everyone meets the same levels in the same order, and the agent can be evaluated on exactly seedBase..seedBase+seedCount-1. The modulo bounds a fast-dying player, who can otherwise burn through far more episodes than the pool holds.",
+  "seedBase": 90000,
+  "_obsComment": "Games listed here get a second block rendered at the agent's 64x64 resolution (setRasterRes before setup, so the human sees pixel-for-pixel what the policy sees). caveflyer is the diagnostic case: its greedy checkpoint scores below random, and this block separates 'the agent is bad' from '64x64 destroys the information caveflyer needs'.",
+  "obsResBlocks": [
+    "caveflyer"
+  ],
+  "study": {
+    "estimatedMinutes": 22,
+    "compensationRate": "$12.00 per hour",
+    "contactName": "Ryan Truong",
+    "contactEmail": "truongtruong@g.harvard.edu",
+    "piName": "Samuel Gershman",
+    "piEmail": "gershman@fas.harvard.edu"
+  },
+  "canvasSize": 600,
+  "_canvasComment": "On-screen size of the game in CSS pixels. Fixed rather than viewport-filling so every participant sees the same visual angle; chosen to fit inside the smallest display the pre-flight admits (a 1280x720 laptop). Display only -- the rasterizer still renders at the game's logical 400x400.",
+  "practice": {
+    "game": "pong",
+    "seconds": 25,
+    "controls": "UP / DOWN to move your paddle. SPACE to serve the ball."
+  },
+  "_practiceComment": "Warm-up game. Deliberately NOT one of the eight scored games: practising a scored game would give it an advantage the other seven do not get. pong is in the 24-game suite, is universally familiar, and reads only UP/DOWN/SPACE so the quantizer is effectively a no-op while the participant learns the harness (timer, rounds, auto-restart, round summary).",
+  "seedCount": 100
+}

@@ -43,7 +43,7 @@ const playStyle = `${baseStyle}
 // run in-browser, so nothing else needs stripping.
 const _p5dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'runtime', 'p5');
 let _bundle = null;
-function browserShimBundle() {
+export function browserShimBundle() {
   if (_bundle) return _bundle;
   const raster = readFileSync(join(_p5dir, 'raster.mjs'), 'utf8')
     .replace('export function createCanvas(', 'function createRasterCanvas(');
