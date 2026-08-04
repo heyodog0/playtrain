@@ -130,6 +130,31 @@ tester:
 play game="":
     node tools/play.mjs {{game}}
 
+# === human baseline study (tools/STUDY.md) ===
+
+# Build the participant-facing study site into dist/study.
+study-build upload="":
+    node tools/build-study.mjs {{ if upload == "" { "" } else { "--upload " + upload } }}
+
+# Play the study yourself. Serves it AND saves your session to dist/study-sessions,
+# so a playtest can be replay-verified like a real participant's.
+study-serve port="8080":
+    node tools/study-serve.mjs --port {{port}}
+
+# Check a collected session replays identically through the headless env.
+# This is the acceptance test behind "participants and agents play identical tasks".
+study-verify file:
+    node tools/verify-replay.mjs {{file}}
+
+# Screenshot every screen at five display sizes -> dist/study-shots/index.html
+study-shots game="caveflyer": study-build
+    node tools/study-shots.mjs --game {{game}} --screens
+
+# Render recorded rounds to video by replaying them -> dist/study-video.
+# GIF needs nothing; `--format mp4` needs ffmpeg. Add --best for one clip per game.
+study-video file *ARGS:
+    node tools/replay-video.mjs {{file}} {{ARGS}}
+
 # === packaging / site ===
 
 build:
