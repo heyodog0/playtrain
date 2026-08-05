@@ -1,5 +1,6 @@
 {
-  "_comment": "Human baseline study. Games span three categories so the playability claim covers all of them: six suite replicas, one variant-pair base (flappy_bird), one brand-new game (vvvvvv). maze and freeway are deliberately excluded as too hard to be informative in 2.5 minutes.",
+  "_comment": "Human baseline study. Eight scored games covering all three catalogs the suite is drawn from: three Atari replicas (breakout, seaquest, asteroids -- games/catalogs/atari_games.json), three Procgen replicas (plunder, caveflyer, coinrun -- procgen_games.json), and two from the mobile/indie catalog (flappy_bird, vvvvvv -- mobile_games.json). flappy_bird doubles as the base of a variant pair. maze and freeway are deliberately excluded as too hard to be informative in 100 seconds.",
+  "_categoryCaveat": "An earlier version of this comment called vvvvvv a 'brand-new game'. It is not: mobile_games.json lists it alongside downwell and jump_king, so it is a replica of a real indie title like everything else here. The distinction that actually holds is OUTSIDE THE EVALUATED SUITE (atari8 + procgen16) rather than novel-by-design, and flappy_bird and vvvvvv are the two such games in the study. If a claim in the paper depends on out-of-suite games being human-playable, its evidence here is n=2 -- adding downwell (also mobile catalog, and already trained) would be the cheapest way to make it n=3.",
   "blockSeconds": 100,
   "frameSkip": 1,
   "maxSteps": 2000,

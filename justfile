@@ -141,6 +141,16 @@ study-build upload="":
 study-serve port="8080":
     node tools/study-serve.mjs --port {{port}}
 
+# Did the participants play the games the agents trained on? Diffs a checkout, a commit, or a
+# list of hashes from another machine against dist/study/build-manifest.json. Run it before
+# launch and again before quoting agent numbers next to human ones -- it is the one error
+# replay verification cannot catch.
+#   just study-audit examples/games/js
+#   just study-audit --ref 8e38a6e
+#   just study-audit --remote-cmd /path/on/cluster/examples/games/js
+study-audit *ARGS:
+    node tools/study-audit.mjs {{ARGS}}
+
 # Prove the participant's runtime and the agent's runtime agree, on the study's own games
 # and seeds: browser rasterizer vs Rust rasterizer, and node+V8 vs QuickJS+Rust. The whole
 # human-vs-agent comparison rests on this, and it was previously only a claim in a README.

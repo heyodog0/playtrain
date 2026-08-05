@@ -557,6 +557,31 @@ measuring a game the agent never saw. Every build therefore writes
 `dist/study/build-manifest.json` with the games directory and a SHA-256 prefix of each game
 source, so what a participant actually played is auditable after the fact.
 
+```
+just study-audit examples/games/js                       # a checkout on this machine
+just study-audit --ref 8e38a6e                           # a commit in this repo
+just study-audit --remote-cmd /path/on/cluster/games/js   # emits a one-liner; feed its output to --hashes
+just study-audit --hashes cluster-hashes.txt             # audit a machine you cannot reach from here
+```
+
+Non-zero exit on any mismatch, so it can gate a launch. It also warns when the working tree has
+moved on from the shipped build — i.e. the deployed study is serving games you have since edited.
+
+**Verified for this study (2026-08-05).** The runs read
+`/n/holylabs/LABS/gershman_lab/Users/rtruong/playtrain/examples/games/js` — that is what
+`native_games_dir: "../playtrain/examples/games/js"` resolves to in the analogen-jaxbench run
+configs — at commit `8e38a6e`, and all nine games hash identically to the shipped build.
+
+**How close this was.** `vvvvvv`'s scoring was redesigned — progress-based plus a 1000-point win
+bonus, replaced by +50 per collectible and −50 on death — at **15:08:18** on 2026-07-25. The three
+vvvvvv runs started at **15:43** the same day, 35 minutes later, so they read the current file
+(the logged returns of ~122–133 at `len=2000` match the new scale, not the old one). Half an hour
+the other way and the agent and human numbers would have been on different reward scales, with
+nothing in either pipeline able to say so. Two copies of the old file still exist on the cluster
+(`node-gym-git`, hash `81cb6c93`), and `analogen-jaxbench/games/js` holds a third copy of the set
+that the configs do *not* read — so an audit that guesses at the directory can easily be right by
+accident. Always audit the directory the run config names.
+
 ## Deploying (Vercel + Firebase)
 
 `tools/build-site.mjs` is the Vercel build entry and emits both sites into one output:
