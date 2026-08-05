@@ -1,12 +1,12 @@
 # Human baseline study harness
 
-Collects the novice human baseline for the PlayTrain paper: 20 participants, 9 blocks
-(8 games plus caveflyer at agent resolution), 100 seconds each. Produces a per-participant
+Collects the novice human baseline for the PlayTrain paper: 20 participants, 8 games,
+100 seconds each, every game played exactly once. Produces a per-participant
 JSON of frame-indexed actions, seeds and scores that can be replayed through the training
 runtime to prove the human and the agent played the same environment.
 
 Session shape: device check → consent → instructions → comprehension check → (Prolific ID, only
-if the link did not carry one) → practice → 9 scored blocks → upload. About 15 minutes of play,
+if the link did not carry one) → practice → 8 scored blocks → upload. About 14 minutes of play,
 ~22 minutes total.
 
 Walking that by hand takes 22 minutes, so the shell has a debug menu on
@@ -175,8 +175,9 @@ render with no resampling softness. Raster resolution does not affect the simula
 `verify-replay` reproduces identical scores at 64 and at 400 — it only changes sampling
 fineness.
 
-Blocks rendered at agent resolution (`caveflyer@64`) are skipped: they rasterize different
-geometry by design, so they are not replayable against the default config.
+Blocks rendered at agent resolution would be skipped — they rasterize different geometry by
+design, so they are not replayable against the default config — but the study no longer ships
+any (see `obsResBlocks` below).
 
 ### Checking layout on displays you do not own
 
@@ -189,13 +190,24 @@ Renders every screen at five display sizes (1280×720 through 2560×1440) and wr
 sheet to `dist/study-shots/index.html`. Dev-only; needs playwright. For ad-hoc checks, Chrome
 devtools' device toolbar (⌘⌥I, then the device icon) sets an arbitrary viewport.
 
-`obsResBlocks` in the config adds a second block for a game rendered at 64×64, via the same
+`obsResBlocks` adds a **second** block for a game rendered at 64×64, via the same
 `setRasterRes` call `game-env.mjs` makes before `setup()` — so the geometry is rasterized
-directly at 64 and the human sees pixel-for-pixel what the policy sees. It defaults to
-`["caveflyer"]`, because caveflyer is the diagnostic case: its greedy checkpoint scores
-*below* random (1.6 vs 1.0), and the two blocks together separate "the agent is bad" from
-"64×64 destroys the information caveflyer needs". Set it to `[]` to drop the extra block
-and 2.5 minutes per participant.
+directly at 64 and the human sees pixel-for-pixel what the policy sees. **It is now empty, and
+the study ships one block per game.**
+
+It previously held `["caveflyer"]` as a perceptual diagnostic: caveflyer's greedy checkpoint
+scores *below* random (1.6 vs 1.0), and a human score at 64×64 would separate "the agent is bad"
+from "64×64 destroys the information caveflyer needs". Dropped on 2026-08-05, for two reasons.
+The study does not need that question answered — and the implementation was quietly harmful,
+because the extra block sat inside the per-participant shuffle. For roughly half of participants
+it therefore landed *before* native caveflyer, contaminating one of the eight primary
+measurements with prior exposure to the same game, and caveflyer was the only game anyone played
+twice. `session.order` records the order, so it was analysable after the fact, but at n=20 that
+means estimating an order effect from ~10 per cell.
+
+The capability still works. If it is ever re-added, **pin it last instead of shuffling it**: that
+keeps all primary blocks clean and leaves the diagnostic with a stated, one-directional bias
+(prior exposure helps, end-of-session fatigue hurts) rather than an uncontrolled one.
 
 ## The action space
 

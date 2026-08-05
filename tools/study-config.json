@@ -51,10 +51,8 @@
   ],
   "_seedComment": "Fixed pool shared by every participant: episode i of every game uses seedBase + (i % seedCount). Everyone meets the same levels in the same order, and the agent can be evaluated on exactly seedBase..seedBase+seedCount-1. The modulo bounds a fast-dying player, who can otherwise burn through far more episodes than the pool holds.",
   "seedBase": 90000,
-  "_obsComment": "Games listed here get a second block rendered at the agent's 64x64 resolution (setRasterRes before setup, so the human sees pixel-for-pixel what the policy sees). caveflyer is the diagnostic case: its greedy checkpoint scores below random, and this block separates 'the agent is bad' from '64x64 destroys the information caveflyer needs'.",
-  "obsResBlocks": [
-    "caveflyer"
-  ],
+  "_obsComment": "EMPTY ON PURPOSE. Games listed here get a SECOND block rendered at the agent's 64x64 observation resolution (setRasterRes before setup, so the human sees pixel-for-pixel what the policy sees). caveflyer was listed as a perceptual diagnostic -- its greedy checkpoint scores below random, and such a block would separate 'the agent is bad' from '64x64 destroys the information caveflyer needs'. Removed by decision on 2026-08-05: the study does not need that question answered, and the implementation carried a real cost -- the obs block sat inside the per-participant shuffle, so for about half of participants it landed BEFORE native caveflyer and contaminated one of the eight primary measurements with prior exposure to the same game. Every participant now plays each game exactly once. The capability is still supported by the builder; if it is ever re-added, pin it last rather than shuffling it, or the confound comes back with it.",
+  "obsResBlocks": [],
   "study": {
     "estimatedMinutes": 22,
     "compensationRate": "$12.00 per hour",

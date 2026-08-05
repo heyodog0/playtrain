@@ -240,10 +240,6 @@ const GAMES = [
    'The diagnostic game: its greedy checkpoint scores below random, so human play at native resolution is ' +
    'what separates "the agent is bad" from "the observation destroys the information this game needs".',
    'ArrowUp'],
-  ['caveflyer-obs', 'caveflyer at the agent\'s 64x64 observation',
-   'The same game rendered at the resolution the policy actually sees, integer-upscaled with nearest ' +
-   'neighbour so no interpolation is invented. A human score here brackets how much of the agent\'s ' +
-   'deficit is perceptual rather than behavioural.', 'ArrowUp'],
 ];
 for (const [slug, title, caption, key] of GAMES) {
   const page = await newPage();
