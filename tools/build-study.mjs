@@ -38,6 +38,11 @@ const GAMES_DIR = resolve(arg('--games',
 const OUT_DIR = resolve(arg('--out', join(REPO_ROOT, 'dist', 'study')));
 const UPLOAD_URL = arg('--upload', process.env.STUDY_UPLOAD_URL || '');
 const COMPLETION_URL = arg('--completion', process.env.STUDY_COMPLETION_URL || '');
+// The platform's completion code, for the manual-submit path when an upload fails. Ours (PT-...)
+// is not a code Prolific accepts, so showing it there would strand the participant. Default it
+// out of the completion URL's cc= parameter, which is where it always lives.
+const COMPLETION_CODE = arg('--completion-code',
+  process.env.STUDY_COMPLETION_CODE || (COMPLETION_URL.match(/[?&]cc=([^&]+)/) || [])[1] || '');
 
 const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
 
@@ -103,7 +108,7 @@ for (const g of cfg.games) {
 
 writeFile(join(OUT_DIR, 'index.html'),
   sessionPage(blocks, {
-    uploadUrl: UPLOAD_URL, completionUrl: COMPLETION_URL,
+    uploadUrl: UPLOAD_URL, completionUrl: COMPLETION_URL, completionCode: COMPLETION_CODE,
     blockSeconds: cfg.blockSeconds, maxSteps: cfg.maxSteps, study: cfg.study,
     nScoredBlocks: blocks.filter(b => !b.practice).length,
   }));
@@ -137,3 +142,6 @@ console.log(`  seeds ${cfg.seedBase}..${cfg.seedBase + (cfg.seedCount ?? 100) - 
 console.log(`  games from ${GAMES_DIR}`);
 console.log(`    (must match what the trainers used -- env.py defaults to examples/games/js)`);
 if (!UPLOAD_URL) console.log('  no --upload set: participants will download a JSON file instead');
+console.log(COMPLETION_CODE
+  ? `  manual-submit code (upload-failure path): ${COMPLETION_CODE}`
+  : '  no completion code: an upload failure shows only our PT- reference, which Prolific rejects');

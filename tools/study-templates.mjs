@@ -666,7 +666,7 @@ ${browserShimBundle()}
 // ---------------------------------------------------------------------------
 export function sessionPage(blocks, cfg) {
   const {
-    uploadUrl = '', blockSeconds = 150, completionUrl = '',
+    uploadUrl = '', blockSeconds = 150, completionUrl = '', completionCode = '',
     maxSteps = 2000, study = {}, nScoredBlocks = blocks.filter(b => !b.practice).length,
   } = cfg || {};
 
@@ -861,10 +861,17 @@ export function sessionPage(blocks, cfg) {
 <main id="s-outro" class="hidden">
   <h1>Done — thank you</h1>
   <p id="outro-msg">Uploading your session…</p>
+  <!-- Two different codes, and confusing them strands a participant. PROLIFIC_CODE is the one
+       the recruitment platform accepts; the PT- reference is ours, useful only to us when
+       reconciling a session by hand. Only the platform's code is presented as "the code". -->
   <p id="outro-code" class="hidden">Completion code: <code id="code"></code></p>
+  <p id="outro-ref" class="note hidden">Reference for the research team:
+     <code id="refcode" style="font-size:15px"></code></p>
   <p id="outro-dl" class="hidden">
-    Upload failed. Please <button id="dl">download your results</button> and send the file back
-    as instructed on the recruitment page.</p>
+    Your results could not be uploaded automatically. Please
+    <button id="dl">download your results</button> and message them to the research team through
+    the recruitment platform — <b>you will still be paid</b>. Enter the completion code above to
+    submit.</p>
 </main>
 
 <iframe id="frame" class="hidden" allow="autoplay"></iframe>
@@ -876,6 +883,9 @@ const UPLOAD_URL = ${JSON.stringify(uploadUrl)};
 // Prolific's completion URL. Only followed after a SUCCESSFUL upload -- redirecting on a
 // failed upload would mark the participant complete while their data is gone.
 const COMPLETION_URL = ${JSON.stringify(completionUrl)};
+// The recruitment platform's own completion code, shown when the upload fails and the
+// participant has to submit by hand. Derived from the completion URL's cc= when not given.
+const PROLIFIC_CODE = ${JSON.stringify(completionCode)};
 const PAGES = ${JSON.stringify(pages)};
 const QUIZ = ${JSON.stringify(quiz)};
 const FEEDBACK_Q = ${JSON.stringify(feedbackQuestions())};
@@ -1370,8 +1380,14 @@ $('fb-submit').onclick = () => submitFeedback(false);
 
 function showOutro() {
   show('s-outro');
-  $('code').textContent = session.completionCode;
+  // Show the PLATFORM's code when one is configured -- ours means nothing to Prolific, and a
+  // participant whose upload failed would paste it, be rejected, and be stuck.
+  $('code').textContent = PROLIFIC_CODE || session.completionCode;
   $('outro-code').classList.remove('hidden');
+  if (PROLIFIC_CODE) {
+    $('refcode').textContent = session.completionCode;
+    $('outro-ref').classList.remove('hidden');
+  }
   if (uploadOk) {
     $('outro-msg').textContent = 'Your session was recorded.';
     if (COMPLETION_URL && !DBG.active) {
