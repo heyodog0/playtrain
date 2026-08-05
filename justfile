@@ -167,6 +167,14 @@ study-browsers nsteps="2000":
 study-browsers-selftest eps="1e-3":
     node tools/study-browser-check.mjs --steps 600 --engines chromium --perturb {{eps}} || true
 
+# Pull collected sessions from Firebase -> dist/study-data (needs FIREBASE_SERVICE_ACCOUNT).
+study-pull *ARGS:
+    node tools/study-pull.mjs {{ARGS}}
+
+# The numbers behind the figures: per-game mean + 95% CI, and within-block change.
+study-stats *ARGS:
+    node tools/study-stats.mjs {{ARGS}}
+
 # Check a collected session replays identically through the headless env.
 # This is the acceptance test behind "participants and agents play identical tasks".
 study-verify file:

@@ -13,6 +13,9 @@ Walking that by hand takes 22 minutes, so the shell has a debug menu on
 `ctrl`+`shift`+`alt`+`D` that jumps to any screen or block and can run the whole session with
 10-second blocks — see [Debug menu](#debug-menu).
 
+**Collecting data? Start with [HANDOFF.md](HANDOFF.md)** — where the data lands, how to pull it,
+how it is plotted, one page. This file is the design rationale behind it.
+
 ```
 just study-build                     # -> dist/study (static, self-contained)
 just study-serve                     # play it yourself; saves to dist/study-sessions
