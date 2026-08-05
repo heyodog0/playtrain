@@ -28,10 +28,48 @@ exists if the participant clicks download at the end.
 
 ## Why it is built this way
 
-The participant plays through **PlayTrain's own runtime**, not a browser reimplementation
+The participant plays through **PlayTrain's own JS runtime**, not a browser reimplementation
 of it. `runtime/p5/p5-shim.mjs` and `runtime/p5/raster.mjs` are isomorphic by design, so
 the study pages inline those exact files. There is no real p5.js, no CDN, no bundler and
 no network access at play time — a built block is one self-contained HTML file of ~50 KB.
+
+### …but the agent does not run that runtime, so read this before claiming identity
+
+The canonical training backend is **QuickJS + the Rust rasterizer**, not node + the JS shim:
+`src/playtrain/runtime/__init__.py:14` binds `GameEnv = QuickJSEnv`, and the rollout path is
+`NativeVecEnv` (`native/build/libqjs_vec`, in-process C++ threadpool), which
+`benchmarks/README.md:22` labels the production training path at ~176k steps/s against ~15k for
+the legacy node backend. The human therefore does **not** execute the same code as the agent.
+Three distinct implementations are involved:
+
+| | game code | p5 layer | rasterizer | JS engine |
+|---|---|---|---|---|
+| participant (browser) | the game file, unchanged | `p5-shim.mjs` | `raster.mjs` (pure JS) | the participant's browser |
+| headless JS (replay, `verify-replay`) | same file | `p5-shim.mjs` | `rasterizer.wasm` (Rust) | node / V8 |
+| agent (training) | same file | `native/runtime/p5.cpp` | same Rust crate, native | QuickJS |
+
+So the honest claim is **not** "identity by construction" but "the same game source on three
+runtimes whose equivalence is measured". Measured, on the nine study games at the study's own
+seed base, both links bit-exact:
+
+```
+just study-parity      # both checks below
+```
+
+* **pure-JS rasterizer (what the browser uses) vs the Rust rasterizer**: identical per-step
+  64×64 observation hashes, 9/9 games × 400 steps at seed 90000. Run by re-tracing
+  `native/reference_trace.mjs` under `PLAYTRAIN_RASTERIZER=js` and `=wasm` and diffing.
+* **node+V8+wasm vs native QuickJS+Rust**: `native/gate_qjs.sh`, 9/9 games × seeds
+  90000/90001 × 1200 steps, bit-exact reward/term/score/lives/state plus obs hash.
+
+**The residual gap is the JS engine, not the pixels.** The gate proves V8 ≡ QuickJS; it says
+nothing about JavaScriptCore (Safari) or SpiderMonkey (Firefox), where a last-bit difference in
+`Math.sin`/`pow` could diverge a trajectory. That risk is not hypothetical in this codebase —
+`native/build_qjs.sh:11-18` records `analogen_asteroids` diverging on `Math.sin` until fdlibm was
+vendored, and `asteroids` is in the study set. Until a cross-browser determinism check exists,
+treat browser diversity as an open threat to per-episode reproducibility, not a settled one.
+`verify-replay` is the backstop: it recomputes each session's scores from the logged actions, so
+a participant whose browser diverged shows up as a replay mismatch rather than as clean data.
 
 Everything `runtime/p5/game-env.mjs` does to make an agent episode reproducible, the block
 page does too, in the same order:

@@ -141,6 +141,12 @@ study-build upload="":
 study-serve port="8080":
     node tools/study-serve.mjs --port {{port}}
 
+# Prove the participant's runtime and the agent's runtime agree, on the study's own games
+# and seeds: browser rasterizer vs Rust rasterizer, and node+V8 vs QuickJS+Rust. The whole
+# human-vs-agent comparison rests on this, and it was previously only a claim in a README.
+study-parity nsteps="400" *SEEDS="90000 90001":
+    tools/study-parity.sh {{nsteps}} {{SEEDS}}
+
 # Check a collected session replays identically through the headless env.
 # This is the acceptance test behind "participants and agents play identical tasks".
 study-verify file:
