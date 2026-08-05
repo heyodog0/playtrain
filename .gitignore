@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
+# Firebase service-account keys: never in the repo, on any machine.
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+*.private-key.json
 
 .venv/
 node_modules/

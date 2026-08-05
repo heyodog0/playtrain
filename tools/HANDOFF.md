@@ -35,6 +35,47 @@ endpoint probes, incompletes). Three leftover probe blobs once pulled breakout's
 **Collected sessions must not be committed.** `dist/` is gitignored; the harness belongs in git,
 the participant data does not.
 
+## Setting up another machine
+
+```sh
+just study-doctor      # checks everything below and prints the fix for whatever is missing
+```
+
+**There are no secrets to transfer.** Everything the deployed site needs already lives in
+Vercel's own environment store — `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`,
+`FIREBASE_PRIVATE_KEY`, `FIREBASE_STORAGE_BUCKET`, `SITE_PASSWORD`, `STUDY_COMPLETION_URL` — and
+deploys happen on `git push`, so a fresh clone can ship to production without holding any
+credential at all.
+
+The one credential you need locally is a **Firebase service-account key**, and only for pulling
+data (`study-pull`). Generate a *separate key per machine* rather than copying one around: keys
+are individually revocable, and a copied key means revoking it locks out every machine at once.
+
+```sh
+git clone git@github.com:heyodog0/playtrain.git && cd playtrain
+pnpm install
+
+# Firebase console → Project settings → Service accounts → Generate new private key
+mkdir -p ~/.config/playtrain && mv ~/Downloads/*-firebase-adminsdk-*.json ~/.config/playtrain/serviceAccount.json
+chmod 600 ~/.config/playtrain/serviceAccount.json
+echo 'export FIREBASE_SERVICE_ACCOUNT=~/.config/playtrain/serviceAccount.json' >> ~/.zshrc
+
+just study-doctor
+```
+
+Optional, per machine, only for the verification tools:
+
+```sh
+pnpm add -D playwright && npx playwright install chromium firefox webkit   # study-browsers / phases / shots
+just build-native                                                          # study-parity link 2 (QuickJS host)
+vercel login && vercel link --project playtrain-study --yes                # only for env vars and logs
+vercel env pull .env.local                                                 # if you want the server values locally
+```
+
+Never commit a key: `*serviceAccount*.json`, `*-firebase-adminsdk-*.json` and `.env.*` are all
+gitignored. To rotate, generate a new key and delete the old one under Google Cloud console → IAM
+→ Service accounts → Keys; nothing in the repo needs changing.
+
 ## Is the data trustworthy
 
 Four checks, all runnable, all currently passing:

@@ -167,6 +167,10 @@ study-browsers nsteps="2000":
 study-browsers-selftest eps="1e-3":
     node tools/study-browser-check.mjs --steps 600 --engines chromium --perturb {{eps}} || true
 
+# Is this machine set up to run and analyse the study? Prints the fix for anything missing.
+study-doctor:
+    node tools/study-doctor.mjs
+
 # Pull collected sessions from Firebase -> dist/study-data (needs FIREBASE_SERVICE_ACCOUNT).
 study-pull *ARGS:
     node tools/study-pull.mjs {{ARGS}}
