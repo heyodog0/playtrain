@@ -5,8 +5,13 @@ Collects the novice human baseline for the PlayTrain paper: 20 participants, 9 b
 JSON of frame-indexed actions, seeds and scores that can be replayed through the training
 runtime to prove the human and the agent played the same environment.
 
-Session shape: device check → consent → instructions → comprehension check → practice →
-9 scored blocks → upload. About 15 minutes of play, ~22 minutes total.
+Session shape: device check → consent → instructions → comprehension check → (Prolific ID, only
+if the link did not carry one) → practice → 9 scored blocks → upload. About 15 minutes of play,
+~22 minutes total.
+
+Walking that by hand takes 22 minutes, so the shell has a debug menu on
+`ctrl`+`shift`+`alt`+`D` that jumps to any screen or block and can run the whole session with
+10-second blocks — see [Debug menu](#debug-menu).
 
 ```
 just study-build                     # -> dist/study (static, self-contained)
@@ -187,6 +192,27 @@ gives `score += 10` and sets `gameState = 'WIN'` together — so without it the 
 sees the reward they earned, and "score as many points as you can" is an instruction with no
 feedback behind it.
 
+The card is a **dark scrim over the frozen frame with the score on its own panel**. It began as
+an opaque white card, which was a mistake: every game in the study
+draws a near-black background (`background(0)`…`background(30)`), so each round boundary was a
+black → white → black flash of the whole canvas — measured as a **+225 to +244 step in mean
+canvas luminance** out of 255. With cards shrinking to 250 ms under the freeze budget and 22
+rounds in 12 s measured on flappy_bird, that is a strobe, and it destroys dark adaptation
+immediately before the next round starts — plausibly costing performance on exactly the fast
+games where it fires most often. The scrim version measures **−11 to +3** instead. Text contrast
+was the original argument for opacity; putting the text on a fixed-colour panel settles that,
+since a scrim can only darken what is behind it. Leaving the final frame faintly visible is a
+bonus: the player can see the state they died in.
+
+**Only the dimming animates — the score panel never fades.** Cross-fading the whole overlay put
+a half-strength number over an undimmed frame at the midpoint of every transition, which reads
+as a ghost rather than a transition, and two details made it worse: a fixed 140 ms fade was most
+of the life of a budget-shrunk 250 ms card (so those cards never reached full strength at all),
+and fading out on unfreeze ran the fade over the resumed, undimmed next round. Now the scrim
+ramps over `min(90 ms, cardMs / 6)` and finishes *inside* the freeze window, while the panel is
+at full opacity from the first frame. Measured over 20 consecutive flappy_bird cards: every card
+reaches full strength, and each is fully opaque for 75% of its life.
+
 The freeze **pauses the block clock**, so summary time is not taken out of play time. The
 block is a budget of actual gameplay; summaries are session overhead like the instructions.
 Both numbers are reported (`playMs`, `pausedMs`, `wallMs`) so the choice is auditable and the
@@ -197,6 +223,36 @@ zero, and 0.25 s once 20 s of summaries have accumulated. Without the budget a p
 dies instantly and repeatedly spends more of the session reading score cards than playing —
 measured at 22 rounds in a 12-second block on flappy_bird, which the cap brings from 49 s of
 wall time down to 26 s.
+
+### What the HUD shows, and what it deliberately does not
+
+The HUD carries round number, current score, best score so far, and the block timer. Two
+additions were considered; one is in and one is off by default, and the difference is whether
+it hands the human something the agent's observation cannot contain.
+
+**Lives are shown for `seaquest` and `caveflyer` only** (`hudLives` in study-config.json).
+Every game exposes `lives` in `getGameState()`, but those two are the only ones that never
+*draw* it: breakout, asteroids, coinrun and vvvvvv all render a lives row on the canvas,
+plunder and flappy_bird are single-life, and pong's `lives` field is the ALE points-to-21
+counter rather than lives at all — a readout there would be actively wrong. So this is not a
+new affordance, it is closing a two-game gap where a participant could otherwise lose three
+times without ever learning the game had lives, on games where every other game in the set
+shows them. Rendered as pips (`●●○`) rather than a number, because it is read peripherally
+while the eyes stay on the game, and read from the same `getGameState()` the environment steps
+on, so it cannot drift from the state the agent is scored against.
+
+It is still an asymmetry — for those two games the human sees a quantity absent from the 64×64
+observation — so every block records `livesShown`, and it surfaces in the Firestore summary.
+
+**A per-round countdown is off** (`showRoundTimer`). `maxSteps` truncation is a harness
+artifact rather than a rule of the game, and nothing in the agent's observation encodes
+remaining steps. A visible countdown would let the human spend the last second of every round
+on risk the policy cannot know to take — inflating precisely the score being compared, and
+worst on the games where rounds most often truncate rather than end. The instructions already
+state that rounds end after about 33 seconds, which prevents confusion without making the
+artifact exploitable. Set it to `'practice'` to show it in the unscored warm-up only, where
+teaching the round structure is the point, or `true` to accept the trade-off knowingly;
+`roundTimerShown` is recorded per block either way.
 
 ## Order and seeds
 
@@ -230,10 +286,38 @@ node tools/build-study.mjs \
   --completion https://app.prolific.com/submissions/complete?cc=<code>
 ```
 
-The session shell reads `PROLIFIC_PID` from the query string (falling back to `pid` or
-`participant`, then to manual entry) and hides the ID field when it is present — a typo
-there is an unmatchable session and an unpayable participant. `STUDY_ID` and `SESSION_ID`
-are recorded if passed.
+### The participant ID, both ways
+
+Paste this as the study URL in Prolific:
+
+```
+https://playtrain-study.vercel.app/study/?PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}
+```
+
+Prolific substitutes the real values, the harness takes `PROLIFIC_PID` and **skips the ID
+screen entirely**. The ID is the one field in a session that can be wrong in a way nothing
+downstream detects or repairs — a typo is an unmatchable session and a participant you owe
+payment anyway — so not asking beats asking.
+
+When the param is missing the participant **pastes their ID** instead. Params do get lost: a
+link copied into another browser, or a direct link sent to a pilot participant. Without that
+fallback it is a dead end mid-study. Whitespace is stripped (a copy off the Prolific page
+routinely carries a trailing newline), and validation is deliberately loose — 5–64 alphanumeric
+characters, with a second click required if the length is not the usual 24. Hard-rejecting an
+unexpected shape would strand someone you still have to pay; the exact string is stored either
+way, so anything odd can be reconciled by hand.
+
+The param is **shape-checked before it is trusted**, which is not paranoia. Save the Prolific
+study URL with the placeholder unsubstituted and every participant arrives with a literal
+`{{%PROLIFIC_PID%}}` — without the check, every session in the study files under that one id.
+A param that fails the check is recorded as `prolific.urlPidRejected` and the participant is
+asked to paste, so the misconfiguration is visible in the first session's summary and
+recoverable, rather than silent and total.
+
+Recorded per session: `prolific.{study, session, fromUrl, urlPidRejected}`, plus `pidTyped`
+and `pidEnteredAt` when it was typed, and `pidMismatch` if a typed id ever coexists with a
+different one from the URL. **Query `fromUrl: false` after launch** — a run of typed ids means
+the Prolific link lost its parameters.
 
 The completion URL is followed **only after a successful upload**. Redirecting on a failed
 upload would mark the participant complete on Prolific while their data is gone. On failure
@@ -252,6 +336,18 @@ The endpoint must therefore **key on `participantId` + `startedAt` and overwrite
 checkpoints from one session collapse into a single progressively-more-complete record
 instead of one file per block. `tools/study-serve.mjs` does exactly this and is the reference
 for the production endpoint.
+
+Overwriting alone is not enough, and this bit in production. Checkpoints are not awaited, so
+the one fired after the **last** block can land *after* `finish()`'s authoritative upload — a
+completed session was stored as `partial: true` with `completionCode: null`, which is exactly
+the field you would query to decide whom to pay. Two defences, both needed:
+
+* the harness **skips the checkpoint after the final block** (`finish()` is about to POST the
+  same blocks anyway, so it bought nothing);
+* the endpoint **never downgrades a completed record** — a `partial` write against a doc
+  already marked `complete` is answered `200 {ignored: "already-complete"}` and dropped, so a
+  retry or a stray keepalive cannot walk the record backwards. It answers 200 rather than an
+  error because nothing is wrong and the client must not retry.
 
 A block opened **directly** (e.g. `/block/asteroids/` while playtesting) has no session shell
 to report to, so it posts itself as a one-block session with `standalone: true` and shows
@@ -284,6 +380,40 @@ Everything else is uploaded anyway, for two reasons:
 
 The full payload is ~0.46 MB/session against ~0.18 MB for the bare core — 9 MB versus 4 MB
 across the whole study, which is not a reason to give up the integrity check.
+
+## Debug menu
+
+Walking the participant flow by hand costs 22 minutes, so the session shell carries a debug
+menu. It is **in every build** — gating it behind a build flag would mean the thing you test
+is not the thing you deploy — and opens on a key combo rather than a URL parameter, so there
+is no guessable `?debug=1` that lets a participant skip the comprehension check.
+
+| combo | where | what |
+|---|---|---|
+| `ctrl`+`shift`+`alt`+`D` | anywhere, including mid-block | open/close the menu (`esc` also closes) |
+| `ctrl`+`shift`+`alt`+`S` | inside a block | end that block now |
+
+Keyboard focus sits inside the block iframe while a game runs, so the block page handles both
+combos itself and forwards `D` up to the shell over `postMessage`.
+
+The menu jumps straight to any screen (device check, rejection, consent, any instruction page,
+quiz, Prolific ID, outro), launches any single block, or runs the whole session — with **short
+blocks** (default 10 s, editable) and optional **auto-start**, which turns a 22-minute
+walkthrough into about two minutes. It also dumps or downloads the session JSON as collected,
+with the frame-indexed integer arrays abbreviated to their lengths so the record is readable.
+
+Short and skippable blocks are driven by a `#dbg=<seconds>` hash the shell appends to the
+iframe URL, and the block page **only** honours it when that hash is present. A participant
+never gets it, so neither shortening nor skipping is reachable from the participant's path.
+
+**Opening the menu at all** stamps `debug: true` on the session and **suppresses every
+upload** from then on, including the per-block checkpoints and the Prolific completion
+redirect, so a walkthrough cannot land in the collected data or mark a submission complete.
+Deciding that per-button would be a trap — peek at the menu, then walk the real flow, and you
+would silently be writing a fake participant into the data. Tick *allow upload* to exercise
+the endpoint on purpose; the record still carries `debug: true`, and
+`api/session.js` surfaces that flag in the Firestore summary so those rows can be dropped
+without inferring anything from the participant ID.
 
 ## Which game sources
 
@@ -320,7 +450,20 @@ dist/pages/study/    the study         -> /study/   (public)
 
 `middleware.js` exempts `/study` and `/api/session` from basic auth — participants arrive
 from Prolific and cannot be given credentials. Everything else stays gated. The study is
-built with `--upload /api/session`, same origin, so there is no CORS involved.
+built with `--upload /api/session/`, same origin, so there is no CORS involved.
+
+The **trailing slash on that upload URL is load-bearing**: `vercel.json` sets
+`trailingSlash: true`, so a POST to `/api/session` answers 308 to `/api/session/`. Browsers do
+re-POST on a 308, so it works either way, but every checkpoint would pay a redirect — and the
+final one is a `keepalive` fetch racing the tab closing, which is not a place to spend a round
+trip.
+
+`vercel.json` installs with **`pnpm install --frozen-lockfile`**. Keep `pnpm-lock.yaml` in step
+with `package.json` (`pnpm install --lockfile-only` after any dependency change) or the
+serverless build fails with `ERR_PNPM_OUTDATED_LOCKFILE` — the static site builds fine and only
+the ingest function goes missing, which is a confusing way to find out. Do not switch the
+install back to npm: the two package managers fight over the cached `node_modules` and the
+second deploy dies on `npm error Cannot read properties of null (reading 'name')`.
 
 `api/session.js` is the ingest function. It splits storage deliberately:
 
@@ -349,6 +492,28 @@ than client-side with permissive rules. That keeps the Firebase SDK out of the p
 page — which is what preserves the self-contained, zero-external-request property the
 correctness argument depends on — and means the storage bucket needs no public write rule.
 
+### The live deployment
+
+| | |
+|---|---|
+| participant link | **https://playtrain-study.vercel.app/study/** |
+| game tester | https://playtrain-study.vercel.app/ — basic auth, user `playtest` |
+| Vercel project | `playtrain-study`, linked to `github.com/heyodog0/playtrain` (pushes to `main` auto-deploy) |
+| Firebase project | `ai-gamestore-study-1901` (shared with the video-rating study; PlayTrain uses its own collection and bucket prefix) |
+| bucket | `ai-gamestore-study-1901.firebasestorage.app`, US-EAST1 |
+
+**Firebase Storage requires the Blaze plan.** That project sat on Spark, where bucket creation
+fails with `The billing account for the owning project is disabled in state absent` while
+*Firestore still works* — so the handler's Storage-then-Firestore order meant every upload
+500'd and nothing persisted at all. The Firebase SDK config reports a `storageBucket` name even
+when no bucket exists, so trust `bucket().exists()`, not the config. At 20 sessions × ~0.5 MB
+the storage bill is nil; Blaze is needed for the capability, not the volume.
+
+Verified end to end on the live deployment: a full session (consent → instructions → quiz →
+pasted Prolific ID → all 10 blocks) uploaded 9 checkpoints plus the final record, landed in
+both stores as `complete: true` with its completion code, and the downloaded blob passed
+`verify-replay` at **18/18 episodes reproducing headlessly**.
+
 ## Before running it for real
 
 - [ ] Verify the consent text against the approved protocol — see the header of
@@ -358,9 +523,14 @@ correctness argument depends on — and means the storage bucket needs no public
 - [ ] Confirm the games directory matches the runs behind `tab:eval` — check
       `build-manifest.json` against the run cards. This is the one error replay
       verification cannot detect.
-- [ ] Set the Firebase env vars in Vercel and POST one test session end to end.
+- [x] Set the Firebase env vars in Vercel and POST one test session end to end.
 - [ ] Add Firestore/Storage rules denying public reads of `study_sessions` and
-      `study-sessions/` — the summary contains Prolific IDs.
+      `study-sessions/` — the summary contains Prolific IDs. The ingest path does not need
+      them (it writes with a service account, which bypasses rules), so this is purely about
+      who can *read*; check what the project's existing rules already allow, since the
+      video-rating study shares it.
+- [ ] Point `STUDY_COMPLETION_URL` at the real Prolific completion link once the study exists.
+      Without it participants see a completion code instead of being redirected.
 - [ ] Walk the whole session yourself end to end with `just study-serve`.
 - [ ] Pre-register: the fps exclusion threshold, the keypress-count exclusion, and the
       `discarded`-episode rule.
