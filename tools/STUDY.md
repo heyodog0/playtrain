@@ -368,6 +368,40 @@ window can deliver the full canvas, and a window still too short after 45 s is t
 `window-too-small` rather than contributing a session at the wrong size. Verified: 520 px on
 1440×820, 1366×700 and 1920×1080 alike.
 
+### flappy_bird starts held (changed 2026-08-05, after n=10)
+
+`flappy_bird.js` now holds the bird still until the first flap: no gravity, no pipes, no frame
+advance. The rising edge that starts the episode is also the first flap, so no input is swallowed,
+and once started the trajectory is identical — verified by an idle-300-frames-then-flap run dying
+at frame 364 against a flap-from-frame-0 run dying at 64.
+
+Why: **23% of collected flappy_bird episodes (109 of 482) had zero key presses**, and every one of
+them was a sub-30-frame death. The bird fell from frame 0, so a participant still orienting after
+the previous round's score card died in half a second and the round restarted. No other game in the
+set can kill you before you have looked at it — every other game has 0% of episodes under a full
+second.
+
+What it does NOT fix, and what the data actually showed: flappy's apparent decline across rounds
+(2.70 → 0.31 by round 31+) is a **selection artifact**, not disengagement. Only the fastest-dying
+participants ever reach round 31, so the late bins are made of the worst players. Within each
+participant, 7 of 9 *improved* on survival across their own block. Do not cite the pooled
+round-index trend.
+
+Consequences, all of which are live:
+
+* **The agent must be retrained on flappy_bird.** Its hash went `85c98a0106fb45fe` →
+  `69371176e8603dbf`, so `just study-audit` fails against the training checkout until the retrain.
+  That is the tool doing its job, not a false alarm.
+* **flappy_bird human data now has two versions.** The ten sessions collected on 2026-08-05 played
+  the old start-immediately build; anything after plays the held build. Their other seven blocks are
+  unaffected — those files never changed. Do not pool flappy across the two.
+* **The failure mode changed rather than disappearing.** A participant who never presses now sits
+  frozen until `maxSteps` truncation (2000 frames, ~33 s) instead of dying in half a second. A
+  frozen bird is a visible cue and the controls screen names the key, but the downside case is now
+  a third of a block spent idle rather than a burst of instant restarts.
+* Backends and browsers re-verified on the modified file: bit-identical across the pure-JS
+  rasterizer, the Rust rasterizer and native QuickJS, and across Chromium, Firefox and WebKit.
+
 ## Order and seeds
 
 Scored blocks are shuffled per participant, seeded by a hash of the participant ID, so the

@@ -6,6 +6,11 @@ let bird = { x: 100, y: 200, vy: 0, size: 20 };
 let pipes = [];
 let frames = 0;
 let prevSpaceDown = false;
+// The episode opens with the bird held still until the first flap. Without this the bird falls
+// from frame 0, so anyone still orienting dies inside half a second and the round restarts --
+// 23% of collected flappy_bird episodes had no key press at all, every one of them a sub-30-frame
+// death. Nothing else in the study can kill you before you have looked at it.
+let started = false;
 
 function mulberry32(seed) {
   let t = seed !== undefined ? seed >>> 0 : 42;
@@ -49,6 +54,7 @@ function resetGame(seed) {
   pipes = [];
   frames = 0;
   prevSpaceDown = false;
+  started = false;
 }
 
 function getGameState() {
@@ -75,6 +81,17 @@ function draw() {
 }
 
 function updateGame(spaceDown) {
+  // Held still until the first flap: no gravity, no pipes, no frame advance. The rising edge
+  // that starts the episode IS the first flap, so the input is not swallowed.
+  if (!started) {
+    if (spaceDown && !prevSpaceDown) {
+      started = true;
+    } else {
+      prevSpaceDown = spaceDown;
+      return;
+    }
+  }
+
   if (spaceDown && !prevSpaceDown) {
     bird.vy = FLAP_STRENGTH;
   }

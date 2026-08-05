@@ -81,6 +81,10 @@ Four candidate figures, rendered from the real data:
   a random-play floor (matters for caveflyer, where the greedy checkpoint scores below random).
 - **Pre-registered exclusion rules.** Decide before the remaining sessions land: canvas size,
   fps floor, quiz-attempt cap, replay mismatch, the `discarded`-episode rule.
+- **flappy_bird changed on 2026-08-05** (bird now held until the first flap; hash
+  `85c98a0106fb45fe` → `69371176e8603dbf`). The agent needs a flappy retrain, `study-audit` fails
+  until it happens, and the first ten sessions' flappy blocks are on the old build — do not pool
+  them. Their other seven games are unaffected.
 - **Known non-uniformities in the first two sessions** — `canvasPx` 561 and 600 before the 520 px
   fix, and one participant needing 21 comprehension attempts (a harness fault, since fixed).
   Both are in the data; `study-stats` warns when canvas sizes differ.
