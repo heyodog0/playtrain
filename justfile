@@ -147,6 +147,16 @@ study-serve port="8080":
 study-parity nsteps="400" *SEEDS="90000 90001":
     tools/study-parity.sh {{nsteps}} {{SEEDS}}
 
+# Does the participant's browser change the environment? Runs one trace program unchanged in
+# node, Chromium, Firefox and WebKit and demands byte-identical frames and state. 2000 steps
+# is a full maxSteps episode, which is the unit that has to hold. Needs playwright browsers.
+study-browsers nsteps="2000":
+    node tools/study-browser-check.mjs --steps {{nsteps}}
+
+# Prove that check can fail: perturb Math.sin by eps in the browser and expect a catch.
+study-browsers-selftest eps="1e-3":
+    node tools/study-browser-check.mjs --steps 600 --engines chromium --perturb {{eps}} || true
+
 # Check a collected session replays identically through the headless env.
 # This is the acceptance test behind "participants and agents play identical tasks".
 study-verify file:

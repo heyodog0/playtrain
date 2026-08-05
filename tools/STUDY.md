@@ -62,14 +62,44 @@ just study-parity      # both checks below
 * **node+V8+wasm vs native QuickJS+Rust**: `native/gate_qjs.sh`, 9/9 games × seeds
   90000/90001 × 1200 steps, bit-exact reward/term/score/lives/state plus obs hash.
 
-**The residual gap is the JS engine, not the pixels.** The gate proves V8 ≡ QuickJS; it says
-nothing about JavaScriptCore (Safari) or SpiderMonkey (Firefox), where a last-bit difference in
-`Math.sin`/`pow` could diverge a trajectory. That risk is not hypothetical in this codebase —
-`native/build_qjs.sh:11-18` records `analogen_asteroids` diverging on `Math.sin` until fdlibm was
-vendored, and `asteroids` is in the study set. Until a cross-browser determinism check exists,
-treat browser diversity as an open threat to per-episode reproducibility, not a settled one.
-`verify-replay` is the backstop: it recomputes each session's scores from the logged actions, so
-a participant whose browser diverged shows up as a replay mismatch rather than as clean data.
+**The remaining variable is the JS engine, and it checks out.** The gate above proves V8 ≡
+QuickJS and says nothing about JavaScriptCore (Safari) or SpiderMonkey (Firefox), where a
+last-bit difference in `Math.sin`/`pow` moves a sprite, which moves a collision, which moves a
+score. Not hypothetical here: `native/build_qjs.sh:11-18` records `analogen_asteroids` diverging
+on `Math.sin` until fdlibm was vendored, and `asteroids` is in the study set — and the games do
+call `Math.sin`/`cos`/`atan2` directly (pong, breakout, caveflyer, asteroids), with the shim
+forwarding straight to the engine's implementations (`p5-shim.mjs:403-405`).
+
+```
+just study-browsers            # chromium + firefox + webkit, 2000 steps
+just study-browsers-selftest   # prove the check can fail
+```
+
+`tools/study-browser-check.mjs` runs **one trace program, as a single source string**, unchanged
+in node and in all three engines — driven by a fixed action formula rather than keystrokes, so
+nothing depends on timing — and compares score/lives/state plus a hash of the whole rasterized
+frame at every step. Result: **9/9 games × 2000 steps byte-identical in Chromium 151, Firefox 153
+and WebKit 26.5.** 2000 steps is a full `maxSteps` episode, which is the unit that has to hold:
+episodes reset state, so a difference cannot accumulate across them.
+
+Two caveats worth carrying, both discovered by getting them wrong first:
+
+* **The node reference must run one game per child process.** `p5-shim` keeps game state in a
+  single global scope — the reason the real runtime is one-game-per-process and the study gives
+  every block its own iframe. An earlier version of this tool traced all nine games in one node
+  process; globals leaked between games and it reported three games diverging in *every* browser.
+  The browsers were right and the harness was wrong.
+* **Know the test's sensitivity before trusting a green run.** Perturbing `Math.sin` by ε in the
+  browser is caught at ε≥1e-6 on asteroids and ε≥1e-3 across the board within 600 steps, but
+  **not** at 1e-9 or 1e-12 — a sub-pixel difference rounds to the same pixel until it amplifies.
+  Real engine differences are ~1 ULP (≈1e-16 relative), so "identical at 2000 steps" means no
+  difference *surfaces within an episode*, not that the engines are provably bitwise equal for
+  all inputs. Note also that `x*(1+2^-52)` is useless as a perturbation: it rounds back to `x`
+  over much of the mantissa range and silently tests nothing.
+
+`verify-replay` remains the per-session backstop: it recomputes every session's scores from the
+logged actions on V8, so any participant whose browser did diverge shows up as a replay mismatch
+rather than as clean data.
 
 Everything `runtime/p5/game-env.mjs` does to make an agent episode reproducible, the block
 page does too, in the same order:
