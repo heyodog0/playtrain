@@ -40,7 +40,7 @@ function app() {
 
 const MAX_BYTES = 8 * 1024 * 1024;   // a real session is ~0.5 MB; this is a sanity bound
 
-function summarize(session) {
+export function summarize(session) {
   const scored = (session.blocks || []).filter(b => !b.practice);
   const perBlock = scored.map(b => {
     const kept = (b.episodes || []).filter(e => !e.discarded);
@@ -111,7 +111,13 @@ function summarize(session) {
     quizAttempts: session.quiz?.attempts ?? null,
     // Which questions people actually fail, per attempt. The pilot needed 5 and 21 attempts and
     // the only clue as to why came from a feedback box; this makes it queryable.
-    quizWrongByAttempt: session.quiz?.log?.map(a => a.wrong) ?? null,
+    //
+    // JOINED INTO STRINGS, and that is not cosmetic: Firestore cannot store an array whose
+    // elements are arrays. Writing the raw [[0,1],[3],[]] threw inside the transaction, the
+    // catch reported it as "storage write failed", and every participant who passed the quiz --
+    // which is all of them -- got the upload-failure screen even though their blob had already
+    // been written to Storage. Any nested array added to this summary will do the same.
+    quizWrongByAttempt: session.quiz?.log?.map(a => (a.wrong || []).join(',')) ?? null,
     preflightFps: session.preflight?.fps ?? null,
     smallWindow: !!session.preflight?.smallWindow,
     userAgent: session.userAgent ?? null,
