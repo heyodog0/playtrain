@@ -197,10 +197,91 @@ export function instructionPages(cfg) {
     {
       title: 'Your data',
       html: `
-        <p>We record only your key presses and your game scores. No personal information is
-           collected, and your data is identified only by your Prolific ID, which is what
-           lets us pay you.</p>
+        <p>While you play we record only your key presses and your game scores. Your data is
+           identified only by your Prolific ID, which is what lets us pay you.</p>
+        <p>At the very end we ask whether anything went technically wrong — those boxes are
+           optional — and a few short questions about you: your age, your gender, and how much
+           you play video games. <b>“Prefer not to say” is always one of the answers</b>, and
+           you will be paid whatever you answer.</p>
         <p>When you are ready, continue to a short comprehension check.</p>`,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// End-of-study questions. Field names deliberately match the lab's video-rating study
+// (Firestore end_study_feedback: demographics{age,gender,gamingExperience,gamingFrequency},
+// feedback{technicalIssues,confusingParts,suggestions}) so the two studies are comparable and
+// so the questions are ones the protocol has already been through the IRB with. Its
+// `funCriteria` question is dropped -- it was about what makes a video fun to watch.
+//
+// Everything here is OPTIONAL and everything is asked AFTER all play is finished: a demographic
+// question before or between blocks could plausibly change how someone plays, and none of it
+// may ever gate payment.
+//
+// gamingExperience and gamingFrequency are not decoration for this study in particular. The
+// entire claim is a NOVICE human baseline, so "how much do you play games" is the covariate a
+// reviewer will ask about first, and the one that lets you show the baseline is not dominated
+// by practised players.
+// ---------------------------------------------------------------------------
+// Each of these needs a RESPONSE, and "Prefer not to say" is one of the responses.
+//
+// Not optional, because at n=20 three silent skips is 15% missing on the only covariates the
+// analysis has, and most of that missingness would be accidental -- people skip because a Skip
+// button is there, not because they object. Not compulsory either: the consent form promises
+// that refusal carries no loss of benefit, and a question that blocks payment would contradict
+// it. Requiring an answer while making refusal one of the available answers is what satisfies
+// both, and it is the shape IRB demographic items normally take.
+//
+// DECLINE_ANSWER is spelled the same way everywhere so the analysis can filter one string.
+const DECLINE = 'Prefer not to say';
+
+export function demographicQuestions() {
+  return [
+    {
+      id: 'age', label: 'How old are you?', type: 'number', required: true,
+      min: 18, max: 100, placeholder: 'age in years', decline: DECLINE,
+      hint: 'Also how we confirm the study\'s 18-or-over requirement.',
+    },
+    {
+      id: 'gender', label: 'What is your gender?', type: 'choice', required: true,
+      options: ['Woman', 'Man', 'Non-binary', 'Prefer to self-describe', DECLINE],
+      selfDescribe: 'Prefer to self-describe',
+    },
+    {
+      id: 'gamingExperience', label: 'How much experience do you have with video games?',
+      type: 'choice', required: true,
+      options: ['None at all', 'A little', 'A moderate amount', 'A lot', 'I play very seriously', DECLINE],
+    },
+    {
+      id: 'gamingFrequency', label: 'How often do you play video games?', type: 'choice',
+      required: true,
+      options: ['Never', 'A few times a year', 'A few times a month', 'A few times a week', 'Every day', DECLINE],
+    },
+  ];
+}
+
+export function feedbackQuestions() {
+  return [
+    {
+      id: 'technicalIssueLevel', label: 'Did you run into any technical problems?',
+      type: 'choice',
+      options: ['No problems at all', 'Something minor', 'Something that affected my play'],
+    },
+    {
+      id: 'technicalIssues', type: 'text',
+      label: 'If so, what happened?',
+      hint: 'Slow or stuttering games, controls not responding, a game that would not start, anything else.',
+    },
+    {
+      id: 'confusingParts', type: 'text',
+      label: 'Was anything confusing or unclear?',
+      hint: 'The instructions, the controls, or a particular game.',
+    },
+    {
+      id: 'suggestions', type: 'text',
+      label: 'Anything else you want to tell us?',
+      hint: 'Optional, and genuinely read.',
     },
   ];
 }

@@ -83,6 +83,29 @@ function summarize(session) {
     pidTyped: session.pidTyped ?? null,
     pidEnteredAt: session.pidEnteredAt ?? null,
     pidMismatch: session.pidMismatch ?? null,
+    // End-of-study answers. Field names match the lab's video-rating study
+    // (end_study_feedback.demographics) so the two are comparable.
+    //
+    // Only the CODED answers are summarised. The free text (technicalIssues, confusingParts,
+    // suggestions) stays in the Storage blob and is deliberately not copied into Firestore:
+    // it is the one place a participant can type something identifying, and there is no
+    // reason for it to live in the queryable index. 20 participants' worth of prose is read
+    // by opening the blobs, not by querying.
+    demographics: session.demographics ? {
+      age: session.demographics.age ?? null,
+      gender: session.demographics.gender ?? null,
+      gamingExperience: session.demographics.gamingExperience ?? null,
+      gamingFrequency: session.demographics.gamingFrequency ?? null,
+      skipped: !!session.demographics.skipped,
+    } : null,
+    technicalIssueLevel: session.feedback?.technicalIssueLevel ?? null,
+    // Whether there is prose to go and read, without reproducing it here.
+    feedbackText: session.feedback ? {
+      technicalIssues: !!session.feedback.technicalIssues,
+      confusingParts: !!session.feedback.confusingParts,
+      suggestions: !!session.feedback.suggestions,
+    } : null,
+    feedbackSkipped: session.feedback ? !!session.feedback.skipped : null,
     consentAt: session.consent?.at ?? null,
     doNotRecontact: !!session.consent?.doNotRecontact,
     quizAttempts: session.quiz?.attempts ?? null,

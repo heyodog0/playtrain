@@ -20,7 +20,10 @@
 // isolation the headless runtime gets from one-game-per-process (game-env.mjs `gameLoaded`).
 
 import { browserShimBundle } from './play-templates.mjs';
-import { consentHtml, instructionPages, quizQuestions, durationPhrase } from './study-screens.mjs';
+import {
+  consentHtml, instructionPages, quizQuestions, durationPhrase,
+  demographicQuestions, feedbackQuestions,
+} from './study-screens.mjs';
 
 // Participant-facing styling. Deliberately plain: a system sans-serif, near-black text
 // on white, no accent colours. The tester's dark monospace look (play-templates.mjs
@@ -732,6 +735,22 @@ export function sessionPage(blocks, cfg) {
   .opt:hover { border-color: #888; color: #111; background: #fafafa; }
   .opt input { flex: none; }
 
+  /* end-of-study questions */
+  button.ghost { background: #fff; color: #444; border: 1px solid #bbb; }
+  button.ghost:hover { background: #f4f4f4; color: #111; }
+  .fq { margin-bottom: 24px; }
+  .fq > label.qlabel { display: block; color: #111; font-size: 16px; font-weight: 500;
+                       margin-bottom: 4px; }
+  .fq .hint { color: #777; font-size: 14px; margin: 0 0 8px; }
+  .fq textarea { width: 100%; min-height: 76px; resize: vertical; background: #fff;
+                 border: 1px solid #bbb; border-radius: 4px; padding: 10px 12px;
+                 font: inherit; font-size: 15px; color: #111; }
+  .fq textarea:focus, .fq input[type=number]:focus { outline: 2px solid #111; outline-offset: 1px; }
+  .fq input[type=number] { width: 110px; font-family: inherit; }
+  .fq .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fq .opts .opt { margin: 0; }
+  .fq input[type=text].selfdesc { width: 260px; margin-top: 6px; font-family: inherit; }
+
   /* debug menu -- hidden unless the key combo is pressed; see the DBG block below */
   #dbg { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
          background: #101010; color: #e8e8e8; padding: 10px 14px 14px;
@@ -822,7 +841,23 @@ export function sessionPage(blocks, cfg) {
   </div>
 </main>
 
-<!-- 5. outro -------------------------------------------------------------- -->
+<!-- 5. end-of-study questions --------------------------------------------- -->
+<!-- Shown AFTER the session has already been uploaded, so nothing here can cost the
+     participant their data or their payment. Every field is optional and Skip is a
+     first-class button, not a link hidden in the corner. -->
+<main id="s-feedback" class="hidden">
+  <h1>Last few questions</h1>
+  <p>Your play is already recorded and saved, and you will be paid either way. The feedback
+     boxes are optional; the few questions about you need an answer, and
+     <b>“Prefer not to say” is always one of the answers</b>.</p>
+  <div id="fb-body" style="margin-top:26px"></div>
+  <div class="nav">
+    <button id="fb-submit">Submit and finish</button>
+    <span class="err" id="fb-err"></span>
+  </div>
+</main>
+
+<!-- 6. outro -------------------------------------------------------------- -->
 <main id="s-outro" class="hidden">
   <h1>Done — thank you</h1>
   <p id="outro-msg">Uploading your session…</p>
@@ -843,9 +878,11 @@ const UPLOAD_URL = ${JSON.stringify(uploadUrl)};
 const COMPLETION_URL = ${JSON.stringify(completionUrl)};
 const PAGES = ${JSON.stringify(pages)};
 const QUIZ = ${JSON.stringify(quiz)};
+const FEEDBACK_Q = ${JSON.stringify(feedbackQuestions())};
+const DEMO_Q = ${JSON.stringify(demographicQuestions())};
 
 const $ = id => document.getElementById(id);
-const SCREENS = ['s-device', 's-blocked', 's-consent', 's-instr', 's-quiz', 's-pid', 's-outro'];
+const SCREENS = ['s-device', 's-blocked', 's-consent', 's-instr', 's-quiz', 's-pid', 's-feedback', 's-outro'];
 function show(id) {
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   $('frame').classList.add('hidden');
@@ -1162,37 +1199,190 @@ function checkpoint() {
   } catch { /* never let a checkpoint break the session */ }
 }
 
+// The tail of the session, in this order and for these reasons:
+//
+//   blocks done -> UPLOAD the complete session -> end-of-study questions -> upload again
+//   with the answers attached -> outro -> Prolific redirect
+//
+// The play data is banked BEFORE anyone is asked an optional question. A participant who
+// closes the tab on the questions has already contributed a complete, payable session; the
+// only thing lost is the feedback. The reverse order would put the whole session behind a
+// screen nobody is obliged to fill in.
+let uploadOk = false;
+
+async function uploadFinal() {
+  if (!UPLOAD_URL || !dbgCanUpload()) return false;
+  try {
+    const res = await fetch(UPLOAD_URL, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...session, partial: false }),
+    });
+    return res.ok;
+  } catch {
+    return false;   // never lose a paid session to a bad network
+  }
+}
+
 async function finish() {
-  show('s-outro');
   $('progress').style.width = '100%';
   session.finishedAt = new Date().toISOString();
-  const code = 'PT-' + hash32(session.participantId + session.startedAt).toString(36).toUpperCase();
-  session.completionCode = code;
+  session.completionCode = 'PT-' + hash32(session.participantId + session.startedAt).toString(36).toUpperCase();
+  uploadOk = await uploadFinal();
+  renderFeedback();
+  show('s-feedback');
+}
 
-  if (UPLOAD_URL && dbgCanUpload()) {
-    try {
-      const res = await fetch(UPLOAD_URL, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...session, partial: false }),
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      $('outro-msg').textContent = 'Your session was recorded.';
-      $('code').textContent = code;
-      $('outro-code').classList.remove('hidden');
-      if (COMPLETION_URL && !DBG.active) {
-        $('outro-msg').textContent = 'Your session was recorded. Returning you to Prolific…';
-        setTimeout(() => { location.href = COMPLETION_URL; }, 2500);
-      }
-      return;
-    } catch (err) {
-      // fall through to the manual path -- never lose a paid session to a bad network
+// ---------------------------------------------------------------------------
+// End-of-study questions. Optional, never blocking, and asked only once play is over.
+// ---------------------------------------------------------------------------
+function renderFeedback() {
+  const field = (q) => {
+    if (q.type === 'number') {
+      return '<div class="fq" id="fqw-' + q.id + '">' +
+        '<label class="qlabel" for="fq-' + q.id + '">' + q.label +
+        (q.required ? '' : ' <span class="hint" style="font-weight:400">(optional)</span>') + '</label>' +
+        (q.hint ? '<p class="hint">' + q.hint + '</p>' : '') +
+        '<input type="number" id="fq-' + q.id + '" min="' + q.min + '" max="' + q.max +
+        '" placeholder="' + q.placeholder + '" inputmode="numeric">' +
+        (q.decline ? '<label class="opt" style="margin-top:8px"><input type="checkbox" id="fq-' +
+          q.id + '-decline"><span>' + q.decline + '</span></label>' : '') +
+        '</div>';
     }
+    if (q.type === 'text') {
+      return '<div class="fq"><label class="qlabel" for="fq-' + q.id + '">' + q.label + '</label>' +
+        (q.hint ? '<p class="hint">' + q.hint + '</p>' : '') +
+        '<textarea id="fq-' + q.id + '" spellcheck="true"></textarea></div>';
+    }
+    const opts = q.options.map((o, i) =>
+      '<label class="opt"><input type="radio" name="fq-' + q.id + '" value="' + o.replace(/"/g, '&quot;') +
+      '"><span>' + o + '</span></label>').join('');
+    return '<div class="fq" id="fqw-' + q.id + '"><span class="qlabel">' + q.label +
+      (q.required ? '' : ' <span class="hint" style="font-weight:400">(optional)</span>') + '</span>' +
+      (q.hint ? '<p class="hint">' + q.hint + '</p>' : '') +
+      '<div class="opts">' + opts + '</div>' +
+      (q.selfDescribe ? '<input type="text" class="selfdesc hidden" id="fq-' + q.id +
+        '-self" placeholder="how you describe it" autocomplete="off">' : '') +
+      '</div>';
+  };
+
+  $('fb-body').innerHTML =
+    '<div id="fb-tech">' + FEEDBACK_Q.map(field).join('') + '</div>' +
+    '<p class="note" style="margin:30px 0 14px">The last few are about you, and are used only ' +
+    'to describe the group of people who took part. “Prefer not to say” is fine for any of ' +
+    'them.</p>' +
+    DEMO_Q.map(field).join('');
+
+  $('fb-body').addEventListener('input', () => {
+    $('fb-err').textContent = '';
+    for (const q of DEMO_Q) {
+      const w = $('fqw-' + q.id);
+      if (w) { w.style.borderLeft = ''; w.style.paddingLeft = ''; }
+    }
+  });
+  // ticking "prefer not to say" on age clears and disables the number box, so the two
+  // cannot disagree in the record
+  for (const q of DEMO_Q) {
+    if (q.type !== 'number' || !q.decline) continue;
+    const box = $('fq-' + q.id + '-decline'), num = $('fq-' + q.id);
+    box.addEventListener('change', () => {
+      num.disabled = box.checked;
+      if (box.checked) num.value = '';
+    });
+  }
+
+  // The self-describe box appears only when that option is chosen, so it is not a field
+  // everyone feels obliged to fill in.
+  for (const q of DEMO_Q.concat(FEEDBACK_Q)) {
+    if (!q.selfDescribe) continue;
+    const box = $('fq-' + q.id + '-self');
+    document.querySelectorAll('input[name="fq-' + q.id + '"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+        box.classList.toggle('hidden', e.target.value !== q.selfDescribe);
+        if (e.target.value === q.selfDescribe) box.focus();
+      });
+    });
+  }
+}
+
+function readAnswers(defs) {
+  const out = {};
+  for (const q of defs) {
+    if (q.type === 'choice') {
+      const picked = document.querySelector('input[name="fq-' + q.id + '"]:checked');
+      let v = picked ? picked.value : null;
+      if (v && q.selfDescribe && v === q.selfDescribe) {
+        const self = $('fq-' + q.id + '-self').value.trim();
+        v = self ? 'self-described: ' + self.slice(0, 120) : q.selfDescribe;
+      }
+      out[q.id] = v;
+    } else if (q.type === 'number') {
+      if (q.decline && $('fq-' + q.id + '-decline').checked) { out[q.id] = q.decline; continue; }
+      const raw = $('fq-' + q.id).value.trim();
+      const n = raw === '' ? null : Number(raw);
+      // Out of range is stored as the raw string rather than dropped, so an implausible entry
+      // is visible in the data instead of indistinguishable from a refusal.
+      out[q.id] = (n !== null && Number.isFinite(n) && n >= q.min && n <= q.max)
+        ? n : (raw === '' ? null : 'out-of-range: ' + raw.slice(0, 20));
+    } else {
+      const t = $('fq-' + q.id).value.trim();
+      out[q.id] = t ? t.slice(0, 4000) : null;   // bound what a paste can put in the record
+    }
+  }
+  return out;
+}
+
+// Every required question needs a response, and "Prefer not to say" counts as one. This
+// exists to stop ACCIDENTAL missingness -- at n=20 a few silent skips wreck the only
+// covariates the analysis has -- not to extract an answer from someone who does not want to
+// give one. Hence no disabled Submit button and no dead end: one click on the decline option
+// satisfies it.
+function missingRequired() {
+  const answers = readAnswers(DEMO_Q);
+  return DEMO_Q.filter(q => q.required && (answers[q.id] === null || answers[q.id] === undefined));
+}
+
+async function submitFeedback(skipped) {
+  if (!skipped) {
+    const missing = missingRequired();
+    if (missing.length) {
+      $('fb-err').textContent = missing.length === 1
+        ? 'One question still needs an answer — “Prefer not to say” is fine.'
+        : missing.length + ' questions still need an answer — “Prefer not to say” is fine.';
+      for (const q of missing) $('fqw-' + q.id).style.borderLeft = '3px solid #b00020';
+      for (const q of missing) $('fqw-' + q.id).style.paddingLeft = '12px';
+      missing[0].id && $('fqw-' + missing[0].id).scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
+  }
+  $('fb-submit').disabled = true;
+  const fb = skipped ? {} : readAnswers(FEEDBACK_Q);
+  const demo = skipped ? {} : readAnswers(DEMO_Q);
+  session.feedback = { ...fb, skipped: !!skipped, at: new Date().toISOString() };
+  session.demographics = { ...demo, skipped: !!skipped };
+  // Re-upload with the answers attached. partial stays false, so the endpoint's
+  // never-downgrade-a-complete-record guard lets this through as a merge.
+  const ok = await uploadFinal();
+  uploadOk = uploadOk || ok;
+  showOutro();
+}
+
+$('fb-submit').onclick = () => submitFeedback(false);
+
+function showOutro() {
+  show('s-outro');
+  $('code').textContent = session.completionCode;
+  $('outro-code').classList.remove('hidden');
+  if (uploadOk) {
+    $('outro-msg').textContent = 'Your session was recorded.';
+    if (COMPLETION_URL && !DBG.active) {
+      $('outro-msg').textContent = 'Your session was recorded. Returning you to Prolific…';
+      setTimeout(() => { location.href = COMPLETION_URL; }, 2500);
+    }
+    return;
   }
   $('outro-msg').textContent = DBG.active && !DBG.upload
     ? 'Debug run — upload suppressed, so nothing was sent to the server.' : '';
   $('outro-dl').classList.remove('hidden');
-  $('code').textContent = code;
-  $('outro-code').classList.remove('hidden');
   $('dl').onclick = () => {
     const blob = new Blob([JSON.stringify(session)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -1269,6 +1459,7 @@ function dbgRender() {
       btn('screen', 's-consent', 'consent') +
       btn('screen', 's-quiz', 'quiz') +
       btn('screen', 's-pid', 'prolific id') +
+      btn('feedback', '1', 'end questions') +
       btn('outro', '1', 'outro') +
     '</div>' +
     '<div class="row"><span class="lbl">instructions</span>' + instr + '</div>' +
@@ -1330,6 +1521,12 @@ function dbgClick(e) {
   } else if (d.instr !== undefined) {
     renderInstr(+d.instr);
     show('s-instr');
+  } else if (d.feedback) {
+    dbgArm();
+    session.completionCode = session.completionCode ||
+      'PT-' + hash32(session.participantId + session.startedAt).toString(36).toUpperCase();
+    renderFeedback();
+    show('s-feedback');
   } else if (d.outro) {
     dbgArm();
     finish();

@@ -88,9 +88,11 @@ const browser = await chromium.launch();
 const shots = [];
 let n = 0;
 
-async function shoot(page, slug, title, caption) {
+async function shoot(page, slug, title, caption, opts = {}) {
   const file = `${String(++n).padStart(2, '0')}-${slug}.png`;
-  await page.screenshot({ path: join(OUT, file) });
+  // fullPage for screens that are taller than the viewport -- the end-of-study form runs past
+  // the fold, and a screenshot that cuts off half the questions is no use to a reader.
+  await page.screenshot({ path: join(OUT, file), fullPage: !!opts.fullPage });
   shots.push({ file, title, caption });
   console.log(`  ${file.padEnd(28)} ${title}`);
 }
@@ -331,6 +333,25 @@ for (const [slug, title, caption, key] of GAMES) {
     } catch { /* the shell advanced the frame under us */ }
     await page.waitForTimeout(400);
   }
+  // The end-of-study questions come first now. Captured blank, as a participant meets them.
+  await page.waitForSelector('#s-feedback:not(.hidden)', { timeout: 20000 });
+  await shoot(page, 'end-questions', 'End-of-study questions (optional)',
+    'Asked only after the session has already been uploaded, so nothing here can cost a participant ' +
+    'their data or their payment — abandoning this screen still leaves a complete, payable record. ' +
+    'Technical problems are asked about separately from confusion, which is what lets "this game is ' +
+    'hard" be told apart from "the study was broken". The demographic items match the field names ' +
+    'the lab\'s video-rating study used, so the two are comparable, and gaming experience and ' +
+    'frequency are the covariates behind the claim that this is a novice baseline. The feedback ' +
+    'boxes are optional; the questions about the participant need a response, with “Prefer not to ' +
+    'say” always among the answers — which stops accidental gaps in the only covariates the ' +
+    'analysis has without ever making an answer a condition of being paid.', { fullPage: true });
+  // Reach the outro the way someone who declines everything would.
+  await page.check('#fq-age-decline');
+  for (const id of ['gender', 'gamingExperience', 'gamingFrequency']) {
+    await page.check('input[name="fq-' + id + '"][value="Prefer not to say"]');
+  }
+  await page.click('#fb-submit');
+
   // Shoot inside the 2.5 s window where it says it is returning them to Prolific.
   for (let i = 0; i < 60; i++) {
     const msg = await page.textContent('#outro-msg').catch(() => '');

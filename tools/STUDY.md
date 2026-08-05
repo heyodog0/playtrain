@@ -392,6 +392,56 @@ upload would mark the participant complete on Prolific while their data is gone.
 the participant gets a download button and the completion code, so a bad network never
 costs you a paid session.
 
+### End-of-study questions
+
+Field names match the lab's video-rating study — Firestore `end_study_feedback` there holds
+`demographics{age,gender,gamingExperience,gamingFrequency}` and
+`feedback{technicalIssues,confusingParts,suggestions}` — so the two studies are comparable and
+the questions are ones the protocol has already been through the IRB with. That study's
+`funCriteria` item is dropped; it was about what makes a video fun to watch.
+
+`gamingExperience` and `gamingFrequency` are not filler. The whole claim is a **novice** human
+baseline, so "how much do you play games" is the covariate a reviewer asks about first, and the
+one that shows the baseline is not dominated by practised players. It is also the pair Prolific's
+own demographics do **not** reliably give you.
+
+**Ordering is load-bearing.** The complete session is uploaded *before* the questions are shown:
+
+```
+blocks done -> upload complete session -> questions -> upload again with answers -> outro -> Prolific
+```
+
+A participant who closes the tab on the questions has already contributed a complete, payable
+session; the only thing lost is the feedback. The reverse order would put an entire session
+behind a screen nobody is obliged to fill in. Verified on all four paths — answered, declined,
+abandoned, and submitted empty.
+
+**The demographics require a response; "Prefer not to say" is one of the responses.** Fully
+optional was too weak: at n=20 a few silent skips is double-digit missingness on the only
+covariates the analysis has, and most of it would be accidental — people click Skip because a
+Skip button is there. Compulsory was not an option either: the consent form promises that
+refusal carries "no loss of benefits", and a question that gates payment would contradict it (as
+would Prolific's own rules). So there is no Skip button over the demographics and no disabled
+Submit — one click on the decline option satisfies the check. The free-text feedback stays fully
+optional, because prose cannot be usefully compelled.
+
+Age doubles as the eligibility cross-check against the 18-or-over attestation in the consent
+form. **Decide before launch what happens if someone reports being under 18** — presumably
+exclude the data and pay them anyway. An out-of-range entry is stored as
+`out-of-range: <raw>` rather than dropped, so a typo stays visible instead of looking like a
+refusal.
+
+Only the *coded* answers reach the Firestore summary. The three free-text fields stay in the
+Storage blob and are deliberately not copied into the queryable index: free text is the one place
+a participant can type something identifying, and 20 participants' worth of prose is read by
+opening blobs, not by querying. The summary carries `demographics`, `technicalIssueLevel`, and
+`feedbackText.{technicalIssues,confusingParts,suggestions}` as booleans saying whether there is
+prose to go and read.
+
+PlayTrain does **not** write into the video-rating study's `end_study_feedback` collection. The
+answers live on the session record, so there is one row per participant and no chance of one
+study's analysis picking up the other's rows.
+
 ### Checkpointing
 
 The session is POSTed **after every block**, not only at the end, with `partial: true` until
@@ -600,6 +650,14 @@ both stores as `complete: true` with its completion code, and the downloaded blo
 - [ ] Point `STUDY_COMPLETION_URL` at the real Prolific completion link once the study exists.
       Without it participants see a completion code instead of being redirected.
 - [ ] Walk the whole session yourself end to end with `just study-serve`.
+- [ ] Confirm the protocol covers the end-of-study questions. The items match the video-rating
+      study's, so it is likely already covered, but that study's consent text is what is shown
+      here and the instructions now state plainly that age, gender and gaming habits are asked.
+- [ ] Decide the under-18 rule before launch: age is asked, so a response below 18 contradicts
+      the consent attestation. Exclude the data, pay them anyway, is the assumption.
+- [ ] Check what Prolific's export actually returns for your account (its field is historically
+      *Sex*, not gender identity) and decide whether the in-study age/gender items are the
+      record or the cross-check.
 - [ ] Pre-register: the fps exclusion threshold, the keypress-count exclusion, and the
       `discarded`-episode rule.
 - [ ] Confirm the IRB covers the final protocol.
