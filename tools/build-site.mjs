@@ -7,8 +7,13 @@
 // One project, one deploy, one domain. middleware.js exempts /study and /api/session
 // from basic auth; everything else stays behind it.
 //
-// The study is built with its upload URL pointed at /api/session on the same origin, so
+// The study is built with its upload URL pointed at /api/session/ on the same origin, so
 // the participant page makes no cross-origin request and needs no CORS.
+//
+// The TRAILING SLASH on that URL is load-bearing: vercel.json sets trailingSlash:true, so a
+// POST to /api/session answers 308 to /api/session/. Browsers do re-POST on a 308, but every
+// checkpoint would pay an extra round-trip, and the final checkpoint is a keepalive fetch
+// racing the tab closing -- not something to spend a redirect on.
 
 import { spawnSync } from 'child_process';
 import { dirname, join, resolve } from 'path';
@@ -32,7 +37,7 @@ run('build-pages.mjs', ['--games', join(REPO_ROOT, 'games', 'js'), '--out', OUT]
 // Relative hrefs so the study works under the /study/ prefix.
 run('build-study.mjs', [
   '--out', join(OUT, 'study'),
-  '--upload', '/api/session',
+  '--upload', '/api/session/',
   ...(process.env.STUDY_COMPLETION_URL ? ['--completion', process.env.STUDY_COMPLETION_URL] : []),
 ]);
 
