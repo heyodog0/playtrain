@@ -13,7 +13,7 @@
 // accounts -> Generate new private key. It is NOT in this repo and must never be committed.
 // dist/ is gitignored: collected sessions are participant data and do not belong in git.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -25,16 +25,30 @@ function arg(flag, def) {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
 }
 
-const KEY = resolve((arg('--key', process.env.FIREBASE_SERVICE_ACCOUNT || '') || '')
-  .replace(/^~/, process.env.HOME));
+// Resolve only AFTER checking for emptiness: resolve('') is the current directory, which
+// exists, so an unset variable used to sail past the guard below and die inside readFileSync
+// with "EISDIR: illegal operation on a directory".
+const KEY_RAW = arg('--key', process.env.FIREBASE_SERVICE_ACCOUNT || '') || '';
+const KEY = KEY_RAW ? resolve(KEY_RAW.replace(/^~/, process.env.HOME || '')) : '';
 const OUT = resolve(arg('--out', join(REPO_ROOT, 'dist', 'study-data')));
 const BUCKET = arg('--bucket', process.env.FIREBASE_STORAGE_BUCKET
   || 'ai-gamestore-study-1901.firebasestorage.app');
 const WANT_SUMMARY = process.argv.includes('--summary');
 
-if (!KEY || !existsSync(KEY)) {
-  console.error('need a service-account key: --key <path> or FIREBASE_SERVICE_ACCOUNT=<path>');
-  console.error('get one from Firebase console -> Project settings -> Service accounts');
+if (!KEY) {
+  console.error('No service-account key. Set it once in your shell:\n');
+  console.error('  export FIREBASE_SERVICE_ACCOUNT=~/.config/playtrain/serviceAccount.json\n');
+  console.error('Get the key from the Firebase console -> Project settings -> Service accounts');
+  console.error('-> Generate new private key, save it outside the repo, then chmod 600 it.');
+  console.error('`just study-doctor` checks this and everything else.');
+  process.exit(2);
+}
+if (!existsSync(KEY)) {
+  console.error(`FIREBASE_SERVICE_ACCOUNT points at something that does not exist:\n  ${KEY}`);
+  process.exit(2);
+}
+if (!statSync(KEY).isFile()) {
+  console.error(`FIREBASE_SERVICE_ACCOUNT points at a directory, not the key file:\n  ${KEY}`);
   process.exit(2);
 }
 
