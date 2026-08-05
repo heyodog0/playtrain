@@ -26,6 +26,7 @@ pnpm install                                    # firebase-admin
 just study-pull                                 # blobs → dist/study-data/ (gitignored)
 just study-stats                                # the numbers behind the figures
 just study-verify dist/study-data/<file>.json   # does this session replay identically?
+just study-feedback                             # what participants wrote (--csv <path> for a spreadsheet)
 ```
 
 `study-stats` prints every session it **excluded** and why (debug runs, standalone playtests,

@@ -179,6 +179,10 @@ study-pull *ARGS:
 study-stats *ARGS:
     node tools/study-stats.mjs {{ARGS}}
 
+# What participants wrote. Digest to stdout, or --csv <path> for a spreadsheet.
+study-feedback *ARGS:
+    node tools/study-feedback.mjs {{ARGS}}
+
 # Check a collected session replays identically through the headless env.
 # This is the acceptance test behind "participants and agents play identical tasks".
 study-verify file:
