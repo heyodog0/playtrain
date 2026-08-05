@@ -58,6 +58,9 @@ function summarize(session) {
       fps: b.fps ?? null,
       canvasPx: b.canvasPx ?? null,
       playMs: b.playMs ?? null,
+      // HUD affordances the agent's observation does not carry; see study-templates.mjs.
+      livesShown: !!b.livesShown,
+      roundTimerShown: !!b.roundTimerShown,
     };
   });
   return {
@@ -68,7 +71,18 @@ function summarize(session) {
     complete: session.partial === false,
     standalone: !!session.standalone,
     completionCode: session.completionCode ?? null,
+    // Sessions produced by the harness's debug menu. They only reach here if someone
+    // ticked "allow upload"; flagged so analysis can drop them without guessing from
+    // the participant id.
+    debug: !!session.debug,
+    // {study, session, fromUrl, urlPidRejected}. fromUrl false means the participant typed
+    // their id rather than arriving with PROLIFIC_PID -- worth watching, and urlPidRejected
+    // non-null means a param arrived that failed the shape check, which is how an
+    // unsubstituted {{%PROLIFIC_PID%}} in the Prolific study URL shows up.
     prolific: session.source ?? null,
+    pidTyped: session.pidTyped ?? null,
+    pidEnteredAt: session.pidEnteredAt ?? null,
+    pidMismatch: session.pidMismatch ?? null,
     consentAt: session.consent?.at ?? null,
     doNotRecontact: !!session.consent?.doNotRecontact,
     quizAttempts: session.quiz?.attempts ?? null,
@@ -113,21 +127,48 @@ export default async function handler(req, res) {
   const stamp = String(session.startedAt || new Date().toISOString()).replace(/[:.]/g, '-');
   const key = `${pid}-${stamp}`;
 
+  const partial = session.partial !== false;
+
   try {
     const a = app();
+    const doc = getFirestore(a).collection('study_sessions').doc(key);
+
+    // A COMPLETED record is never downgraded by a later partial one. The harness fires
+    // checkpoints without awaiting them, so the checkpoint from the last block can arrive
+    // after finish()'s authoritative upload; last-write-wins then stores a finished session
+    // as partial:true with completionCode null, which is what you would query to decide whom
+    // to pay. Observed in production before this guard existed. Answer 200 either way -- the
+    // client must not retry, nothing is wrong, the write is simply redundant.
+    if (partial) {
+      const cur = await doc.get();
+      if (cur.exists && cur.get('complete') === true) {
+        return res.status(200).json({ ok: true, key, partial: true, ignored: 'already-complete' });
+      }
+    }
+
     await getStorage(a).bucket().file(`study-sessions/${key}.json`).save(raw, {
       contentType: 'application/json',
       resumable: false,          // one shot; the payload is small
-      metadata: { metadata: { participantId: pid, partial: String(session.partial !== false) } },
+      metadata: { metadata: { participantId: pid, partial: String(partial) } },
     });
-    await getFirestore(a).collection('study_sessions').doc(key).set({
-      ...summarize(session),
-      blobPath: `study-sessions/${key}.json`,
-      bytes: raw.length,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
 
-    return res.status(200).json({ ok: true, key, partial: session.partial !== false });
+    // Re-check inside a transaction: the read above closes the window that actually bit us,
+    // but two writes still race in principle, and `complete` is the one field that must never
+    // go backwards. The blob may end up the stale-but-valid checkpoint copy in that case; the
+    // summary stays correct, which is what queries read.
+    let ignored = false;
+    await getFirestore(a).runTransaction(async (tx) => {
+      const cur = await tx.get(doc);
+      if (partial && cur.exists && cur.get('complete') === true) { ignored = true; return; }
+      tx.set(doc, {
+        ...summarize(session),
+        blobPath: `study-sessions/${key}.json`,
+        bytes: raw.length,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    });
+
+    return res.status(200).json({ ok: true, key, partial, ...(ignored ? { ignored: 'already-complete' } : {}) });
   } catch (err) {
     // The harness falls back to a client-side download on any non-2xx, so a failure here
     // costs the participant nothing -- but log enough to diagnose it.

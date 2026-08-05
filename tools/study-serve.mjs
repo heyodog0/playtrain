@@ -64,6 +64,21 @@ const server = createServer((req, res) => {
       const pid = String(session.participantId || 'anon').replace(/[^A-Za-z0-9_-]/g, '');
       const stamp = String(session.startedAt || new Date().toISOString()).replace(/[:.]/g, '-');
       const file = join(SESSIONS, `${pid}-${stamp}.json`);
+
+      // Never let a late checkpoint overwrite a completed session. Checkpoints are
+      // fire-and-forget, so the one from the last block can land after the final upload
+      // and would otherwise replace a record carrying finishedAt and completionCode with
+      // a slightly older partial copy. The real endpoint (api/session.js) does the same.
+      if (session.partial && existsSync(file)) {
+        try {
+          if (JSON.parse(readFileSync(file, 'utf8')).partial === false) {
+            console.log(`\n=== late checkpoint ignored (already complete): ${file}`);
+            res.writeHead(200, { 'content-type': 'application/json',
+                                 'access-control-allow-origin': '*' });
+            return res.end('{"ok":true,"ignored":"already-complete"}');
+          }
+        } catch { /* unreadable/partial file on disk: fall through and overwrite it */ }
+      }
       writeFileSync(file, JSON.stringify(session));
 
       const scored = (session.blocks || []).filter(b => !b.practice);
@@ -107,7 +122,9 @@ const server = createServer((req, res) => {
 
 server.listen(PORT, () => {
   const n = readdirSync(SESSIONS).filter(f => f.endsWith('.json')).length;
-  console.log(`\n  study    http://localhost:${PORT}/?pid=playtest`);
+  console.log(`\n  study    http://localhost:${PORT}/`);
   console.log(`  sessions ${SESSIONS}  (${n} saved)`);
-  console.log(`  a single game, no session: http://localhost:${PORT}/block/caveflyer/\n`);
+  console.log(`  a single game, no session: http://localhost:${PORT}/block/caveflyer/`);
+  console.log('  debug menu: ctrl+shift+alt+D  (jump to any screen, short blocks;');
+  console.log('              suppresses upload unless you tick "allow upload")\n');
 });
