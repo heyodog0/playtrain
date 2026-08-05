@@ -1087,8 +1087,22 @@ $('quiz-submit').onclick = () => {
 // ---------------------------------------------------------------------------
 const PID_RE = /^[A-Za-z0-9_-]{5,64}$/;
 const qp = new URLSearchParams(location.search);
-const rawUrlPid = (qp.get('PROLIFIC_PID') || qp.get('pid') || qp.get('participant') || '').trim();
-const URL_PID = PID_RE.test(rawUrlPid) ? rawUrlPid : null;
+
+// Take the first VALID value across every occurrence of every accepted name, not the first
+// occurrence. Prolific can deliver the id two ways -- by substituting {{%PROLIFIC_PID%}} in the
+// study URL, or by appending PROLIFIC_PID itself when "record IDs via URL parameters" is on --
+// and if both are configured the parameter appears twice:
+//   ?PROLIFIC_PID={{%PROLIFIC_PID%}}&PROLIFIC_PID=5f8a1c2b3d4e5f60718293a4
+// Reading position 0 there yields the unsubstituted literal, which fails the shape check and
+// sends EVERY participant to the paste screen. Scanning for the first value that looks like an
+// id makes all three configurations work, in any order.
+const pidCandidates = ['PROLIFIC_PID', 'pid', 'participant']
+  .flatMap(name => qp.getAll(name))
+  .map(v => v.trim())
+  .filter(Boolean);
+const URL_PID = pidCandidates.find(v => PID_RE.test(v)) || null;
+// Kept for the record: what arrived and was refused (an unsubstituted placeholder, junk).
+const rawUrlPid = URL_PID || pidCandidates[0] || '';
 
 session.source = {
   study: qp.get('STUDY_ID') || null,
