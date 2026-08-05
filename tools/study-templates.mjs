@@ -667,7 +667,8 @@ ${browserShimBundle()}
 export function sessionPage(blocks, cfg) {
   const {
     uploadUrl = '', blockSeconds = 150, completionUrl = '', completionCode = '',
-    maxSteps = 2000, study = {}, nScoredBlocks = blocks.filter(b => !b.practice).length,
+    maxSteps = 2000, study = {}, canvasSize = 600,
+    nScoredBlocks = blocks.filter(b => !b.practice).length,
   } = cfg || {};
 
   const s = {
@@ -734,6 +735,11 @@ export function sessionPage(blocks, cfg) {
          cursor: pointer; color: #444; font-size: 15px; }
   .opt:hover { border-color: #888; color: #111; background: #fafafa; }
   .opt input { flex: none; }
+  .q-bad { border-left: 3px solid #b00020; padding-left: 13px; margin-left: -16px; }
+  .q-hint { color: #b00020; font-size: 14px; margin: 8px 0 0; }
+  button.linkish { background: none; border: 0; color: #b00020; text-decoration: underline;
+                   padding: 0; font: inherit; font-size: 14px; cursor: pointer; }
+  button.linkish:hover { color: #111; }
 
   /* end-of-study questions */
   button.ghost { background: #fff; color: #444; border: 1px solid #bbb; }
@@ -887,6 +893,10 @@ const COMPLETION_URL = ${JSON.stringify(completionUrl)};
 // participant has to submit by hand. Derived from the completion URL's cc= when not given.
 const PROLIFIC_CODE = ${JSON.stringify(completionCode)};
 const PAGES = ${JSON.stringify(pages)};
+// The block page caps the canvas at min(canvasSize, innerHeight - 96), so this is the window
+// height at which every participant gets the SAME canvas rather than a smaller one.
+const CANVAS_PX = ${canvasSize};
+const MIN_INNER_H = CANVAS_PX + 96;
 const QUIZ = ${JSON.stringify(quiz)};
 const FEEDBACK_Q = ${JSON.stringify(feedbackQuestions())};
 const DEMO_Q = ${JSON.stringify(demographicQuestions())};
@@ -950,41 +960,56 @@ async function preflight() {
     'Your browser is running at about ' + fps + ' frames per second; these games need 60. ' +
     'Closing other tabs and applications sometimes fixes this — reload to try again.');
 
-  // The game is drawn at a fixed size so every participant sees it identically. A short
-  // window shrinks it, so prompt for more room -- but ONLY when the window is smaller
-  // than the screen could actually give, otherwise a 1366x768 laptop that is already
-  // maximised would be asked to do something impossible and loop forever. There is also
-  // a manual escape after a few seconds, so nobody can get stuck. The rendered size is
-  // logged per block either way, so any shortfall is measurable rather than silent.
-  if (innerHeight < wantInnerH()) return askResize();
+  // The game is drawn at a fixed size so every participant sees the same visual angle, and a
+  // short window silently shrinks it. The pilot proved this is not hypothetical: one
+  // participant played at 561px and the other at 600px, which is precisely the between-subject
+  // difference the fixed size exists to prevent. So the requirement is now hard -- below
+  // MIN_INNER_H the study does not start -- and the escape hatch only appears once the window
+  // can actually deliver the full canvas.
+  if (innerHeight < MIN_INNER_H) return askResize();
 
   show('s-consent');
 }
 
 function wantInnerH() {
-  return Math.min(700, screen.height - 120);   // rough browser-chrome allowance
+  // A little above the hard floor, so the nudge lands before the cap bites.
+  return Math.min(MIN_INNER_H + 60, Math.max(MIN_INNER_H, screen.height - 100));
 }
 
 function askResize() {
   $('device-note').innerHTML =
-    'Please <b>maximise your browser window</b> so the games display at full size. ' +
-    'This page will continue on its own.<br><br>' +
-    '<button id="anyway" style="display:none">Continue anyway</button>';
+    'Please <b>maximise your browser window</b> (or press F11) so the games display at their ' +
+    'full size. Everyone has to see them at the same size, so the study cannot start until ' +
+    'there is room. This page will continue on its own.<br><br>' +
+    '<button id="anyway" style="display:none">Continue</button>';
   show('s-device');
-  const go = () => {
+  const go = (viaButton) => {
     session.preflight.innerH = innerHeight;
     session.preflight.resized = true;
+    if (viaButton) session.preflight.continuedManually = true;
     show('s-consent');
   };
   const t = setInterval(() => {
-    if (innerHeight >= wantInnerH()) { clearInterval(t); go(); }
+    if (innerHeight >= wantInnerH()) { clearInterval(t); go(false); }
+    // The manual button appears ONLY once the window is big enough for the full canvas. It
+    // exists for the case where wantInnerH() is unreachable but MIN_INNER_H is met -- never as
+    // a way to play at a smaller size, which is what it used to allow.
+    const b = $('anyway');
+    if (b && innerHeight >= MIN_INNER_H) b.style.display = 'inline-block';
   }, 400);
   setTimeout(() => {
     const b = $('anyway');
-    if (!b) return;
-    b.style.display = 'inline-block';
-    b.onclick = () => { clearInterval(t); session.preflight.smallWindow = true; go(); };
-  }, 6000);
+    if (b) b.onclick = () => { clearInterval(t); go(true); };
+  }, 4000);
+  // Still too short after a fair chance: stop rather than collect a session at the wrong size.
+  setTimeout(() => {
+    if (innerHeight >= MIN_INNER_H) return;
+    clearInterval(t);
+    block('window-too-small',
+      'Your browser window is only ' + innerHeight + ' pixels tall, and these games need ' +
+      MIN_INNER_H + '. Maximising the window or pressing F11 usually fixes it — reload to try ' +
+      'again. If your screen cannot show a window that tall, please return the study.');
+  }, 45000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,45 +1042,79 @@ function renderInstr(i) {
   $('instr-title').textContent = PAGES[i].title;
   $('instr-body').innerHTML = PAGES[i].html;
   $('instr-back').disabled = i === 0;
-  $('instr-next').textContent = i === PAGES.length - 1 ? 'Continue to comprehension check' : 'Next';
+  $('instr-next').textContent = instrFrom === 'quiz' ? 'Back to the questions'
+    : (i === PAGES.length - 1 ? 'Continue to comprehension check' : 'Next');
 }
 $('instr-back').onclick = () => renderInstr(Math.max(0, page - 1));
 $('instr-next').onclick = () => {
+  // Sent here by a marked question: one click returns to the answers, keeping them.
+  if (instrFrom === 'quiz') { instrFrom = null; renderQuiz(lastWrong); return show('s-quiz'); }
   if (page < PAGES.length - 1) return renderInstr(page + 1);
-  renderQuiz();
+  renderQuiz(lastWrong);
   show('s-quiz');
 };
 
 // ---------------------------------------------------------------------------
-// 3. Comprehension check. A wrong answer sends them back through the instructions
-// rather than letting them guess again -- the point is that they read it.
+// 3. Comprehension check.
+//
+// A wrong answer used to replay ALL FIVE instruction pages before a retry, and the error
+// reported only HOW MANY were wrong, never which. The two pilot participants needed 5 and 21
+// attempts, spending 5.4 and 13.7 minutes in that loop -- one of them wrote "first one about
+// rounds was confusing" -- which is most of why their sessions ran over the estimate.
+//
+// Now: answers persist between attempts, wrong ones are marked, and each marked question links
+// to the instruction page that explains it. The gate is unchanged -- all four still have to be
+// right -- and every attempt is logged, so which item people fail becomes a fact in the data
+// instead of an inference from a feedback box.
 // ---------------------------------------------------------------------------
-let answers = [], attempts = 0;
-function renderQuiz() {
-  answers = QUIZ.map(() => -1);
+let answers = [], attempts = 0, quizLog = [], lastWrong = [], instrFrom = null;
+
+function renderQuiz(markWrong) {
+  if (answers.length !== QUIZ.length) answers = QUIZ.map(() => -1);
+  lastWrong = markWrong || [];
   $('quiz-err').textContent = '';
-  $('quiz-body').innerHTML = QUIZ.map((q, qi) => \`
-    <div class="q"><p>\${qi + 1}. \${q.q}</p>\${q.options.map((o, oi) => \`
-      <label class="opt"><input type="radio" name="q\${qi}" value="\${oi}"><span>\${o}</span></label>\`
-    ).join('')}</div>\`).join('');
+  $('quiz-body').innerHTML = QUIZ.map((q, qi) => {
+    const bad = lastWrong.indexOf(qi) >= 0;
+    const opts = q.options.map((o, oi) => \`
+      <label class="opt"><input type="radio" name="q\${qi}" value="\${oi}"\${answers[qi] === oi ? ' checked' : ''}><span>\${o}</span></label>\`).join('');
+    const hint = bad ? \`<p class="q-hint">Not quite. This one is explained on the
+        <b>\${PAGES[q.page] ? PAGES[q.page].title : 'instructions'}</b> page —
+        <button class="linkish" data-page="\${q.page}">read it again</button>.</p>\` : '';
+    return \`<div class="q\${bad ? ' q-bad' : ''}" id="q-\${qi}"><p>\${qi + 1}. \${q.q}</p>\${opts}\${hint}</div>\`;
+  }).join('');
   $('quiz-body').querySelectorAll('input[type=radio]').forEach(r => {
     r.addEventListener('change', e => {
-      answers[+e.target.name.slice(1)] = +e.target.value;
+      const qi = +e.target.name.slice(1);
+      answers[qi] = +e.target.value;
       $('quiz-err').textContent = '';
+      const box = $('q-' + qi);
+      if (box) box.className = 'q';            // clear the mark as soon as they change it
+    });
+  });
+  $('quiz-body').querySelectorAll('button.linkish').forEach(b => {
+    b.addEventListener('click', () => {
+      instrFrom = 'quiz';
+      renderInstr(+b.dataset.page);
+      show('s-instr');
     });
   });
 }
+
 $('quiz-submit').onclick = () => {
   if (answers.some(a => a === -1)) { $('quiz-err').textContent = 'Please answer every question.'; return; }
   attempts++;
-  const wrong = QUIZ.filter((q, i) => answers[i] !== q.answer).length;
-  if (wrong) {
-    $('quiz-err').textContent = wrong + ' answer' + (wrong > 1 ? 's are' : ' is') +
-      ' incorrect. Taking you back through the instructions.';
-    setTimeout(() => { renderInstr(0); show('s-instr'); }, 1600);
+  const wrong = QUIZ.map((q, i) => i).filter(i => answers[i] !== QUIZ[i].answer);
+  quizLog.push({ attempt: attempts, answers: answers.slice(), wrong: wrong.slice() });
+  if (wrong.length) {
+    renderQuiz(wrong);
+    $('quiz-err').textContent = wrong.length === 1
+      ? 'One answer is not right — it is marked below.'
+      : wrong.length + ' answers are not right — they are marked below.';
+    const first = $('q-' + wrong[0]);
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
     return;
   }
-  session.quiz = { attempts, passed: true };
+  session.quiz = { attempts, passed: true, log: quizLog };
   if (session.participantId) return begin();   // came in on the URL; nothing to ask
   show('s-pid');
   $('pid').focus();

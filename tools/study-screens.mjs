@@ -167,6 +167,9 @@ export function instructionPages(cfg) {
         <p>A round ends when you lose, <i>or</i> when you finish it, <i>or</i> automatically
            after about <b>${roundSec} seconds</b> — whichever comes first. You will play at
            least <b>${nRounds} rounds</b> of each game, and more if your rounds end early.</p>
+        <p>So there are two different clocks: <b>${blockDur} on the game</b>, and <b>up to about
+           ${roundSec} seconds on any one round</b>. Losing a round is normal and costs you
+           nothing — a new one starts immediately.</p>
         <p>Between rounds you will see how many points that round scored. Then the next round
            begins on its own.</p>
         <p>A timer on screen shows how much time is left on the current game. It pauses while
@@ -294,24 +297,37 @@ export function quizQuestions(cfg) {
   const roundSec = Math.round(cfg.maxSteps / 60);
   const blockDur = durationPhrase(cfg.blockSeconds);
 
+  // `page` is the instruction page that covers the question, so a wrong answer can point at
+  // the right explanation instead of replaying all five pages. Pilot participants took 5 and
+  // 21 attempts here, and one wrote "first one about rounds was confusing" -- the two round
+  // questions are where people get stuck, so their wording is now as blunt as possible and the
+  // two durations are named side by side rather than left to be inferred.
   return [
     {
       q: 'What happens when you lose a round?',
+      page: 1,
       options: [
-        'The game is over and you move on to the next game',
-        'A new round starts, until your time on that game runs out',
+        'That game is over and you move on to the next game',
+        `A new round starts straight away, and you keep playing more rounds until your ${blockDur} on that game runs out`,
         'You have to click a button to continue',
         'You lose all the points you have scored so far',
       ],
       answer: 1,
     },
     {
-      q: `Roughly how long does a single round last, at most?`,
-      options: ['About 5 seconds', `About ${roundSec} seconds`, blockDur, 'Until you decide to stop'],
+      q: `You get ${blockDur} on each game, split into rounds. What is the longest a single round can last?`,
+      page: 1,
+      options: [
+        'About 5 seconds',
+        `About ${roundSec} seconds, then it ends on its own and a new round starts`,
+        `The whole ${blockDur} — one round per game`,
+        'Until you decide to stop',
+      ],
       answer: 1,
     },
     {
       q: 'What are you trying to do?',
+      page: 2,
       options: [
         'Survive as long as possible without scoring',
         'Score as many points as you can in every round',
@@ -322,6 +338,7 @@ export function quizQuestions(cfg) {
     },
     {
       q: 'In these games, can you always move in two directions at once?',
+      page: 3,
       options: [
         'Yes, always',
         'No — the games accept one direction at a time',

@@ -110,6 +110,7 @@ writeFile(join(OUT_DIR, 'index.html'),
   sessionPage(blocks, {
     uploadUrl: UPLOAD_URL, completionUrl: COMPLETION_URL, completionCode: COMPLETION_CODE,
     blockSeconds: cfg.blockSeconds, maxSteps: cfg.maxSteps, study: cfg.study,
+    canvasSize: cfg.canvasSize,
     nScoredBlocks: blocks.filter(b => !b.practice).length,
   }));
 writeFile(join(OUT_DIR, 'robots.txt'), 'User-agent: *\nDisallow: /\n');

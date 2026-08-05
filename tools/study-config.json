@@ -65,8 +65,8 @@
   "hudLives": ["seaquest", "caveflyer"],
   "_showRoundTimerComment": "false | true | 'practice'. Off. A per-round countdown would expose maxSteps truncation, which is a harness artifact rather than a rule of the game, and nothing in the agent's observation encodes remaining steps -- so a visible countdown lets the human spend the final second of every round on risk the policy cannot know to take, inflating the very score being compared. The instructions already state that rounds end after about 33 seconds, which prevents confusion without making the artifact exploitable. Set to 'practice' to show it only in the unscored warm-up, where teaching the round structure is the point.",
   "showRoundTimer": false,
-  "canvasSize": 600,
-  "_canvasComment": "On-screen size of the game in CSS pixels. Fixed rather than viewport-filling so every participant sees the same visual angle; chosen to fit inside the smallest display the pre-flight admits (a 1280x720 laptop). Display only -- the rasterizer still renders at the game's logical 400x400.",
+  "canvasSize": 520,
+  "_canvasComment": "On-screen size of the game in CSS pixels. Fixed rather than viewport-filling so every participant sees the same visual angle. Display only -- the rasterizer still renders at the game's logical 400x400. Lowered from 600 to 520 after the pilot: 600 needs innerHeight >= 696, which a windowed browser on a 768-tall screen cannot give (Chrome takes ~90px of chrome), and pilot participant 6977b5ef played at 561px while the other got 600 -- exactly the between-subject difference in visual angle this setting exists to prevent. 520 needs 616, which every screen the pre-flight admits can reach, and the pre-flight now refuses to start until the window can actually deliver it. canvasPx is still recorded per block, so any shortfall stays measurable.",
   "practice": {
     "game": "pong",
     "seconds": 25,

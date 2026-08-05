@@ -334,6 +334,37 @@ artifact exploitable. Set it to `'practice'` to show it in the unscored warm-up 
 teaching the round structure is the point, or `true` to accept the trade-off knowingly;
 `roundTimerShown` is recorded per block either way.
 
+### What the pilot changed
+
+Two participants (2026-08-05) both completed, both arrived with `fromUrl: true`, and **204/204
+episodes across the two replayed identically** through the training runtime — on Chrome 109 and
+151 on Windows, neither of which was in the cross-browser matrix. Ingest, the Prolific parameter
+path, the redirect and the demographics all worked. Two things did not.
+
+**The comprehension check was the whole time overrun.** Attempts: 5 and **21**. A wrong answer
+replayed all five instruction pages before a retry and the error named only *how many* answers
+were wrong, never which — so the sessions spent 5.4 and **13.7 minutes** between consenting and
+reaching the first game, against 13.8 minutes of actual play. One participant wrote *"at first i
+couldnt understand the instructions sorry, first one about rounds was confusing"*, which is the
+only reason the cause was identifiable at all.
+
+Fixed by marking the wrong questions in place, keeping the answers between attempts, and linking
+each marked question to the instruction page that explains it — the gate is unchanged, all four
+still have to be right. The two round questions were reworded so the 100-second block and the
+~33-second round are named side by side instead of left to be inferred, and the instructions now
+say so explicitly. **Every attempt is now logged** (`quiz.log`, surfaced as
+`quizWrongByAttempt`), so which item people fail is queryable rather than inferred from a
+feedback box.
+
+**The fixed canvas was not fixed.** One participant played at **561 px** and the other at 600 —
+precisely the between-subject difference in visual angle the setting exists to prevent. 600 px
+needs `innerHeight ≥ 696`, which a windowed browser on a 768-tall screen cannot deliver, and the
+old "continue anyway" escape let them proceed at a smaller size. `canvasSize` is now **520**
+(needs 616, reachable on every screen the pre-flight admits), the escape only appears once the
+window can deliver the full canvas, and a window still too short after 45 s is turned away with
+`window-too-small` rather than contributing a session at the wrong size. Verified: 520 px on
+1440×820, 1366×700 and 1920×1080 alike.
+
 ## Order and seeds
 
 Scored blocks are shuffled per participant, seeded by a hash of the participant ID, so the

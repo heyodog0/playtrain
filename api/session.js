@@ -109,6 +109,9 @@ function summarize(session) {
     consentAt: session.consent?.at ?? null,
     doNotRecontact: !!session.consent?.doNotRecontact,
     quizAttempts: session.quiz?.attempts ?? null,
+    // Which questions people actually fail, per attempt. The pilot needed 5 and 21 attempts and
+    // the only clue as to why came from a feedback box; this makes it queryable.
+    quizWrongByAttempt: session.quiz?.log?.map(a => a.wrong) ?? null,
     preflightFps: session.preflight?.fps ?? null,
     smallWindow: !!session.preflight?.smallWindow,
     userAgent: session.userAgent ?? null,
