@@ -9,6 +9,10 @@
 //    - the questionnaire/sensitive-topics clauses, which this study does NOT have
 //    - the deception clause ("you may not be told everything"), which does not apply here
 //    Left in place because they may be protocol-wide boilerplate you are required to show.
+//    - the confidentiality clause ("your identity will not be stored with your data"): the
+//      participant now PASTES their Prolific ID and it is stored alongside the session, which
+//      is a pseudonymous identifier, not an anonymous code number. Check the approved wording
+//      covers that.
 
 export function consentHtml(s) {
   return `
@@ -194,8 +198,8 @@ export function instructionPages(cfg) {
       title: 'Your data',
       html: `
         <p>We record only your key presses and your game scores. No personal information is
-           collected, and your data is identified only by the participant ID from the
-           recruitment page.</p>
+           collected, and your data is identified only by your Prolific ID, which is what
+           lets us pay you.</p>
         <p>When you are ready, continue to a short comprehension check.</p>`,
     },
   ];

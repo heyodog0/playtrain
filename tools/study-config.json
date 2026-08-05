@@ -62,6 +62,10 @@
     "piName": "Samuel Gershman",
     "piEmail": "gershman@fas.harvard.edu"
   },
+  "_hudLivesComment": "Games whose remaining lives the HARNESS shows in the HUD, because the game itself never draws them. Only these two qualify: seaquest (3 lives, draws an oxygen bar but no life count) and caveflyer (3 lives, draws nothing). The other seven are excluded on purpose -- breakout, asteroids, coinrun and vvvvvv all render a lives row on the canvas, plunder and flappy_bird are single-life, and pong's `lives` field is the ALE points-to-21 counter rather than lives at all, so a readout there would be actively wrong. Note the asymmetry this creates: for these two games the human can see a quantity absent from the agent's 64x64 observation. It is the lesser evil -- the alternative is a participant losing three times without ever learning the game had lives, on two games where every other game in the set does show them -- and every block records livesShown so it stays auditable.",
+  "hudLives": ["seaquest", "caveflyer"],
+  "_showRoundTimerComment": "false | true | 'practice'. Off. A per-round countdown would expose maxSteps truncation, which is a harness artifact rather than a rule of the game, and nothing in the agent's observation encodes remaining steps -- so a visible countdown lets the human spend the final second of every round on risk the policy cannot know to take, inflating the very score being compared. The instructions already state that rounds end after about 33 seconds, which prevents confusion without making the artifact exploitable. Set to 'practice' to show it only in the unscored warm-up, where teaching the round structure is the point.",
+  "showRoundTimer": false,
   "canvasSize": 600,
   "_canvasComment": "On-screen size of the game in CSS pixels. Fixed rather than viewport-filling so every participant sees the same visual angle; chosen to fit inside the smallest display the pre-flight admits (a 1280x720 laptop). Display only -- the rasterizer still renders at the game's logical 400x400.",
   "practice": {

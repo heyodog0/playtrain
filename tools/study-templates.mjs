@@ -46,9 +46,20 @@ const studyStyle = `${studyBase}
   /* The games draw their own (mostly dark) backgrounds, so give the canvas a hairline
      border -- without it a dark game floats on white with no edge. */
   canvas { image-rendering: pixelated; display: block; border: 1px solid #ddd; }
-  #hud { display: flex; gap: 32px; font-size: 15px; color: #777; margin-bottom: 10px;
-         font-variant-numeric: tabular-nums; }
+  /* The HUD is taken OUT OF FLOW and hung above the stage, so the thing centred in the
+     viewport is the canvas itself. In flow it was a ~35px block above the canvas, which
+     pushed the game half that far below centre -- small, but it is the one element on
+     screen the participant stares at for 15 minutes. fitCanvas caps the canvas at
+     innerHeight-96, so there is always >=48px of clearance for the HUD to hang in. */
+  #hud { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 10px;
+         display: flex; justify-content: center; gap: 32px; line-height: 1.4;
+         font-size: 15px; color: #777; font-variant-numeric: tabular-nums; }
   #hud b { color: #111; font-weight: 600; }
+  /* Pips, not a number: lives are read peripherally while the eyes stay on the game, and a
+     dot that goes hollow shows what was lost as well as what is left. */
+  #hud .pips { letter-spacing: 2px; font-size: 13px; }
+  #hud .pips .gone { color: #ccc; }
+  #rtimer { color: #777; font-variant-numeric: tabular-nums; }
   #timer { color: #111; }
   #timer.low { color: #111; opacity: .5; }
   #veil { position: fixed; inset: 0; background: #fff; display: flex;
@@ -60,19 +71,51 @@ const studyStyle = `${studyBase}
   #veil .keys { color: #111; font-size: 16px; max-width: 520px; line-height: 1.7; }
   /* Between-rounds summary. Games can score and terminate on the SAME frame
      (caveflyer.js:322 gives +10 and sets WIN together), so without this the
-     player never sees what they earned. Opaque rather than translucent: it sits over
-     whatever the game was drawing, so a scrim would give unpredictable contrast. */
+     player never sees what they earned.
+     DARK, translucent, and cross-faded -- not the opaque white card this used to be.
+     Every game in the study draws a near-black background (background(0)..background(30)),
+     so a full-canvas white card made each round boundary a black->white->black flash. With
+     the freeze budget shrinking cards to 250ms once a player has accumulated 20s of them,
+     and 22 rounds in 12s measured on flappy_bird, that is a strobe: unpleasant, and it
+     destroys dark adaptation immediately before the next round starts, which plausibly
+     costs performance on exactly the fast games where it happens most often.
+     The earlier objection to a scrim was unpredictable text contrast. That is handled by
+     putting the text on its own panel instead of straight onto the frame: the scrim only
+     ever darkens, the panel's colours are fixed, so contrast is known regardless of what
+     the game had drawn. Keeping the final frame faintly visible is a bonus -- the player
+     can see the state they died in. */
   #stage { position: relative; display: inline-block; line-height: 0; }
-  #roundend { position: absolute; inset: 0; background: #fff;
-              display: flex; flex-direction: column; align-items: center;
-              justify-content: center; gap: 8px; text-align: center; line-height: 1.4; }
-  #roundend.hidden { display: none; }
-  #roundend .r-title { color: #666; font-size: 16px; }
-  #roundend .r-score { color: #111; font-size: 64px; font-weight: 300;
+  /* inset 1px, not 0: at inset 0 the overlay covers the canvas's own hairline border too, so
+     the play area loses its edge for the length of the freeze. */
+  /* Only the DIMMING fades; the score panel appears at full strength immediately.
+     Cross-fading the whole overlay meant its midpoint was, by definition, half-strength
+     text over an undimmed frame -- a grey number floating on live-looking gameplay, which
+     is the ghost this used to show. The flash risk was never the panel (it is dark, and
+     ~12% of the canvas area); it is the large-area luminance ramp, which is exactly what
+     still fades. Fade duration comes from JS as --fade, scaled to the card's lifetime. */
+  #roundend { position: absolute; inset: 1px;
+              display: flex; align-items: center; justify-content: center;
+              text-align: center; line-height: 1.4;
+              visibility: hidden; transition: visibility var(--fade, 90ms); }
+  #roundend.show { visibility: visible; }
+  #roundend::before { content: ''; position: absolute; inset: 0; background: rgba(6, 8, 11, .88);
+                      opacity: 0; transition: opacity var(--fade, 90ms) ease; }
+  #roundend.show::before { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    #roundend, #roundend::before { transition-duration: 1ms !important; }
+  }
+  #roundend .r-card { position: relative;   /* above the scrim pseudo-element */
+                      background: #14181d; border: 1px solid rgba(255, 255, 255, .18);
+                      border-radius: 8px; padding: 22px 44px 20px;
+                      display: flex; flex-direction: column; align-items: center; gap: 6px;
+                      box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
+  #roundend .r-title { color: rgba(255, 255, 255, .72); font-size: 15px; }
+  #roundend .r-score { color: #fff; font-size: 60px; font-weight: 300; line-height: 1.05;
                        font-variant-numeric: tabular-nums; }
-  #roundend .r-best { color: #111; font-size: 14px; font-weight: 600; }
+  #roundend .r-best { color: #fff; font-size: 13px; font-weight: 600;
+                      letter-spacing: .04em; text-transform: uppercase; }
   #roundend .r-best.hidden { display: none; }
-  #roundend .r-next { color: #999; font-size: 13px; margin-top: 14px; }
+  #roundend .r-next { color: rgba(255, 255, 255, .4); font-size: 12.5px; margin-top: 12px; }
 `;
 
 // ---------------------------------------------------------------------------
@@ -84,31 +127,53 @@ export function blockPage(name, source, cfg) {
     blockSeconds = 150, frameSkip = 1, maxSteps = 2000, seedBase = 90000,
     actionMode = 'quantized', controls = '', obsRes = false,
     canvasSize = 600, seedCount = 100, uploadUrl = '',
+    // Games whose lives the HARNESS must show, because the game itself never draws them.
+    // Only seaquest and caveflyer qualify; see study-config.json for why the other seven
+    // are excluded. Kept as an explicit list rather than "show lives whenever
+    // getGameState().lives exists" -- every game exposes the field, but pong's `lives` is
+    // the ALE points-to-21 counter and plunder/flappy_bird are single-life, so a blanket
+    // readout would be wrong in one case and noise in two others.
+    hudLives = [],
+    // false | true | 'practice'. Off by default; see the note in the HUD markup below.
+    showRoundTimer = false,
     // NOT `practice`: study-config.json has a `practice` OBJECT (game/seconds/controls),
     // and blockPage is called with {...cfg}, so a flag by that name silently became
     // truthy for every scored block -- marking the whole study as practice data.
     isPractice = false,
   } = cfg || {};
   const practice = isPractice;
+  const showLives = (hudLives || []).indexOf(name) >= 0;
+  // The round timer is deliberately NOT on by default. maxSteps truncation is a harness
+  // artifact, not a rule of the game, and nothing in the agent's 64x64 observation encodes
+  // how many steps are left -- so a visible countdown would let the human spend the last
+  // second of every round on risk the policy cannot know to take, inflating exactly the
+  // score being compared. The instructions already state that rounds end after ~33s, which
+  // prevents confusion without making the artifact exploitable. 'practice' shows it only in
+  // the unscored warm-up, where teaching the round structure is the point.
+  const showRoundClock = showRoundTimer === true || (showRoundTimer === 'practice' && practice);
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${name}</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <style>${studyStyle}</style></head><body>
 
-<div id="hud">
-  <span>round <b id="ep">1</b></span>
-  <span>score <b id="score">0</b></span>
-  <span>best <b id="best">0</b></span>
-  <span id="timer">--:--</span>
-</div>
 <div id="stage">
+  <div id="hud">
+    <span>round <b id="ep">1</b></span>
+    <span>score <b id="score">0</b></span>
+    <span>best <b id="best">0</b></span>
+    ${showLives ? '<span>lives <b id="lives" class="pips"></b></span>' : ''}
+    ${showRoundClock ? '<span id="rtimer">round --s</span>' : ''}
+    <span id="timer">--:--</span>
+  </div>
   <canvas id="view"></canvas>
-  <div id="roundend" class="hidden">
-    <div class="r-title">Round <span id="r-n"></span> complete</div>
-    <div class="r-score"><span id="r-pts"></span></div>
-    <div class="r-best hidden" id="r-newbest">new best</div>
-    <div class="r-next">next round starting…</div>
+  <div id="roundend">
+    <div class="r-card">
+      <div class="r-title">Round <span id="r-n"></span> complete</div>
+      <div class="r-score"><span id="r-pts"></span></div>
+      <div class="r-best hidden" id="r-newbest">new best</div>
+      <div class="r-next">next round starting…</div>
+    </div>
   </div>
 </div>
 
@@ -164,6 +229,19 @@ ${browserShimBundle()}
   var GAME        = ${JSON.stringify(name)};
   var UPLOAD_URL  = ${JSON.stringify(uploadUrl)};
   var PRACTICE    = ${practice ? 'true' : 'false'};
+  var SHOW_LIVES  = ${showLives ? 'true' : 'false'};
+  var SHOW_RCLOCK = ${showRoundClock ? 'true' : 'false'};
+
+  // ---- debug ---------------------------------------------------------------
+  // The session shell's debug menu appends "#dbg=<seconds>" (0 = leave the length
+  // alone) when it launches a block, which is the ONLY way a shortened or skippable
+  // block can happen: a participant never gets the hash, so they cannot cut a block
+  // short. "auto" clicks Start for you when walking the whole session.
+  var HASH     = new URLSearchParams(location.hash.slice(1));
+  var DEBUG    = HASH.has('dbg');
+  var DBG_SEC  = parseFloat(HASH.get('dbg'));
+  var AUTOSTART = DEBUG && HASH.has('auto');
+  if (DEBUG && DBG_SEC > 0) BLOCK_MS = DBG_SEC * 1000;
 
   // ---- boot ---------------------------------------------------------------
   // setRasterRes BEFORE setup(), exactly as game-env.mjs does, so in obs mode the
@@ -244,6 +322,20 @@ ${browserShimBundle()}
   // A lost focus mid-block would otherwise leave keys stuck down forever.
   addEventListener('blur', function () { held.clear(); stack.length = 0; });
 
+  // Debug combos. Keyboard focus is inside this iframe while a block runs, so the shell
+  // cannot see either of these -- D is forwarded up to it, S ends the block here.
+  // e.code, not e.key: on macOS Alt+D produces a dead-key character, not "D".
+  addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey && e.shiftKey && e.altKey)) return;
+    if (e.code === 'KeyD' && parent !== window) {
+      e.preventDefault();
+      parent.postMessage({ type: 'debug-toggle' }, '*');
+    } else if (e.code === 'KeyS' && DEBUG && running) {
+      e.preventDefault();
+      endBlock();
+    }
+  });
+
   function quantize() {
     var top = stack.length ? stack[stack.length - 1] : 0;
     var space = held.has(32);
@@ -288,9 +380,37 @@ ${browserShimBundle()}
     tick();                            // GameEnv.reset's free tick; not counted
     steps = 0; ret = 0;
     actions = []; keylog = []; foldedFrames = 0;
-    lastScore = window.getGameState().score;
+    var st0 = window.getGameState();
+    lastScore = st0.score;
     epStart = performance.now();
     document.getElementById('ep').textContent = String(epIndex + 1);
+    // Full complement is read from the game at reset rather than hard-coded, so the pips
+    // follow the game if its life count ever changes.
+    if (SHOW_LIVES) { livesMax = +st0.lives || 0; drawLives(livesMax); }
+    if (SHOW_RCLOCK) drawRoundClock();
+  }
+
+  // ---- lives / round clock ------------------------------------------------
+  var livesMax = 0, livesShown = -1;
+  var livesEl = document.getElementById('lives');
+  var rclockEl = document.getElementById('rtimer');
+  var PIP_LIMIT = 8;                    // beyond this a row of dots stops being countable
+
+  function drawLives(n) {
+    if (!livesEl || n === livesShown) return;   // only touch the DOM when it changes
+    livesShown = n;
+    if (livesMax > PIP_LIMIT) { livesEl.textContent = String(n); return; }
+    var s = '';
+    for (var i = 0; i < livesMax; i++) {
+      s += i < n ? '<span>&#9679;</span>' : '<span class="gone">&#9675;</span>';
+    }
+    livesEl.innerHTML = s;
+  }
+
+  function drawRoundClock() {
+    if (!rclockEl) return;
+    var left = Math.max(0, (MAX_STEPS - steps) / 60);
+    rclockEl.textContent = 'round ' + Math.ceil(left) + 's';
   }
 
   function finishEpisode(terminated, truncated, discarded) {
@@ -354,21 +474,36 @@ ${browserShimBundle()}
   var FREEZE_ZERO_MS   = 600;
   var FREEZE_MIN_MS    = 250;
   var FREEZE_BUDGET_MS = 20000;   // past this, summaries shrink to a glance
-  var frozen = false, freezeUntil = 0, pausedMs = 0;
+  // Cross-fade, scaled to the card's own lifetime and finishing INSIDE the freeze window.
+  // Two bugs the first version had, both of which showed up as a translucent card over
+  // full-brightness gameplay:
+  //   * a fixed 140ms fade is most of a 250ms card, so budget-shrunk cards never reached
+  //     full opacity at all -- permanently ghosted on exactly the fast games that produce
+  //     the most of them;
+  //   * fading out on unfreeze ran the fade over the resumed, undimmed next round.
+  // So: ramp the dimming over min(FADE_MAX, ms/6), hold, and start the ramp back down one
+  // fade before the freeze ends so the overlay is gone by the time play resumes. The score
+  // panel itself does not fade at all -- see the #roundend::before note in the stylesheet.
+  var FADE_MAX_MS = 90;
+  var frozen = false, freezeUntil = 0, fadeOutAt = 0, fadingOut = false, pausedMs = 0;
   var roundEl = document.getElementById('roundend');
 
   function startFreeze() {
     frozen = true;
     var ms = lastScore > 0 ? FREEZE_SCORED_MS : FREEZE_ZERO_MS;
     if (pausedMs > FREEZE_BUDGET_MS) ms = FREEZE_MIN_MS;
+    var fade = Math.min(FADE_MAX_MS, ms / 6);
+    roundEl.style.setProperty('--fade', fade + 'ms');
     freezeUntil = performance.now() + ms;
+    fadeOutAt = freezeUntil - fade;
+    fadingOut = false;
     var isBest = lastScore > bestScore;
     if (isBest) bestScore = lastScore;
     document.getElementById('r-n').textContent = String(epIndex);   // already incremented
     document.getElementById('r-pts').textContent = String(lastScore);
     document.getElementById('r-newbest').className = (isBest && lastScore > 0) ? 'r-best' : 'r-best hidden';
     document.getElementById('best').textContent = String(bestScore);
-    roundEl.className = '';
+    roundEl.className = 'show';
   }
 
   var FRAME_MS = 1000 / 60;
@@ -385,9 +520,11 @@ ${browserShimBundle()}
     if (frozen) {
       pausedMs += dtRaw;              // clock stopped: this is not play time
       prev = now;
+      // Fade out while still frozen, so the next round never starts under a ghost card.
+      if (!fadingOut && now >= fadeOutAt) { fadingOut = true; roundEl.className = ''; }
       if (now >= freezeUntil) {
         frozen = false;
-        roundEl.className = 'hidden';
+        roundEl.className = '';
         resetEpisode();
         acc = 0;
       }
@@ -429,6 +566,10 @@ ${browserShimBundle()}
     var p = getPixelData();
     vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
     scoreEl.textContent = String(lastScore);
+    // Lives come from the SAME getGameState() the environment steps on, so the readout
+    // cannot drift from the state the agent is scored against.
+    if (SHOW_LIVES) drawLives(Math.max(0, +window.getGameState().lives || 0));
+    if (SHOW_RCLOCK) drawRoundClock();
     var left = Math.max(0, BLOCK_MS - elapsed) / 1000;
     timerEl.textContent = Math.floor(left / 60) + ':' + ('0' + Math.floor(left % 60)).slice(-2);
     timerEl.className = left <= 15 ? 'low' : '';
@@ -452,6 +593,11 @@ ${browserShimBundle()}
       type: 'block-done', game: GAME, practice: PRACTICE, obsRes: !!OBS_RES,
       episodes: episodes,
       bestScore: bestScore,
+      // What the participant could see that the agent's observation does not contain.
+      // Recorded per block so the information asymmetry is auditable rather than implicit
+      // in whichever config the site happened to be built from.
+      livesShown: SHOW_LIVES,
+      roundTimerShown: SHOW_RCLOCK,
       canvasPx: canvasPx,          // on-screen size; should equal canvasSize for everyone
       deliveredFrames: delivered,
       playMs: Math.round(play),          // gameplay only -- what the block budgets
@@ -460,6 +606,7 @@ ${browserShimBundle()}
       fps: Math.round(delivered / (play / 1000) * 10) / 10,
     };
     parent.postMessage(payload, '*');
+    if (DEBUG) console.log('[debug] block done', payload);
 
     // Opened directly rather than inside the session shell (i.e. someone playtesting a
     // single game). There is no parent to collect the block, so post it as a one-block
@@ -494,6 +641,14 @@ ${browserShimBundle()}
     blockStart = performance.now();
     prev = 0; acc = 0; pausedMs = 0; frozen = false; running = true;
   };
+
+  if (DEBUG) {
+    var badge = document.createElement('span');
+    badge.textContent = 'debug ' + Math.round(BLOCK_MS / 1000) + 's · ^⇧⌥S skips';
+    badge.style.color = '#b00020';
+    document.getElementById('hud').appendChild(badge);
+    if (AUTOSTART) setTimeout(function () { document.getElementById('go').click(); }, 120);
+  }
 
   requestAnimationFrame(loopFrame);
   parent.postMessage({ type: 'block-ready', game: GAME }, '*');
@@ -537,8 +692,15 @@ export function sessionPage(blocks, cfg) {
   ul { padding-left: 20px; }
   kbd { color: #111; font-weight: 600; font-style: normal; }
   input[type=text] { background: #fff; border: 1px solid #bbb; color: #111;
-        padding: 10px 12px; font: inherit; font-size: 15px; border-radius: 4px; width: 280px; }
-  #frame { border: 0; width: 100vw; height: 100vh; display: block; }
+        padding: 10px 12px; font: inherit; font-size: 15px; border-radius: 4px; width: 340px;
+        font-family: ui-monospace, Menlo, monospace; }
+  input[type=text]:focus { outline: 2px solid #111; outline-offset: 1px; }
+  /* position:fixed, NOT a 100vw/100vh in-flow block: body carries 40px 24px of padding for
+     the text screens, which offset a 100vh iframe downward by 40px, pushed the document to
+     870px tall on a 790px viewport (so the page scrolled and the last 40px of the game hung
+     off the bottom), and left the game 54px below centre once the HUD's own offset was added.
+     Taking the frame out of flow makes it exactly the viewport, whatever the body does. */
+  #frame { position: fixed; inset: 0; border: 0; width: 100%; height: 100%; display: block; }
   #progress { position: fixed; top: 0; left: 0; height: 2px; background: #111;
               opacity: .35; transition: width .3s; z-index: 10; }
   .hidden { display: none !important; }
@@ -569,6 +731,23 @@ export function sessionPage(blocks, cfg) {
          cursor: pointer; color: #444; font-size: 15px; }
   .opt:hover { border-color: #888; color: #111; background: #fafafa; }
   .opt input { flex: none; }
+
+  /* debug menu -- hidden unless the key combo is pressed; see the DBG block below */
+  #dbg { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+         background: #101010; color: #e8e8e8; padding: 10px 14px 14px;
+         font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.5;
+         max-height: 62vh; overflow-y: auto; box-shadow: 0 -8px 24px rgba(0,0,0,.35); }
+  #dbg .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  #dbg .lbl { color: #777; width: 88px; flex: none; }
+  #dbg button { background: #262626; color: #e8e8e8; border: 1px solid #3a3a3a;
+                border-radius: 3px; padding: 3px 8px; font: inherit; }
+  #dbg button:hover { background: #3a3a3a; }
+  #dbg label { display: flex; gap: 5px; align-items: center; color: #bbb; }
+  #dbg input[type=text] { width: 44px; padding: 1px 4px; font: inherit; font-size: 12px;
+                          background: #262626; color: #e8e8e8; border: 1px solid #3a3a3a; }
+  #dbg pre { margin: 6px 0 0; max-height: 26vh; overflow: auto; color: #9ecbff;
+             white-space: pre-wrap; word-break: break-all; }
+  #dbg .warn { color: #ff9a9a; }
 </style></head><body>
 
 <div id="progress" style="width:0"></div>
@@ -627,11 +806,16 @@ export function sessionPage(blocks, cfg) {
   </div>
 </main>
 
-<!-- 4. participant id ----------------------------------------------------- -->
+<!-- 4. Prolific ID -------------------------------------------------------- -->
 <main id="s-pid" class="hidden">
-  <h1>Almost ready</h1>
-  <p>Enter the participant ID from the recruitment page.</p>
-  <p><input type="text" id="pid" placeholder="participant ID" autocomplete="off" spellcheck="false"></p>
+  <h1>Your Prolific ID</h1>
+  <p>We could not read your Prolific ID from the study link, so please paste it below. You can
+     copy it from your Prolific account page — it is a 24-character code of letters and
+     numbers, for example <code>5f8a1c2b3d4e5f60718293a4</code>.</p>
+  <p><input type="text" id="pid" placeholder="paste your Prolific ID here" autocomplete="off"
+            spellcheck="false" autocapitalize="off" autocorrect="off"></p>
+  <p class="note">This is the only thing that links your play to your Prolific account, so
+     please check it before continuing — we cannot pay a session with the wrong ID.</p>
   <div class="nav">
     <button id="pid-next">Start the games</button>
     <span class="err" id="pid-err"></span>
@@ -649,6 +833,7 @@ export function sessionPage(blocks, cfg) {
 </main>
 
 <iframe id="frame" class="hidden" allow="autoplay"></iframe>
+<div id="dbg" class="hidden"></div>
 
 <script type="module">
 const BLOCKS = ${JSON.stringify(blocks)};
@@ -824,26 +1009,73 @@ $('quiz-submit').onclick = () => {
     return;
   }
   session.quiz = { attempts, passed: true };
-  if (session.participantId) return begin();
+  if (session.participantId) return begin();   // came in on the URL; nothing to ask
   show('s-pid');
+  $('pid').focus();
 };
 
 // ---------------------------------------------------------------------------
-// 4. Participant id. Recruitment platforms pass it in the URL (Prolific sends
-// PROLIFIC_PID); when present we skip this screen entirely -- a typo here is an
-// unmatchable session and an unpayable participant.
+// 4. Prolific ID. Two ways in, and both are needed:
+//
+//   * Prolific substitutes the real ID into the study link, so when PROLIFIC_PID is
+//     present we take it and skip this screen entirely. The ID is the one field in the
+//     session that can be wrong in a way nothing downstream detects or repairs -- a
+//     typo is an unmatchable session and a participant you owe money to anyway -- so
+//     not asking is strictly safer than asking.
+//   * When it is absent the participant pastes it. Params do get lost: a link copied
+//     into another browser, or a direct link sent to a pilot participant. Without the
+//     fallback that is a dead end mid-study.
+//
+// The param is SHAPE-CHECKED before it is trusted, which is not paranoia: if the
+// Prolific study URL is saved with the placeholder unsubstituted, every participant
+// arrives with a literal "{{%PROLIFIC_PID%}}" and every session would be filed under
+// that one id. A param that fails the check is recorded as urlPidRejected and the
+// participant is asked to paste instead, so the misconfiguration is visible and
+// recoverable rather than silent and total.
+//
+// Validation is loose on purpose. Prolific IDs are 24 alphanumeric characters today,
+// but hard-rejecting anything else would strand a participant whose ID does not fit
+// that shape; anything unusual only has to be confirmed once, and the exact string
+// is stored either way so a mismatch can be reconciled by hand.
 // ---------------------------------------------------------------------------
+const PID_RE = /^[A-Za-z0-9_-]{5,64}$/;
 const qp = new URLSearchParams(location.search);
-const urlPid = qp.get('PROLIFIC_PID') || qp.get('pid') || qp.get('participant');
-if (urlPid) session.participantId = urlPid;
-session.source = { study: qp.get('STUDY_ID') || null, session: qp.get('SESSION_ID') || null, fromUrl: !!urlPid };
+const rawUrlPid = (qp.get('PROLIFIC_PID') || qp.get('pid') || qp.get('participant') || '').trim();
+const URL_PID = PID_RE.test(rawUrlPid) ? rawUrlPid : null;
+
+session.source = {
+  study: qp.get('STUDY_ID') || null,
+  session: qp.get('SESSION_ID') || null,
+  fromUrl: !!URL_PID,
+  // Present only when a param arrived that we refused (unsubstituted placeholder,
+  // truncated paste, junk). Truncated so a hostile query string cannot bloat the record.
+  urlPidRejected: rawUrlPid && !URL_PID ? rawUrlPid.slice(0, 80) : null,
+};
+if (URL_PID) session.participantId = URL_PID;
+
+let pidConfirmed = false;
+$('pid').addEventListener('input', () => { $('pid-err').textContent = ''; pidConfirmed = false; });
+$('pid').addEventListener('keydown', e => { if (e.key === 'Enter') $('pid-next').click(); });
 
 $('pid-next').onclick = () => {
-  const pid = $('pid').value.trim();
-  if (!/^[A-Za-z0-9_-]{3,64}$/.test(pid)) {
-    $('pid-err').textContent = 'Please enter the ID exactly as shown.'; return;
+  const pid = $('pid').value.replace(/\\s+/g, '');
+  if (!/^[A-Za-z0-9_-]{5,64}$/.test(pid)) {
+    $('pid-err').textContent = pid
+      ? 'That does not look like a Prolific ID — please paste it again.'
+      : 'Please paste your Prolific ID.';
+    return;
   }
+  if (pid.length !== 24 && !pidConfirmed) {
+    pidConfirmed = true;
+    $('pid-err').textContent = 'Prolific IDs are usually 24 characters. Click again to use this one.';
+    return;
+  }
+  // Record BOTH if a typed id ever coexists with one from the URL (only reachable via the
+  // debug menu today, but it is the reconciliation trail if a study link gets shared).
+  session.pidTyped = pid;
+  if (URL_PID && URL_PID !== pid) session.pidMismatch = { url: URL_PID, typed: pid };
   session.participantId = pid;
+  session.pidEnteredAt = new Date().toISOString();
   begin();
 };
 
@@ -885,19 +1117,30 @@ function begin() {
   runNext();
 }
 
+let blockLoads = 0;
 function runNext() {
   if (qi >= queue.length) return finish();
   $('progress').style.width = (qi / queue.length * 100) + '%';
   for (const s of SCREENS) $(s).classList.add('hidden');
   $('frame').classList.remove('hidden');
-  $('frame').src = queue[qi].href;
+  // In debug the block gets "?r=N#dbg=..." appended: the query is a cache-buster so
+  // re-launching the SAME block from the menu really reloads the iframe (a hash-only
+  // change would not), and static hosts ignore it. A participant's URL never has either.
+  $('frame').src = queue[qi].href + (DBG.active ? dbgBlockSuffix(blockLoads++) : '');
 }
 
 addEventListener('message', (e) => {
   const m = e.data;
+  if (m && m.type === 'debug-toggle') return dbgToggle();
   if (!m || m.type !== 'block-done') return;
   if (!queue[qi] || !queue[qi].practice) session.blocks.push(m);
   qi++;
+  // NOT after the last block. Checkpoints are fire-and-forget, so one sent here can land
+  // AFTER finish()'s authoritative upload and, on a last-write-wins endpoint, downgrade a
+  // finished session back to partial:true with no completionCode -- observed live, and
+  // that is the field you would query to decide whom to pay. finish() is about to POST the
+  // same blocks anyway, so the checkpoint buys nothing here.
+  if (qi >= queue.length) return runNext();
   // Checkpoint after every block. Without this a participant who closes the tab at
   // block 7 of 9 contributes nothing at all -- and you may still owe them payment.
   // The server keys on participantId + startedAt and overwrites, so this is just the
@@ -908,7 +1151,7 @@ addEventListener('message', (e) => {
 });
 
 function checkpoint() {
-  if (!UPLOAD_URL || !session.blocks.length) return;
+  if (!UPLOAD_URL || !session.blocks.length || !dbgCanUpload()) return;
   try {
     const body = JSON.stringify({ ...session, partial: true });
     // keepalive lets the request survive the page being closed mid-flight.
@@ -926,7 +1169,7 @@ async function finish() {
   const code = 'PT-' + hash32(session.participantId + session.startedAt).toString(36).toUpperCase();
   session.completionCode = code;
 
-  if (UPLOAD_URL) {
+  if (UPLOAD_URL && dbgCanUpload()) {
     try {
       const res = await fetch(UPLOAD_URL, {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -936,7 +1179,7 @@ async function finish() {
       $('outro-msg').textContent = 'Your session was recorded.';
       $('code').textContent = code;
       $('outro-code').classList.remove('hidden');
-      if (COMPLETION_URL) {
+      if (COMPLETION_URL && !DBG.active) {
         $('outro-msg').textContent = 'Your session was recorded. Returning you to Prolific…';
         setTimeout(() => { location.href = COMPLETION_URL; }, 2500);
       }
@@ -945,7 +1188,8 @@ async function finish() {
       // fall through to the manual path -- never lose a paid session to a bad network
     }
   }
-  $('outro-msg').textContent = '';
+  $('outro-msg').textContent = DBG.active && !DBG.upload
+    ? 'Debug run — upload suppressed, so nothing was sent to the server.' : '';
   $('outro-dl').classList.remove('hidden');
   $('code').textContent = code;
   $('outro-code').classList.remove('hidden');
@@ -957,6 +1201,182 @@ async function finish() {
     a.click();
   };
 }
+
+// ---------------------------------------------------------------------------
+// 6. Debug menu. Dev-only, but it ships in every build: gating it on a build flag
+// means the thing you test is not the thing you deploy. It is opened by a key combo
+// rather than a URL parameter -- ctrl+shift+alt+D -- so there is no guessable ?debug=1
+// that would let a participant skip the comprehension check. The block iframes forward
+// the same combo up here, so it also opens mid-block.
+//
+// Everything reached through the menu stamps debug:true on the session and, unless you
+// tick "allow upload", suppresses every POST -- a walkthrough must not be able to land
+// in the collected data, and the practice+9-block queue at 10s a block is a run you will
+// do dozens of times while editing copy.
+// ---------------------------------------------------------------------------
+const DBG = { open: false, active: false, short: true, sec: 10, auto: false, upload: false };
+
+function dbgCanUpload() { return !DBG.active || DBG.upload; }
+
+function dbgBlockSuffix(n) {
+  return '?r=' + n + '#dbg=' + (DBG.short ? DBG.sec : 0) + (DBG.auto ? '&auto=1' : '');
+}
+
+// Merely OPENING the menu marks the session debug and stops it uploading. Deciding that
+// per-button would be a trap: walk the real flow after peeking at the menu and you would
+// silently be writing a fake participant into the collected data. Tick "allow upload" to
+// exercise the endpoint on purpose.
+function dbgPoison() {
+  DBG.active = true;
+  session.debug = true;
+}
+
+// Fill in whatever the skipped screens would have produced, so a session assembled by
+// jumping around still has the shape the endpoint and verify-replay expect. Real screens
+// overwrite these if you visit them afterwards.
+function dbgArm() {
+  const now = new Date().toISOString();
+  dbgPoison();
+  session.participantId = session.participantId || 'debug';
+  session.startedAt = session.startedAt || now;
+  session.preflight = session.preflight || { ok: true, debug: true };
+  session.consent = session.consent || { agreed: true, at: now, doNotRecontact: false, debug: true };
+  session.quiz = session.quiz || { attempts: 0, passed: true, debug: true };
+}
+
+function dbgTrim(k, v) {
+  // actions/keys are tens of thousands of ints; show the length, not the contents.
+  if (Array.isArray(v) && v.length > 12 && typeof v[0] === 'number') return '[' + v.length + ' ints]';
+  return v;
+}
+
+function dbgOut(text) { $('dbg-out').textContent = text; }
+
+function dbgRender() {
+  const btn = (attr, val, label) => '<button data-' + attr + '="' + val + '">' + label + '</button>';
+  const instr = PAGES.map((p, i) => btn('instr', i, (i + 1) + '. ' + p.title)).join('');
+  const blks = BLOCKS.map((b, i) => btn('block', i,
+    b.game + (b.obsRes ? '@64' : '') + (b.practice ? ' (practice)' : ''))).join('');
+
+  $('dbg').innerHTML =
+    '<div class="row"><span class="lbl">debug</span><span>' +
+      'ctrl+shift+alt+D toggles this &middot; esc closes &middot; ' +
+      'ctrl+shift+alt+S ends the block you are in' +
+    '</span></div>' +
+    '<div class="row"><span class="lbl">screens</span>' +
+      btn('screen', 's-device', 'device check') +
+      btn('screen', 's-blocked', 'rejected') +
+      btn('screen', 's-consent', 'consent') +
+      btn('screen', 's-quiz', 'quiz') +
+      btn('screen', 's-pid', 'prolific id') +
+      btn('outro', '1', 'outro') +
+    '</div>' +
+    '<div class="row"><span class="lbl">instructions</span>' + instr + '</div>' +
+    '<div class="row"><span class="lbl">blocks</span>' + blks + '</div>' +
+    '<div class="row"><span class="lbl">run</span>' +
+      btn('run', 'all', 'whole session') +
+      btn('run', 'scored', 'scored blocks only') +
+      '<label><input type="checkbox" id="dbg-short"> short blocks' +
+        ' <input type="text" id="dbg-sec" value="' + DBG.sec + '">s</label>' +
+      '<label><input type="checkbox" id="dbg-auto"> auto-start</label>' +
+    '</div>' +
+    '<div class="row"><span class="lbl">session</span>' +
+      btn('dump', '1', 'dump json') +
+      btn('dl', '1', 'download json') +
+      btn('reset', '1', 'reload page') +
+      '<label class="warn"><input type="checkbox" id="dbg-upload"> allow upload</label>' +
+    '</div>' +
+    '<div class="row"><span class="lbl">state</span><span id="dbg-state"></span></div>' +
+    '<pre id="dbg-out"></pre>';
+
+  $('dbg-short').checked = DBG.short;
+  $('dbg-auto').checked = DBG.auto;
+  $('dbg-upload').checked = DBG.upload;
+  $('dbg-short').onchange = e => { DBG.short = e.target.checked; dbgState(); };
+  $('dbg-auto').onchange = e => { DBG.auto = e.target.checked; dbgState(); };
+  $('dbg-upload').onchange = e => { DBG.upload = e.target.checked; dbgState(); };
+  $('dbg-sec').oninput = e => {
+    const n = parseFloat(e.target.value);
+    if (n > 0) DBG.sec = n;
+    dbgState();
+  };
+  $('dbg').onclick = dbgClick;
+  dbgState();
+}
+
+function dbgState() {
+  const up = UPLOAD_URL ? (dbgCanUpload() ? 'ON — will write real data' : 'suppressed') : 'no endpoint';
+  $('dbg-state').textContent =
+    'pid=' + (session.participantId || '(none)') +
+    '  queue=' + (queue.length ? (qi + '/' + queue.length) : '-') +
+    '  collected=' + session.blocks.length + ' blocks' +
+    '  blockLen=' + (DBG.short ? DBG.sec + 's' : 'full') +
+    '  upload=' + up;
+}
+
+function dbgClick(e) {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset;
+
+  if (d.screen) {
+    if (d.screen === 's-device') $('device-note').textContent = 'One moment.';
+    if (d.screen === 's-blocked') $('blocked-why').textContent =
+      '(debug) example rejection message — the real one names the reason.';
+    if (d.screen === 's-quiz') renderQuiz();
+    if (d.screen === 's-pid') $('pid').value = '';
+    show(d.screen);
+    if (d.screen === 's-pid') $('pid').focus();
+  } else if (d.instr !== undefined) {
+    renderInstr(+d.instr);
+    show('s-instr');
+  } else if (d.outro) {
+    dbgArm();
+    finish();
+  } else if (d.block !== undefined) {
+    dbgArm();
+    queue = [BLOCKS[+d.block]];
+    qi = 0;
+    session.order = queue.map(b => b.game + (b.obsRes ? '@64' : '') + (b.practice ? '(practice)' : ''));
+    dbgToggle(false);
+    runNext();
+    return;
+  } else if (d.run) {
+    dbgArm();
+    if (d.run === 'all') { dbgToggle(false); return begin(); }
+    queue = BLOCKS.filter(b => !b.practice);
+    qi = 0;
+    session.order = queue.map(b => b.game + (b.obsRes ? '@64' : ''));
+    dbgToggle(false);
+    runNext();
+    return;
+  } else if (d.dump) {
+    console.log('[debug] session', session);
+    dbgOut(JSON.stringify(session, dbgTrim, 1));
+  } else if (d.dl) {
+    const blob = new Blob([JSON.stringify(session)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'playtrain-debug-' + (session.participantId || 'session') + '.json';
+    a.click();
+  } else if (d.reset) {
+    location.reload();
+    return;
+  }
+  dbgState();
+}
+
+function dbgToggle(force) {
+  DBG.open = force === undefined ? !DBG.open : !!force;
+  if (DBG.open) { dbgPoison(); dbgRender(); }
+  $('dbg').classList.toggle('hidden', !DBG.open);
+}
+
+addEventListener('keydown', e => {
+  // e.code, not e.key: on macOS Alt+D yields a dead-key character rather than "D".
+  if (e.ctrlKey && e.shiftKey && e.altKey && e.code === 'KeyD') { e.preventDefault(); dbgToggle(); }
+  else if (e.key === 'Escape' && DBG.open) dbgToggle(false);
+});
 
 preflight();
 </script>
