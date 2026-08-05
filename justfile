@@ -150,6 +150,11 @@ study-verify file:
 study-shots game="caveflyer": study-build
     node tools/study-shots.mjs --game {{game}} --screens
 
+# Screenshot every participant-facing phase in order -> dist/study-phases/index.html,
+# one self-contained page you can send to someone. Builds its own copy of the site.
+study-phases size="1440x820":
+    node tools/study-phases.mjs --size {{size}}
+
 # Render recorded rounds to video by replaying them -> dist/study-video.
 # GIF needs nothing; `--format mp4` needs ffmpeg. Add --best for one clip per game.
 study-video file *ARGS:

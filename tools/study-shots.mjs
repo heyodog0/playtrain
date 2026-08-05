@@ -86,7 +86,7 @@ for (const size of SIZES) {
   console.log(`${size.name.padEnd(26)} canvas ${scale.native}px -> ${scale.css}`);
 
   if (WITH_SCREENS) {
-    await page.goto(`http://localhost:${PORT}/?pid=shots`);
+    await page.goto(`http://localhost:${PORT}/`);
     await page.waitForTimeout(2200);
     await shoot(page, 'consent', size);
     await page.evaluate(() => { const s = document.getElementById('consent-scroll'); s.scrollTop = s.scrollHeight; });
@@ -97,6 +97,14 @@ for (const size of SIZES) {
       if (await page.isVisible('#s-quiz')) break;
     }
     await shoot(page, 'quiz', size);
+
+    // The Prolific ID screen sits behind a passed quiz, so jump to it with the shell's
+    // debug menu rather than hard-coding the answer key here.
+    await page.keyboard.press('Control+Shift+Alt+KeyD');
+    await page.click('[data-screen="s-pid"]');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(120);
+    await shoot(page, 'prolific-id', size);
   }
   await page.close();
 }
