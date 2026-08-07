@@ -110,6 +110,56 @@ more envs, not just more GPUs.
 honest architectural statement: V-trace consumes each frame once, PPO makes 24
 gradient passes over it.
 
+### Double buffering: 1.35x for IMPALA, 0.78x for PPO (job 37689188)
+
+The paper says double buffering is "a large reason why we can reach 0.98M".
+That was never ablated. It is now — same template as the 938,973 run (b256, 15
+workers, 5 threads, MPS), both arms back-to-back on one node, only the flag
+differs:
+
+| game | db=on | db=off | gain |
+|---|---|---|---|
+| breakout | 1,012,504 | 655,231 | 1.55x |
+| bigfish | 917,349 | 766,753 | 1.20x |
+| miner | 370,204 | 232,646 | 1.59x |
+| plunder | 897,684 | 799,522 | 1.12x |
+| **geomean** | | | **1.35x** |
+
+**The claim holds.** Without it the suite is ~0.70M, not 0.94M.
+
+The per-game spread matches the overlap ceilings computed independently from
+PPO's phase split (§1): predicted bigfish 1.20x / miner 1.61x, measured 1.20x /
+1.59x. Overlap hides the SMALLER phase, so env-heavy games gain most.
+
+**Why it helps IMPALA and hurts PPO (0.78x):** both split envs into two groups,
+halving the per-forward batch. IMPALA's inference runs CUDA graphs on dedicated
+GPUs (`vec_infer_graphs`, `vec_worker_device`), so it does not pay the
+launch-bound penalty; PPO's synchronous rollout forward does, and the penalty
+exceeds the overlap gain. Same mechanism, opposite sign.
+
+Note `check_vec_backend_compatible` (impala/train.py:469) makes double buffering
+**native-backend only** — `act_vec_db` ignores `vec_backend` and would silently
+run PlayTrain envs while logging "envpool". So the A/B being single-buffered is
+FORCED by the baseline's capability, not a choice. The paper's disclosure of it
+is required, not optional.
+
+### Why the A/B rows sit below the headline
+
+The paper attributes it to single-buffering alone. Measured, there are two
+causes — the A/B arm runs 12 workers, the headline 15:
+
+| factor | measured |
+|---|---|
+| double buffering | 1.35x |
+| 12 -> 15 vec workers | 1.17x (608,547 -> 709,651 geomean, b256 sweep) |
+| observed gap (16 ProcGen games) | 907,580 / 620,494 = 1.46x |
+
+Both are real; 1.35 x 1.17 = 1.58 slightly overshoots 1.46, but the three
+numbers come from three different game sets. Single-buffering IS the dominant
+term, so the paper's explanation is right in substance — it just omits the
+worker-count difference. Both A/B arms use 12 workers, so the A/B RATIO (the
+actual claim) is unaffected.
+
 ### bf16 helps or hurts depending on minibatch size, not on the trainer
 
 | minibatch | bf16 |
@@ -122,7 +172,42 @@ autocast only pays when the conv/matmul is compute-bound. A Nature CNN at
 minibatch 3,072 is launch-bound, so the cast kernels are pure overhead. PPO's
 24-small-passes update keeps it in that regime; IMPALA's learner does ONE pass
 over 16,384 and lands in the other, which is why bf16 is correct in the paper's
-IMPALA column and wrong in a matched PPO one. **Keep PPO fp32.**
+IMPALA column and wrong in a matched PPO one. **Keep PPO fp32 — with the Nature
+encoder.**
+
+Confirmed by prediction, not just consistency: the same claim says a HEAVIER
+encoder should flip the sign at identical minibatch. It does (job 37688567):
+
+| encoder | 1 GPU fp32 | 1 GPU bf16 | bf16 gain |
+|---|---|---|---|
+| nature | 52,095 | — | ~1.00x |
+| impala | 13,271 | 18,325 | **1.38x** |
+| impala, 4 GPU | 42,028 | 53,113 | **1.26x** |
+
+**So the right precision depends on the ENCODER: bf16 off for Nature, on for
+IMPALA-CNN.**
+
+### PPO with the IMPALA-CNN is ~4x slower, and that is just arithmetic
+
+| encoder | MMACs/sample | params |
+|---|---|---|
+| nature | 7.08 | 1.127M |
+| impala | **30.61** | 0.624M |
+
+4.32x the compute (and FEWER parameters — Nature's params sit in one big FC
+layer; the IMPALA-CNN spends its work on 15 stride-1 convs). Measured
+same-job ratio: 52,095 / 13,271 = **3.93x**. No anomaly.
+
+PPO amplifies encoder cost more than IMPALA does: every frame passes the encoder
+~10 forward-equivalents (1 rollout + 3 epochs x (fwd + bwd)) versus IMPALA's ~4,
+spread over 4 GPUs. Hence the update share going 40% -> 80% on the heavy encoder.
+
+Counter-intuitively the IMPALA-CNN **scales better across GPUs** (3.17x for
+1->4) than Nature (2.18x): being compute-bound is what makes it parallelize.
+
+**Like-for-like V-trace vs PPO is ~4-6x, consistent across encoders** (Nature
+938,973 vs 181,652; IMPALA-CNN 348k vs ~53-85k). Do not compare across
+encoders — 938,973 is a NATURE number.
 
 ### ⚠ native_env_threads: 0 is a trap on multi-GPU allocations
 
