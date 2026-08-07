@@ -249,13 +249,51 @@ from `nproc`.)
   playtrain_trainers.train_ppo_clean --config ...` with `ddp: true` and
   `native_env_threads` set EXPLICITLY (see the trap above).
 
-**Still open:** whether 768 envs costs sample efficiency. n_minibatches=32 keeps
-optimization-per-frame identical, but the policy now refreshes once per 98,304
-env steps instead of once per 24,576, so envs act under a 4x staler policy
-between improvements. Job 37687689 runs 3 games x 3 seeds at 100M in the
-768/nmb32 config, writing `pv_p768_{game}_s{seed}`, to compare per env step
-against the existing `pv_p_{game}_s{seed}` baselines. **Until that lands, no
-speed number here should be quoted as free.**
+### Sample efficiency at 768 envs — RESOLVED (job 37687689)
+
+3 games x 3 seeds at 100M, `pv_p768_*` vs the paper's `pv_p_*`, per env step.
+
+Final return (mean of last 5% of the curve):
+
+| game | base(192) | 768 | ratio |
+|---|---|---|---|
+| breakout | 241.8 | 260.3 | 1.076 |
+| plunder | 6.7 | 6.5 | 0.974 |
+| flappy_bird | 27.9 | 27.6 | 0.992 |
+| **geomean** | | | **1.013** |
+
+**At 100M the speedup is free.** But the endpoint hides an early-training cost —
+3-seed mean return at matched budgets:
+
+| game | 10M | 25M | 50M | 75M | 100M |
+|---|---|---|---|---|---|
+| breakout | 1.02 | 1.60 | 1.26 | 1.02 | 1.08 |
+| plunder | 0.99 | 1.04 | 0.97 | 0.98 | 1.01 |
+| **flappy_bird** | **0.61** | **0.84** | 0.98 | 0.99 | 0.99 |
+
+flappy_bird is at 61% of baseline at 10M and only converges by 50M. This is the
+policy-refresh effect that scaling n_minibatches CANNOT fix: at 10M steps the
+baseline has taken ~407 policy updates, the 768-env config ~102. On a game PPO
+essentially finishes in its first few hundred updates, that shows.
+
+**Verdict: free at a 100M budget, NOT free early on fast-learning games.** Safe
+for throughput benchmarking and long runs; it would visibly change the early
+shape of Figure 4C's curves, which is a further reason not to retune the paper's
+PPO config.
+
+**Still open for the paper** (not speed work, but found while doing it):
+
+1. `tab:hyperparams` lists PPO's encoder as IMPALA-CNN. 138 of 156 PPO runs are
+   Nature, including all of Figure 4B. The encoder is worth ~4x throughput, so
+   this misleads by more than it looks.
+2. Figure 4's caption says "IMPALA-CNN elsewhere" — false for 5 of the 8 games
+   in the regenerated panel C (bossfight, chaser, leaper, ninja, starpilot have
+   only Nature runs). The caption describes the OLD game set.
+3. Table 1's 348k row is labelled an encoder difference but its config
+   (`configs/impala_fullnode_throughput.json`) also changes vec_workers 15->12
+   and topology (2 inference + 2 DDP learners vs 3 inference + 1 learner). One
+   suite run at `net: impala` with the HEADLINE topology would turn it into a
+   real encoder ablation with a log behind it. Not launched.
 
 ---
 
