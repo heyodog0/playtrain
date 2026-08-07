@@ -75,6 +75,75 @@ optimization arms land AND learning is checked (§3).** Returns at 8M steps were
 comparable across all arms (~90–100), but breakout at 8M is far too early to
 settle sample efficiency.
 
+### Node-filled PPO (the actually-useful result)
+
+The comparison the paper implicitly invites — PPO vs IMPALA throughput — was
+never matched on hardware: **IMPALA's 938,973 is measured on 4 GPUs** (2 DDP
+learners + 2 inference, `pt_b256_*_icnn_ddp2.json`) while every PPO number has
+been on 1. So `ddp` was added to `train_ppo_clean.py`: launch under torchrun and
+n_envs (still the TOTAL) is split across ranks.
+
+Unlike raising n_envs on one GPU, this is genuinely free — minibatch size,
+gradient-steps-per-transition, total gradient steps over a 100M run (97,656
+either way) and the GAE horizon are all unchanged. Only the hardware differs.
+
+All arms below at 1 grad step per 1,024 transitions, minibatch 3,072, breakout:
+
+| config | GPUs | envs | sps | vs 1 GPU |
+|---|---|---|---|---|
+| 192, nmb8 (paper config) | 1 | 192 | 74,959 | 1.00× |
+| 192, nmb8 | 4 | 192 | 84,398 | 1.14× |
+| 768, nmb32 | 4 | 768 | **181,652** | **2.42×** |
+| 768, nmb32, bf16 | 4 | 768 | 170,981 | 2.28× |
+| 1536, nmb64 | 4 | 1536 | 199,648 | 2.66× |
+| 1536, nmb64, bf16 | 4 | 1536 | 194,421 | 2.59× |
+
+**768 envs is the operating point.** 1536 is already in diminishing returns
+(2.42× → 2.66×) while doubling batch staleness again.
+
+**Same total envs (192) across 4 GPUs buys almost nothing (1.14×)** — each rank's
+rollout forward is batch 48, deep in the launch-bound regime. The gain needs
+more envs, not just more GPUs.
+
+**So at matched hardware IMPALA is ~4.7-5.2x faster than PPO** (938,973 vs
+181,652-199,648), not the ~13x a 4-GPU-vs-1-GPU comparison implies. That is the
+honest architectural statement: V-trace consumes each frame once, PPO makes 24
+gradient passes over it.
+
+### bf16 helps or hurts depending on minibatch size, not on the trainer
+
+| minibatch | bf16 |
+|---|---|
+| 3,072 (nmb8 @192 / nmb32 @768 / nmb64 @1536) | 1.00×, 0.94×, 0.97× — neutral to negative |
+| 12,288 (nmb4 @384) | 1.17× |
+| 24,576 (nmb4 @768) | 1.17× |
+
+autocast only pays when the conv/matmul is compute-bound. A Nature CNN at
+minibatch 3,072 is launch-bound, so the cast kernels are pure overhead. PPO's
+24-small-passes update keeps it in that regime; IMPALA's learner does ONE pass
+over 16,384 and lands in the other, which is why bf16 is correct in the paper's
+IMPALA column and wrong in a matched PPO one. **Keep PPO fp32.**
+
+### ⚠ native_env_threads: 0 is a trap on multi-GPU allocations
+
+Auto-sizing takes the whole node, so 4 ranks each spawn ~92 threads onto 92
+cores. Measured on one node, 192 envs, env-layer only:
+
+| num_threads | env steps/s |
+|---|---|
+| 23 | **759,938** |
+| 0 (auto -> 92) | 113,141 |
+| 92 | 29,740 |
+
+A **26x** cliff. It only ever looked safe because a 23-core single-GPU
+allocation auto-detects 23, which is near-optimal by coincidence. Under DDP,
+12 threads/rank beat 23 (258,434 vs 229,563) — the right value is SMALLER than
+cores/ranks. Always set it explicitly.
+
+(Also: `nproc` reports 1 on these nodes because it honors `OMP_NUM_THREADS=1`.
+That is not CPU starvation — `sched_getaffinity` shows all 92. Do not diagnose
+from `nproc`.)
+
 **Code landed** (`playtrain-trainers`, pushed):
 - `843381e` — `double_buffer` config flag + `_PingPongVecAdapter` + interleaved
   rollout. Guarded to the feedforward extrinsic path (raises on LSTM/RND/NovelD
@@ -82,6 +151,26 @@ settle sample efficiency.
   as a recorded negative result, not a recommendation.
 - `526052d` — `profile_phases` flag: per-log-line rollout/update/other split.
   Costs a cuda sync per phase boundary; diagnostic only.
+- `ad067b0` — `ddp` flag: multi-GPU PPO under torchrun. n_envs stays the total
+  and is split across ranks; advantages are standardized across ranks (per-shard
+  would not match single-GPU); gradients are averaged BEFORE grad-norm clipping.
+  Explicit all-reduce rather than `DistributedDataParallel`, because the rollout
+  calls `model.act()` and the update calls `forward()` — DDP only syncs on its
+  own `forward()`. RND/NovelD/reward_norm rejected (unsynced running stats).
+  Not bit-identical to 1 GPU: the k-th global minibatch is stratified across
+  ranks rather than freely shuffled. Same distribution, different draw.
+
+  Launch: `torchrun --standalone --nproc_per_node=4 -m
+  playtrain_trainers.train_ppo_clean --config ...` with `ddp: true` and
+  `native_env_threads` set EXPLICITLY (see the trap above).
+
+**Still open:** whether 768 envs costs sample efficiency. n_minibatches=32 keeps
+optimization-per-frame identical, but the policy now refreshes once per 98,304
+env steps instead of once per 24,576, so envs act under a 4x staler policy
+between improvements. Job 37687689 runs 3 games x 3 seeds at 100M in the
+768/nmb32 config, writing `pv_p768_{game}_s{seed}`, to compare per env step
+against the existing `pv_p_{game}_s{seed}` baselines. **Until that lands, no
+speed number here should be quoted as free.**
 
 ---
 
