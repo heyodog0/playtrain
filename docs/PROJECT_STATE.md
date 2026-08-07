@@ -619,6 +619,17 @@ split should invert between them.
 
 ---
 
+## 11b. PPO speed work (2026-08-07)
+
+See `docs/PPO_SPEED_PLAN.md` for the full plan. Headline: PPO's update is 90%
+forward+backward and caps it at ~359k sps even with a free environment, against
+IMPALA's 939k suite geomean — the gap is algorithmic (24 gradient passes per
+rollout vs V-trace's one). But ~1.3x is available for free: **bf16 autocast
+(1.55x on the update) and `n_minibatches` 8 -> 4 (1.2x)**, no change to data
+reuse. bf16 helping **contradicts** the earlier "compile and bf16 make PPO
+slower" note — the suspect is compile's recompilation across two batch shapes,
+not bf16.
+
 ## 12. Immediate next steps
 
 1. Make the length cuts, rebuild, re-measure where References lands.
