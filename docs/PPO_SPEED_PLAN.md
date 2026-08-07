@@ -8,6 +8,83 @@ scripts are on FASRC at `analogen-jaxbench/tools/_ppo_*.py`.
 
 ---
 
+## 0. RESULTS — read this before §1–§5
+
+The plan in §1–§5 was executed end-to-end on 2026-08-07. **Three of its five
+steps did not survive contact with the real trainer.** §1–§5 are kept as written
+so the reasoning can be audited, but where they disagree with this section, this
+section is what was measured.
+
+Every run below: breakout, 8M steps, one H100, MPS on, whole matrix on ONE node
+per job (nodes differ up to 1.56×, so only compare within a job).
+
+**What was wrong**
+
+| plan step | projected | measured | verdict |
+|---|---|---|---|
+| 1. bf16 (at n_envs=192) | 1.55× on update | **1.00× end-to-end** | no effect |
+| 2. `n_minibatches` 8→4 (at 192) | 1.2× on update | **1.03×** | ~no effect |
+| 4. double-buffered rollout | 1.58× | **0.78×** | **a regression** |
+| 5. `n_envs` 384 needs `n_steps` 64 | horizon halved | **not needed** | premise false |
+
+**Why step 4 fails.** Double buffering splits `n_envs` into two groups, so at
+`n_envs=192` each rollout forward is batch 96, not 192. PPO's rollout forward is
+launch-bound at these sizes, so halving the batch costs more than the overlap
+recovers. Confirmed by the phase profiler, not inferred: enabling it *raises*
+the rollout's share of wall clock, 56.5% → 66.3%. The penalty is 0.78× at
+`n_envs=192` and 0.78× again at 384 (83,889 vs 107,078) — it is not a tuning
+problem. **The IMPALA overlap does not transfer to PPO.**
+
+**Why steps 1–2 looked free and were not.** The microbenchmark timed the update
+in isolation. The *share* it reported was roughly right (43% in situ vs 39%
+projected) — what was wrong is that bf16 speeds that phase up. At the baseline
+config a minibatch is 3,072 samples and the update is launch-bound, where bf16
+does nothing. bf16 only pays once the minibatch is large enough to be
+compute-bound: **1.03× at `n_envs`=192, but 1.17× at both 384 and 768.** Both
+numbers are correct; they are different points on one curve.
+
+**What actually works: `n_envs`.** Throughput tracks the rollout forward batch,
+which `n_envs` sets. `n_steps` is nearly irrelevant to it — 384×64 and 384×128
+measured 83,889 vs 84,210, a 0.4% difference. So the speedup does NOT require
+cutting `n_steps`, and **the GAE horizon can stay at 128.**
+
+| config | precision | sps | vs baseline |
+|---|---|---|---|
+| 192×128 (paper baseline) | fp32, nmb8 | 69,410 | 1.00× |
+| 384×128 | fp32, nmb8 | 93,037 | 1.34× |
+| 384×128 | bf16, nmb4 | 108,762 | 1.57× |
+| 768×128 | fp32, nmb8 | 110,012 | 1.59× |
+| **768×128** | **bf16, nmb4** | **129,184** | **1.86×** |
+
+The 1.87× target is reached, with the GAE horizon intact.
+
+**⚠ But this is not free, and the plan had no way to see it.** Raising `n_envs`
+at fixed `n_steps` inflates the batch, and with `n_minibatches` pinned at 4 the
+gradient steps per transition collapse:
+
+- baseline 192×128 nmb8 → 24 steps / 24,576 transitions = **1 per 1,024**
+- 768×128 nmb4 → 12 steps / 98,304 = **1 per 8,192** (8× less optimization)
+
+Part of that 1.86× is simply doing less work per frame, which costs exactly the
+sample efficiency the paper claims for PPO. Job 37683400 re-measures with
+`n_minibatches` scaled to the batch (e384/nmb16, e768/nmb32 → 1 per 1,024,
+matching baseline); whatever speed survives *there* is the genuinely free part.
+
+**Do not report any of these numbers as a PPO speedup until the matched-
+optimization arms land AND learning is checked (§3).** Returns at 8M steps were
+comparable across all arms (~90–100), but breakout at 8M is far too early to
+settle sample efficiency.
+
+**Code landed** (`playtrain-trainers`, pushed):
+- `843381e` — `double_buffer` config flag + `_PingPongVecAdapter` + interleaved
+  rollout. Guarded to the feedforward extrinsic path (raises on LSTM/RND/NovelD
+  rather than silently mis-training). **Off by default; keep it off** — retained
+  as a recorded negative result, not a recommendation.
+- `526052d` — `profile_phases` flag: per-log-line rollout/update/other split.
+  Costs a cuda sync per phase boundary; diagnostic only.
+
+---
+
 ## 1. Where PPO's time goes
 
 Measured on one H100, breakout, `n_envs=192`, `n_steps=128`, Nature encoder,
