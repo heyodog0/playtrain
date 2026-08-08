@@ -111,15 +111,27 @@ So the 4 local GPUs must still split between learners and inference workers:
 | learners + inference | Nature | IMPALA-CNN |
 |---|---|---|
 | 1 + 3 | **938,973** | 194,001 |
-| 2 + 2 | 909,827 (0.967x) | **353,888** (1.82x) |
-| 3 + 1 | untested | **untested — the one worth trying** |
+| 2 + 2 | 909,827 (0.967x) | **353,888 / 340,781 <- optimum** |
+| 3 + 1 | (wrong direction) | **212,585 (0.62x)** |
 | 4 + 0 | impossible | impossible |
 
 4 learners leaves nothing for inference, and putting inference on a learner's GPU
-is the documented `vec_worker_device` trap (roughly halves IMPALA). 3+1 is worth
-measuring for IMPALA-CNN, where the learner is the sole bottleneck; for Nature it
-is the wrong direction, since 2 learners already cost 3.3% by starving
-environment-bound games.
+is the documented `vec_worker_device` trap (roughly halves IMPALA).
+
+**3+1 measured, job 37723136, node-matched on holygpu8a13503: 340,781 (2+2) vs
+212,585 (3+1) — a 37% LOSS.** One inference GPU cannot feed three learners. The
+tell is instability: 2+2 holds 340,781 across all four windows, while 3+1 swings
+186,774->235,684 on bigfish and 229,372->180,193 on plunder. The bottleneck moves
+off the learner onto inference and the ranks fight over a starved feed.
+
+**So 2+2 is a real interior optimum for IMPALA-CNN**, with measurements on both
+sides of it (~187k at 1+3 on this node, 340,781 at 2+2, 212,585 at 3+1). The
+paper's 348k topology was chosen by measurement, not arbitrarily — worth saying
+in Table 1.
+
+For Nature 3+1 is the wrong direction and was not run: 2 learners already cost
+3.3% by starving environment-bound games, and a third takes another inference
+GPU from exactly those games.
 
 Independent cap: `remote_vec`'s docstring records the fleet's measured aggregate
 at **1.09M SPS across 4 probe shards** (~45.5k per remote actor worker), i.e.
