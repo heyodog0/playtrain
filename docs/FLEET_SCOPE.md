@@ -141,6 +141,82 @@ learners do**, or the extra ranks idle.
 Genuine 4+ learners needs a multi-node trainer (2 H100 nodes, NCCL across nodes).
 That breaks the paper's "on one GPU node" framing — out of scope.
 
+## What the pilots taught us (2026-08-08)
+
+### The core budget inverts the earlier fleet result
+
+The recorded fleet win — 132k local -> 289k fleet, and bigfish 170,391 -> 283,000
+— was measured against a **1-GPU** trainer, which `kempner_h100` caps at 23
+cores. There the fleet's 72 cores were a 3x increase. At **4 GPUs you already
+have 92 local cores**, so the headroom is far smaller:
+
+| | env cores |
+|---|---|
+| local 4-GPU node | 92 |
+| fleet via `test` | <= 112 (QOS `cpu=112` per user, hard) |
+| fleet via `shared`, 8 x 24 | 192 |
+| fleet via `sapphire`, 2 x 112 | 224 |
+
+**`test` cannot help a 4-GPU trainer** — its QOS cap is barely above the local
+allocation. Sizing must come from `shared` or `sapphire`.
+
+### Partition choice: `shared`, not `sapphire`
+
+Both deny `kempner_gershman_lab` but allow `gershman_lab` (which the het group
+already uses). The difference is scheduling:
+
+| | sapphire | shared |
+|---|---|---|
+| nodes / cores | 147 x 112 | 370 x 48 |
+| idle | 6 | 0, but 291 in `mix` |
+| pending ahead | 235 | 180 |
+
+`shared` is built for partial-node CPU allocations, so many small asks backfill
+into the `mix` nodes. A 112-core sapphire request effectively needs a whole free
+node and sat on `(Resources)`. Use **8 nodes x 24 cores**, not 2 x 112.
+
+### Pilot 1 (job 37730449): the plumbing works, the config did not
+
+4-GPU trainer + 1 `test` fleet node, proven remote topology unchanged (batch 64,
+6 workers x 4 groups). Ran clean, no errors — **the 4-GPU fleet handshake is
+validated.** But:
+
+| game | fleet pilot | local 4-GPU |
+|---|---|---|
+| miner | 246,574 | 491,432 |
+| bigfish | 242,478 | 1,064,888 |
+
+**miner ~= bigfish is the tell: that config is LEARNER-bound, not env-bound**, so
+extra fleet cores buy nothing. Two other defects: the trainer landed on
+holygpu8a13401 (a 2.35GHz node, 1.56x penalty — the script had no exclude list),
+and batch 64 is not comparable to the uniform suite's 256.
+
+### The scaled config (`outputs/fleet24_base.json`)
+
+The trainer must be able to CONSUME more than the local cores supply, or the
+fleet is pointless:
+
+    batch_size                 64 -> 256    (== GROUP_SIZE, == uniform suite)
+    vec_workers                 6 -> 12     (== TRAINER_WORKERS)
+    remote_groups_per_worker    4           -> 48 groups x 256 = 12,288 envs
+    learner_gpus                1           (Nature optimum, measured)
+    vec_worker_device      cuda:1,2,3       (never share the learner's GPU)
+
+Fleet: 8 `shared` nodes x 3 workers x 8 threads = 24 fleet workers (the proven
+2-per-trainer-worker ratio), **192 env threads** vs the local node's 75.
+
+Scripts: `benchmarks/fleet24_pilot.sbatch` (2 games) and
+`benchmarks/fleet24_sapphire.sbatch` (24 games; name is stale, it is on `shared`
+now). **Always pilot before the 3h run** — pilot 1 would have wasted it.
+
+### The decision the pilot makes
+
+- miner rises well above 491,432 while bigfish stays near 1,064,888 -> the fleet
+  does what the bimodal analysis predicts; run the full 24 and report the row.
+- both flat and equal again -> the trainer is still the wall at 4 GPUs, the
+  fleet does not help, and **938,973 is the number**. Drop the fleet row rather
+  than chase it.
+
 ## Traps (all previously paid for)
 
 - **`timeout` around `srun` tears down the whole hetjob.** Use `srun --time`.
