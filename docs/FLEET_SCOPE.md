@@ -99,6 +99,36 @@ learner's ceiling**.
 - Cost: 1 hetjob after A/B, plus sizing.
 - Risk: unmeasured. Treat as optional upside.
 
+### Why not 4 learners?
+
+Because **the fleet does not supply inference**. `remote_vec.py`: the remote env
+actors are torch-free and ship observations over TCP; "the worker does batched
+GPU inference for its groups" — on the TRAINER's GPUs. The fleet replaces CPU
+env stepping only.
+
+So the 4 local GPUs must still split between learners and inference workers:
+
+| learners + inference | Nature | IMPALA-CNN |
+|---|---|---|
+| 1 + 3 | **938,973** | 194,001 |
+| 2 + 2 | 909,827 (0.967x) | **353,888** (1.82x) |
+| 3 + 1 | untested | **untested — the one worth trying** |
+| 4 + 0 | impossible | impossible |
+
+4 learners leaves nothing for inference, and putting inference on a learner's GPU
+is the documented `vec_worker_device` trap (roughly halves IMPALA). 3+1 is worth
+measuring for IMPALA-CNN, where the learner is the sole bottleneck; for Nature it
+is the wrong direction, since 2 learners already cost 3.3% by starving
+environment-bound games.
+
+Independent cap: `remote_vec`'s docstring records the fleet's measured aggregate
+at **1.09M SPS across 4 probe shards** (~45.5k per remote actor worker), i.e.
+barely above the ~1.06M one-learner ceiling. **Fleet shards must scale before
+learners do**, or the extra ranks idle.
+
+Genuine 4+ learners needs a multi-node trainer (2 H100 nodes, NCCL across nodes).
+That breaks the paper's "on one GPU node" framing — out of scope.
+
 ## Traps (all previously paid for)
 
 - **`timeout` around `srun` tears down the whole hetjob.** Use `srun --time`.
