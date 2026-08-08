@@ -619,6 +619,22 @@ split should invert between them.
 
 ---
 
+## 11c. Handoff, 2026-08-08
+
+`docs/HANDOFF_2026-08-08.md` — the live threads at the end of that session:
+
+- **Job 37785534** (running): 24 human-study PPO reruns on the IMPALA-CNN
+  encoder, so both arms of `fig:human_wallclock` share one. Includes the exact
+  steps to take when it finishes and what §4.3's crossings will change to.
+- **Impoola + stride-2 stem** (scoped, not started): measured encoder costs,
+  the ~1 h implementation, a two-stage run plan with stage 2 gated on stage 1,
+  and the literature.
+- Outstanding paper edits, cluster traps, and the tools added.
+
+Table 1 is finished: the trainer x encoder 2x2 is 0.94M / 0.35M / 171k / 64k,
+and PPO is 5.5x slower under BOTH encoders (5.50x, 5.51x) -- the gap is
+architectural, not an encoder or tuning artifact.
+
 ## 11b. PPO speed work (2026-08-07)
 
 See `docs/PPO_SPEED_PLAN.md` for the full plan. Headline: PPO's update is 90%
