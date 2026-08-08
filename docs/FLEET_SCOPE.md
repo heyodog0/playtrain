@@ -13,9 +13,34 @@ suite (batch 256, 12 workers):
 | miner (most env-bound) | 512,807 | 491,432 | **1.04x** |
 | bigfish (at the ceiling) | 730,691 | 1,064,888 | **0.69x** |
 
-The remote path ships observations over TCP instead of shared memory, and that
-overhead exceeds what the extra cores recover. miner gains 4% from 2.6x the env
-threads; bigfish loses 31%.
+### Why: the fabric bandwidth ceiling is BELOW local throughput
+
+Every agent step ships a 3x64x64 uint8 frame = **12,288 bytes** over the network.
+At the fabric's measured 10.3 GB/s (`remote_vec.py` docstring constant):
+
+    10.3 GB/s / 12,288 B = 838,216 agent-steps/s   <- hard fleet ceiling
+
+**The local suite already runs at 938,973 = 112% of what the wire can carry.**
+No number of CPU nodes changes that; the frames do not fit.
+
+| | sps | GB/s | % of fabric |
+|---|---|---|---|
+| fleet bigfish | 730,691 | 8.98 | **87% — saturated** |
+| fleet miner | 512,807 | 6.30 | 61% |
+| local geomean | 938,973 | 11.54 | **112% — over the limit** |
+
+bigfish is bandwidth-bound, hence -31%. miner is not (61%); it is limited by
+per-step round-trip latency and slower `shared` cores — its remote env threads
+deliver **2,671 steps/s each vs 6,552 locally**, a 2.4x productivity loss, so
+2.6x the threads bought 4%.
+
+**The rule: the fleet helps only when local throughput is BELOW ~838k.** At 1 GPU
+the partition allows 23 cores and local is ~170k, far under the ceiling — hence
+the genuine 1.66x win on record. At 4 GPUs local is 939k, already above it, so
+the fleet can only lose. Both measurements are correct; the old one simply does
+not generalise to a configuration faster than the network.
+
+Only smaller/compressed observations or a faster interconnect would change this.
 
 Geomean of those ratios is 0.85x, and the suite is dominated by ceiling-bound
 games (13 of 23 at/near 1.06M, only 10 env-bound), so a full run would land near
