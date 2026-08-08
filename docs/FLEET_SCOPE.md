@@ -1,4 +1,39 @@
-# Fleet scope — getting the suite honestly past 1M
+# Fleet scope — RESOLVED: the fleet does not help a 4-GPU trainer
+
+## VERDICT (2026-08-08, job 37735147)
+
+**Do not run the fleet suite. Report 938,973.**
+
+Working multi-node fleet (8 `shared` nodes, 192 env threads vs the local node's
+75, 0 starved workers, stable windows), trainer config matched to the uniform
+suite (batch 256, 12 workers):
+
+| game | fleet | local 4-GPU | |
+|---|---|---|---|
+| miner (most env-bound) | 512,807 | 491,432 | **1.04x** |
+| bigfish (at the ceiling) | 730,691 | 1,064,888 | **0.69x** |
+
+The remote path ships observations over TCP instead of shared memory, and that
+overhead exceeds what the extra cores recover. miner gains 4% from 2.6x the env
+threads; bigfish loses 31%.
+
+Geomean of those ratios is 0.85x, and the suite is dominated by ceiling-bound
+games (13 of 23 at/near 1.06M, only 10 env-bound), so a full run would land near
+**800k — below the 938,973 already measured**.
+
+**This does not contradict the recorded 1.66x fleet win.** That was a 1-GPU
+trainer, which the partition caps at 23 cores; the fleet's 72 were a 3x increase
+that swamped the network cost. At 4 GPUs you already have 92 local cores, so
+there is little to recover and the overhead dominates. **The fleet's value is a
+function of how CPU-starved the local trainer is.**
+
+Everything below is the (now historical) scoping and the three pilots it took to
+get a trustworthy measurement. The tooling fixes are real and worth keeping:
+`--worker-offset` (`8f938b0`) makes the fleet multi-node at all.
+
+---
+
+# Original scope — getting the suite honestly past 1M
 
 Written 2026-08-07, after the topology 2x2 (see `PPO_SPEED_PLAN.md` §0).
 
