@@ -62,8 +62,33 @@ static p5::Color colorFromArgs(JSContext* ctx, int argc, JSValueConst* argv) {
 // threads; envs are stepped by exactly one thread at a time, so a
 // thread-local flag is race-free in both sync (pinned) and async modes.
 static thread_local bool g_nodraw = false;
+// Draw-call instrumentation. OFF by default and gated on a plain bool, so a
+// normal run pays one predictable branch per p5 draw binding and nothing else;
+// the counter itself is only touched while counting. Counting a game's calls
+// makes the env-cost model testable rather than merely descriptive -- without
+// it, an operation count for a real game can only be read backwards out of the
+// timing it is supposed to predict.
+static bool g_count_draws = false;
+static std::atomic<unsigned long long> g_draw_calls{0};
+
+// PER-BINDING counts. A single total is not enough to price a game's drawing:
+// the bindings do not cost the same (a quad() carries eight coordinates and an
+// arbitrary polygon; a rect() four and an axis-aligned box), so charging every
+// command one average rate mis-attributes the difference to "game logic".
+// Registration is via a function-local static in the NODRAW macro, so each
+// binding claims a slot the first time it runs and no call site changes.
+#define DC_MAX 32
+static std::atomic<unsigned long long> g_dc[DC_MAX];
+static const char* g_dc_name[DC_MAX];
+static std::atomic<int> g_dc_n{0};
+static int dc_register(const char* name) {
+  int i = g_dc_n.fetch_add(1, std::memory_order_relaxed);
+  if (i >= DC_MAX) return DC_MAX - 1;
+  g_dc_name[i] = name;
+  return i;
+}
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
-#define NODRAW if (g_nodraw) return JS_UNDEFINED;
+#define NODRAW static const int _dc_idx = dc_register(__func__); if (g_count_draws) { g_draw_calls.fetch_add(1, std::memory_order_relaxed); g_dc[_dc_idx].fetch_add(1, std::memory_order_relaxed); } if (g_nodraw) return JS_UNDEFINED;
 
 // Command-buffer recording (PLAYTRAIN_QJS_CMDBUF=1): the context carries a
 // p5cb::Buf; draw bindings append resolved args and return, and the host
@@ -880,6 +905,32 @@ void vec_step_q(void* h, const uint16_t* qacts, uint8_t* obs,
 void vec_set_frame_skip(void* h, int k) {
   VecHost* H = (VecHost*)h;
   H->frame_skip = k > 1 ? k : 1;
+}
+
+// Draw-call counting: enable, read, reset. Counts every call into one of the
+// NODRAW-guarded p5 bindings (background/rect/ellipse/circle/arc/triangle/quad/
+// line/vertex/image/stroke), across all envs, so the caller divides by
+// steps*num_envs to get calls per frame.
+void vec_set_count_draws(int on) { g_count_draws = on != 0; }
+unsigned long long vec_get_draw_calls() {
+  return g_draw_calls.load(std::memory_order_relaxed);
+}
+void vec_reset_draw_calls() {
+  g_draw_calls.store(0, std::memory_order_relaxed);
+  for (int i = 0; i < DC_MAX; i++) g_dc[i].store(0, std::memory_order_relaxed);
+}
+
+// Per-binding readout. Slots are claimed lazily, so a binding that has never
+// run has no name; the caller stops at vec_draw_kinds().
+int vec_draw_kinds() {
+  int n = g_dc_n.load(std::memory_order_relaxed);
+  return n > DC_MAX ? DC_MAX : n;
+}
+const char* vec_draw_name(int i) {
+  return (i >= 0 && i < DC_MAX && g_dc_name[i]) ? g_dc_name[i] : "";
+}
+unsigned long long vec_draw_count(int i) {
+  return (i >= 0 && i < DC_MAX) ? g_dc[i].load(std::memory_order_relaxed) : 0;
 }
 
 // Enable render-skip (see VecHost.render_skip). Requires autoreset; the
