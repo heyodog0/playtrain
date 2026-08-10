@@ -1,0 +1,100 @@
+{
+ "rows": [
+  {
+   "artifact": "breakout.multi",
+   "calls": 3,
+   "tokens_in": 5292,
+   "tokens_out": 4644,
+   "minutes": 2.3,
+   "cost_usd": 0.07,
+   "files": [
+    "20260725-090811_breakout.multi_variant.json",
+    "20260725-090941_breakout.multi_refine.json",
+    "20260725-095435_breakout.multi_refine.json"
+   ]
+  },
+  {
+   "artifact": "qbert.v2",
+   "calls": 2,
+   "tokens_in": 8459,
+   "tokens_out": 10228,
+   "minutes": 5.5,
+   "cost_usd": 0.14,
+   "files": [
+    "20260702-054855_qbert.v1_variant.json",
+    "20260702-055236_qbert.v2_variant.json"
+   ]
+  },
+  {
+   "artifact": "flappy_bird.dunk2",
+   "calls": 5,
+   "tokens_in": 13204,
+   "tokens_out": 10780,
+   "minutes": 7.5,
+   "cost_usd": 0.16,
+   "files": [
+    "20260702-064850_flappy_bird.dunk2_variant.json",
+    "20260702-065633_flappy_bird.dunk2_refine.json",
+    "20260702-065954_flappy_bird.dunk2_refine.json",
+    "20260702-070003_flappy_bird.dunk2_refine.json",
+    "20260702-070043_flappy_bird.dunk2_refine.json"
+   ]
+  },
+  {
+   "artifact": "frostbite.jungle",
+   "calls": 8,
+   "tokens_in": 24932,
+   "tokens_out": 25434,
+   "minutes": 10.9,
+   "cost_usd": 0.36,
+   "files": [
+    "20260701-195758_frostbite.jungle_variant.json",
+    "20260701-200101_frostbite.jungle_refine.json",
+    "20260701-200506_frostbite.jungle_refine.json",
+    "20260701-201417_frostbite.jungle_refine.json",
+    "20260701-202250_frostbite.jungle_refine.json",
+    "20260701-202417_frostbite.jungle_refine.json",
+    "20260701-202434_frostbite.jungle_refine.json",
+    "20260701-202621_frostbite.jungle_refine.json"
+   ]
+  },
+  {
+   "artifact": "vvvvvv",
+   "calls": 2,
+   "tokens_in": 4797,
+   "tokens_out": 3283,
+   "minutes": 2.3,
+   "cost_usd": 0.05,
+   "files": [
+    "20260413-192644_vvvvvv_generate.json",
+    "20260725-145249_vvvvvv_refine.json"
+   ]
+  },
+  {
+   "artifact": "downwell_fresh",
+   "calls": 6,
+   "tokens_in": 14234,
+   "tokens_out": 12837,
+   "minutes": 5.9,
+   "cost_usd": 0.18,
+   "files": [
+    "20260725-143518_downwell_fresh_generate.json",
+    "20260725-143742_downwell_fresh_refine.json",
+    "20260725-144422_downwell_fresh_refine.json",
+    "20260725-144611_downwell_fresh_refine.json",
+    "20260725-144835_downwell_fresh_refine.json",
+    "20260725-145106_downwell_fresh_refine.json"
+   ]
+  }
+ ],
+ "total": {
+  "calls": 26,
+  "tokens_in": 70918,
+  "tokens_out": 67206,
+  "minutes": 34.4,
+  "cost_usd": 0.95
+ },
+ "rate_in": 2.0,
+ "rate_out": 12.0,
+ "missing": []
+}
