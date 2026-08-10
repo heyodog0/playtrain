@@ -135,20 +135,39 @@ the whole result — drawn as two separate lines it would look like a bug.
 | `tab:envcost` | `analogen tools/mktab_envcost.py outputs/percmd.json` | **verified** — regenerated from a clean clone, byte-identical to the paper for all 29 rows. Writes `outputs/figs/tab_envcost.tex`. |
 | `tab:encoder-cost` | `playtrain-trainers/tools/bench_encoders.py` | recomputes from scratch; MMACs/params run anywhere, the timing columns need an H100. No saved output JSON. |
 | `tab:llm-cost` | `uv run --with google-genai python -m playtrain.gen.count_tokens` | **verified** — all six rows reproduce exactly from the restored logs. Writes `results/llm_cost.json` + `tab_llm_cost.tex`. Needs `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). |
-| `tab:train-throughput` | `playtrain-trainers/benchmarks/mktab_train_throughput.py` | **environment-swap block derived and verified** (618k / 372k / 873k / 175k, 1.66x and 4.99x) from `logs/*.verdict`. The four trainer x encoder rows are still declared constants — see Open. |
+| `tab:train-throughput` | `playtrain-trainers/benchmarks/mktab_train_throughput.py` | **fully derived, every row reproduces.** Swap block from `logs/*.verdict`, trainer x encoder block from `results/topology/`. **But the rows do not share a basis — see Open.** |
 | `tab:contrast`, `tab:hyperparams` | hand-written | qualitative / config. `tab:hyperparams` still wants a re-read now that both trainers are IMPALA-CNN everywhere. |
 
 ---
 
 ## Open
 
-- **The four trainer x encoder rows of `tab:train-throughput`** (0.94M / 0.35M /
-  171k / 64k) are still declared constants in the emitter. They came from a
-  topology sweep whose per-run outputs were never collected; partials survive as
-  `analogen-jaxbench/outputs/icnn_l2_37723136.json`, `icnn_l3_37723136.json` and
-  `_ppo_icf_icnn_*`. Finishing that sweep is the standing "topology 2x2" task.
-  Note `PROJECT_STATE.md` says 0.98M for IMPALA+Nature where the table says
-  0.94M — reconcile when the sweep is collected.
+- **`tab:train-throughput`'s caption is wrong about one row.** It says "Every
+  figure is a geometric mean over the 24 games". Traced 2026-08-10, all four
+  rows now derive exactly, but on three different bases:
+
+  | row | value | games |
+  |---|---|---|
+  | IMPALA, Nature | 938,973 -> 0.94M | **24** (16 ProcGen 907,580 + 8 ALE 1,005,056) |
+  | IMPALA, IMPALA-CNN | 349,027 -> 0.35M | **15** — ProcGen only, minus `miner` |
+  | PPO, Nature | 170,805 -> 171k | **24** |
+  | PPO, IMPALA-CNN | 64,202 -> 64k | **24** |
+
+  `miner` failed in the DDP2 run (`suite_icnn_ddp2_37713531`, 11/16) and again
+  in the retry (`suite_icnn_retry_37722252`, 4/5), and **no ALE game was ever
+  measured under IMPALA-CNN.** Finishing that is the standing "topology 2x2"
+  task; one game plus the 8 ALE games would close it.
+
+  **The claim survives, the caption does not.** On the 15 games both encoders
+  cover, Nature is 945,467 against IMPALA-CNN's 349,027 = **2.71x**, where the
+  table's two numbers imply 2.69x — the mixed basis does not distort it. Same
+  for the trainer gap: 5.50x under Nature, 5.49x under IMPALA-CNN. Either
+  qualify the caption or finish the sweep.
+
+- **`PROJECT_STATE.md` section 7 says 0.98M** for trained Nature throughput
+  where the table says 0.94M. The table is right: 938,973 over 24 games, and
+  section 11 of the same file quotes "939k". The 0.98M line is labelled
+  "double-buffered" and is a different, older measurement. Fix the glossary row.
 - Two hand-drawn figures have no source (above).
 
 ### Closed 2026-08-10
