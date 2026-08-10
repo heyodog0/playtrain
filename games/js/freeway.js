@@ -129,9 +129,9 @@ function resetGame(seed) {
 
   for (let i = 0; i < numLanes; i++) {
     let laneY = startY + i * laneHeight;
-    let speed = 1.5 + rng() * 3.5; // Speed 1.5 to 5.0
+    let speed = 1.0 + rng() * 2.0; // Speed 1.0 to 3.0 (Slower cars)
     let dir = rng() > 0.5 ? 1 : -1;
-    let numCars = Math.floor(rng() * 3) + 1; // 1 to 3 cars per lane
+    let numCars = Math.floor(rng() * 2) + 1; // 1 to 2 cars per lane (Easier)
     let carLen = 30 + rng() * 40; // Length 30 to 70
     let spacing = width / numCars;
 

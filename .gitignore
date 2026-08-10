@@ -21,6 +21,11 @@ dist/
 *.log
 outputs/
 logs/
+# ...but tab:llm-cost is tokenized from games/logs/ by gen/count_tokens.py, so
+# the logs for a paper artifact must be force-added (`git add -f`) or the table
+# stops being checkable.
+# Refine writes a timestamped copy of the previous file here on every edit.
+games/backups/
 
 # Rust build artifacts (rasterizer crate); the built .wasm is committed at runtime/p5/
 target/

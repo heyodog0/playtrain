@@ -64,12 +64,12 @@ function resetGame(seed) {
 
   let grid = Array(20).fill().map(() => Array(20).fill(false));
 
-  // Build borders
+  // Build borders (made thicker: 10px)
   for (let i = 0; i < 20; i++) {
-    addBlock(i * TILE_SIZE, 0, grid, i, 0);                    // Top
-    addBlock(i * TILE_SIZE, 19 * TILE_SIZE, grid, i, 19);      // Bottom
-    addBlock(0, i * TILE_SIZE, grid, 0, i);                    // Left
-    addBlock(19 * TILE_SIZE, i * TILE_SIZE, grid, 19, i);      // Right
+    addBlock(i * TILE_SIZE, 0, TILE_SIZE, 10, grid, i, 0);                    // Top
+    addBlock(i * TILE_SIZE, 19 * TILE_SIZE + 10, TILE_SIZE, 10, grid, i, 19); // Bottom
+    addBlock(0, i * TILE_SIZE, 10, TILE_SIZE, grid, 0, i);                    // Left
+    addBlock(19 * TILE_SIZE + 10, i * TILE_SIZE, 10, TILE_SIZE, grid, 19, i); // Right
   }
 
   // Pre-calculate gap positions for each floor to prevent blocking paths
@@ -85,13 +85,14 @@ function resetGame(seed) {
     floorGaps[y] = { gapX, gapWidth };
   }
 
-  // Generate cavern platforms with gaps
+  // Generate cavern platforms with gaps (floors are 10px tall)
   for (let y = 16; y >= 4; y -= 3) {
     let { gapX, gapWidth } = floorGaps[y];
 
-    for (let x = 1; x < 19; x++) {
+    // Extend floor bounds to 0..20 so they seamlessly connect to the left and right walls
+    for (let x = 0; x < 20; x++) {
       if (x < gapX || x >= gapX + gapWidth) {
-        addBlock(x * TILE_SIZE, y * TILE_SIZE, grid, x, y);
+        addBlock(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, 10, grid, x, y);
       }
     }
 
@@ -101,20 +102,19 @@ function resetGame(seed) {
       coins.push({ x: (gapX + 1) * TILE_SIZE + 6, y: (y - 1) * TILE_SIZE + 6, w: 8, h: 8 });
     }
 
-    // Occasional spikes on the edges of gaps
+    // Occasional spikes anywhere on the generated floors
     let spikeCount = 0;
     for (let x = 1; x < 19; x++) {
       if (grid[y][x] && !grid[y - 1][x]) {
-        if (x === gapX - 1 || x === gapX + gapWidth) {
-          if (rng() < 0.25 && spikeCount < 1) {
-            spikes.push({ x: x * TILE_SIZE + 2, y: y * TILE_SIZE - 8, w: 16, h: 8 });
-            spikeCount++;
-          }
+        // Randomly place spikes instead of only targeting the ledges
+        if (rng() < 0.15 && spikeCount < 2) {
+          spikes.push({ x: x * TILE_SIZE + 2, y: y * TILE_SIZE - 5, w: 16, h: 5 });
+          spikeCount++;
         }
       }
     }
 
-    // Vertical dividers to create a maze-like structure
+    // Vertical dividers to create a maze-like structure (dividers are 10px wide)
     if (y > 4) {
       let nextGap = floorGaps[y - 3];
       if (rng() < 0.5) {
@@ -125,8 +125,8 @@ function resetGame(seed) {
         let maxX = 18;
         if (maxX > minX) {
           let divX = minX + Math.floor(rng() * (maxX - minX));
-          addBlock(divX * TILE_SIZE, (y - 1) * TILE_SIZE, grid, divX, y - 1);
-          addBlock(divX * TILE_SIZE, (y - 2) * TILE_SIZE, grid, divX, y - 2);
+          // Span the entire gap between floors visually and physically
+          addBlock(divX * TILE_SIZE + 5, (y - 3) * TILE_SIZE + 10, 10, TILE_SIZE * 3 - 10, grid, divX, y - 1);
         }
       } else {
         // Divider on the left side of the gap
@@ -136,8 +136,8 @@ function resetGame(seed) {
         maxX = Math.min(maxX, nextGap.gapX - 1);
         if (maxX > minX) {
           let divX = minX + Math.floor(rng() * (maxX - minX));
-          addBlock(divX * TILE_SIZE, (y - 1) * TILE_SIZE, grid, divX, y - 1);
-          addBlock(divX * TILE_SIZE, (y - 2) * TILE_SIZE, grid, divX, y - 2);
+          // Span the entire gap between floors visually and physically
+          addBlock(divX * TILE_SIZE + 5, (y - 3) * TILE_SIZE + 10, 10, TILE_SIZE * 3 - 10, grid, divX, y - 1);
         }
       }
     }
@@ -146,7 +146,7 @@ function resetGame(seed) {
   // Player starts at bottom
   player = {
     x: 40,
-    y: 19 * TILE_SIZE - 16, // rests exactly on bottom floor (y=19)
+    y: 19 * TILE_SIZE + 10 - 16, // rests exactly on bottom floor
     w: 12,
     h: 16,
     vx: 0,
@@ -178,8 +178,8 @@ function mulberry32(seed) {
 // GAME LOGIC & RENDERING
 // ============================================================
 
-function addBlock(x, y, grid, gx, gy) {
-  solidBlocks.push({ x, y, w: TILE_SIZE, h: TILE_SIZE });
+function addBlock(x, y, w, h, grid, gx, gy) {
+  solidBlocks.push({ x, y, w, h });
   grid[gy][gx] = true;
 }
 
@@ -292,4 +292,3 @@ function renderEnvironment() {
   fill(76, 175, 80);
   rect(player.x, player.y, player.w, player.h);
 }
-
