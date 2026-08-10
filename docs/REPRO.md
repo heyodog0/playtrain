@@ -107,10 +107,23 @@ A `lstlisting` inline in the `.tex`, abridged from `examples/games/js/bigfish.js
 
 ### `fig:vec_scaling` — `figures/fig_vec_scaling24.pdf`
 
-**Not reproducible. No generator, no data, anywhere.** The only trace is job
-`36696921` in `PROJECT_STATE.md`. This is the figure whose loss prompted the
-human-study pipeline to be committed in the first place, and it was never
-recovered.
+```sh
+# playtrain-trainers
+python benchmarks/plot_vec_scaling24.py          # --job 36696921 by default
+```
+
+**Recovered 2026-08-10.** The original plotter is still lost, but the
+measurements were never lost — they were sitting in the cluster working tree,
+untracked. `results/vec_scaling24_<game>_36696921.json` (24 games x 7 worker
+counts), the job script `benchmarks/bench_vec_scaling24.sbatch`, and the job's
+own stdout are now committed, and `plot_vec_scaling24.py` redraws the figure
+from them. It reproduces the job's summary line for line: 148,083 env-steps/s
+at 1 worker to 2,339,129 at 16, efficiency >=99% throughout, 24 games at every
+worker count.
+
+The redraw keeps the original's linear axes and adds one thing: perfect scaling
+as a wide grey halo under the measured line. At >=99% the two coincide, which is
+the whole result — drawn as two separate lines it would look like a bug.
 
 ---
 
@@ -121,30 +134,35 @@ recovered.
 | `tab:eval` | `playtrain-paper/results/eval_iddp_suite.json` | **verified** — all 24 rows re-checked against the JSON 2026-08-10, 0 mismatches. Produced by `tools/eval_final_agents.py`; transcribed by hand (no emitter). |
 | `tab:envcost` | `analogen tools/mktab_envcost.py outputs/percmd.json` | **verified** — regenerated from a clean clone, byte-identical to the paper for all 29 rows. Writes `outputs/figs/tab_envcost.tex`. |
 | `tab:encoder-cost` | `playtrain-trainers/tools/bench_encoders.py` | recomputes from scratch; MMACs/params run anywhere, the timing columns need an H100. No saved output JSON. |
-| `tab:llm-cost` | `playtrain/src/playtrain/gen/count_tokens.py` over `games/logs/` | **3 of 6 rows unverifiable** — see Open. |
-| `tab:train-throughput` | — | **no emitter and no data file.** The numbers exist only as prose in `PROJECT_STATE.md`. `plot_train_throughput.py` is a different artifact with hardcoded dicts. |
+| `tab:llm-cost` | `uv run --with google-genai python -m playtrain.gen.count_tokens` | **verified** — all six rows reproduce exactly from the restored logs. Writes `results/llm_cost.json` + `tab_llm_cost.tex`. Needs `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). |
+| `tab:train-throughput` | `playtrain-trainers/benchmarks/mktab_train_throughput.py` | **environment-swap block derived and verified** (618k / 372k / 873k / 175k, 1.66x and 4.99x) from `logs/*.verdict`. The four trainer x encoder rows are still declared constants — see Open. |
 | `tab:contrast`, `tab:hyperparams` | hand-written | qualitative / config. `tab:hyperparams` still wants a re-read now that both trainers are IMPALA-CNN everywhere. |
 
 ---
 
 ## Open
 
-- **Human study raw data is on one laptop.** `playtrain/dist/study-data`, 30
-  sessions, 6.2 MB, gitignored via `dist/`. It is the only copy of data behind a
-  main-text figure and every number in 4.3, and unlike a training run it cannot
-  be regenerated. It carries pseudonymous Prolific IDs, user agents, screen
-  geometry and consent records — no names or emails. Needs a deliberate decision
-  about where it is allowed to live before it is committed anywhere.
-- **`tab:llm-cost`: logs for `qbert.v2`, `flappy_bird.dunk2` and
-  `frostbite.jungle` are not on this machine at all.** `games/logs/` is
-  gitignored wholesale, so only 18 force-added files survive and those three
-  artifacts' rows cannot be re-tokenized. Check the cluster and the mini before
-  assuming they are gone. New logs are invisible to git by default — force-add
-  any log a paper artifact depends on.
-- **`fig:vec_scaling` is unreproducible** (above). Either re-run the sweep or
-  drop the figure.
-- **`tab:train-throughput` has no checkable provenance** (above).
+- **The four trainer x encoder rows of `tab:train-throughput`** (0.94M / 0.35M /
+  171k / 64k) are still declared constants in the emitter. They came from a
+  topology sweep whose per-run outputs were never collected; partials survive as
+  `analogen-jaxbench/outputs/icnn_l2_37723136.json`, `icnn_l3_37723136.json` and
+  `_ppo_icf_icnn_*`. Finishing that sweep is the standing "topology 2x2" task.
+  Note `PROJECT_STATE.md` says 0.98M for IMPALA+Nature where the table says
+  0.94M — reconcile when the sweep is collected.
 - Two hand-drawn figures have no source (above).
+
+### Closed 2026-08-10
+
+- Human study raw data — committed (`playtrain/dist/study-data`, 30 sessions).
+  Pseudonymous Prolific IDs, user agents, screen geometry, consent records; no
+  names or emails; private repo.
+- `tab:llm-cost` — the logs for `qbert.v2`, `flappy_bird.dunk2` and
+  `frostbite.jungle` were never lost. They were in git history at `3e60695`,
+  reachable but not on any branch tip, dropped by a history rewrite. All 143 are
+  restored and force-added, all six rows reproduce, and the union of call counts
+  matches the paper exactly. **`games/logs/` is still gitignored — force-add any
+  log a paper artifact depends on.**
+- `fig:vec_scaling` — recovered (above).
 
 ## The rule this file exists to enforce
 
