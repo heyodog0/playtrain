@@ -137,6 +137,7 @@ globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
+globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
 Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
 )JS";
 
@@ -196,11 +197,11 @@ int main(int argc, char** argv) {
 
   std::vector<uint8_t> obs((size_t)OBS * OBS * 3);
   auto obshash = [&]() -> uint64_t { p5::render_obs_rgb(obs.data()); uint64_t h = 1469598103934665603ULL; for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; } return h; };
-  // Discrete action table (shared with qjs_vec_host via action_table.hpp;
-  // press semantics — down for the frame AND keyPressed() fired — documented
-  // there). default8 unless PLAYTRAIN_QJS_ACTIONS holds a JSON action array
-  // (the action_spaces.json entry format), which qjs_env.py sets when a
-  // non-default space is requested.
+  // Discrete action table + optional box input map (shared with qjs_vec_host
+  // via action_table.hpp; press/pointer semantics documented there).
+  // default8 unless PLAYTRAIN_QJS_ACTIONS holds a JSON action array (the
+  // action_spaces.json entry format); PLAYTRAIN_QJS_INPUT_MAP (a JSON channel
+  // array) enables the quantized box path. qjs_env.py sets these.
   ActionTable ACT;
   ACT.installDefault8();
   if (const char* aj = getenv("PLAYTRAIN_QJS_ACTIONS")) {
@@ -208,20 +209,56 @@ int main(int argc, char** argv) {
       fprintf(stderr, "qjs_host: bad PLAYTRAIN_QJS_ACTIONS, keeping default8\n");
     }
   }
+  InputMap IMAP;
+  bool boxMode = false;
+  if (const char* mj = getenv("PLAYTRAIN_QJS_INPUT_MAP")) {
+    if (inputMapFromJSON(ctx, mj, IMAP)) boxMode = true;
+    else fprintf(stderr, "qjs_host: bad PLAYTRAIN_QJS_INPUT_MAP, box path disabled\n");
+  }
   auto action_at = [&](long i) { return (int)((i * 3 + 1) % ACT.n); };
   JSValue jsKeyPressed = JS_GetPropertyStr(ctx, g, "keyPressed");
   bool hasKeyPressed = JS_IsFunction(ctx, jsKeyPressed);
+  JSValue jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
+  bool hasMousePressed = JS_IsFunction(ctx, jsMousePressed);
+  uint32_t prevButtons = 0;
 
-  auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
-    a = ACT.clamp(a);
-    int codes[16];
-    int n = ACT.codesFor(a, codes);
-    p5::setKeysDown(codes, n);
-    int pk = ACT.pressFor(a);
-    if (pk >= 0) {
-      JS_SetPropertyStr(ctx, g, "keyCode", JS_NewInt32(ctx, pk));
+  // Mirrors env_apply_frame in qjs_vec_host.cpp (keep the two in lockstep).
+  auto applyFrame = [&](const InputFrame& f) {
+    p5::setKeysDown(f.codes, f.ncodes);
+    if (f.press >= 0) {
+      JS_SetPropertyStr(ctx, g, "keyCode", JS_NewInt32(ctx, f.press));
       if (hasKeyPressed) call0(jsKeyPressed);
     }
+    if (f.set_pointer) {
+      JS_SetPropertyStr(ctx, g, "mouseX", JS_NewFloat64(ctx, (f.qx / 65535.0) * p5::width()));
+      JS_SetPropertyStr(ctx, g, "mouseY", JS_NewFloat64(ctx, (f.qy / 65535.0) * p5::height()));
+    }
+    if (f.set_pointer || f.buttons || prevButtons) {
+      JS_SetPropertyStr(ctx, g, "mouseIsPressed", JS_NewBool(ctx, (f.buttons & 1u) ? 1 : 0));
+      if ((f.buttons & 1u) && !(prevButtons & 1u) && hasMousePressed) call0(jsMousePressed);
+      prevButtons = f.buttons;
+    }
+    if (f.set_axes) {
+      JSValue arr = JS_NewArray(ctx);
+      for (int j = 0; j < 4; j++)
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)j,
+                             JS_NewFloat64(ctx, (f.qaxes[j] / 65535.0) * 2.0 - 1.0));
+      JS_SetPropertyStr(ctx, g, "gamepadAxes", arr);
+    }
+  };
+  auto resetPointerState = [&]() {
+    if (!ACT.any_analog && !boxMode) return;
+    prevButtons = 0;
+    JS_SetPropertyStr(ctx, g, "mouseX", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, g, "mouseY", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, g, "mouseIsPressed", JS_NewBool(ctx, 0));
+  { JSValue arr = JS_NewArray(ctx);
+    for (int j = 0; j < 4; j++) JS_SetPropertyUint32(ctx, arr, (uint32_t)j, JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, g, "gamepadAxes", arr); }
+  };
+
+  // Tick + state readback shared by the discrete and box step paths.
+  auto tickEnv = [&](double& score, double& lives, bool& term, const char*& name) {
     setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
     // read state
     JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
@@ -231,6 +268,26 @@ int main(int argc, char** argv) {
     static char last[32]; last[0]=0; if (s) { strncpy(last, s, 31); last[31]=0; }
     term = last[0] && (!strcmp(last,"WIN")||!strcmp(last,"EXIT")||!strcmp(last,"GAMEOVER"));
     name = last; JS_FreeCString(ctx, s); JS_FreeValue(ctx, gs); JS_FreeValue(ctx, st);
+  };
+
+  auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
+    InputFrame f;
+    ACT.frameFor(ACT.clamp(a), f);
+    applyFrame(f);
+    tickEnv(score, lives, term, name);
+  };
+  auto stepEnvQ = [&](const uint16_t* q, double& score, double& lives, bool& term, const char*& name) {
+    InputFrame f;
+    IMAP.frameFor(q, f);
+    applyFrame(f);
+    tickEnv(score, lives, term, name);
+  };
+  // Deterministic wire values for the traceq differential gate; MUST match
+  // qActionAt in native/reference_trace.mjs (uint32 wrap == Math.imul).
+  auto q_at = [](long i, int j) -> uint16_t {
+    // Mix i and j BEFORE hashing so channels are decorrelated (same-hash XOR
+    // constants would pin pointer x/y to a 1-D curve and starve coverage).
+    return (uint16_t)(((uint32_t)(i * 33 + j + 1) * 2654435761u) >> 16);
   };
 
   auto gsIdx = [](const char* s) -> uint8_t {
@@ -244,7 +301,7 @@ int main(int argc, char** argv) {
     // caught loudly. This is the safety net for the whole-frame-skip optimization.
     auto runN = [&](bool dirty, std::vector<uint64_t>& out) {
       p5::setDirty(dirty);
-      p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+      p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
       resetGame(seed); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
       out.clear();
       double sc, lv; bool term; const char* nm;
@@ -270,7 +327,7 @@ int main(int argc, char** argv) {
     // Measure the dirty-rect ceiling: what fraction of obs pixels change frame-to-frame?
     const size_t N = (size_t)OBS * OBS * 3;
     std::vector<uint8_t> prev(N), cur(N);
-    p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+    p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
     resetGame(seed); setFrame(++frameCount); call0(jsDraw);
     p5::render_obs_rgb(prev.data());
     double sumFrac = 0; long cnt = 0, identical = 0;
@@ -291,11 +348,14 @@ int main(int argc, char** argv) {
   if (!strcmp(mode, "serve")) {
     // Binary request/response protocol for the Python env (qjs_env.py).
     //  request  (5 bytes): [cmd:u8][arg:i32le]   cmd 0=reset(arg=seed) 1=step(arg=action) 2=close
+    //                      cmd 3=step_q: followed by n_channels u16le wire
+    //                      values (box path; needs PLAYTRAIN_QJS_INPUT_MAP)
     //  response: [reward:f64][term:u8][trunc:u8][gs:u8][score:f64][lives:f64] + obs(OBS*OBS*3)
     const int maxSteps = 2000;
     long steps = 0; double lastScore = 0;
     const size_t OBSN = (size_t)OBS * OBS * 3;
     std::vector<uint8_t> resp(27 + OBSN);
+    std::vector<uint16_t> qbuf(boxMode ? IMAP.n : 0);
     freopen(nullptr, "rb", stdin); freopen(nullptr, "wb", stdout);
     unsigned char req[5];
     while (fread(req, 1, 5, stdin) == 5) {
@@ -303,8 +363,13 @@ int main(int argc, char** argv) {
       int32_t arg; memcpy(&arg, req + 1, 4);
       if (cmd == 2) break;  // close
       double reward = 0, score = 0, lives = 0; uint8_t term = 0, trunc = 0; const char* name = "PLAYING";
-      if (cmd == 0) {  // reset
-        p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+      if (cmd == 3) {  // step_q (box path)
+        if (!boxMode || fread(qbuf.data(), 2, IMAP.n, stdin) != (size_t)IMAP.n) break;
+        bool t; stepEnvQ(qbuf.data(), score, lives, t, name); steps++;
+        term = t ? 1 : 0; trunc = (!t && steps >= maxSteps) ? 1 : 0;
+        reward = score - lastScore; lastScore = score;
+      } else if (cmd == 0) {  // reset
+        p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
         resetGame((uint32_t)arg); setFrame(++frameCount); call0(jsDraw);
         JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
         JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx, &score, sc); JS_FreeValue(ctx, sc);
@@ -330,6 +395,48 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  if (!strcmp(mode, "traceq")) {
+    // Differential gate for the quantized box path: identical structure to
+    // `trace`, but steps through PLAYTRAIN_QJS_INPUT_MAP with the q_at wire
+    // formula. Compare with reference_trace.mjs under PLAYTRAIN_INPUT_MAP.
+    if (!boxMode) { fprintf(stderr, "traceq needs PLAYTRAIN_QJS_INPUT_MAP\n"); return 1; }
+    auto jsnum = [&](double v, char* out, size_t n) {
+      JSValue jv = JS_NewFloat64(ctx, v);
+      const char* s = JS_ToCString(ctx, jv);
+      snprintf(out, n, "%s", s ? s : "?");
+      JS_FreeCString(ctx, s); JS_FreeValue(ctx, jv);
+    };
+    char sbuf[40], lbuf[40], rbuf[40];
+    p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
+    resetGame(seed); setFrame(++frameCount); call0(jsDraw);
+    double score, lives; { JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
+      JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&score,sc); JS_FreeValue(ctx,sc);
+      JSValue lv = JS_GetPropertyStr(ctx, st, "lives"); JS_ToFloat64(ctx,&lives,lv); JS_FreeValue(ctx,lv);
+      JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
+      jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
+      printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
+      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
+    double lastScore = score;
+    std::vector<uint16_t> qv(IMAP.n);
+    for (long i = 0; i < nsteps; i++) {
+      for (int j = 0; j < IMAP.n; j++) qv[j] = q_at(i, j);
+      bool term; const char* name;
+      stepEnvQ(qv.data(), score, lives, term, name);
+      char abuf[256]; int off = 0;
+      for (int j = 0; j < IMAP.n; j++)
+        off += snprintf(abuf + off, sizeof(abuf) - off, "%s%u", j ? "," : "", (unsigned)qv[j]);
+      jsnum(score - lastScore, rbuf, sizeof rbuf); jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
+      printf("%ld q=%s reward=%s term=%d trunc=0 score=%s lives=%s state=%s obshash=%llu\n",
+             i, abuf, rbuf, term ? 1 : 0, sbuf, lbuf, name, (unsigned long long)obshash());
+      lastScore = score;
+      if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
+        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
+    }
+    JS_FreeValue(ctx, jsSetup); JS_FreeValue(ctx, jsReset); JS_FreeValue(ctx, jsDraw); JS_FreeValue(ctx, jsState);
+    JS_FreeValue(ctx, g); JS_FreeContext(ctx); JS_FreeRuntime(rt);
+    return 0;
+  }
+
   if (!strcmp(mode, "trace")) {
     // Print doubles ECMAScript-style (shortest roundtrip, like V8's template
     // literals in reference_trace.mjs) — printf %g truncates to 6 significant
@@ -344,7 +451,7 @@ int main(int argc, char** argv) {
     };
     char sbuf[40], lbuf[40], rbuf[40];
     // reset(seed)
-    p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+    p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
     resetGame(seed); setFrame(++frameCount); call0(jsDraw);
     double score, lives; { JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr);
       JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&score,sc); JS_FreeValue(ctx,sc);
@@ -366,11 +473,11 @@ int main(int argc, char** argv) {
       // (setKeysDown([])) — otherwise the first post-reset tick runs with the
       // previous action's keys still held and ship state drifts from the V8
       // reference (surfaced as post-episode-1 divergence in the asteroids gate).
-      if (term) { p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
+      if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
         JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
     }
   } else {  // bench
-    p5::setKeysDown(nullptr, 0); frameCount = 0; setFrame(0);
+    p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
     resetGame(1); setFrame(++frameCount); call0(jsDraw);
     auto t0 = std::chrono::steady_clock::now();
     uint32_t rs = 2;

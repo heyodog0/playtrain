@@ -19,7 +19,8 @@ from gymnasium import spaces
 
 # Bundled example games that ship with the repo.
 from playtrain._paths import asset as _asset
-from playtrain.runtime.action_space import is_default, load_action_space
+from playtrain.runtime.action_space import (
+    is_default, load_space_spec, quantize_box_actions)
 DEFAULT_GAMES_DIR = _asset("examples/games/js")
 
 # Bundled JS runtime (game-worker.mjs + p5/ shim).
@@ -133,11 +134,21 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         else:
             self._channels = frame_stack
 
-        # Discrete action space: default8 unless a name / .json path / action
-        # list is given (see playtrain.runtime.action_space). A non-default
-        # space is forwarded to the worker as --action-space.
-        self._actions = load_action_space(action_space)
-        self.action_space = spaces.Discrete(len(self._actions))
+        # Action space: default8 unless a name / .json path / action list /
+        # box dict is given (see playtrain.runtime.action_space). A non-default
+        # table is forwarded to the worker as --action-space; a box space as
+        # --input-map, stepped with quantized wire values via "stepq".
+        spec = load_space_spec(action_space)
+        if spec["type"] == "box":
+            self._actions = None
+            self._box_channels = spec["channels"]
+            low = np.array([0.0 if c.startswith("pointer") else -1.0
+                            for c in self._box_channels], dtype=np.float32)
+            self.action_space = spaces.Box(low, np.ones(len(self._box_channels), np.float32))
+        else:
+            self._actions = spec["actions"]
+            self._box_channels = None
+            self.action_space = spaces.Discrete(len(self._actions))
         self.observation_space = spaces.Box(
             low=0,
             high=255,
@@ -184,7 +195,9 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             "--obs-size", str(obs_size),
             "--frame-skip", str(self.frame_skip),
         ]
-        if not is_default(self._actions):
+        if self._box_channels is not None:
+            cmd += ["--input-map", json.dumps(self._box_channels, separators=(",", ":"))]
+        elif not is_default(self._actions):
             # Inline JSON array — argv carries it verbatim, no shell involved.
             cmd += ["--action-space", json.dumps(self._actions, separators=(",", ":"))]
         if needs_matter:
@@ -318,7 +331,15 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             self._frames.append(first_frame.copy())
         return self._stacked_obs(), response["info"]
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+    def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+        if self._box_channels is not None:
+            q = quantize_box_actions(np.asarray(action, dtype=np.float64), self._box_channels)
+            response, observation = self._request({"cmd": "stepq", "q": q.tolist()})
+            frame = self._decode_obs(observation)
+            self._frames.append(frame)
+            return (self._stacked_obs(), float(response["reward"]),
+                    bool(response["terminated"]), bool(response["truncated"]),
+                    response["info"])
         action = int(action)
         if not 0 <= action < self.action_space.n:
             raise ValueError(f"action {action} out of range [0, {self.action_space.n})")

@@ -7,6 +7,8 @@ deterministic + reproducible. On x86 it benches ~1.5x ProcGen per core.
 
 Protocol (native/qjs/qjs_host.cpp `serve` mode):
   request  (5 bytes): [cmd:u8][arg:i32le]   cmd 0=reset(seed) 1=step(action) 2=close
+                      cmd 3=step_q, followed by n_channels u16le wire values
+                      (box action spaces; see playtrain.runtime.action_space)
   response: [reward:f64][term:u8][trunc:u8][gs:u8][score:f64][lives:f64] + obs(H*W*3)
 """
 from __future__ import annotations
@@ -21,9 +23,11 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+import json
+
 from playtrain._paths import asset as _asset, repo_root as _repo_root
 from playtrain.runtime.action_space import (
-    action_names, as_json, is_default, load_action_space)
+    action_names, as_json, is_default, load_space_spec, quantize_box_actions)
 _ROOT = _repo_root() or Path(__file__).resolve().parents[3]
 _QJS_HOST = _ROOT / "native" / "build" / "qjs_host"
 _GAMES_DIR = _asset("examples/games/js")
@@ -52,20 +56,33 @@ class QuickJSEnv(gym.Env):
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 
-        # Discrete action space: default8 unless a name / .json path / action
-        # list is given (see playtrain.runtime.action_space).
-        self._actions = load_action_space(action_space)
-        self._action_names = list(action_names(self._actions))
+        # Action space: default8 unless a name / .json path / action list /
+        # box dict is given (see playtrain.runtime.action_space). A box space
+        # exposes gym.spaces.Box over the channels; actions are quantized to
+        # uint16 wire values Python-side and stepped via serve cmd 3.
+        spec = load_space_spec(action_space)
         self._obs_bytes = obs_size * obs_size * 3
-        self.action_space = spaces.Discrete(len(self._actions))
         self.observation_space = spaces.Box(0, 255, (obs_size, obs_size, 3), np.uint8)
-
-        # A non-default space reaches qjs_host as a JSON table in its
-        # environment; the default path spawns with an untouched environment.
         proc_env = None
-        if not is_default(self._actions):
+        if spec["type"] == "box":
+            self._box_channels = spec["channels"]
+            self._actions = None
+            self._action_names = list(self._box_channels)
+            low = np.array([0.0 if c.startswith("pointer") else -1.0
+                            for c in self._box_channels], dtype=np.float32)
+            self.action_space = spaces.Box(low, np.ones(len(self._box_channels), np.float32))
             proc_env = os.environ.copy()
-            proc_env["PLAYTRAIN_QJS_ACTIONS"] = as_json(self._actions)
+            proc_env["PLAYTRAIN_QJS_INPUT_MAP"] = json.dumps(self._box_channels)
+        else:
+            self._box_channels = None
+            self._actions = spec["actions"]
+            self._action_names = list(action_names(self._actions))
+            self.action_space = spaces.Discrete(len(self._actions))
+            # A non-default table reaches qjs_host as a JSON table in its
+            # environment; the default path spawns with an untouched environment.
+            if not is_default(self._actions):
+                proc_env = os.environ.copy()
+                proc_env["PLAYTRAIN_QJS_ACTIONS"] = as_json(self._actions)
         self._proc = subprocess.Popen(
             [str(self._host), game_path, "serve"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
@@ -84,8 +101,8 @@ class QuickJSEnv(gym.Env):
             out += chunk
         return bytes(out)
 
-    def _rpc(self, cmd: int, arg: int):
-        self._proc.stdin.write(bytes([cmd]) + struct.pack("<i", arg))
+    def _rpc(self, cmd: int, arg: int, payload: bytes = b""):
+        self._proc.stdin.write(bytes([cmd]) + struct.pack("<i", arg) + payload)
         self._proc.stdin.flush()
         hdr = self._read_exact(27)
         reward = struct.unpack_from("<d", hdr, 0)[0]
@@ -107,7 +124,13 @@ class QuickJSEnv(gym.Env):
         _, _, _, info, obs = self._rpc(0, int(seed) & 0x7FFFFFFF)
         return obs, info
 
-    def step(self, action: int):
+    def step(self, action):
+        if self._box_channels is not None:
+            # Box path: quantize to uint16 wire values (the producer side of
+            # the wire contract) and step via serve cmd 3.
+            q = quantize_box_actions(np.asarray(action, dtype=np.float64), self._box_channels)
+            reward, term, trunc, info, obs = self._rpc(3, 0, q.astype("<u2").tobytes())
+            return obs, float(reward), term, trunc, info
         action = int(action)
         if not 0 <= action < self.action_space.n:
             raise ValueError(f"action {action} out of range [0, {self.action_space.n})")

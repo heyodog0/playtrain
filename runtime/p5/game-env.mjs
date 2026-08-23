@@ -8,6 +8,10 @@ import {
   setRasterRes,
   setKeysDown,
   simulateKeyPress,
+  setPointerPos,
+  setButtons,
+  setAxes,
+  resetPointer,
   tick,
   resetFrameCount,
   getPixelData,
@@ -60,6 +64,44 @@ export function resolveActionSpace(spec) {
     throw new Error(`unknown action space '${spec}' (not in action_spaces.json, not a .json path)`);
   }
   throw new Error(`invalid action space spec: ${spec}`);
+}
+
+// Resolve a box-space channel list: a named box entry in action_spaces.json,
+// an inline JSON array string, or the array itself.
+export function resolveInputMap(spec) {
+  if (spec == null) return null;
+  if (Array.isArray(spec)) return spec;
+  if (typeof spec === 'string') {
+    if (spec.trimStart().startsWith('[')) return JSON.parse(spec);
+    const named = ACTION_SPACES[spec];
+    if (named && named.type === 'box') return named.channels;
+    throw new Error(`unknown box space '${spec}'`);
+  }
+  throw new Error(`invalid input map spec: ${spec}`);
+}
+
+// The wire quantization (see action_spaces.json "//"): producers only.
+const quantize = (v01) => Math.floor(Math.min(1, Math.max(0, v01)) * 65535 + 0.5);
+const BUTTON_BITS = { mouse: 1 };
+const Q_CENTER = quantize(0.5);
+
+// Pre-resolve one discrete action's analog fields into wire values.
+function analogOf(a) {
+  // Pointer is LATCHED (only actions carrying one move it); buttons and axes
+  // are ABSOLUTE per step — axes snap back to center unless the action sets
+  // them, like a physical stick. Mirrors ActionTable::frameFor exactly.
+  const out = {
+    hasPointer: false, qx: 0, qy: 0, buttons: 0,
+    qaxes: [Q_CENTER, Q_CENTER, Q_CENTER, Q_CENTER],
+  };
+  if (a.pointer) {
+    out.hasPointer = true;
+    out.qx = quantize(a.pointer[0]);
+    out.qy = quantize(a.pointer[1]);
+  }
+  for (const b of a.buttons || []) out.buttons |= BUTTON_BITS[b] || 0;
+  (a.axes || []).forEach((v, j) => { out.qaxes[j] = quantize((v + 1) / 2); });
+  return out;
 }
 
 let globalsInstalled = false;
@@ -117,11 +159,29 @@ function loadGame(gamePath, needsMatter) {
 }
 
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1, actions = null } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1, actions = null, inputMap = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
     // Per-instance discrete action space (name / path / array; see
     // resolveActionSpace). Default: the frozen default8 mapping.
     this.actions = resolveActionSpace(actions);
+    // Pre-resolved analog fields (pointer/buttons/axes) per action; null when
+    // the table is pure-keyboard so the default path pays nothing.
+    this._analog = this.actions.some((a) => a.pointer || a.buttons || a.axes)
+      ? this.actions.map(analogOf) : null;
+    // Box mode: a channel list (see resolveInputMap); stepQ() replaces step().
+    this.inputMap = resolveInputMap(inputMap);
+    this._chan = this.inputMap ? this.inputMap.map((ch) => {
+      if (ch === 'pointer_x') return { kind: 'px' };
+      if (ch === 'pointer_y') return { kind: 'py' };
+      if (ch.startsWith('button:')) {
+        const bit = BUTTON_BITS[ch.slice(7)];
+        if (!bit) throw new Error(`unknown button channel '${ch}'`);
+        return { kind: 'button', arg: bit };
+      }
+      if (ch.startsWith('axis:')) return { kind: 'axis', arg: parseInt(ch.slice(5), 10) };
+      if (ch.startsWith('key:')) return { kind: 'key', arg: parseInt(ch.slice(4), 10) };
+      throw new Error(`unknown channel '${ch}'`);
+    }) : null;
     // Render directly at obs resolution (our rasterizer's big speedup). Must run BEFORE
     // loadGame, which executes the game's setup()/createCanvas. No-op for the cairo backend.
     if (!gameLoaded) { setRasterRes(obsWidth); loadGame(gamePath, needsMatter); }
@@ -218,6 +278,7 @@ export class GameEnv {
     this.episodeReturn = 0;
 
     setKeysDown([]);
+    resetPointer();     // pointer/axes park at rest, like the cleared keys
     resetFrameCount();  // per-episode frame phase: make reset(seed) deterministic
     globalThis.resetGame(this.seed);
     tick();
@@ -231,32 +292,70 @@ export class GameEnv {
     };
   }
 
+  // Tick loop shared by step() (non-profile) and stepQ(); the input frame has
+  // already been applied.
+  _tickLoop() {
+    let state, terminated = false, truncated = false;
+    for (let i = 0; i < this.frameSkip; i++) {
+      tick();
+      this.steps += 1;
+      state = this._getState();
+      terminated = TERMINAL_STATES.has(state.gameState);
+      truncated = !terminated && this.steps >= this.maxSteps;
+      if (terminated || truncated) break;  // stop ticking a finished episode
+    }
+    const reward = state.score - this.lastScore;  // summed delta over the skip
+    this.lastScore = state.score;
+    this.episodeReturn += reward;
+    return {
+      observation: this._getObservation(),
+      reward,
+      terminated,
+      truncated,
+      info: this._buildInfo(),
+    };
+  }
+
   step(actionIndex) {
     const action = this.actions[actionIndex] ?? this.actions[0];
     setKeysDown(action.held);
     if (action.press !== null) simulateKeyPress(action.press);
-
-    if (!PROFILE) {
-      let state, terminated = false, truncated = false;
-      for (let i = 0; i < this.frameSkip; i++) {
-        tick();
-        this.steps += 1;
-        state = this._getState();
-        terminated = TERMINAL_STATES.has(state.gameState);
-        truncated = !terminated && this.steps >= this.maxSteps;
-        if (terminated || truncated) break;  // stop ticking a finished episode
-      }
-      const reward = state.score - this.lastScore;  // summed delta over the skip
-      this.lastScore = state.score;
-      this.episodeReturn += reward;
-      return {
-        observation: this._getObservation(),
-        reward,
-        terminated,
-        truncated,
-        info: this._buildInfo(),
-      };
+    if (this._analog) {
+      // Pointer/axes are latched (only actions carrying them move them);
+      // buttons are absolute per step. Mirrors env_apply_frame in the hosts.
+      const an = this._analog[actionIndex] ?? this._analog[0];
+      if (an.hasPointer) setPointerPos(an.qx, an.qy);
+      setButtons(an.buttons);
+      setAxes(an.qaxes);
     }
+
+    if (!PROFILE) return this._tickLoop();
+    return this._stepProfiled();
+  }
+
+  // Box path: qvals are uint16 wire values, one per inputMap channel; every
+  // channel is absolute each step. Mirrors InputMap::frameFor in the hosts.
+  stepQ(qvals) {
+    if (!this._chan) throw new Error('stepQ requires an inputMap');
+    const keys = [];
+    let qx = 0, qy = 0, hasPtr = false, buttons = 0, hasAxes = false;
+    const qaxes = [Q_CENTER, Q_CENTER, Q_CENTER, Q_CENTER];
+    this._chan.forEach((c, i) => {
+      const q = qvals[i];
+      if (c.kind === 'px') { qx = q; hasPtr = true; }
+      else if (c.kind === 'py') { qy = q; hasPtr = true; }
+      else if (c.kind === 'button') { if (q >= 32768) buttons |= c.arg; }
+      else if (c.kind === 'axis') { qaxes[c.arg] = q; hasAxes = true; }
+      else if (c.kind === 'key') { if (q >= 32768) keys.push(c.arg); }
+    });
+    setKeysDown(keys);
+    if (hasPtr) setPointerPos(qx, qy);
+    setButtons(buttons);
+    if (hasAxes) setAxes(qaxes);
+    return this._tickLoop();
+  }
+
+  _stepProfiled() {
 
     const t0 = _hrtime();
     let state, terminated = false, truncated = false;

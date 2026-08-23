@@ -26,7 +26,8 @@ from typing import Sequence
 import numpy as np
 
 from playtrain.runtime.action_space import (
-    action_names, is_default, load_action_space, packed_tables)
+    action_names, has_analog, is_default, load_space_spec, packed_analog,
+    packed_channels, packed_tables, quantize_box_actions)
 
 _ROOT = Path(__file__).resolve().parents[3]
 _GAMES_DIR = _ROOT / "examples" / "games" / "js"
@@ -74,6 +75,12 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_close.argtypes = [P]
     lib.vec_set_actions.restype = ctypes.c_int
     lib.vec_set_actions.argtypes = [P, P, P, ctypes.c_int, ctypes.c_int]
+    lib.vec_set_action_analog.restype = ctypes.c_int
+    lib.vec_set_action_analog.argtypes = [P, P, P, P, P]
+    lib.vec_set_input_map.restype = ctypes.c_int
+    lib.vec_set_input_map.argtypes = [P, P, P, ctypes.c_int]
+    lib.vec_step_q.restype = None
+    lib.vec_step_q.argtypes = [P, P, P, P, P, P]
     lib.vec_set_frame_skip.restype = None
     lib.vec_set_frame_skip.argtypes = [P, ctypes.c_int]
     lib.vec_set_render_skip.restype = None
@@ -103,12 +110,22 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     return lib
 
 
-def _install_action_space(lib, h, action_space) -> list[dict]:
-    """Resolve ``action_space`` (name / .json path / action list / None) and,
-    when non-default, install it on host ``h`` via vec_set_actions. The host
-    defaults to the frozen default8 table, so the default path makes no call.
-    Returns the resolved action list."""
-    actions = load_action_space(action_space)
+def _install_action_space(lib, h, action_space) -> dict:
+    """Resolve ``action_space`` (name / .json path / action list / box dict /
+    None) and install it on host ``h``. The host defaults to the frozen
+    default8 table, so the default path makes no call. A box space installs a
+    channel map instead (vec_set_input_map) and is stepped via vec_step_q.
+    Returns the resolved spec dict (see load_space_spec)."""
+    spec = load_space_spec(action_space)
+    if spec["type"] == "box":
+        kinds, args, n = packed_channels(spec["channels"])
+        ok = lib.vec_set_input_map(
+            h, kinds.ctypes.data_as(ctypes.c_void_p),
+            args.ctypes.data_as(ctypes.c_void_p), n)
+        if not ok:
+            raise RuntimeError("vec_set_input_map rejected the channel map")
+        return spec
+    actions = spec["actions"]
     if not is_default(actions):
         held, press, n, max_held = packed_tables(actions)
         ok = lib.vec_set_actions(
@@ -116,7 +133,16 @@ def _install_action_space(lib, h, action_space) -> list[dict]:
             press.ctypes.data_as(ctypes.c_void_p), n, max_held)
         if not ok:
             raise RuntimeError("vec_set_actions rejected the action table")
-    return actions
+        if has_analog(actions):
+            qpointer, has_ptr, buttons, qaxes = packed_analog(actions)
+            ok = lib.vec_set_action_analog(
+                h, qpointer.ctypes.data_as(ctypes.c_void_p),
+                has_ptr.ctypes.data_as(ctypes.c_void_p),
+                buttons.ctypes.data_as(ctypes.c_void_p),
+                qaxes.ctypes.data_as(ctypes.c_void_p))
+            if not ok:
+                raise RuntimeError("vec_set_action_analog rejected the analog table")
+    return spec
 
 
 class NativeVecEnv:
@@ -146,9 +172,18 @@ class NativeVecEnv:
             self.max_steps, int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError(f"vec_create failed for {game_path}")
-        self.actions = _install_action_space(self._lib, self._h, action_space)
-        self.n_actions = len(self.actions)
-        self.action_meanings = list(action_names(self.actions))
+        spec = _install_action_space(self._lib, self._h, action_space)
+        if spec["type"] == "box":
+            self.actions = None
+            self.n_actions = None
+            self.box_channels = list(spec["channels"])
+            self.action_dim = len(self.box_channels)
+            self.action_meanings = list(self.box_channels)
+        else:
+            self.actions = spec["actions"]
+            self.n_actions = len(self.actions)
+            self.box_channels = None
+            self.action_meanings = list(action_names(self.actions))
         if self.frame_skip > 1:
             self._lib.vec_set_frame_skip(self._h, self.frame_skip)
         # Render-skip: draw calls no-oped on all but the final tick of each
@@ -177,6 +212,9 @@ class NativeVecEnv:
         # buffer and reusing the cached pointer is ~7x cheaper in the hot loop.
         self._act = np.zeros(self.num_envs, dtype=np.int32)
         self._act_p = self._act.ctypes.data_as(ctypes.c_void_p)
+        if self.box_channels is not None:
+            self._qact = np.zeros((self.num_envs, self.action_dim), dtype=np.uint16)
+            self._qact_p = self._qact.ctypes.data_as(ctypes.c_void_p)
 
     def reset(self, seeds: Sequence[int] | int | None = None):
         if seeds is None:
@@ -191,6 +229,15 @@ class NativeVecEnv:
         return self._obs
 
     def step(self, actions):
+        if self.box_channels is not None:
+            # Box path: float actions (num_envs, action_dim) -> uint16 wire
+            # values (quantized Python-side, the producer end of the contract).
+            self._qact[:] = quantize_box_actions(actions, self.box_channels)
+            self._lib.vec_step_q(
+                self._h, self._qact_p,
+                self._obs_p, self._rew_p, self._term_p, self._trunc_p)
+            return (self._obs, self._rew,
+                    self._term.view(bool), self._trunc.view(bool), {})
         # Copy into the persistent int32 buffer and reuse its cached pointer
         # (avoids per-step ctypes pointer creation; raises on length mismatch).
         self._act[:] = actions
@@ -324,7 +371,11 @@ class AsyncNativeVecEnv:
                 int(max_steps), int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError("vec_create_async failed")
-        self.actions = _install_action_space(self._lib, self._h, action_space)
+        spec = _install_action_space(self._lib, self._h, action_space)
+        if spec["type"] == "box":
+            raise ValueError("box action spaces are sync-only for now; "
+                             "use NativeVecEnv (the async host has no vec_step_q path)")
+        self.actions = spec["actions"]
         self.n_actions = len(self.actions)
         self.action_meanings = list(action_names(self.actions))
         self.frame_skip = max(1, int(frame_skip))
@@ -425,7 +476,11 @@ class PingPongVecEnv:
             int(max_steps), int(num_threads), 1)  # autoreset always on
         if not self._h:
             raise RuntimeError(f"vec_create_async failed for {game_path}")
-        self.actions = _install_action_space(self._lib, self._h, action_space)
+        spec = _install_action_space(self._lib, self._h, action_space)
+        if spec["type"] == "box":
+            raise ValueError("box action spaces are sync-only for now; "
+                             "use NativeVecEnv (the async host has no vec_step_q path)")
+        self.actions = spec["actions"]
         self.n_actions = len(self.actions)
         self.action_meanings = list(action_names(self.actions))
         self._lib.vec_set_group_mode(self._h)

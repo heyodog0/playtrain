@@ -155,6 +155,7 @@ globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
+globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
 Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
 )JS";
 
@@ -197,8 +198,10 @@ static int default_threads() {
 struct Env {
   JSRuntime* rt = nullptr;
   JSContext* ctx = nullptr;
-  JSValue g, jsReset, jsDraw, jsState, jsKeyPressed;
+  JSValue g, jsReset, jsDraw, jsState, jsKeyPressed, jsMousePressed;
   bool hasKeyPressed = false;
+  bool hasMousePressed = false;
+  uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
   void* rstate = nullptr;   // rasterizer per-env state (rs_state_new)
   void* p5state = nullptr;  // p5 shim per-env state (p5::newState)
   int frameCount = 0;
@@ -292,8 +295,12 @@ struct alignas(128) WorkerCtl {
 struct VecHost {
   VecHost() { actions.installDefault8(); }
   // Discrete action table (see action_table.hpp). default8 unless the caller
-  // installs a custom one via vec_set_actions.
+  // installs a custom one via vec_set_actions (+ vec_set_action_analog).
   ActionTable actions;
+  // Box-space channel map (vec_set_input_map); box_mode routes stepping
+  // through quantized action vectors (vec_step_q) instead of the int table.
+  InputMap imap;
+  bool box_mode = false;
   std::vector<Env> envs;
   std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
@@ -342,8 +349,9 @@ struct VecHost {
   alignas(128) std::atomic<uint64_t> send_gen{0};   // bumped once per vec_send
   std::mutex park_mu;
   std::condition_variable park_cv;
-  int cmd = 0;                         // 0 = step, 1 = reset, 2 = init
+  int cmd = 0;                         // 0 = step, 1 = reset, 2 = init, 3 = step_q
   const int32_t* in_actions = nullptr;
+  const uint16_t* in_qacts = nullptr;  // cmd 3: num_envs * imap.n wire values
   const int32_t* in_seeds = nullptr;
   uint8_t* out_obs = nullptr;
   float*   out_rew = nullptr;
@@ -404,8 +412,43 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.jsState = JS_GetPropertyStr(ctx, g, "getGameState");
   e.jsKeyPressed = JS_GetPropertyStr(ctx, g, "keyPressed");
   e.hasKeyPressed = JS_IsFunction(ctx, e.jsKeyPressed);
+  e.jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
+  e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
   e.call0(jsSetup);
   JS_FreeValue(ctx, jsSetup);
+}
+
+// Apply one resolved input frame (see action_table.hpp): keys down, optional
+// pointer/axes globals, mouseIsPressed, and the one-shot keyPressed()/
+// mousePressed() events — all BEFORE the tick loop, mirroring the Node shim.
+// Pure-keyboard frames touch nothing beyond setKeysDown + keyPressed, so the
+// default8 hot path is unchanged.
+static void env_apply_frame(Env& e, const InputFrame& f) {
+  p5::setKeysDown(f.codes, f.ncodes);
+  if (f.press >= 0) {
+    JS_SetPropertyStr(e.ctx, e.g, "keyCode", JS_NewInt32(e.ctx, f.press));
+    if (e.hasKeyPressed) e.call0(e.jsKeyPressed);
+  }
+  if (f.set_pointer) {
+    // Dequantize with the wire formula (q/65535) into logical canvas coords.
+    JS_SetPropertyStr(e.ctx, e.g, "mouseX",
+                      JS_NewFloat64(e.ctx, (f.qx / 65535.0) * p5::width()));
+    JS_SetPropertyStr(e.ctx, e.g, "mouseY",
+                      JS_NewFloat64(e.ctx, (f.qy / 65535.0) * p5::height()));
+  }
+  if (f.set_pointer || f.buttons || e.prev_buttons) {
+    JS_SetPropertyStr(e.ctx, e.g, "mouseIsPressed", JS_NewBool(e.ctx, (f.buttons & 1u) ? 1 : 0));
+    if ((f.buttons & 1u) && !(e.prev_buttons & 1u) && e.hasMousePressed)
+      e.call0(e.jsMousePressed);
+    e.prev_buttons = f.buttons;
+  }
+  if (f.set_axes) {
+    JSValue arr = JS_NewArray(e.ctx);
+    for (int j = 0; j < 4; j++)
+      JS_SetPropertyUint32(e.ctx, arr, (uint32_t)j,
+                           JS_NewFloat64(e.ctx, (f.qaxes[j] / 65535.0) * 2.0 - 1.0));
+    JS_SetPropertyStr(e.ctx, e.g, "gamepadAxes", arr);
+  }
 }
 
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
@@ -413,6 +456,16 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
   g_nodraw = false;  // reset frames always render fully
   p5::setKeysDown(nullptr, 0);
+  if (H->actions.any_analog || H->box_mode) {
+    // Pointer/axes state is per-episode: park at rest, like setKeysDown([]).
+    e.prev_buttons = 0;
+    JS_SetPropertyStr(e.ctx, e.g, "mouseX", JS_NewFloat64(e.ctx, 0));
+    JS_SetPropertyStr(e.ctx, e.g, "mouseY", JS_NewFloat64(e.ctx, 0));
+    JS_SetPropertyStr(e.ctx, e.g, "mouseIsPressed", JS_NewBool(e.ctx, 0));
+    JSValue arr = JS_NewArray(e.ctx);
+    for (int j = 0; j < 4; j++) JS_SetPropertyUint32(e.ctx, arr, (uint32_t)j, JS_NewFloat64(e.ctx, 0));
+    JS_SetPropertyStr(e.ctx, e.g, "gamepadAxes", arr);
+  }
   e.frameCount = 0; e.setFrame(0);
   e.resetGame(seed);
   e.frameCount = 1; e.setFrame(1);
@@ -442,17 +495,9 @@ static inline uint32_t autoreset_seed(VecHost* H, Env& e, int idx) {
 
 // ---- one env step (mirrors qjs_host serve cmd 1 / stepEnv; frame_skip loop
 // mirrors runtime/p5/game-env.mjs step()) ----
-static void env_step(VecHost* H, Env& e, int idx, int action) {
-  e.select();
-  action = H->actions.clamp(action);
-  int codes[16];
-  int n = H->actions.codesFor(action, codes);
-  p5::setKeysDown(codes, n);
-  int pk = H->actions.pressFor(action);
-  if (pk >= 0) {
-    JS_SetPropertyStr(e.ctx, e.g, "keyCode", JS_NewInt32(e.ctx, pk));
-    if (e.hasKeyPressed) e.call0(e.jsKeyPressed);
-  }
+// Tick loop shared by the discrete (cmd 0) and box (cmd 3) step paths;
+// the input frame has already been applied.
+static void env_step_frame(VecHost* H, Env& e, int idx) {
   double score = 0, lives = 0; uint8_t gs = 0;
   bool term = false, trunc = false;
   for (int k = 0; k < H->frame_skip; k++) {
@@ -477,6 +522,24 @@ static void env_step(VecHost* H, Env& e, int idx, int action) {
   }
 }
 
+// ---- one env step, discrete action (mirrors qjs_host serve cmd 1) ----
+static void env_step(VecHost* H, Env& e, int idx, int action) {
+  e.select();
+  InputFrame f;
+  H->actions.frameFor(H->actions.clamp(action), f);
+  env_apply_frame(e, f);
+  env_step_frame(H, e, idx);
+}
+
+// ---- one env step, quantized box-action vector (cmd 3) ----
+static void env_step_q(VecHost* H, Env& e, int idx, const uint16_t* q) {
+  e.select();
+  InputFrame f;
+  H->imap.frameFor(q, f);
+  env_apply_frame(e, f);
+  env_step_frame(H, e, idx);
+}
+
 // ---- process one thread's shard for the current batch command ----
 static void run_shard(VecHost* H, int t) {
   int lo = H->shard_start[t], hi = H->shard_start[t + 1];
@@ -484,6 +547,7 @@ static void run_shard(VecHost* H, int t) {
     Env& e = H->envs[i];
     if (H->cmd == 2)      env_init(H, e, i);
     else if (H->cmd == 1) env_reset(H, e, i, (uint32_t)H->in_seeds[i]);
+    else if (H->cmd == 3) env_step_q(H, e, i, H->in_qacts + (size_t)i * H->imap.n);
     else                  env_step(H, e, i, H->in_actions[i]);
   }
 }
@@ -688,6 +752,45 @@ int vec_set_actions(void* h, const int32_t* held, const int32_t* press,
   return 1;
 }
 
+// Attach per-action analog fields (pointer/buttons/axes; see action_table.hpp)
+// to the installed table. Arrays are sized to the table's n_actions; any may
+// be NULL. Call after vec_set_actions, between batches. Returns 1 on success.
+int vec_set_action_analog(void* h, const uint16_t* qpointer,
+                          const uint8_t* has_pointer, const uint32_t* buttons,
+                          const uint16_t* qaxes) {
+  VecHost* H = (VecHost*)h;
+  if (!H) return 0;
+  return H->actions.installAnalog(qpointer, has_pointer, buttons, qaxes) ? 1 : 0;
+}
+
+// Install a box-space channel map (kinds/args per action_table.hpp InputMap)
+// and switch the host to quantized stepping via vec_step_q. Call between
+// batches. Returns 1 on success, 0 on rejected input (mode unchanged).
+int vec_set_input_map(void* h, const int32_t* kinds, const int32_t* args,
+                      int n_channels) {
+  VecHost* H = (VecHost*)h;
+  if (!H) return 0;
+  if (!H->imap.install(kinds, args, n_channels)) {
+    fprintf(stderr, "qjs_vec: vec_set_input_map rejected (n_channels=%d)\n", n_channels);
+    return 0;
+  }
+  H->box_mode = true;
+  return 1;
+}
+
+// Step every env with a quantized box-action vector: qacts holds
+// num_envs * n_channels uint16 wire values (see the quantization contract in
+// action_table.hpp). Requires a prior vec_set_input_map. Sync host only.
+void vec_step_q(void* h, const uint16_t* qacts, uint8_t* obs,
+                float* rew, uint8_t* term, uint8_t* trunc) {
+  VecHost* H = (VecHost*)h;
+  if (!H->box_mode) { fprintf(stderr, "qjs_vec: vec_step_q without an input map\n"); return; }
+  H->cmd = 3;
+  H->in_qacts = qacts; H->out_obs = obs;
+  H->out_rew = rew; H->out_term = term; H->out_trunc = trunc;
+  dispatch(H);
+}
+
 // Set action-repeat (>= 1; see VecHost.frame_skip). Call between batches —
 // workers are parked then, so no dispatch races. Sync and async hosts.
 void vec_set_frame_skip(void* h, int k) {
@@ -743,6 +846,7 @@ void vec_close(void* h) {
       e.select();
       JS_FreeValue(e.ctx, e.jsReset); JS_FreeValue(e.ctx, e.jsDraw);
       JS_FreeValue(e.ctx, e.jsState); JS_FreeValue(e.ctx, e.jsKeyPressed);
+      JS_FreeValue(e.ctx, e.jsMousePressed);
       JS_FreeValue(e.ctx, e.g);
       JS_FreeContext(e.ctx); JS_FreeRuntime(e.rt);
     }

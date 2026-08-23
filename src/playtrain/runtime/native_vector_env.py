@@ -77,6 +77,9 @@ class NativeVectorEnv(VectorEnv):
         self.num_threads = self._env.num_threads
         # The host's installed table is authoritative; a legacy explicit
         # n_actions must agree with it.
+        if self._env.n_actions is None:
+            raise ValueError("NativeVectorEnv is Discrete-only; drive box "
+                             "action spaces through NativeVecEnv directly")
         self.n_actions = self._env.n_actions
         if n_actions is not None and int(n_actions) != self.n_actions:
             raise ValueError(f"n_actions={n_actions} conflicts with the "

@@ -110,7 +110,7 @@ bash native/build_qjs_vec.sh    # libqjs_vec (envpool-class threadpool backend)
 
 ## Design
 
-- **Action space**: Discrete(8) (`default8`) — abstract directional + button, identical across games. Any discrete space (held keys + optional press key per action) can be declared in `runtime/action_spaces.json` and selected per env via `action_space=`; the catalog and all generated games are authored against `default8`.
+- **Action space**: Discrete(8) (`default8`) — abstract directional + button, identical across games. Any space can be declared in `runtime/action_spaces.json` and selected per env via `action_space=`: discrete tables (held keys + optional press key + optional pointer/buttons/axes per action) or continuous **box spaces** over pointer/button/axis channels (`mouse2d`, `gamepad2s` → `gym.spaces.Box`). Analog values are quantized to uint16 at the wire, so replay and the cross-engine gate stay bit-exact even with continuous control. The catalog and all generated games are authored against `default8`; pointer games (see `GAME_TEMPLATE.md` pointer tier) are a separate family.
 - **Observations**: 64×64×3 RGB, matching ProcGen conventions.
 - **Seed-based determinism**: same seed + actions ⇒ same trajectory.
 - **Validation**: shape, action-space, determinism, throughput, and episode-bounds checks; a generated game must pass all five before entering the catalog. See `GAME_TEMPLATE.md`.

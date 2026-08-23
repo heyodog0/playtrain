@@ -86,6 +86,7 @@ function parseArgs() {
     else if (args[i] === '--obs-size' && args[i + 1]) opts.obsSize = parseInt(args[++i], 10);
     else if (args[i] === '--frame-skip' && args[i + 1]) opts.frameSkip = parseInt(args[++i], 10);
     else if (args[i] === '--action-space' && args[i + 1]) opts.actionSpace = args[++i];
+    else if (args[i] === '--input-map' && args[i + 1]) opts.inputMap = args[++i];
     else if (args[i] === '--matter') opts.needsMatter = true;
   }
   if (!opts.gamePath) {
@@ -104,6 +105,7 @@ const env = new GameEnv({
   needsMatter: opts.needsMatter,
   frameSkip: opts.frameSkip,
   actions: opts.actionSpace,
+  inputMap: opts.inputMap,
 });
 
 let pending = Buffer.alloc(0);
@@ -143,6 +145,13 @@ function handleRequest(request, binaryLength) {
       maxSteps: request.max_steps,
     });
     ok({ info: result.info }, Buffer.from(result.observation));
+    return;
+  }
+
+  if (request.cmd === 'stepq') {
+    // Box path: request.q is the uint16 wire-value array (one per channel).
+    const result = env.stepQ(request.q);
+    sendBinaryStep(result);
     return;
   }
 
