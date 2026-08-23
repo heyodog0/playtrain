@@ -37,18 +37,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const TERMINAL_STATES = new Set(['WIN', 'EXIT', 'GAMEOVER']);
 const ORIGINAL_MATH_RANDOM = Math.random;
 
-// GAME_TEMPLATE.md action mapping:
-// 0=NOOP, 1=LEFT, 2=RIGHT, 3=UP, 4=DOWN, 5=D(SPACE), 6=LEFT+D, 7=RIGHT+D
-const ACTIONS = [
-  { name: 'NOOP',    held: [],   press: null },
-  { name: 'LEFT',    held: [37], press: null },
-  { name: 'RIGHT',   held: [39], press: null },
-  { name: 'UP',      held: [38], press: null },
-  { name: 'DOWN',    held: [40], press: null },
-  { name: 'D',       held: [],   press: 32 },
-  { name: 'LEFT_D',  held: [37], press: 32 },
-  { name: 'RIGHT_D', held: [39], press: 32 },
-];
+// Discrete action spaces live in runtime/action_spaces.json — one declarative
+// spec shared with the native hosts (native/qjs/action_table.hpp) and the
+// human-study harness (tools/study-templates.mjs). The default is default8
+// (GAME_TEMPLATE.md: 0=NOOP, 1=LEFT, 2=RIGHT, 3=UP, 4=DOWN, 5=D(SPACE),
+// 6=LEFT+D, 7=RIGHT+D), whose indices are frozen — recorded trajectories and
+// the native gate's golden traces depend on the exact mapping.
+const ACTION_SPACES = JSON.parse(
+  readFileSync(join(__dirname, '..', 'action_spaces.json'), 'utf8'));
+const DEFAULT_ACTIONS = ACTION_SPACES.default8;
+
+// Resolve a space given as a named entry in action_spaces.json, a path to a
+// JSON file holding one action array, an inline JSON array string (how
+// env.py's --action-space passes a custom list), or the array itself.
+export function resolveActionSpace(spec) {
+  if (spec == null) return DEFAULT_ACTIONS;
+  if (Array.isArray(spec)) return spec;
+  if (typeof spec === 'string') {
+    if (spec.trimStart().startsWith('[')) return JSON.parse(spec);
+    if (spec.endsWith('.json')) return JSON.parse(readFileSync(spec, 'utf8'));
+    if (ACTION_SPACES[spec]) return ACTION_SPACES[spec];
+    throw new Error(`unknown action space '${spec}' (not in action_spaces.json, not a .json path)`);
+  }
+  throw new Error(`invalid action space spec: ${spec}`);
+}
 
 let globalsInstalled = false;
 let gameLoaded = false;
@@ -105,8 +117,11 @@ function loadGame(gamePath, needsMatter) {
 }
 
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1 } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1, actions = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
+    // Per-instance discrete action space (name / path / array; see
+    // resolveActionSpace). Default: the frozen default8 mapping.
+    this.actions = resolveActionSpace(actions);
     // Render directly at obs resolution (our rasterizer's big speedup). Must run BEFORE
     // loadGame, which executes the game's setup()/createCanvas. No-op for the cairo backend.
     if (!gameLoaded) { setRasterRes(obsWidth); loadGame(gamePath, needsMatter); }
@@ -128,7 +143,11 @@ export class GameEnv {
   }
 
   static getActionMeanings() {
-    return ACTIONS.map((a) => a.name);
+    return DEFAULT_ACTIONS.map((a) => a.name);
+  }
+
+  actionMeanings() {
+    return this.actions.map((a) => a.name);
   }
 
   _setSeed(seed) {
@@ -188,7 +207,7 @@ export class GameEnv {
       episodeReturn: this.episodeReturn,
       episodeLength: this.steps,
       seed: this.seed,
-      actionMeanings: GameEnv.getActionMeanings(),
+      actionMeanings: this.actionMeanings(),
     };
   }
 
@@ -213,7 +232,7 @@ export class GameEnv {
   }
 
   step(actionIndex) {
-    const action = ACTIONS[actionIndex] ?? ACTIONS[0];
+    const action = this.actions[actionIndex] ?? this.actions[0];
     setKeysDown(action.held);
     if (action.press !== null) simulateKeyPress(action.press);
 

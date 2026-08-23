@@ -19,6 +19,7 @@ from gymnasium import spaces
 
 # Bundled example games that ship with the repo.
 from playtrain._paths import asset as _asset
+from playtrain.runtime.action_space import is_default, load_action_space
 DEFAULT_GAMES_DIR = _asset("examples/games/js")
 
 # Bundled JS runtime (game-worker.mjs + p5/ shim).
@@ -72,6 +73,9 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         Path to the node executable (default ``"node"``).
     require_matter:
         Force-enable Matter.js. Auto-detected from the game source when ``None``.
+    action_space:
+        Discrete action space: a name in ``runtime/action_spaces.json``, a path
+        to a JSON action list, or the list itself. Default: ``default8``.
     """
 
     metadata = {"render_modes": []}
@@ -95,6 +99,7 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         max_steps: int = 2000,
         node_bin: str = "node",
         require_matter: bool | None = None,
+        action_space: str | list | None = None,
     ) -> None:
         super().__init__()
         self.game = game
@@ -128,7 +133,11 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         else:
             self._channels = frame_stack
 
-        self.action_space = spaces.Discrete(8)
+        # Discrete action space: default8 unless a name / .json path / action
+        # list is given (see playtrain.runtime.action_space). A non-default
+        # space is forwarded to the worker as --action-space.
+        self._actions = load_action_space(action_space)
+        self.action_space = spaces.Discrete(len(self._actions))
         self.observation_space = spaces.Box(
             low=0,
             high=255,
@@ -175,6 +184,9 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             "--obs-size", str(obs_size),
             "--frame-skip", str(self.frame_skip),
         ]
+        if not is_default(self._actions):
+            # Inline JSON array — argv carries it verbatim, no shell involved.
+            cmd += ["--action-space", json.dumps(self._actions, separators=(",", ":"))]
         if needs_matter:
             cmd.append("--matter")
 
@@ -307,7 +319,10 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         return self._stacked_obs(), response["info"]
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        response, observation = self._request({"cmd": "step", "action": int(action)})
+        action = int(action)
+        if not 0 <= action < self.action_space.n:
+            raise ValueError(f"action {action} out of range [0, {self.action_space.n})")
+        response, observation = self._request({"cmd": "step", "action": action})
         frame = self._decode_obs(observation)
         self._frames.append(frame)
         return (

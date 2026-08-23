@@ -76,14 +76,16 @@ function printProfileSummary() {
 }
 
 // Parse CLI args: --game <path> [--obs-mode rgb|gray] [--obs-size 64] [--matter]
+//                 [--action-space <name-or-json-path>]
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { gamePath: null, obsMode: 'rgb', obsSize: 64, needsMatter: false, frameSkip: 1 };
+  const opts = { gamePath: null, obsMode: 'rgb', obsSize: 64, needsMatter: false, frameSkip: 1, actionSpace: null };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--game' && args[i + 1]) opts.gamePath = args[++i];
     else if (args[i] === '--obs-mode' && args[i + 1]) opts.obsMode = args[++i];
     else if (args[i] === '--obs-size' && args[i + 1]) opts.obsSize = parseInt(args[++i], 10);
     else if (args[i] === '--frame-skip' && args[i + 1]) opts.frameSkip = parseInt(args[++i], 10);
+    else if (args[i] === '--action-space' && args[i + 1]) opts.actionSpace = args[++i];
     else if (args[i] === '--matter') opts.needsMatter = true;
   }
   if (!opts.gamePath) {
@@ -101,6 +103,7 @@ const env = new GameEnv({
   obsMode: opts.obsMode,
   needsMatter: opts.needsMatter,
   frameSkip: opts.frameSkip,
+  actions: opts.actionSpace,
 });
 
 let pending = Buffer.alloc(0);
@@ -178,7 +181,7 @@ function handleRequest(request, binaryLength) {
   }
 
   if (request.cmd === 'ping') {
-    ok({ pong: true, action_meanings: GameEnv.getActionMeanings() });
+    ok({ pong: true, action_meanings: env.actionMeanings() });
     return;
   }
 

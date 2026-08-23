@@ -22,11 +22,12 @@ import numpy as np
 from gymnasium import spaces
 
 from playtrain._paths import asset as _asset, repo_root as _repo_root
+from playtrain.runtime.action_space import (
+    action_names, as_json, is_default, load_action_space)
 _ROOT = _repo_root() or Path(__file__).resolve().parents[3]
 _QJS_HOST = _ROOT / "native" / "build" / "qjs_host"
 _GAMES_DIR = _asset("examples/games/js")
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT", "UNKNOWN")
-_ACTIONS = ("NOOP", "LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT_D", "RIGHT_D")
 _HDR = struct.Struct("<d")  # reward; rest read by offset
 
 
@@ -38,7 +39,8 @@ class QuickJSEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, game: str = "bigfish", obs_size: int = 64, max_steps: int = 2000,
-                 host_path: str | os.PathLike | None = None):
+                 host_path: str | os.PathLike | None = None,
+                 action_space: str | list | None = None):
         super().__init__()
         self.game = game
         self.obs_size = obs_size
@@ -50,13 +52,24 @@ class QuickJSEnv(gym.Env):
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 
+        # Discrete action space: default8 unless a name / .json path / action
+        # list is given (see playtrain.runtime.action_space).
+        self._actions = load_action_space(action_space)
+        self._action_names = list(action_names(self._actions))
         self._obs_bytes = obs_size * obs_size * 3
-        self.action_space = spaces.Discrete(len(_ACTIONS))
+        self.action_space = spaces.Discrete(len(self._actions))
         self.observation_space = spaces.Box(0, 255, (obs_size, obs_size, 3), np.uint8)
 
+        # A non-default space reaches qjs_host as a JSON table in its
+        # environment; the default path spawns with an untouched environment.
+        proc_env = None
+        if not is_default(self._actions):
+            proc_env = os.environ.copy()
+            proc_env["PLAYTRAIN_QJS_ACTIONS"] = as_json(self._actions)
         self._proc = subprocess.Popen(
             [str(self._host), game_path, "serve"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+            env=proc_env,
         )
         self._closed = False
         self._last_seed: int | None = None
@@ -83,7 +96,7 @@ class QuickJSEnv(gym.Env):
             self.obs_size, self.obs_size, 3)
         info = {"score": score, "lives": lives,
                 "gameState": _GS_NAMES[gs] if gs < len(_GS_NAMES) else "UNKNOWN",
-                "seed": self._last_seed, "actionMeanings": list(_ACTIONS)}
+                "seed": self._last_seed, "actionMeanings": self._action_names}
         return reward, bool(term), bool(trunc), info, obs
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
@@ -95,7 +108,10 @@ class QuickJSEnv(gym.Env):
         return obs, info
 
     def step(self, action: int):
-        reward, term, trunc, info, obs = self._rpc(1, int(action))
+        action = int(action)
+        if not 0 <= action < self.action_space.n:
+            raise ValueError(f"action {action} out of range [0, {self.action_space.n})")
+        reward, term, trunc, info, obs = self._rpc(1, action)
         return obs, float(reward), term, trunc, info
 
     def close(self):

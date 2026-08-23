@@ -25,6 +25,9 @@ from typing import Sequence
 
 import numpy as np
 
+from playtrain.runtime.action_space import (
+    action_names, is_default, load_action_space, packed_tables)
+
 _ROOT = Path(__file__).resolve().parents[3]
 _GAMES_DIR = _ROOT / "examples" / "games" / "js"
 
@@ -46,8 +49,6 @@ def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
 
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _ROOT / "native" / "build" / _LIBNAME
-
-_ACTIONS = ("NOOP", "LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT_D", "RIGHT_D")
 
 
 def _load_lib(path: Path) -> ctypes.CDLL:
@@ -71,6 +72,8 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_reset_subset.argtypes = [P, P, P, ctypes.c_int, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
+    lib.vec_set_actions.restype = ctypes.c_int
+    lib.vec_set_actions.argtypes = [P, P, P, ctypes.c_int, ctypes.c_int]
     lib.vec_set_frame_skip.restype = None
     lib.vec_set_frame_skip.argtypes = [P, ctypes.c_int]
     lib.vec_set_render_skip.restype = None
@@ -100,11 +103,28 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     return lib
 
 
+def _install_action_space(lib, h, action_space) -> list[dict]:
+    """Resolve ``action_space`` (name / .json path / action list / None) and,
+    when non-default, install it on host ``h`` via vec_set_actions. The host
+    defaults to the frozen default8 table, so the default path makes no call.
+    Returns the resolved action list."""
+    actions = load_action_space(action_space)
+    if not is_default(actions):
+        held, press, n, max_held = packed_tables(actions)
+        ok = lib.vec_set_actions(
+            h, held.ctypes.data_as(ctypes.c_void_p),
+            press.ctypes.data_as(ctypes.c_void_p), n, max_held)
+        if not ok:
+            raise RuntimeError("vec_set_actions rejected the action table")
+    return actions
+
+
 class NativeVecEnv:
     def __init__(self, game: str = "bigfish", num_envs: int = 8, *,
                  obs_size: int = 64, max_steps: int = 2000, num_threads: int = 0,
                  autoreset: bool = False, frame_skip: int = 1,
                  render_skip: bool = False,
+                 action_space: str | list | None = None,
                  games_dir: str | os.PathLike | None = None,
                  lib_path: str | os.PathLike | None = None):
         self.game = game
@@ -126,6 +146,9 @@ class NativeVecEnv:
             self.max_steps, int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError(f"vec_create failed for {game_path}")
+        self.actions = _install_action_space(self._lib, self._h, action_space)
+        self.n_actions = len(self.actions)
+        self.action_meanings = list(action_names(self.actions))
         if self.frame_skip > 1:
             self._lib.vec_set_frame_skip(self._h, self.frame_skip)
         # Render-skip: draw calls no-oped on all but the final tick of each
@@ -171,6 +194,9 @@ class NativeVecEnv:
         # Copy into the persistent int32 buffer and reuse its cached pointer
         # (avoids per-step ctypes pointer creation; raises on length mismatch).
         self._act[:] = actions
+        if self._act.min() < 0 or self._act.max() >= self.n_actions:
+            bad = self._act[(self._act < 0) | (self._act >= self.n_actions)]
+            raise ValueError(f"action(s) out of range [0, {self.n_actions}): {bad}")
         self._lib.vec_step(
             self._h, self._act_p,
             self._obs_p, self._rew_p, self._term_p, self._trunc_p)
@@ -258,6 +284,7 @@ class AsyncNativeVecEnv:
                  games: Sequence[str] | None = None,
                  batch_size: int | None = None, obs_size: int = 64, max_steps: int = 2000,
                  num_threads: int = 0, autoreset: bool = True, frame_skip: int = 1,
+                 action_space: str | list | None = None,
                  games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
         gdir = _resolve_games_dir(games_dir)
 
@@ -297,6 +324,9 @@ class AsyncNativeVecEnv:
                 int(max_steps), int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError("vec_create_async failed")
+        self.actions = _install_action_space(self._lib, self._h, action_space)
+        self.n_actions = len(self.actions)
+        self.action_meanings = list(action_names(self.actions))
         self.frame_skip = max(1, int(frame_skip))
         if self.frame_skip > 1:
             self._lib.vec_set_frame_skip(self._h, self.frame_skip)
@@ -330,6 +360,9 @@ class AsyncNativeVecEnv:
     def send(self, env_ids, actions):
         env_ids = np.ascontiguousarray(env_ids, dtype=np.int32)
         actions = np.ascontiguousarray(actions, dtype=np.int32)
+        if actions.size and (actions.min() < 0 or actions.max() >= self.n_actions):
+            bad = actions[(actions < 0) | (actions >= self.n_actions)]
+            raise ValueError(f"action(s) out of range [0, {self.n_actions}): {bad}")
         n = env_ids.shape[0]
         self._lib.vec_send(self._h, env_ids.ctypes.data_as(ctypes.c_void_p),
                            actions.ctypes.data_as(ctypes.c_void_p), n)
@@ -372,6 +405,7 @@ class PingPongVecEnv:
     def __init__(self, game: str, group_size: int, *, obs_size: int = 64,
                  max_steps: int = 2000, num_threads: int = 0,
                  frame_skip: int = 1, render_skip: bool = False,
+                 action_space: str | list | None = None,
                  games_dir: str | os.PathLike | None = None,
                  lib_path: str | os.PathLike | None = None):
         self.group_size = int(group_size)
@@ -391,6 +425,9 @@ class PingPongVecEnv:
             int(max_steps), int(num_threads), 1)  # autoreset always on
         if not self._h:
             raise RuntimeError(f"vec_create_async failed for {game_path}")
+        self.actions = _install_action_space(self._lib, self._h, action_space)
+        self.n_actions = len(self.actions)
+        self.action_meanings = list(action_names(self.actions))
         self._lib.vec_set_group_mode(self._h)
         if self.frame_skip > 1:
             self._lib.vec_set_frame_skip(self._h, self.frame_skip)
@@ -432,6 +469,10 @@ class PingPongVecEnv:
     def send(self, group: int, actions) -> None:
         """Dispatch group's step; returns immediately."""
         self._gact[group][:] = actions
+        a = self._gact[group]
+        if a.min() < 0 or a.max() >= self.n_actions:
+            bad = a[(a < 0) | (a >= self.n_actions)]
+            raise ValueError(f"action(s) out of range [0, {self.n_actions}): {bad}")
         self._lib.vec_send(self._h, self._gids_p[group],
                            self._gact_p[group], self.group_size)
 

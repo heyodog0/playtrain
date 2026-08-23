@@ -16,6 +16,7 @@ from functools import partial
 from pathlib import Path
 
 from playtrain.runtime import PlayTrainEnv, list_available_games
+from playtrain.runtime.action_space import load_action_space
 from playtrain.runtime.validate import run_validation
 
 from playtrain.gen.constants import variant_names
@@ -51,7 +52,7 @@ def main() -> int:
         env_factory=_env_factory,
         games=games,
         expected_shape=(64, 64, 3),
-        n_actions=8,
+        n_actions=len(load_action_space()),
         determinism_tolerance=0.0,
         skip_throughput=args.skip_throughput,
         output_path=None if args.no_save else OUTPUT_DIR / "summary.json",

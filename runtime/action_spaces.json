@@ -1,0 +1,25 @@
+{
+  "//": "Named discrete action spaces. Each action holds `held` key codes for the frame and optionally fires `press` as a p5 keyPressed() event (a press key is ALSO down for that frame, in every runtime). Key codes are p5/browser keycodes: LEFT_ARROW 37, UP_ARROW 38, RIGHT_ARROW 39, DOWN_ARROW 40, SPACE 32. Indices 0-7 of default8 are frozen: every recorded trajectory, human-study session, and the native/gate_qjs.sh golden traces depend on this exact mapping.",
+  "default8": [
+    { "name": "NOOP",    "held": [],   "press": null },
+    { "name": "LEFT",    "held": [37], "press": null },
+    { "name": "RIGHT",   "held": [39], "press": null },
+    { "name": "UP",      "held": [38], "press": null },
+    { "name": "DOWN",    "held": [40], "press": null },
+    { "name": "D",       "held": [],   "press": 32 },
+    { "name": "LEFT_D",  "held": [37], "press": 32 },
+    { "name": "RIGHT_D", "held": [39], "press": 32 }
+  ],
+  "thrust10": [
+    { "name": "NOOP",    "held": [],   "press": null },
+    { "name": "LEFT",    "held": [37], "press": null },
+    { "name": "RIGHT",   "held": [39], "press": null },
+    { "name": "UP",      "held": [38], "press": null },
+    { "name": "DOWN",    "held": [40], "press": null },
+    { "name": "D",       "held": [],   "press": 32 },
+    { "name": "LEFT_D",  "held": [37], "press": 32 },
+    { "name": "RIGHT_D", "held": [39], "press": 32 },
+    { "name": "UP_D",    "held": [38], "press": 32 },
+    { "name": "DOWN_D",  "held": [40], "press": 32 }
+  ]
+}

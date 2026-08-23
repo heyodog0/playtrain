@@ -10,7 +10,7 @@
 //
 //   * mulberry32 seeding of Math.random BEFORE resetGame  (GameEnv._setSeed)
 //   * resetFrameCount() before resetGame                  (GameEnv.reset, shim:480)
-//   * the Discrete(8) ACTIONS table, verbatim             (game-env.mjs:42)
+//   * the default8 ACTIONS table, inlined from the shared spec (runtime/action_spaces.json)
 //   * frameSkip action-repeat and maxSteps truncation     (GameEnv.step)
 //   * TERMINAL_STATES handling with auto-advance to the next seed
 //   * frame-indexed action logging, so a session can be REPLAYED through the headless
@@ -19,8 +19,23 @@
 // Each block runs in its own iframe so every game gets a fresh global scope, the same
 // isolation the headless runtime gets from one-game-per-process (game-env.mjs `gameLoaded`).
 
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
 import { browserShimBundle } from './play-templates.mjs';
 import { consentHtml, instructionPages, quizQuestions, durationPhrase } from './study-screens.mjs';
+
+// The harness plays with the SAME action table the runtime steps with — read
+// from the shared spec at build time and inlined, so the two cannot drift (if
+// they did, foldedRate would silently measure the wrong thing). NOTE: the
+// key-folding heuristic below (keysToAction/isFolded) is written against
+// default8's semantics; running the study on another space means rederiving it.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_ACTIONS = JSON.parse(readFileSync(
+  join(__dirname, '..', 'runtime', 'action_spaces.json'), 'utf8')).default8;
+const actionsLiteral = JSON.stringify(DEFAULT_ACTIONS, null, 2)
+  .split('\n').map((l, i) => (i === 0 ? l : '  ' + l)).join('\n');
 
 // Participant-facing styling. Deliberately plain: a system sans-serif, near-black text
 // on white, no accent colours. The tester's dark monospace look (play-templates.mjs
@@ -130,18 +145,10 @@ ${browserShimBundle()}
 (function () {
   'use strict';
 
-  // ---- mirrored from runtime/p5/game-env.mjs ------------------------------
-  // Discrete(8). Copied verbatim; if game-env.mjs:42 ever changes, this must too.
-  var ACTIONS = [
-    { name: 'NOOP',    held: [],   press: null },
-    { name: 'LEFT',    held: [37], press: null },
-    { name: 'RIGHT',   held: [39], press: null },
-    { name: 'UP',      held: [38], press: null },
-    { name: 'DOWN',    held: [40], press: null },
-    { name: 'D',       held: [],   press: 32 },
-    { name: 'LEFT_D',  held: [37], press: 32 },
-    { name: 'RIGHT_D', held: [39], press: 32 },
-  ];
+  // ---- shared with runtime/p5/game-env.mjs --------------------------------
+  // default8, inlined at build time from runtime/action_spaces.json — the same
+  // spec the headless runtimes step with, so harness and env cannot drift.
+  var ACTIONS = ${actionsLiteral};
   var TERMINAL = { WIN: 1, EXIT: 1, GAMEOVER: 1 };
 
   function mulberry32(seed) {

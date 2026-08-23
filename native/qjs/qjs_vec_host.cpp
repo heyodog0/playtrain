@@ -34,6 +34,7 @@
 #include <sched.h>
 #endif
 #include "quickjs.h"
+#include "action_table.hpp"
 #include "../runtime/p5.hpp"
 #include "../runtime/raster_abi.h"
 
@@ -156,13 +157,6 @@ globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Ma
 globalThis.millis=()=>frameCount*(1000/60);
 Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
 )JS";
-
-// action -> held key codes, identical to qjs_host.cpp
-static const int HELD[8][2] = {{-1,-1},{37,-1},{39,-1},{38,-1},{40,-1},{-1,32},{37,32},{39,32}};
-// D-family actions are PRESS events (game-env.mjs ACTIONS press=32): the
-// production runtime also sets the keyCode global and invokes keyPressed()
-// before the tick. See qjs_host.cpp for the full note.
-static const int PRESS[8] = {-1,-1,-1,-1,-1,32,32,32};
 
 static inline void cpu_relax() {
 #if defined(__aarch64__) || defined(__arm__)
@@ -296,6 +290,10 @@ struct alignas(128) WorkerCtl {
 };
 
 struct VecHost {
+  VecHost() { actions.installDefault8(); }
+  // Discrete action table (see action_table.hpp). default8 unless the caller
+  // installs a custom one via vec_set_actions.
+  ActionTable actions;
   std::vector<Env> envs;
   std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
@@ -446,11 +444,13 @@ static inline uint32_t autoreset_seed(VecHost* H, Env& e, int idx) {
 // mirrors runtime/p5/game-env.mjs step()) ----
 static void env_step(VecHost* H, Env& e, int idx, int action) {
   e.select();
-  int codes[2], n = 0;
-  for (int i = 0; i < 2; i++) if (HELD[action][i] >= 0) codes[n++] = HELD[action][i];
+  action = H->actions.clamp(action);
+  int codes[16];
+  int n = H->actions.codesFor(action, codes);
   p5::setKeysDown(codes, n);
-  if (PRESS[action] >= 0) {
-    JS_SetPropertyStr(e.ctx, e.g, "keyCode", JS_NewInt32(e.ctx, PRESS[action]));
+  int pk = H->actions.pressFor(action);
+  if (pk >= 0) {
+    JS_SetPropertyStr(e.ctx, e.g, "keyCode", JS_NewInt32(e.ctx, pk));
     if (e.hasKeyPressed) e.call0(e.jsKeyPressed);
   }
   double score = 0, lives = 0; uint8_t gs = 0;
@@ -668,6 +668,24 @@ void vec_reset_subset(void* h, const int32_t* ids, const int32_t* seeds,
     int i = ids[k];
     env_reset(H, H->envs[i], i, (uint32_t)seeds[k]);
   }
+}
+
+// Install a custom discrete action table (semantics in action_table.hpp:
+// `held` is flat n_actions*max_held, -1 padded, the spec's held keys verbatim;
+// `press` is n_actions, -1 = none — the press key is unioned into the frame's
+// down-keys internally). Call between batches, like vec_set_frame_skip —
+// workers are parked then, so no dispatch races. Returns 1 on success, 0 on
+// rejected input (table unchanged). Never called == the frozen default8.
+int vec_set_actions(void* h, const int32_t* held, const int32_t* press,
+                    int n_actions, int max_held) {
+  VecHost* H = (VecHost*)h;
+  if (!H) return 0;
+  if (!H->actions.install(held, press, n_actions, max_held)) {
+    fprintf(stderr, "qjs_vec: vec_set_actions rejected (n_actions=%d max_held=%d)\n",
+            n_actions, max_held);
+    return 0;
+  }
+  return 1;
 }
 
 // Set action-repeat (>= 1; see VecHost.frame_skip). Call between batches —

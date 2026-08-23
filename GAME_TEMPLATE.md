@@ -6,9 +6,11 @@ All games MUST conform to this spec. A single RL agent with a fixed CNN policy t
 
 ## Action Space
 
-**Discrete(8)** — identical across all games. Actions are abstract — games interpret them however they want. An agent learns what each action does from pixels and rewards, not from labels.
+**Discrete(8)** (`default8`) — identical across all games. Actions are abstract — games interpret them however they want. An agent learns what each action does from pixels and rewards, not from labels.
 
 This follows ProcGen's design: ProcGen uses Discrete(15) with abstract directional + button combinations. Each of its 16 games interprets the same actions differently.
+
+The runtime itself supports any discrete space declared in `runtime/action_spaces.json` (each action = held keys + optional press key), selected per env by the operator (`action_space=` on every env class). **Generated games do not declare their own space**: they are authored against `default8` below — a game must remain playable under it, which is what keeps one fixed-policy-head agent trainable across the whole catalog. A custom space is a training-side choice layered on top.
 
 | Index | Name | Keys Held | Key Pressed |
 |-------|------|-----------|-------------|

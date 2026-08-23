@@ -14,6 +14,7 @@
 #include <string>
 #include <chrono>
 #include "quickjs.h"
+#include "action_table.hpp"
 #include "../runtime/p5.hpp"
 
 static const int OBS = 64;
@@ -195,23 +196,30 @@ int main(int argc, char** argv) {
 
   std::vector<uint8_t> obs((size_t)OBS * OBS * 3);
   auto obshash = [&]() -> uint64_t { p5::render_obs_rgb(obs.data()); uint64_t h = 1469598103934665603ULL; for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; } return h; };
-  auto action_at = [](long i) { return (int)((i * 3 + 1) % 8); };
-  static const int HELD[8][2] = {{-1,-1},{37,-1},{39,-1},{38,-1},{40,-1},{-1,32},{37,32},{39,32}};
-  // D-family actions are PRESS events in the production runtime (game-env.mjs
-  // ACTIONS: press=32): besides key 32 being down for the frame (HELD above),
-  // simulateKeyPress sets the keyCode global and invokes the game's
-  // keyPressed() handler BEFORE the tick. 52 analogen games implement pickup
-  // etc. via keyPressed — without this the qjs backend silently drops those
-  // actions (asteroids gate divergence at the first D-overlap pickup).
-  static const int PRESS[8] = {-1,-1,-1,-1,-1,32,32,32};
+  // Discrete action table (shared with qjs_vec_host via action_table.hpp;
+  // press semantics — down for the frame AND keyPressed() fired — documented
+  // there). default8 unless PLAYTRAIN_QJS_ACTIONS holds a JSON action array
+  // (the action_spaces.json entry format), which qjs_env.py sets when a
+  // non-default space is requested.
+  ActionTable ACT;
+  ACT.installDefault8();
+  if (const char* aj = getenv("PLAYTRAIN_QJS_ACTIONS")) {
+    if (!actionTableFromJSON(ctx, aj, ACT)) {
+      fprintf(stderr, "qjs_host: bad PLAYTRAIN_QJS_ACTIONS, keeping default8\n");
+    }
+  }
+  auto action_at = [&](long i) { return (int)((i * 3 + 1) % ACT.n); };
   JSValue jsKeyPressed = JS_GetPropertyStr(ctx, g, "keyPressed");
   bool hasKeyPressed = JS_IsFunction(ctx, jsKeyPressed);
 
   auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
-    int codes[2], n = 0; for (int i = 0; i < 2; i++) if (HELD[a][i] >= 0) codes[n++] = HELD[a][i];
+    a = ACT.clamp(a);
+    int codes[16];
+    int n = ACT.codesFor(a, codes);
     p5::setKeysDown(codes, n);
-    if (PRESS[a] >= 0) {
-      JS_SetPropertyStr(ctx, g, "keyCode", JS_NewInt32(ctx, PRESS[a]));
+    int pk = ACT.pressFor(a);
+    if (pk >= 0) {
+      JS_SetPropertyStr(ctx, g, "keyCode", JS_NewInt32(ctx, pk));
       if (hasKeyPressed) call0(jsKeyPressed);
     }
     setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();

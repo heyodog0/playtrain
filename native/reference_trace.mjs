@@ -28,12 +28,16 @@ function fnv1a(bytes) {
   }
   return h;
 }
-const actionAt = (i) => (i * 3 + 1) % 8;
+// PLAYTRAIN_ACTION_SPACE (name / .json path) selects a non-default space so a
+// custom space can be differentially gated too; qjs_host takes the same table
+// via PLAYTRAIN_QJS_ACTIONS. Unset = default8, formula unchanged (% 8).
+const actionSpace = process.env.PLAYTRAIN_ACTION_SPACE || null;
 
 const gamesDir = process.env.PLAYTRAIN_GAMES_DIR
   || join(__dirname, '..', 'examples', 'games', 'js');
 const gamePath = game.endsWith('.js') ? game : join(gamesDir, `${game}.js`);
-const env = new GameEnv({ gamePath, obsWidth: 64, obsHeight: 64, obsMode: 'rgb', maxSteps: 100000, frameSkip: 1 });
+const env = new GameEnv({ gamePath, obsWidth: 64, obsHeight: 64, obsMode: 'rgb', maxSteps: 100000, frameSkip: 1, actions: actionSpace });
+const actionAt = (i) => (i * 3 + 1) % env.actions.length;
 
 let r = env.reset({ seed });
 console.log(`reset seed=${seed} score=${r.info.score} lives=${r.info.lives} state=${r.info.gameState} obshash=${fnv1a(r.observation)}`);
