@@ -7,7 +7,9 @@
 // gate the pointer input channel.
 let targets, ti, score, gameState;
 const HITS_NEEDED = 10;
-const RADIUS = 7;
+// Small target: random click-spam averages ~3 hits per episode, so beating it
+// requires actual aim — this is what makes the game a learning benchmark.
+const RADIUS = 3;
 const TIME_LIMIT = 900;
 
 function setup() {
