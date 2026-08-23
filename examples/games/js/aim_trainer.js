@@ -36,13 +36,16 @@ function draw() {
 
   if (gameState === 'PLAYING') {
     const t = targets[ti];
-    if (mouseIsPressed) {
-      const dx = mouseX - t.x, dy = mouseY - t.y;
-      if (dx * dx + dy * dy <= RADIUS * RADIUS) {
-        score += 1;
-        ti += 1;
-        if (ti >= HITS_NEEDED) gameState = 'WIN';
-      }
+    const dx = mouseX - t.x, dy = mouseY - t.y;
+    const d2 = dx * dx + dy * dy;
+    // Dense proximity shaping (monotonic score): a small bonus each frame the
+    // crosshair hovers near the target gives the policy a gradient toward it —
+    // the sparse click reward alone is an exploration cliff at RADIUS=3.
+    if (d2 <= 144) score += 0.01;
+    if (mouseIsPressed && d2 <= RADIUS * RADIUS) {
+      score += 1;
+      ti += 1;
+      if (ti >= HITS_NEEDED) gameState = 'WIN';
     }
     if (gameState === 'PLAYING' && frameCount >= TIME_LIMIT) gameState = 'GAMEOVER';
   }
