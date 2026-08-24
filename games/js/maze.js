@@ -8,11 +8,13 @@ const CELL_SIZE = 20;
 const CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
 const PLAYER_SIZE = 10;
 const GOAL_SIZE = 14;
-const SPEED = 3;
+const SPEED = CELL_SIZE;
 
 let grid = [];
 let player = { x: 0, y: 0 };
 let goal = { r: 0, c: 0 };
+let mazeDim = GRID_SIZE;
+let margin = 0;
 
 function setup() {
     createCanvas(CANVAS_SIZE, CANVAS_SIZE);
@@ -34,14 +36,17 @@ function resetGame(seed) {
         grid.push(row);
     }
 
+    // ProcGen samples the maze size per level and centres it in a fixed world,
+    // which is what gives the suite its built-in curriculum (see maze.cpp
+    // choose_world_dim / game_reset). Without it every level is worst-case.
+    mazeDim = Math.floor(rng() * ((GRID_SIZE - 3) / 2)) * 2 + 5;
+    margin = Math.floor((GRID_SIZE - mazeDim) / 2);
+
     let stack = [];
-    let startR = 1;
-    let startC = 1;
+    let startR = margin + 1;
+    let startC = margin + 1;
     grid[startR][startC] = 1;
     stack.push({ r: startR, c: startC });
-
-    let maxDist = 0;
-    goal = { r: startR, c: startC };
 
     while (stack.length > 0) {
         let current = stack[stack.length - 1];
@@ -54,7 +59,7 @@ function resetGame(seed) {
         for (let d of dirs) {
             let nr = current.r + d.dr;
             let nc = current.c + d.dc;
-            if (nr > 0 && nr < GRID_SIZE - 1 && nc > 0 && nc < GRID_SIZE - 1) {
+            if (nr > margin && nr < margin + mazeDim - 1 && nc > margin && nc < margin + mazeDim - 1) {
                 if (grid[nr][nc] === 0) {
                     neighbors.push({ r: nr, c: nc, dr: d.dr, dc: d.dc });
                 }
@@ -66,15 +71,22 @@ function resetGame(seed) {
             grid[current.r + next.dr / 2][current.c + next.dc / 2] = 1;
             grid[next.r][next.c] = 1;
             stack.push({ r: next.r, c: next.c });
-
-            if (stack.length > maxDist) {
-                maxDist = stack.length;
-                goal = { r: next.r, c: next.c };
-            }
         } else {
             stack.pop();
         }
     }
+
+    let open = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (grid[r][c] === 1 && !(r === startR && c === startC)) {
+                open.push({ r: r, c: c });
+            }
+        }
+    }
+    goal = open.length > 0
+        ? open[Math.floor(rng() * open.length)]
+        : { r: startR, c: startC };
 
     player.x = startC * CELL_SIZE + CELL_SIZE / 2;
     player.y = startR * CELL_SIZE + CELL_SIZE / 2;
@@ -104,6 +116,8 @@ function draw() {
         if (keyIsDown(39)) dx += SPEED;
         if (keyIsDown(38)) dy -= SPEED;
         if (keyIsDown(40)) dy += SPEED;
+
+        if (dx !== 0) dy = 0;
 
         if (dx !== 0) {
             player.x += dx;

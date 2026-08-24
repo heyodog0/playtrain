@@ -3,10 +3,12 @@
 // ============================================================
 
 let score = 0;
-let lives = 0;
+let lives = 1;
 let gameState = 'PLAYING';
 let player = { x: 192, y: 376, size: 16, speed: 4 };
 let cars = [];
+
+const LANE_HEIGHT = 32;
 
 function setup() {
   createCanvas(400, 400);
@@ -36,10 +38,7 @@ function draw() {
     // Check goal condition (reached top safe zone)
     if (player.y < 40) {
       score++;
-      player.y = 376; // Reset to bottom
-      if (score >= 10) {
-        gameState = 'WIN';
-      }
+      player.y = 376; // Back to the start for the next crossing
     }
 
     // Update traffic
@@ -56,11 +55,7 @@ function draw() {
 
       // Check collision
       if (isColliding(player, c)) {
-        lives--;
-        player.y = 376; // Reset to bottom
-        if (lives <= 0) {
-          gameState = 'GAMEOVER';
-        }
+        player.y = Math.min(376, player.y + LANE_HEIGHT);
       }
     }
   }
@@ -116,7 +111,7 @@ function getGameState() {
 function resetGame(seed) {
   rng = mulberry32(seed);
   score = 0;
-  lives = 5;
+  lives = 1;
   gameState = 'PLAYING';
 
   player.x = 192;
@@ -129,9 +124,9 @@ function resetGame(seed) {
 
   for (let i = 0; i < numLanes; i++) {
     let laneY = startY + i * laneHeight;
-    let speed = 1.5 + rng() * 3.5; // Speed 1.5 to 5.0
+    let speed = 1.0 + rng() * 2.0; // Speed 1.0 to 3.0 (Slower cars)
     let dir = rng() > 0.5 ? 1 : -1;
-    let numCars = Math.floor(rng() * 3) + 1; // 1 to 3 cars per lane
+    let numCars = Math.floor(rng() * 2) + 1; // 1 to 2 cars per lane (Easier)
     let carLen = 30 + rng() * 40; // Length 30 to 70
     let spacing = width / numCars;
 
