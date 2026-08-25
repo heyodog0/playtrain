@@ -39,7 +39,13 @@ function resetGame(seed) {
     // ProcGen samples the maze size per level and centres it in a fixed world,
     // which is what gives the suite its built-in curriculum (see maze.cpp
     // choose_world_dim / game_reset). Without it every level is worst-case.
-    mazeDim = Math.floor(rng() * ((GRID_SIZE - 3) / 2)) * 2 + 5;
+    // Sizes 9 to 21. The two smallest levels (5 and 7) were solvable by a random
+    // walk often enough to leave the task with almost no dynamic range: random
+    // play solved 66% where a trained agent reaches 92%. Dropping them puts the
+    // random baseline at 41%, next to real ProcGen's 44% (procgen_src/maze.cpp
+    // reaches that with timeout = 500; we keep the uniform 2,000-frame horizon
+    // and get there through the level distribution instead).
+    mazeDim = Math.floor(rng() * 7) * 2 + 9;
     margin = Math.floor((GRID_SIZE - mazeDim) / 2);
 
     let stack = [];
