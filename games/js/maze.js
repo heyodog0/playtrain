@@ -9,10 +9,15 @@ const CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
 const PLAYER_SIZE = 10;
 const GOAL_SIZE = 14;
 const SPEED = CELL_SIZE;
+// ProcGen's maze.cpp sets timeout = 500; ours had none and fell back to the
+// runtime's 2000-frame truncation, making the level four times more generous
+// than the original.
+const TIMEOUT = 500;
 
 let grid = [];
 let player = { x: 0, y: 0 };
 let goal = { r: 0, c: 0 };
+let frames = 0;
 let mazeDim = GRID_SIZE;
 let margin = 0;
 
@@ -26,6 +31,7 @@ function resetGame(seed) {
     score = 0;
     lives = 1;
     gameState = 'PLAYING';
+    frames = 0;
 
     grid = [];
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -140,6 +146,11 @@ function draw() {
             Math.abs(player.y - gy) < (PLAYER_SIZE + GOAL_SIZE) / 2) {
             score += 10;
             gameState = 'WIN';
+        }
+
+        frames++;
+        if (gameState === 'PLAYING' && frames >= TIMEOUT) {
+            gameState = 'GAMEOVER';
         }
     }
 
