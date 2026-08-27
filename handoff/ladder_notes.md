@@ -89,14 +89,27 @@ Run-1 A4/A3: breakout 1.05, bigfish 0.93, miner 1.28, plunder 0.95 —
 - Config: identical (diffed tpl_dbon_37689188.json vs the as-run
   ladder config; only new-dataclass-fields differ, all inert here).
 - Game .js, torch, venv: unchanged since before the ablation.
-- **Cause: ../playtrain's native vec host `libqjs_vec.so` was rebuilt
-  2026-08-09 20:19** during the profiling/renderGame session (commits
-  79d55d4..a92213a). The ablation ran the pre-Aug-9 host, the ladder the
-  post-Aug-9 one. Faster env stepping shrinks the serial fraction dbuf
-  overlaps: the win collapsed to ~1.04x, stays largest on env-heavy miner
-  (1.59 -> 1.28), goes negative on inference-heavy bigfish/plunder (halving
-  the inference batch now costs more than overlap saves). Not PPO-related;
-  both runs were train_impala.
+- Native host `libqjs_vec.so`: rebuilt 2026-08-09 20:19, but **the rebuild
+  is instrumentation-only** (draw counters, per-JS-function profiling,
+  shadow call stack; commits 79d55d4..2b9038e). Previous build was Jul 25
+  15:08 (qjs_host mtime), source 8e38a6e, and there are no functional
+  native commits in between. `native/build/libqjs_vec.so.bak_precounter`
+  IS the ablation-era binary, preserved (symbol-verified: arc-era symbols
+  present, counter symbols absent). playtrain python layer and the four
+  game .js: zero commits since Aug 7.
+- **Every software layer is therefore accounted for and functionally
+  identical between the two runs.** Remaining suspect by elimination:
+  node software on 17402 (kernel/driver/MPS, FASRC upgrade wave between
+  Aug 7 and Aug 26). The mechanism still fits the per-game pattern:
+  whatever sped up the serial path (a3 +~50%, a4 +~15%) collapsed dbuf to
+  ~1.04x, largest residual win on env-heavy miner (1.59 -> 1.28), negative
+  on inference-heavy bigfish/plunder. Not PPO-related; both runs were
+  train_impala.
+- Isolation A/B (queued behind 42250401): A4/A3 pair with the exact old
+  binary (.bak_precounter, copied, live .so untouched) vs the new one,
+  same node, same day. Expected null (old = new = ~1.04x) -> node upgrade
+  confirmed by elimination; if old returns to ~1.35x the host matters
+  after all.
 - Paper implication: tab:dbuf-ablation and the "large reason we reach ~1M"
   prose describe the pre-Aug-9 env-cost regime. On the current stack dbuf
   buys ~4% geomean on these games. Optional isolation experiment: rebuild
