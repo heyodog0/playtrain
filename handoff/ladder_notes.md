@@ -66,20 +66,56 @@
   ~13-16 GPUs. suite3 + ppo3nat drain within ~1 h, freeing 4-GPU headroom.
 - Phase 1 submitted: **job 42060782**, PENDING (Priority), pinned 17402.
 
-## State (as of 2026-08-26 ~18:30 EDT)
+## Phase 1 run 1: TIMEOUT that was a hang (job 42060782, 2026-08-26)
 
-- Phase 0: DONE, both arms pass (job 42055481, verdict above). Nothing
-  bit-rotted, nothing dropped.
-- Phase 1: **job 42060782 submitted**, PENDING (Priority), pinned
-  holygpu8a17402, 4 GPUs / 92 cores / 4:30 walltime. Runs A4→A3→A2→A1 on
-  breakout/bigfish/miner/plunder, JSON to outputs/ladder_42060782.json.
-  Expected start within ~1-3 h of submit (~18:10 EDT).
-- Arms in ladder driver: a4, a3 (published template +/- vec_double_buffer),
-  a2/a1 with num_actors probe {46,91,182}/{23,46,91} on breakout.
-- Next steps: read ladder_42060782.json, cross-check A4/A3 vs published
-  1.35x (see confounder above if it deviates), then Phases 2-4 (Sample
-  Factory: fresh venv — .venv-sf is a dangling symlink post-OS-upgrade),
-  then Phase 5 via mktab_ladder.py (in this directory).
+- Ran 18:01-22:31 on 17402, killed at 4:30 walltime. **A4 and A3 completed
+  all four games** (partial JSON: outputs/ladder_42060782.json). Then the
+  a2 probes ran 46 and 91, and the driver hung 3h45m: `bench_one` reads
+  `for line in proc.stdout`, forked a2 actors inherit the pipe, and when the
+  trainer didn't fully exit after SIGINT the readline blocked forever.
+- Fixed in tools/bench_ladder.py (backup: bench_ladder.py.pre-hang-fix):
+  start_new_session + daemon reader thread + hard wall-clock deadline even
+  with zero output + SIGINT -> 120s grace -> SIGKILL the process group.
+
+## Cross-check verdict: 1.35x does NOT reproduce — and why (2026-08-27)
+
+Run-1 A4/A3: breakout 1.05, bigfish 0.93, miner 1.28, plunder 0.95 —
+**geomean ~1.04x** vs published 1.35x. Forensics, each step verified:
+
+- Trainer code: NOT the cause. Cluster trainer = editable install from
+  ~/playtrain-trainers (reflog: ablation ran at ad067b0; ladder ran at
+  7f26997; delta is startup/tooling only). The CUDA-graph lead (7119a57) is
+  dead: capture ALWAYS failed under MPS, so the published run was eager too.
+- Config: identical (diffed tpl_dbon_37689188.json vs the as-run
+  ladder config; only new-dataclass-fields differ, all inert here).
+- Game .js, torch, venv: unchanged since before the ablation.
+- **Cause: ../playtrain's native vec host `libqjs_vec.so` was rebuilt
+  2026-08-09 20:19** during the profiling/renderGame session (commits
+  79d55d4..a92213a). The ablation ran the pre-Aug-9 host, the ladder the
+  post-Aug-9 one. Faster env stepping shrinks the serial fraction dbuf
+  overlaps: the win collapsed to ~1.04x, stays largest on env-heavy miner
+  (1.59 -> 1.28), goes negative on inference-heavy bigfish/plunder (halving
+  the inference batch now costs more than overlap saves). Not PPO-related;
+  both runs were train_impala.
+- Paper implication: tab:dbuf-ablation and the "large reason we reach ~1M"
+  prose describe the pre-Aug-9 env-cost regime. On the current stack dbuf
+  buys ~4% geomean on these games. Optional isolation experiment: rebuild
+  the host at the Aug-7 state in a worktree, rerun the A3/A4 pair on 17402.
+
+## State (as of 2026-08-27 ~10:45 EDT)
+
+- Phase 0: DONE, both arms pass (job 42055481).
+- Home-session resubmit 42149485 (9h, same hang) cancelled deliberately.
+- Phase 1 run 2: **job 42250401**, all four arms, patched driver, 6:00
+  walltime, pinned 17402, PENDING on today's maintenance reservation
+  (node is being upgraded — a4/a3 are re-run so every arm lands on the
+  SAME post-upgrade node; run-1 a4/a3 double as a pre/post-upgrade probe).
+- Then: Phases 2-4 (Sample Factory: fresh venv — .venv-sf is a dangling
+  symlink post-OS-upgrade), Phase 5 via mktab_ladder.py (in this directory).
 - Cluster artifacts: analogen-jaxbench/tools/bench_ladder_a12.py,
-  tools/bench_ladder.py, ladder_phase0.sbatch, ladder_phase1.sbatch,
-  outputs/ladder_phase0/*.
+  tools/bench_ladder.py (+.pre-hang-fix backup), ladder_phase0.sbatch,
+  ladder_phase1.sbatch, outputs/ladder_phase0/*, outputs/ladder_42060782.json,
+  outputs/suite_logs/a{3,4}_*_n0.log.
+- NOTE: cluster playtrain-trainers checkout was pulled 7f26997 -> c38d6be on
+  2026-08-26 22:59 (home session). Run 2 therefore runs c38d6be; delta from
+  7f26997 is stats/encoder-registry only, no vec steady-state change.
