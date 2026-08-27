@@ -115,7 +115,149 @@ Run-1 A4/A3: breakout 1.05, bigfish 0.93, miner 1.28, plunder 0.95 —
   buys ~4% geomean on these games. Optional isolation experiment: rebuild
   the host at the Aug-7 state in a worktree, rerun the A3/A4 pair on 17402.
 
-## State (as of 2026-08-27 ~10:45 EDT)
+## Isolation experiment: old host vs new host, queued (2026-08-27 ~11:10 EDT)
+
+Setup, all verified rather than assumed:
+
+- Worktree `/n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-8e38a6e`
+  at 8e38a6e — reflog-confirmed as the Aug-7-era HEAD (held 2026-07-25
+  15:08 -> 2026-08-09 17:48). `src/playtrain` is byte-identical between
+  8e38a6e and live a92213a (`git diff` empty), so PYTHONPATH-selecting the
+  worktree changes ONLY which libqjs_vec.so loads: `_ROOT` in
+  native_vec_env.py is `Path(__file__).parents[3]`, giving
+  `<worktree>/native/build/libqjs_vec.so`.
+- The worktree's `.so` is a byte-copy of the live tree's
+  `libqjs_vec.so.bak_precounter` (md5 927758149d09a808e8d89adb7567ee66 both;
+  backup and live `libqjs_vec.so` untouched). Symbol check reconfirmed:
+  backup has 0 counter/profiler dynamic symbols, live has 3.
+- Belt-and-braces: the host was ALSO rebuilt from 8e38a6e source in the
+  worktree (login-node clang; engine/rasterizer/frozenmath staticlibs copied
+  from live — git-identical inputs, only qjs_vec_host.cpp+p5.cpp recompiled).
+  The rebuild is size-identical to the backup (3,159,768 B) and behaviorally
+  bit-exact on a 50-step breakout probe (same obs checksum as the backup
+  binary). Kept as `native/build/libqjs_vec.so.rebuilt-8e38a6e` in the
+  worktree; the measured job runs the EXACT backup binary, not the rebuild.
+- Load verified end-to-end on the cluster venv: printed
+  `playtrain.__file__` + `_LIB_PATH` resolve to the worktree, NativeVecEnv
+  reset+step OK against the LIVE games dir (games stay identical to run 1 /
+  42250401; template's vec_games_dir is unchanged).
+- Job: **42253917** (`ladder_oldhost.sbatch`), a4+a3 only, patched
+  bench_ladder.py, pinned holygpu8a17402, 2:00 walltime, MPS on,
+  `--dependency=afterany:42250401` so it serializes after the new-host run
+  on the same post-upgrade node. The sbatch re-asserts provenance at runtime
+  (md5 gate on the loaded .so, aborts if wrong) and writes
+  `outputs/ladder_oldhost_<jobid>.json`.
+- Reading the pair: old-host ratio back at ~1.3-1.35x => host rebuild is the
+  story. Still ~1.04x => host exonerated, node upgrade implicated by
+  elimination (expected, per the null-check framing). In between: note the
+  binary-vs-source caveat does NOT apply to the measured arm (it IS the
+  Aug-9 17:42 binary); an in-between result would instead mean the collapse
+  is multi-factor.
+- Standing hazard, reconfirmed while working: the LIVE playtrain tree has
+  uncommitted maze.js/freeway.js edits (both games/js and examples/games/js;
+  known fixes, not the ladder games). Left untouched; worktree add did not
+  disturb them.
+
+## The pin premise was wrong: the published ablation ran on 15203 (2026-08-27)
+
+`sacct -X -j 37689188 -o JobID,NodeList,Start,End`:
+
+    37689188  holygpu8a15203  2026-08-07T16:28:44  2026-08-07T17:07:26
+
+The published tab:dbuf-ablation came from **holygpu8a15203**, not 17402 —
+17402 is where the published *scaling* data came from, and the plan
+conflated the two. Run 1 (1.04x, on 17402) therefore compared a different
+node against the published 1.35x, with software already proven identical.
+
+Node spec comparison (scontrol, 2026-08-27): 15203 and 17402 are nominally
+identical — amd genoa, 96 cores, 4x nvidia_h100_80gb_hbm3, RealMemory
+1547208, same ActiveFeatures, same kernel 4.18.0-553.44.1.el8_10 (both
+read pre-upgrade while sitting in today's stage4 maintenance window; check
+`uname -r` in the job banners afterwards to see if stage4 bumped it). If
+node identity explains the collapse it is node-local state (clock/power/
+MPS behavior), not spec.
+
+Reproduction job on the original node: **42255259** (`ladder_15203.sbatch`)
+— A4/A3, four games, CURRENT stack (live host, no PYTHONPATH override;
+runtime banner prints the loaded .so md5 and asserts it is not the
+worktree), patched driver, MPS on, pinned holygpu8a15203, 2:00 walltime.
+No dependency: different node from the 17402 pair, starts when stage4
+lifts (~17:00).
+
+Interpretation grid for the three same-day jobs (42250401 new-host/17402,
+42253917 old-host/17402, 42255259 new-host/15203):
+
+- 15203 ~1.35x while 17402 ~1.04x -> dbuf benefit is node-dependent; the
+  published number is real but node-specific, and the paper should say so
+  (or re-measure on a stated node policy).
+- 15203 also ~1.04x -> node identity exonerated too; the change is
+  time-based (most plausibly the upgrade wave — both nodes got stage4).
+  Pre-upgrade 15203 is then unrecoverable, and the paper needs
+  current-stack numbers regardless.
+- Old-host 42253917 splits software from node/time on 17402 within the
+  same grid.
+
+Flag for the author (do not chase now): Table 1's row-division cross-check
+(the tex comment's "1.31x for double buffering" from dividing 0.91M/1.01M-
+style rows by the 618k/873k-style rows) is only a software ratio if both
+row families came from the same node. Which jobs/nodes produced (a) the
+0.91M/1.01M rows and (b) the 618k/873k rows is now an open provenance
+question — if they differ, part of that 1.31x may be a node ratio.
+
+## Table-1 gap decomposition: the 12-worker pair, queued (2026-08-27)
+
+Table 1(b)'s PlayTrain A/B arms ran **vec_workers=12, single-buffered**
+(configs/pt_throughput/pt_pgab_*_playtrain.json in playtrain-trainers,
+verified), while the (a) suite ran 15 workers double-buffered — and the A/B
+predates the Aug-7 sweep that found 15w beats 12w by ~20-25% on env-bound
+games. The tex comment's "dividing the rows of Table 1 gives 1.31x for
+double buffering" therefore conflates (at least) the worker step and the
+buffering step.
+
+Driver: tools/bench_ladder.py now has a VEC_ARMS map — a4/a3 (15w) plus
+**a4w12/a3w12** (12w, otherwise identical: batch 256, 5 threads, same
+worker devices; 12x2x256 = 6,144 envs = the paper's hyperparameter-table
+topology). Backup of the pre-edit driver: tools/bench_ladder.py.pre-w12.
+
+Job: **42257880** (`ladder_w12.sbatch`), --arms a4w12,a3w12, four ladder
+games, pinned holygpu8a17402, 2:00, MPS, live host (md5-printing provenance
+banner), --dependency=afterany:42253917 — the 17402 chain stays serialized:
+42250401 (A4/A3 @15w, new host) -> 42253917 (A4/A3 @15w, old host) ->
+42257880 (A4/A3 @12w, new host). Output outputs/ladder_w12_<jobid>.json.
+
+Decomposition grid this completes (all same node, same day, per game and
+geomean):
+
+    dbuf @15w        = A4 / A3            (from 42250401)
+    dbuf @12w        = a4w12 / a3w12      (from 42257880)
+    workers @single  = A3 / a3w12
+    workers @double  = A4 / a4w12
+    Table-1(b)-arm topology = a3w12 (12w single) — the direct analogue of
+    the pt_pgab playtrain rows, for reading the (a)/(b) division honestly.
+
+## For a fresh session picking this up
+
+Maintenance lifted ~17:00 EDT 2026-08-27; 42255259 started immediately.
+The watching session's monitors do NOT survive it — check state with:
+`sacct -j 42250401,42253917,42255259,42257880 -X -o JobID,State,Elapsed,NodeList`
+
+When all four are terminal:
+1. Pull the JSONs: outputs/ladder_42250401.json, ladder_oldhost_*.json,
+   ladder_15203_*.json, ladder_w12_*.json (all in analogen-jaxbench/outputs).
+   On a TIMEOUT the driver still flushes per-row — partial JSONs are valid.
+2. Read the two grids above: the three-way node/host verdict (section
+   "Isolation experiment") and the worker/buffering decomposition (section
+   "Table-1 gap decomposition"). Job banners print uname -r, lscpu MHz, and
+   the loaded .so md5 — use them before attributing anything to the node.
+3. Then resume PLAN-trainer-bakeoff.md at Phase 2 (Sample Factory, fresh
+   venv) unless the verdicts demand more diagnosis first.
+4. Paper edits pending on these results: replace tab:dbuf-ablation with the
+   ladder table; rewrite Table 1's caption sentence attributing the (a)/(b)
+   gap to buffering alone (worker count is a second measured factor);
+   retire the 1.31x row-division tex comment; soften the "large reason we
+   reach ~1M" dbuf prose to the balance-dependent claim.
+
+## State (as of 2026-08-27 ~17:05 EDT)
 
 - Phase 0: DONE, both arms pass (job 42055481).
 - Home-session resubmit 42149485 (9h, same hang) cancelled deliberately.
@@ -123,6 +265,14 @@ Run-1 A4/A3: breakout 1.05, bigfish 0.93, miner 1.28, plunder 0.95 —
   walltime, pinned 17402, PENDING on today's maintenance reservation
   (node is being upgraded — a4/a3 are re-run so every arm lands on the
   SAME post-upgrade node; run-1 a4/a3 double as a pre/post-upgrade probe).
+- Isolation A/B: **job 42253917** (old-host a4/a3, worktree-selected
+  .bak_precounter binary) queued with afterany:42250401 — runs right after
+  the new-host ladder on the same pinned node. Do not cancel either.
+- Node arm: **job 42255259** (current stack, a4/a3, pinned holygpu8a15203 —
+  the node the published ablation ACTUALLY ran on, per sacct). Pending
+  stage4 maintenance, no dependency. Do not cancel.
+- Decomposition arm: **job 42257880** (a4w12/a3w12, current stack, 17402,
+  afterany:42253917). Do not cancel.
 - Then: Phases 2-4 (Sample Factory: fresh venv — .venv-sf is a dangling
   symlink post-OS-upgrade), Phase 5 via mktab_ladder.py (in this directory).
 - Cluster artifacts: analogen-jaxbench/tools/bench_ladder_a12.py,
