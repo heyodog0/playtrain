@@ -6,9 +6,22 @@ All games MUST conform to this spec. A single RL agent with a fixed CNN policy t
 
 ## Action Space
 
-**Discrete(8)** — identical across all games. Actions are abstract — games interpret them however they want. An agent learns what each action does from pixels and rewards, not from labels.
+**Discrete(8)** (`default8`) — identical across all games. Actions are abstract — games interpret them however they want. An agent learns what each action does from pixels and rewards, not from labels.
 
 This follows ProcGen's design: ProcGen uses Discrete(15) with abstract directional + button combinations. Each of its 16 games interprets the same actions differently.
+
+The runtime itself supports any discrete space declared in `runtime/action_spaces.json` (each action = held keys + optional press key + optional pointer/buttons/axes), selected per env by the operator (`action_space=` on every env class). **Generated games do not declare their own space**: they are authored against `default8` below — a game must remain playable under it, which is what keeps one fixed-policy-head agent trainable across the whole catalog. A custom space is a training-side choice layered on top.
+
+### Pointer tier (mouse / gamepad input)
+
+A game may additionally read the pointer through standard p5 globals — `mouseX`, `mouseY`, `mouseIsPressed`, and the `mousePressed()` callback — plus `gamepadAxes` (an array of 4 floats in [-1,1]). These exist in every runtime (headless native, headless Node, browser) and rest at `0 / false / centered`. Pointer games are driven by:
+
+- **discrete analog presets** — actions carrying `pointer: [x, y]` (in [0,1]², canvas-relative; *latched* — it stays where the last action put it), `buttons: ["mouse"]` (*absolute* per step; a press edge fires `mousePressed()`), and `axes` (*absolute*; snap back to center). See `aimgrid18`.
+- **box spaces** — `{"type": "box", "channels": [...]}` exposing a continuous `gym.spaces.Box` over `pointer_x` / `pointer_y` / `button:*` / `axis:*` / `key:*` channels, every channel absolute each step. See `mouse2d`, `gamepad2s`.
+
+All analog values are **quantized to uint16 at the producer** (`q = floor(clamp(v01)·65535 + 0.5)`, dequantized `q/65535` identically in every engine) — continuous from the policy's view, bit-exact for replay and the cross-engine gate. A human playing in the browser tester goes through the same quantized channel.
+
+Pointer games must still boot and terminate under keyboard-only random play (the validation suite runs `default8`), and should not depend on inherited stroke/fill state (`examples/games/js/aim_trainer.js` is the reference).
 
 | Index | Name | Keys Held | Key Pressed |
 |-------|------|-----------|-------------|

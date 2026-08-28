@@ -37,6 +37,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.vector import AutoresetMode, VectorEnv
 
+from .action_space import is_default, load_action_space
 from .env import _resolve_games_dir, _resolve_runtime_dir
 
 
@@ -45,7 +46,6 @@ _STEP_HEADER_STRUCT = struct.Struct(">fBBBBii")
 _STEP_HEADER_SIZE = 16
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT")
 _MMAP_SENTINEL = 0xFFFFFFFF
-_DEFAULT_N_ACTIONS = 8  # PlayTrainEnv currently exposes Discrete(8) for all games
 
 
 class _Worker:
@@ -58,7 +58,7 @@ class _Worker:
     def __init__(self, *, idx: int, game: str, game_path: Path, worker_path: Path,
                  runtime_dir: Path, obs_size: int, obs_mode: str,
                  needs_matter: bool, node_bin: str, node_flags: list[str],
-                 frame_skip: int = 1) -> None:
+                 frame_skip: int = 1, action_space_arg: str | None = None) -> None:
         self.idx = idx
         self.game = game
 
@@ -80,6 +80,8 @@ class _Worker:
                "--obs-mode", obs_mode,
                "--obs-size", str(obs_size),
                "--frame-skip", str(max(1, int(frame_skip)))]
+        if action_space_arg is not None:
+            cmd += ["--action-space", action_space_arg]
         if needs_matter:
             cmd.append("--matter")
         self.proc = subprocess.Popen(
@@ -263,8 +265,12 @@ class PlayTrainVecEnv(VectorEnv):
         is the ProcGen-style train-pool restriction: the agent only ever sees
         the configs in the pool. Ignored when ``fixed_env_seed`` is set (that
         takes precedence) or when an explicit ``reset(seed=...)`` is given.
-    n_actions : int
-        Size of the discrete action space. Defaults to 8 (matches PlayTrainEnv).
+    n_actions : int or None
+        Legacy declaration of the space size; must agree with ``action_space``
+        when both are given. Prefer ``action_space``.
+    action_space : str, list, or None
+        Discrete action space: a name in ``runtime/action_spaces.json``, a path
+        to a JSON action list, or the list itself. Default: ``default8``.
 
     Notes
     -----
@@ -291,7 +297,8 @@ class PlayTrainVecEnv(VectorEnv):
         autoreset_seed: int | None = None,
         fixed_env_seed: int | None = None,
         seed_pool: Sequence[int] | None = None,
-        n_actions: int = _DEFAULT_N_ACTIONS,
+        n_actions: int | None = None,
+        action_space: str | list | None = None,
     ) -> None:
         self.games = list(games)
         self.num_envs = len(self.games)
@@ -307,9 +314,16 @@ class PlayTrainVecEnv(VectorEnv):
         self.seed_pool = list(seed_pool) if seed_pool is not None else None
         if self.seed_pool is not None and len(self.seed_pool) == 0:
             raise ValueError("seed_pool must be non-empty when provided")
-        self.n_actions = int(n_actions)
-        if self.n_actions <= 0:
-            raise ValueError(f"n_actions must be > 0, got {n_actions}")
+        # Discrete action space: default8 unless a name / .json path / action
+        # list is given; forwarded to every worker as --action-space. The
+        # legacy explicit n_actions must agree with the resolved space.
+        self._actions = load_action_space(action_space)
+        self._action_space_arg = (None if is_default(self._actions)
+                                  else json.dumps(self._actions, separators=(",", ":")))
+        self.n_actions = len(self._actions)
+        if n_actions is not None and int(n_actions) != self.n_actions:
+            raise ValueError(f"n_actions={n_actions} conflicts with the "
+                             f"action space's {self.n_actions} actions")
         self._closed = False
 
         games_root = _resolve_games_dir(games_dir)
@@ -345,7 +359,7 @@ class PlayTrainVecEnv(VectorEnv):
                     idx=idx, game=game, game_path=game_path, worker_path=worker_path,
                     runtime_dir=runtime_root, obs_size=obs_size, obs_mode=obs_mode,
                     needs_matter=needs_matter, node_bin=node_bin, node_flags=node_flags,
-                    frame_skip=self.frame_skip))
+                    frame_skip=self.frame_skip, action_space_arg=self._action_space_arg))
 
             # Ping each worker to ensure they're up before timing.
             ping = b'{"cmd":"ping"}'

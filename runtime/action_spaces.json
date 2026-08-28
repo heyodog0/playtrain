@@ -1,0 +1,53 @@
+{
+  "//": "Named action spaces. DISCRETE spaces are arrays of actions; each action holds `held` key codes for the frame, optionally fires `press` as a p5 keyPressed() event (a press key is ALSO down for that frame, in every runtime), and may carry analog fields: `pointer` [x,y] in [0,1]^2 (canvas-relative; LATCHED — persists until another action moves it), `buttons` (['mouse']; ABSOLUTE per step — released unless the action holds them; a 0->1 edge fires mousePressed()), and `axes` (up to 4 floats in [-1,1]; ABSOLUTE per step — snap back to center unless the action sets them). BOX spaces are {type:'box', channels:[...]} where a channel is 'pointer_x' | 'pointer_y' | 'axis:0'..'axis:3' | 'button:mouse' | 'key:<code>'; the env exposes Box(-1,1,(k,)) (pointer channels use [0,1]) and every channel is absolute each step. ALL analog values are quantized to uint16 at the producer — q = floor(clamp(v01)*65535 + 0.5), dequantized v01 = q/65535 identically in every engine — so replay and the cross-engine gate stay bit-exact. Key codes are p5/browser keycodes: LEFT_ARROW 37, UP_ARROW 38, RIGHT_ARROW 39, DOWN_ARROW 40, SPACE 32. Indices 0-7 of default8 are frozen: every recorded trajectory, human-study session, and the native/gate_qjs.sh golden traces depend on this exact mapping.",
+  "default8": [
+    { "name": "NOOP",    "held": [],   "press": null },
+    { "name": "LEFT",    "held": [37], "press": null },
+    { "name": "RIGHT",   "held": [39], "press": null },
+    { "name": "UP",      "held": [38], "press": null },
+    { "name": "DOWN",    "held": [40], "press": null },
+    { "name": "D",       "held": [],   "press": 32 },
+    { "name": "LEFT_D",  "held": [37], "press": 32 },
+    { "name": "RIGHT_D", "held": [39], "press": 32 }
+  ],
+  "thrust10": [
+    { "name": "NOOP",    "held": [],   "press": null },
+    { "name": "LEFT",    "held": [37], "press": null },
+    { "name": "RIGHT",   "held": [39], "press": null },
+    { "name": "UP",      "held": [38], "press": null },
+    { "name": "DOWN",    "held": [40], "press": null },
+    { "name": "D",       "held": [],   "press": 32 },
+    { "name": "LEFT_D",  "held": [37], "press": 32 },
+    { "name": "RIGHT_D", "held": [39], "press": 32 },
+    { "name": "UP_D",    "held": [38], "press": 32 },
+    { "name": "DOWN_D",  "held": [40], "press": 32 }
+  ],
+  "aimgrid18": [
+    { "name": "AIM_NW", "held": [], "press": null, "pointer": [0.17, 0.17] },
+    { "name": "AIM_N",  "held": [], "press": null, "pointer": [0.5,  0.17] },
+    { "name": "AIM_NE", "held": [], "press": null, "pointer": [0.83, 0.17] },
+    { "name": "AIM_W",  "held": [], "press": null, "pointer": [0.17, 0.5]  },
+    { "name": "AIM_C",  "held": [], "press": null, "pointer": [0.5,  0.5]  },
+    { "name": "AIM_E",  "held": [], "press": null, "pointer": [0.83, 0.5]  },
+    { "name": "AIM_SW", "held": [], "press": null, "pointer": [0.17, 0.83] },
+    { "name": "AIM_S",  "held": [], "press": null, "pointer": [0.5,  0.83] },
+    { "name": "AIM_SE", "held": [], "press": null, "pointer": [0.83, 0.83] },
+    { "name": "FIRE_NW", "held": [], "press": null, "pointer": [0.17, 0.17], "buttons": ["mouse"] },
+    { "name": "FIRE_N",  "held": [], "press": null, "pointer": [0.5,  0.17], "buttons": ["mouse"] },
+    { "name": "FIRE_NE", "held": [], "press": null, "pointer": [0.83, 0.17], "buttons": ["mouse"] },
+    { "name": "FIRE_W",  "held": [], "press": null, "pointer": [0.17, 0.5],  "buttons": ["mouse"] },
+    { "name": "FIRE_C",  "held": [], "press": null, "pointer": [0.5,  0.5],  "buttons": ["mouse"] },
+    { "name": "FIRE_E",  "held": [], "press": null, "pointer": [0.83, 0.5],  "buttons": ["mouse"] },
+    { "name": "FIRE_SW", "held": [], "press": null, "pointer": [0.17, 0.83], "buttons": ["mouse"] },
+    { "name": "FIRE_S",  "held": [], "press": null, "pointer": [0.5,  0.83], "buttons": ["mouse"] },
+    { "name": "FIRE_SE", "held": [], "press": null, "pointer": [0.83, 0.83], "buttons": ["mouse"] }
+  ],
+  "mouse2d": {
+    "type": "box",
+    "channels": ["pointer_x", "pointer_y", "button:mouse"]
+  },
+  "gamepad2s": {
+    "type": "box",
+    "channels": ["axis:0", "axis:1", "axis:2", "axis:3", "key:32", "button:mouse"]
+  }
+}

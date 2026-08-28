@@ -12,6 +12,7 @@ Backends:
 Prefer ``GameEnv`` (QuickJS) unless you specifically need the pure-Node backend.
 """
 
+from .action_space import load_action_space
 from .env import PlayTrainEnv, SeedRangeWrapper, list_available_games
 from .vec_env import PlayTrainVecEnv
 
@@ -35,5 +36,6 @@ __all__ = [
     "PlayTrainVecEnv",
     "SeedRangeWrapper",
     "list_available_games",
+    "load_action_space",
     "__version__",
 ]

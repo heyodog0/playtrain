@@ -414,6 +414,33 @@ function max(...args) { return Math.max(...(args.length === 1 && Array.isArray(a
 // ---- Input ----
 function keyIsDown(code) { return _keysDown.has(code); }
 function setKeysDown(keys) { _keysDown = new Set(keys); }
+
+// Pointer / gamepad state. Positions and axes arrive QUANTIZED (uint16 wire
+// values, see runtime/action_spaces.json) and are dequantized here with the
+// same formulas as the native hosts (action_table.hpp env_apply_frame):
+// mouseX = (q/65535) * width, axis = (q/65535)*2 - 1 — identical IEEE doubles
+// on every engine, which is what keeps pointer games bit-exact cross-engine.
+let _qmx = 0, _qmy = 0;
+let _mouseDown = false;
+let _prevButtons = 0;
+let _qaxes = [32768, 32768, 32768, 32768];
+function setPointerPos(qx, qy) { _qmx = qx; _qmy = qy; }
+function setButtons(buttons) {
+  // Absolute per step; a 0->1 edge on bit0 fires the game's mousePressed()
+  // once, with mouseX/mouseIsPressed already reflecting the new frame —
+  // mirroring env_apply_frame's ordering in the native hosts.
+  _mouseDown = (buttons & 1) !== 0;
+  if ((buttons & 1) && !(_prevButtons & 1) && typeof globalThis.mousePressed === 'function') {
+    globalThis.mousePressed();
+  }
+  _prevButtons = buttons;
+}
+function setAxes(qaxes) { for (let j = 0; j < 4; j++) _qaxes[j] = qaxes[j]; }
+function resetPointer() {
+  // Per-episode rest state, like setKeysDown([]) on env.reset.
+  _qmx = 0; _qmy = 0; _mouseDown = false; _prevButtons = 0;
+  _qaxes = [32768, 32768, 32768, 32768];
+}
 function simulateKeyPress(code) {
   // Sets keyCode global, marks the key as held for the current frame, and
   // triggers the game's keyPressed() if defined. Adding to _keysDown lets
@@ -524,6 +551,10 @@ function installGlobals() {
     get width() { return _width; },
     get height() { return _height; },
     get frameCount() { return _frameCount; },
+    get mouseX() { return (_qmx / 65535) * _width; },
+    get mouseY() { return (_qmy / 65535) * _height; },
+    get mouseIsPressed() { return _mouseDown; },
+    get gamepadAxes() { return _qaxes.map((q) => (q / 65535) * 2 - 1); },
   };
 
   for (const [k, v] of Object.entries(globals)) {
@@ -541,6 +572,10 @@ export {
   setRasterRes,
   setKeysDown,
   simulateKeyPress,
+  setPointerPos,
+  setButtons,
+  setAxes,
+  resetPointer,
   tick,
   resetFrameCount,
   isLooping,

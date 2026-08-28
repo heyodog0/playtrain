@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from playtrain.runtime import PlayTrainEnv, list_available_games
+from playtrain.runtime.action_space import load_action_space
 from playtrain.runtime.bench import run_bench
 
 from playtrain.gen.constants import variant_names
@@ -51,7 +52,7 @@ def main() -> int:
     return run_bench(
         env_factory=env_factory,
         games=games,
-        n_actions=8,
+        n_actions=len(load_action_space()),
         backend_label="p5",
         frames=args.frames,
         warmup=args.warmup,

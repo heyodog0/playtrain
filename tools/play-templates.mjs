@@ -153,6 +153,19 @@ ${browserShimBundle()}
     if (KEYS.indexOf(e.keyCode) >= 0) { e.preventDefault(); if (!held.has(e.keyCode)) pressed.add(e.keyCode); held.add(e.keyCode); }
   }, { passive: false });
   addEventListener('keyup', function (e) { held.delete(e.keyCode); });
+
+  // Pointer capture, quantized AT THE SOURCE to the same uint16 wire format
+  // the envs step with (runtime/action_spaces.json) — a human here plays
+  // through exactly the input channel the agent uses, replayable bit-exact.
+  var mq = { x: 0, y: 0, down: false };
+  var Q = function (v) { return Math.floor(Math.min(1, Math.max(0, v)) * 65535 + 0.5); };
+  view.addEventListener('mousemove', function (e) {
+    var r = view.getBoundingClientRect();
+    mq.x = Q((e.clientX - r.left) / r.width);
+    mq.y = Q((e.clientY - r.top) / r.height);
+  });
+  view.addEventListener('mousedown', function (e) { e.preventDefault(); mq.down = true; });
+  addEventListener('mouseup', function () { mq.down = false; });
   document.getElementById('reset').onclick = function () {
     if (typeof window.resetGame === 'function') window.resetGame((Date.now() >>> 0)); this.blur();
   };
@@ -181,6 +194,8 @@ ${browserShimBundle()}
     setKeysDown(Array.from(held));
     pressed.forEach(function (c) { simulateKeyPress(c); });   // one-shot keyPressed() events
     pressed.clear();
+    setPointerPos(mq.x, mq.y);
+    setButtons(mq.down ? 1 : 0);
     tick();
     var p = getPixelData();
     vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);

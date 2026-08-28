@@ -68,7 +68,8 @@ FRAMINGS = {
         "rewrite_task": (
             "Rewrite the full file to implement this variant. You may freely change the mechanics, rules, "
             "entities, visuals, and difficulty to realize it — only the technical contract below (required "
-            "functions, Discrete(8) controls, seeded determinism, getGameState) must stay intact."
+            "functions, the default Discrete(8) control mapping, seeded determinism, getGameState) "
+            "must stay intact."
         ),
     },
 }

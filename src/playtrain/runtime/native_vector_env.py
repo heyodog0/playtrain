@@ -31,7 +31,6 @@ from gymnasium.vector import AutoresetMode, VectorEnv
 
 from .native_vec_env import NativeVecEnv
 
-_N_ACTIONS = 8  # Discrete(8), matches QuickJSEnv / PlayTrainVecEnv
 
 
 def _coerce_autoreset(mode) -> AutoresetMode:
@@ -57,7 +56,8 @@ class NativeVectorEnv(VectorEnv):
         obs_size: int = 64,
         max_steps: int = 2000,
         num_threads: int = 0,
-        n_actions: int = _N_ACTIONS,
+        n_actions: int | None = None,
+        action_space: str | list | None = None,
         autoreset_mode: AutoresetMode | str | None = AutoresetMode.NEXT_STEP,
         autoreset_seed: int | None = None,
         fixed_env_seed: int | None = None,
@@ -70,11 +70,20 @@ class NativeVectorEnv(VectorEnv):
         # sync VectorEnv runs num_envs copies of one game, the standard trainer case.)
         self._env = NativeVecEnv(
             game, num_envs, obs_size=obs_size, max_steps=max_steps,
-            num_threads=num_threads, autoreset=False, games_dir=games_dir, lib_path=lib_path)
+            num_threads=num_threads, autoreset=False, action_space=action_space,
+            games_dir=games_dir, lib_path=lib_path)
         self.num_envs = self._env.num_envs
         self.obs_size = obs_size
         self.num_threads = self._env.num_threads
-        self.n_actions = int(n_actions)
+        # The host's installed table is authoritative; a legacy explicit
+        # n_actions must agree with it.
+        if self._env.n_actions is None:
+            raise ValueError("NativeVectorEnv is Discrete-only; drive box "
+                             "action spaces through NativeVecEnv directly")
+        self.n_actions = self._env.n_actions
+        if n_actions is not None and int(n_actions) != self.n_actions:
+            raise ValueError(f"n_actions={n_actions} conflicts with the "
+                             f"action space's {self.n_actions} actions")
 
         self.autoreset_mode = _coerce_autoreset(autoreset_mode)
         self._rng = np.random.default_rng(autoreset_seed)
