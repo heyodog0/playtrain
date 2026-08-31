@@ -81,7 +81,10 @@ if [ "$RUST_MODE" = gen ]; then
   # compiler-rt, whose profraw format would not match rust's llvm-profdata).
   PROFRT="$(find "$HOME/.rustup/toolchains" -name 'libprofiler_builtins-*.rlib' -path '*x86_64-unknown-linux-gnu*' | head -1)"
   [ -n "$PROFRT" ] || { echo "profiler_builtins rlib not found"; exit 1; }
-  LDEXTRA="$LDEXTRA $PROFRT"
+  # -u forces the runtime-registration object out of the archive (nothing in a
+  # rust staticlib references __llvm_profile_runtime, so the atexit profraw
+  # writer is silently dropped otherwise).
+  LDEXTRA="$LDEXTRA -Wl,-u,__llvm_profile_runtime $PROFRT"
 fi
 [ "$VIS" = 1 ] && LDEXTRA="$LDEXTRA -Wl,--version-script,$(pwd)/vec_exports.map"
 if [ "$XLTO" = 1 ]; then
