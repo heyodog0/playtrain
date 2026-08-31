@@ -666,6 +666,13 @@ static bool read_file(const char* path, std::string& out) {
 }
 
 // ================================ C ABI =======================================
+// The vec_* functions below are the .so's entire public surface (loaded via
+// ctypes). Under -fvisibility=hidden builds this pragma keeps them exported
+// while everything else (engine, rasterizer, p5) goes DSO-local — intra-.so
+// calls then skip the PLT and stay inlinable under LTO.
+#if defined(__GNUC__)
+#pragma GCC visibility push(default)
+#endif
 extern "C" {
 
 void* vec_create(const char* game_path, int num_envs, int obs_size,
@@ -967,3 +974,6 @@ int vec_recv(void* h, int batch_size, int32_t* out_env_ids) {
 }
 
 }  // extern "C"
+#if defined(__GNUC__)
+#pragma GCC visibility pop
+#endif
