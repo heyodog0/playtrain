@@ -332,7 +332,45 @@ ok); the 43268226 empty-trace failure never recurred.
   topology ever moves to many threads per worker (plunder loses 21%/thr at
   T=16).
 
-## RECOMMENDATION
+## ROUND-2 FINAL (2026-08-31 night)
+
+- Full run (job 43319337, holy8a24307, live vs rv2, 24 games x 3 interleaved
+  trials, 16 workers x 128 envs x 5 threads, 0 failures):
+  **ProcGen16 1.291x, ALE8 1.368x, all-24 1.317x** over the live binary.
+  min dodgeball 1.101, max pong 1.927. JSONs outputs/tune_full_43319337/.
+  Projected 17402 anchor: 1.78M x 1.291 ~= 2.30M ~= 1.39x tuned EnvPool —
+  the bottom of the plan's "realistic ceiling" band (2.3-2.6M), reached.
+- Re-profile of rv2 (job 43319345): interp 55-70% everywhere; blit residual
+  <=4%; bigfish raster still ~34% (fill_subpaths 22.9, ellipse_path 11.1) —
+  the only remaining structural headroom is rasterizer algorithmic work
+  (ellipse/path caching) and the deferred p5 command buffer.
+- Gates3 (job 43300924): mh2, rv2 fail ONLY qbert x3 — identical to the
+  no-lever tip baseline. rv2 is exactly as deterministic as main.
+- Round-2 levers: rust-PGO +4.6%, visibility +1.9%, self-consistent PGO
+  (vs stale profile) ~+4%; DEAD: CSPGO (-0.7%), xLTO (ProfileSummary link
+  conflict), NG bump (safe but 0.998x), THP (already [always]), scheduler
+  surgery (bounded at ~2-8% @ T=5, not worth the risk).
+- The worktree default .so is left at rv2 (tune_full's last swap).
+
+## RECOMMENDATION (supersedes the round-1 recommendation below)
+
+Ship **rv2** = branch tip (simd blit + rasterizer target-cpu, main-lineage
+host) + self-consistent whole-.so PGO + thin-LTO + rust-PGO rasterizer +
+hidden visibility: **+29% ProcGen16 / +32% all-24** over the live binary,
+deterministic exactly where main is (qbert terminal frame is main's
+pre-existing hole; aim_trainer is FIXED on this lineage vs live). Every
+lever individually measured, gated, and reproducible from committed
+scripts (native/build_qjs_vec_tune.sh + wt/pgo/*.profdata). Rebuild recipe:
+tipnative.profdata (CPP_MODE=use) + RA.rustpgo + VIS=1.
+
+The two decisions remain the user's (unchanged): (a) adoption — invalidates
+every published number, ~1-day re-measurement + 17402 confirm after the
+pinned chain drains; (b) build policy — the portable no-PGO build is now
+tipplain (+21%); the tuned benchmark build is rv2 (+29% ProcGen16). PGO
+artifacts (tipnative.profdata, rust.profdata) are required to reproduce rv2
+and live in wt/pgo/.
+
+## round-1 recommendation (superseded)
 
 Ship l12pgo (simd blit + rasterizer target-cpu + whole-.so PGO+thin-LTO):
 +21% ProcGen16 / +24% all-24 geomean over the live binary, bit-exact
