@@ -237,6 +237,14 @@ libprofiler_builtins rlib was added to the link (19c4355). Never substitute
 clang's compiler-rt profile runtime: LLVM 21 profraw vs rust's LLVM-22
 llvm-profdata.
 
+xLTO VERDICT (job 43294752): cross-language thin-LTO links FAIL with
+"linking module flags 'ProfileSummary': IDs have conflicting values" — the
+rust modules carry rust.profdata's summary, the C++ modules tip.profdata's,
+and function import refuses to merge them. Not a bitcode-version failure.
+Fix would be unifying the two profile summaries; dropped instead — the
+visibility lever already de-PLTs the p5->rasterizer boundary, and r keeps
+rust PGO. The fallback ladder shipped r without xLTO (XLTO_OK=0).
+
 NEW FASRC TRAP (cost one profiling round): running `python /tmp/driver.py`
 puts /tmp at sys.path[0], and a stray stdlib-shadowing file there from ANY
 user breaks imports — another user's /tmp/inspect.py on the login node
