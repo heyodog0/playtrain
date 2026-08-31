@@ -186,6 +186,52 @@ game; qbert's is a terminal-obs rendering difference).
 - llvm-bolt: absent on FASRC — BOLT dropped (plan already treated it as
   garnish).
 
+## PROVENANCE CORRECTION (found 2026-08-31 during round 2)
+
+The round-1 variants were NOT built from main's vec-host source. The
+worktree setup step `cp -a $LIVE/native/qjs native/` copied the live tree's
+qjs_vec_host.cpp and qjs_host.cpp (a92213a-era, pre-continuous-input) over
+the checkout, and every round-1 build compiled those. Consequences:
+
+- Round-1 numbers are "LIVE HOST + levers" — the cleanest attribution
+  against the live binary (it is exactly why base/live = 0.999 and why
+  base.so lacked vec_set_actions), but the branch as committed (main-lineage
+  host) was never benchmarked in round 1.
+- The live-era host sources are preserved at wt/live_host_backup/ with
+  md5s in the phase-1b log; the earlier "base = main 54eb35c build" wording
+  in this file is wrong in exactly this one respect.
+- Round 2 fixes this: all round-2 variants build from committed branch-tip
+  sources, and a lineage arm `mh` (= the l12pgo recipe rebuilt from tip
+  sources) is measured against l12pgo to quantify the host-lineage delta.
+  If mh/l12pgo ~= 1.00, adoption can ship the branch as committed.
+
+## ROUND 2 (2026-08-31, in progress)
+
+Levers, all built by native/build_qjs_vec_tune.sh (0e503c3), each gated by
+obs-checksum + serial gate like round 1:
+
+- r  : rust rasterizer PGO (+ cross-language thin-LTO through rust-lld if
+       it links — rustc 1.97 is LLVM 22 vs clang 21, so xLTO REQUIRES the
+       LLVM-22 linker; rust profraws merged with rust's own llvm-profdata,
+       never the system one)
+- v  : -fvisibility=hidden + vec_exports.map version script (vec_* stays
+       global via pragma in qjs_vec_host.cpp; rs_*/JS_*/fm_* go DSO-local,
+       killing PLT hops on the p5->rasterizer boundary)
+- c  : context-sensitive PGO (cs profile collected on a tip csgen build,
+       merged INTO tip.profdata)
+- rvc: all three
+- mh : lineage arm (see above)
+
+Diagnostics, not levers: THP is [always] on the login node (job banners
+record the compute nodes — if [always] there too, the hugepage idea is
+moot); tune2_diag job = env-thread sweep {1,2,5,8,16} + SIGPROF at T=1 vs
+T=5 on miner/plunder to bound the scheduler-spin ceiling before any host
+surgery is considered.
+
+Rust/C++ PGO runtime clash note: never instrument both sides in one .so
+(duplicate __llvm_profile_* runtimes). The rustgen build has C++ at
+profile-USE; the csgen build has rust prebuilt.
+
 ## RECOMMENDATION
 
 Ship l12pgo (simd blit + rasterizer target-cpu + whole-.so PGO+thin-LTO):
