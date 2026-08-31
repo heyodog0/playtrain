@@ -105,6 +105,39 @@ means and ratio vs live (JSONs: outputs/tune_ab_43268228/):
 - LESSON for future sessions: build/qjs_host is a shared mutable path —
   never gate two things concurrently, and never pipe the gate to tail.
 
+## A/B #2 VERDICT (job 43273826, holy8a24306 — same node as A/B #1)
+
+live/l12/pgo/l12pgo, same protocol. On-node obs-checksum of pgo+l12pgo vs
+live at job start: **PASS** (genoa, AVX2 path live). JSONs:
+outputs/tune_ab_43273826/.
+
+    game        live     l12/live   pgo/live  l12pgo/live
+    bigfish   182,625      1.321      1.024      1.350
+    breakout   88,411      1.122      0.975      1.124
+    maze       33,214      1.126      1.158      1.299
+    miner      17,979      1.083      1.087      1.158
+    plunder   225,714      1.364      1.031      1.416
+    geomean               1.198      1.053      **1.264**
+
+- l12 reproduces across jobs (1.188 -> 1.198): the iteration protocol is
+  stable at the ~1% level.
+- PGO alone +5.3% geomean — it pays where interp dominates (maze +15.8%,
+  miner +8.7%) and loses slightly on breakout (-2.5%). This DOES NOT
+  contradict build_qjs.sh's old "PGO measured -11.5%": that was engine-only
+  PGO on the qjs_host CLI; this is whole-.so PGO+thin-LTO profiled on the
+  vec workload.
+- Stacking is multiplicative again (1.198 x 1.053 = 1.261 vs 1.264).
+- **WINNER: l12pgo** (pending the serial gates).
+
+## Banked runs (submitted 2026-08-31 evening)
+
+- Full run: job **43276792** (tune_full.sbatch) — live vs l12pgo, published
+  topology 16 workers x 128 envs x 5 threads, 16 ProcGen + 8 ALE, 3
+  interleaved trials/game, one genoa node. Output outputs/tune_full_43276792/.
+- Re-profile: job **43276822** (tune_prof.sbatch) — SIGPROF sampler on
+  l12pgo (via lib_path, no .so swap), 5 profiled games x 60 s. Output
+  outputs/prof_<game>_l12pgo_43276822.txt.
+
 ## Pending / next
 
 - Read A/B #2 + serial gates; then the banked-lever full run (16 workers x
