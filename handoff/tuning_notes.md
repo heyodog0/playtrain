@@ -271,6 +271,16 @@ rvc +6.5% (~= r x v; c contributes nothing in-stack either).
   (tip + native PGO + rust-PGO + visibility, CSPGO dropped) — rv2 is the
   round-2 adoption candidate.
 
+## Round-2 gates VERDICT (job 43294757, holy8a24303)
+
+mh/r/v/c/rvc, gate_qjs.sh --all 3000 (logs wt/gates2/): every variant fails
+ONLY qbert x3 seeds — the known pre-existing terminal-frame divergence.
+**aim_trainer PASSES on the tip host**: its round-1 divergence was a
+live-era-host limitation that main's continuous-input work fixed. On the
+adoptable lineage the determinism claim has exactly one hole (qbert
+GAMEOVER frame). Compute-node gating worked cleanly this time (preflight
+ok); the 43268226 empty-trace failure never recurred.
+
 ## Diagnostics VERDICT (job 43294758, holy8a24306)
 
 - THP: [always] on genoa compute nodes (and login). The hugepage lever was
