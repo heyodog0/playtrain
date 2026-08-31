@@ -387,3 +387,51 @@ b. BUILD POLICY: portable x86-64-v3 "shipped" build vs tuned benchmark
    build. Note PGO makes the shipped/benchmark distinction REAL: the
    .profdata lives in wt/pgo/ and the build is only reproducible with it;
    a portable no-PGO build is l12 (+19-20% on the 5-game set).
+
+## ROUND 3 — authorized (Ryan, 2026-08-31, laptop session)
+
+The round-2 STOP above is lifted for exactly three levers. Same A/B
+discipline, same gates, same stopping rules (drop any lever measuring
+under ~+3%; every arm passes gate_qjs.sh --all AND the obs-checksum
+bit-exact check vs rv2). Realistic stacked target over live: ~1.45-1.55x.
+rv2 is the new base arm; keep a live-.so arm riding along as the null
+check, ladder-forensics style, as before.
+
+Levers, in priority order:
+
+1. **BOLT, instrumentation mode.** The round-2 drop was availability, not
+   a verdict: FASRC has no llvm-bolt and no perf. Instrumentation mode
+   needs neither — build the .so instrumented, run the vec workload to
+   collect the fdata, then llvm-bolt-optimize the layout. `emit-relocs`
+   is already committed (d48c3c1). The discovery step is sourcing
+   llvm-bolt itself in user space (built from the same LLVM release as
+   clang 21.1.8 on login, or a matching prebuilt). If llvm-bolt cannot be
+   sourced cleanly, record that and drop — do not sink a day into
+   toolchain archaeology. Expected: +5-15% on interp-heavy games.
+2. **p5 command buffer** (deferred-by-plan since round 1). Batch the
+   per-frame p5 calls into a buffer flushed once per frame instead of one
+   QuickJS->C++ binding crossing per call. Attacks the 2-13% bind share.
+   Behavior-changing code, so the differential gate is the arbiter;
+   fillText/no-op commands must stay no-ops in the buffer replay.
+3. **Rasterizer span vectorization.** Solid-color scanline span fills are
+   scalar Rust; SIMD the fill loop only — coverage/winding decisions stay
+   scalar so bit-exactness holds by construction. Attacks the 8-34%
+   rasterizer share.
+
+Standing constraints (restated so this section is self-sufficient):
+
+- Do NOT race the pinned 17402 chain: 43246914 (EP sync16 on 17402) is
+  still queued and is the gate for the paper pass. Nothing in round 3
+  submits to 17402 until it drains.
+- Never touch the live tree or the live .so
+  (md5 8b539667dcead5513afe365b766f9e92). All work in the worktree
+  `/n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-tuning`.
+- qbert (terminal frame) and aim_trainer (reset frame, FIXED on this
+  lineage) divergences are pre-existing on main — do not chase them as
+  round-3 regressions; the gate baseline is rv2's gate output.
+- Round-3 numbers fold into the SAME pending adoption decision as rv2.
+  Quote nothing anywhere (paper, handoffs presented as results) until
+  Ryan decides adoption + build policy. A faster rv3 raises the stakes of
+  that decision; it does not pre-make it.
+- Dead levers stay dead: CSPGO, xLTO, NG bump, THP, scheduler surgery,
+  GC/jemalloc, topology, NUMA binding. Do not re-run them.
