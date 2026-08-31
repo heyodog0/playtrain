@@ -271,6 +271,28 @@ rvc +6.5% (~= r x v; c contributes nothing in-stack either).
   (tip + native PGO + rust-PGO + visibility, CSPGO dropped) — rv2 is the
   round-2 adoption candidate.
 
+## A/B #5 VERDICT (job 43300923, holy8a24307 — a FASTER genoa node; ratios
+comparable, absolutes ~2x earlier jobs — node-variance hazard on display)
+
+live/l12pgo/mh/mh2/rvc/rv2, checksums PASS. Ratios vs live: l12pgo 1.260
+(third reproduction of ~1.26), mh 1.207, **mh2 1.253**, rvc 1.290,
+**rv2 1.347** (bigfish 1.506, breakout 1.167, maze 1.348, miner 1.270,
+plunder 1.471). JSONs outputs/tune_ab_43300923/.
+
+- The mh confound is CONFIRMED: with the self-consistent tipnative profile,
+  the lineage cost shrinks from -4.3% to ~-0.6% (noise). The branch as
+  committed is adoption-safe.
+- **ROUND-2 WINNER: rv2** = tip sources + tipnative PGO + thin-LTO +
+  rust-PGO rasterizer .a + hidden visibility. +7.5% over mh2; +6.9% over
+  the round-1 winner. Banked full run (live vs rv2, 24 games, published
+  topology): job 43319337; SIGPROF re-profile: job 43319345; gates3
+  (mh2, rv2): job 43300924.
+- Sequencing near-miss for the record: t3_build was serialized only behind
+  tipgen and could in principle have raced t2_ng's engine-src swap; timing
+  saved it (ng's restore trap fired before t3_build's compiles — verified
+  via QJS_VERSION in qjs/src and job phase logs). Any future job that
+  compiles the engine must depend on any job that swaps qjs/src.
+
 ## Lever 4 VERDICT (job 43294772, holy8a24306): SAFE BUT WORTHLESS — dropped
 
 - QuickJS-NG v0.16.2 (latest release tag), tip sources, no PGO, vs tipplain
