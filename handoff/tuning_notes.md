@@ -55,17 +55,63 @@ aligned+misaligned, guard bytes): ALL PASS on the login node.
 - fp flags: unchanged everywhere; lever 2 is integer-only Rust; PGO script
   carries -ffp-contract=off -fno-fast-math on compile AND link lines.
 
-## A/B jobs
+## A/B #1 VERDICT (job 43268228, holy8a24306 genoa, 2026-08-31)
 
-- Iteration A/B #1: job **43268228** (tune_ab.sbatch, serial_requeue -C genoa
-  --exclusive): live/base/l1/l2/l12 x 5 games x 2 reps, interleaved
-  A,B,C,D,E per rep, bench_vec_rollout --no-model 128 envs x 5 threads x 1
-  worker, 300-step window. Output outputs/tune_ab_43268228/.
+live/base/l1/l2/l12 x 5 games x 2 interleaved reps, bench_vec_rollout
+--no-model, 128 envs x 5 threads x 1 worker, live games dir. decisions/s
+means and ratio vs live (JSONs: outputs/tune_ab_43268228/):
+
+    game        live      base/live  l1/live  l2/live  l12/live
+    bigfish   183,857       1.002     1.204    1.061     1.309
+    breakout   88,254       0.995     1.089    1.022     1.123
+    maze       33,592       0.992     1.024    1.066     1.115
+    miner      17,956       1.000     1.012    1.052     1.069
+    plunder   226,818       1.005     1.280    1.031     1.350
+    geomean               **0.999** **1.117** **1.046** **1.188**
+
+- base/live 0.999: the null check is clean — main's post-Aug-9 native drift
+  (continuous-input) costs nothing; attribution to the levers is safe.
+- l1 lands ABOVE its predicted +6-10% (blit share was underestimated at the
+  tail: plunder 1.28). l2 mid-window. Stack ~multiplicative (1.117 x 1.046 =
+  1.168 vs measured 1.188).
+- Already past the 1.10x stopping-rule floor before PGO.
+
+## Lever 3 (PGO+thin-LTO): built, measuring
+
+- Tooling: clang 21.1.8 + llvm-profdata + ld.lld on login; NO llvm-bolt.
+- Profiles: job **43269256** (genoa), both instrumented states x 8 games x
+  30 s, 128 envs x 5 threads; 8 profraw per state, merged to
+  wt/pgo/{base,tip}.profdata. Instrumented slowdown ~15-20x (expected).
+- Use-phase builds (login, thin-LTO linked fine, LTO_USED=1):
+  pgo    (base+PGO)  73f05541d04abf69cee485d713d36142
+  l12pgo (tip+PGO)   e27158c616a41b4972451dfb820a8a9c
+  Script: native/build_qjs_vec_pgo.sh (fp flags kept on compile AND link).
+- A/B #2: job **43273826** — live/l12/pgo/l12pgo, same protocol, plus an
+  on-node obs-checksum of pgo,l12pgo vs live at job start
+  (benchmarks/tune_obs_checksum.py).
+
+## Gate status (correction)
+
+- Job 43268226 (tune_gate) reported FAIL for base/l1/l2 — VOID, do not read:
+  the qjs-side trace files came out empty in-job (cause not chased; the
+  pipe-to-tail wrapper also lost the per-game detail), and the l12 leg was
+  racing this session's manual qjs_host copies + the PGO rebuild of
+  build/qjs_host (same shared path — self-inflicted).
+- Clean login-node probe: base @ breakout, 3000 steps vs node reference —
+  BIT_EXACT.
+- Definitive run: serial gate_qjs.sh --all 3000 for all six variants,
+  login node, one at a time (nothing else touching build/qjs_host), logs
+  at wt/gates/gate_<variant>.log, status wt/gates/STATUS. In progress.
+- LESSON for future sessions: build/qjs_host is a shared mutable path —
+  never gate two things concurrently, and never pipe the gate to tail.
 
 ## Pending / next
 
-- Lever 3: instrumented builds (base-state and tip-state), profile workload
-  8 games x 30 s, llvm-profdata merge, use-mode rebuild (+thin-LTO if lld
-  links; else PGO-only), checksum+gate, second A/B (pgo, l12pgo).
-- Lever 4 (NG bump): GATED behind 1-3; vendored-tree diff audit first.
-- llvm-bolt: absent on FASRC — BOLT dropped (plan already treated as garnish).
+- Read A/B #2 + serial gates; then the banked-lever full run (16 workers x
+  128 envs x 5 threads, 16 ProcGen + 8 ALE, same-job A/B live vs winner).
+- Re-profile (SIGPROF) the stacked winner, same 5 games.
+- Lever 4 audit DONE: vendored qjs/src is a pristine 0.15.1 clone on both
+  machines (local 8ef0e71, cluster 0c545ce; zero source mods; frozenmath is
+  compile-time-external). Bump itself stays gated behind banked 1-3.
+- llvm-bolt: absent on FASRC — BOLT dropped (plan already treated it as
+  garnish).
