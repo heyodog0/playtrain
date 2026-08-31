@@ -257,6 +257,50 @@ When all four are terminal:
    retire the 1.31x row-division tex comment; soften the "large reason we
    reach ~1M" dbuf prose to the balance-dependent claim.
 
+## VERDICTS (all four jobs COMPLETED 2026-08-27 evening; read 2026-08-31)
+
+**1. The published 1.35x REPRODUCES on its original node with today's
+software.** 42255259 (15203, current stack): A4 742,130 / A3 560,183 =
+**1.325x**, per game 1.53/1.17/1.61/1.08 vs published 1.55/1.20/1.59/1.12,
+absolutes within 1% of the published 745k/553k. Nothing drifted, nothing
+was mismeasured, no upgrade effect. tab:dbuf-ablation is a valid
+measurement of 15203.
+
+**2. The dbuf ratio is a NODE property.** Same day, same binaries:
+17402 gives 1.038x (42250401), 15203 gives 1.325x. Mechanism: 17402 runs
+the single-buffered serial path 1.51x faster than 15203 (A3 844k vs 560k;
+A4 only 1.18x apart) — identical nominal specs (Genoa/H100), so it is
+node-local state, not model. Where the serial path is fast, dbuf has
+nothing to hide (bigfish/plunder go 0.94x); where env-stepping bites, it
+still pays (miner 1.24x even on 17402, 1.61x on 15203).
+
+**3. Host binary formally exonerated.** 42253917 (ablation-era
+.bak_precounter, 17402): A4/A3 = 1.036x, geomeans within 0.3% of the new
+host. Null result as predicted.
+
+**4. Table-1 (a)/(b) gap decomposition on 17402** (42257880): dbuf@12w =
+1.157x, workers 12->15 @single = 1.154x, @double = 1.035x. The (b)-arm
+topology analogue (a3w12) = 731.5k vs A4 876k -> the gap there is ~equal
+parts workers and buffering; on a 15203-like node the buffering term
+dominates. Caption fix: attribute the gap to BOTH factors, with magnitudes.
+
+**5. NEW FINDING — the ladder inverts at rung 2.** Full ladder on 17402
+(current stack): A1 shared_cpu 91.6k (91 actors) -> A2 central_gpu
+**20.4k** (91 actors, its probed best) -> A3 844k -> A4 876k. Central
+batched GPU inference is 4.5x SLOWER than per-actor CPU on a 92-core
+Genoa node: batch-1 CPU forwards are cheap at ~1k sps/actor while the
+single inference thread + 5ms batch timeout caps A2 near 20k. The prose
+claim "each architectural step was a win" is MiniGrid-era-true (A2 beat A1
+at 20 actors in Phase 0) but false at this scale. app:trainer needs the
+honest version: the A1->A2 step paid on small nodes/slow envs and inverts
+on many-core nodes with fast envs; A2->A3 is the big win (41x).
+
+Paper actions (unchanged from the pending list, now with numbers): ladder
+table states its node; keep the 15203/17402 dbuf pair as the
+node-dependence exhibit; Table 1 caption gets the two-factor gap
+explanation; retire the 1.31x comment; dbuf prose becomes
+balance-dependent. Sample Factory (Phases 2-4) still pending.
+
 ## State (as of 2026-08-27 ~17:05 EDT)
 
 - Phase 0: DONE, both arms pass (job 42055481).
