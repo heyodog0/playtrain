@@ -271,6 +271,23 @@ rvc +6.5% (~= r x v; c contributes nothing in-stack either).
   (tip + native PGO + rust-PGO + visibility, CSPGO dropped) — rv2 is the
   round-2 adoption candidate.
 
+## Lever 4 VERDICT (job 43294772, holy8a24306): SAFE BUT WORTHLESS — dropped
+
+- QuickJS-NG v0.16.2 (latest release tag), tip sources, no PGO, vs tipplain
+  (identical recipe on vendored 0.15.1). Vendored engine restored by trap;
+  variants kept: tipplain, ng (+qjs_hosts).
+- Determinism: **CHECKSUM24 PASS** — all 24 games x 2000 steps x 32 envs
+  bit-identical to the LIVE binary. Gate: only the pre-existing qbert
+  terminal-frame divergence (same as every other variant). An NG bump does
+  NOT threaten the determinism claim.
+- Performance: **ng/tipplain = 0.998 geomean** (5 games, 2 interleaved
+  reps). 0.15.1 -> 0.16.2 buys nothing on this workload. Lever DROPPED per
+  the stopping rules; keep the safety datum for the future.
+- Side datum: tipplain (tip lineage, NO PGO) = 1.211 vs live — equal to mh
+  (tip lineage WITH the stale live-host profile). The stale profile added
+  ~nothing on this lineage, reinforcing the mh confound analysis; mh2/rv2
+  (self-consistent tipnative.profdata) are the deciding arms.
+
 ## Round-2 gates VERDICT (job 43294757, holy8a24303)
 
 mh/r/v/c/rvc, gate_qjs.sh --all 3000 (logs wt/gates2/): every variant fails
