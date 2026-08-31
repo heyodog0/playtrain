@@ -271,6 +271,18 @@ rvc +6.5% (~= r x v; c contributes nothing in-stack either).
   (tip + native PGO + rust-PGO + visibility, CSPGO dropped) — rv2 is the
   round-2 adoption candidate.
 
+## Diagnostics VERDICT (job 43294758, holy8a24306)
+
+- THP: [always] on genoa compute nodes (and login). The hugepage lever was
+  already active everywhere — MOOT, dead by diagnosis, zero effort spent.
+- Scheduler spin: per-thread efficiency on l12pgo at 128 envs — miner
+  T5 98%, T16 97%; plunder T5 92%, T16 79%. worker_loop is invisible in the
+  T=1 profile and 5.1-7.5% at T=5, so the spin share is real contention but
+  costs only ~2-8% end-to-end at the production topology (5 threads/worker).
+  Work-stealing host surgery is NOT worth it at T=5; revisit only if the
+  topology ever moves to many threads per worker (plunder loses 21%/thr at
+  T=16).
+
 ## RECOMMENDATION
 
 Ship l12pgo (simd blit + rasterizer target-cpu + whole-.so PGO+thin-LTO):
