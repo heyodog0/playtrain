@@ -230,7 +230,18 @@ surgery is considered.
 
 Rust/C++ PGO runtime clash note: never instrument both sides in one .so
 (duplicate __llvm_profile_* runtimes). The rustgen build has C++ at
-profile-USE; the csgen build has rust prebuilt.
+profile-USE; the csgen build has rust prebuilt. Second rust trap: rustc
+does NOT bundle its profiler runtime into a staticlib — the instrumented
+.so had undefined __llvm_profile_instrument_memop until the toolchain's own
+libprofiler_builtins rlib was added to the link (19c4355). Never substitute
+clang's compiler-rt profile runtime: LLVM 21 profraw vs rust's LLVM-22
+llvm-profdata.
+
+NEW FASRC TRAP (cost one profiling round): running `python /tmp/driver.py`
+puts /tmp at sys.path[0], and a stray stdlib-shadowing file there from ANY
+user breaks imports — another user's /tmp/inspect.py on the login node
+crashed numpy inside `import inspect` with their PermissionError. Driver
+scripts now live in the worktree (wt/pgo/_*.py), never shared /tmp.
 
 ## RECOMMENDATION
 
