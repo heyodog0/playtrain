@@ -251,6 +251,26 @@ user breaks imports — another user's /tmp/inspect.py on the login node
 crashed numpy inside `import inspect` with their PermissionError. Driver
 scripts now live in the worktree (wt/pgo/_*.py), never shared /tmp.
 
+## A/B #4 VERDICT (job 43294755, holy8a24306, 2026-08-31 evening)
+
+live/l12pgo/mh/r/v/c/rvc x 5 games x 2 interleaved reps; on-node checksums
+for mh,r,v,c,rvc vs live: PASS. Ratios vs live (JSONs
+outputs/tune_ab_43294755/): l12pgo 1.265 (reproduces round 1), mh 1.211,
+r 1.267, v 1.234, c 1.202, rvc 1.290. Attribution vs mh (same lineage):
+rust-PGO +4.6%, visibility +1.9%, CSPGO -0.7% (DEAD — dropped), stack
+rvc +6.5% (~= r x v; c contributes nothing in-stack either).
+
+- mh/l12pgo = 0.957: the main-host lineage LOOKS 4.3% slower — but this is
+  CONFOUNDED: mh's profile (tip.profdata) was collected on the live-host
+  binary, and the hottest p5 bindings (js_fill 145M, js_rect 160M,
+  js_ellipse 24M counts) were DISCARDED on hash mismatch at build time.
+  mh may be PGO-starved, not intrinsically slower.
+- t3 chain (jobs 43300919 tipgen -> 43300922 build -> 43300923 ab5 +
+  43300924 gates3): collects a self-consistent tip-host profile
+  (tipnative.profdata), rebuilds mh2 (deconfounded lineage arm) and rv2
+  (tip + native PGO + rust-PGO + visibility, CSPGO dropped) — rv2 is the
+  round-2 adoption candidate.
+
 ## RECOMMENDATION
 
 Ship l12pgo (simd blit + rasterizer target-cpu + whole-.so PGO+thin-LTO):
