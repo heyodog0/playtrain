@@ -18,6 +18,8 @@
 #                 gen/use (needs a rebuilt .a).
 #   OUT           output .so (default build/libqjs_vec.so)
 #   SKIP_HOST=1   don't build the matching qjs_host (instrumented modes)
+#   EMITRELOCS=1  keep relocations in the output (-Wl,--emit-relocs) so
+#                 llvm-bolt can rewrite it post-link; harmless size increase
 #
 # Determinism flags (-ffp-contract=off -fno-fast-math) on every compile and
 # on the link line. C++ thin-LTO is always on (the l12pgo baseline had it).
@@ -75,6 +77,7 @@ ar rcs "$BLD/libqjs.a" "$BLD"/quickjs.o "$BLD"/libregexp.o "$BLD"/libunicode.o "
 
 # ---- link ----
 LDEXTRA="$FPFLAGS"
+[ "${EMITRELOCS:-0}" = 1 ] && LDEXTRA="$LDEXTRA -Wl,--emit-relocs"
 if [ "$RUST_MODE" = gen ]; then
   # rustc does not bundle its profiler runtime into a staticlib; link the
   # toolchain's own profiler_builtins (LLVM-22-matched — never clang's
@@ -105,6 +108,7 @@ if [ "${SKIP_HOST:-0}" != 1 ]; then
   # matching qjs_host for the determinism gate (no version script — executable;
   # same PGO/vis/rust inputs so the gate exercises the same code)
   HOSTLD="$FPFLAGS"
+  [ "${EMITRELOCS:-0}" = 1 ] && HOSTLD="$HOSTLD -Wl,--emit-relocs"
   [ "$XLTO" = 1 ] && HOSTLD="$HOSTLD -fuse-ld=lld --ld-path=$LLDDIR/ld.lld"
   clang++ $CXXFLAGS $PGO \
     qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" "$BLD/libqjs.a" \
