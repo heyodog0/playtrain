@@ -138,13 +138,68 @@ outputs/tune_ab_43273826/.
   l12pgo (via lib_path, no .so swap), 5 profiled games x 60 s. Output
   outputs/prof_<game>_l12pgo_43276822.txt.
 
-## Pending / next
+## FULL-RUN VERDICT (job 43276792, holy8a24306, EPYC 9654, 2026-08-31)
 
-- Read A/B #2 + serial gates; then the banked-lever full run (16 workers x
-  128 envs x 5 threads, 16 ProcGen + 8 ALE, same-job A/B live vs winner).
-- Re-profile (SIGPROF) the stacked winner, same 5 games.
+Published topology (16 workers x 128 envs x 5 threads), live vs l12pgo,
+3 interleaved trials/game, 0 failed runs. JSONs: outputs/tune_full_43276792/.
+
+    ProcGen16: live 945,137   l12pgo 1,146,878   ratio 1.213
+    ALE8:      live 2,067,610 l12pgo 2,683,511   ratio 1.298
+    all24:     live 1,226,929 l12pgo 1,522,577   ratio 1.241
+
+Every game >= 1.031 (dodgeball); largest pong 1.807, ninja 1.468, freeway
+1.448. NOTE the live absolute (945k ProcGen16) is NOT the published 1.78M —
+different node class (serial_requeue 9654 vs pinned 17402 9454); ratios are
+the deliverable here, and the 17402 confirm happens after the pinned chain
+drains (plan section 8). Projected 17402: 1.78M x 1.213 ~= 2.16M ~= 1.31x
+tuned EnvPool. Short of the 2x stretch, inside the plan's realistic band.
+
+## Re-profile of l12pgo (job 43276822, SIGPROF, 5 games x 60 s)
+
+The blit lever did exactly what the profile predicted: obs_blit share
+plunder 25.2% -> 4.7%, bigfish 19.8% -> 3.4%, breakout 10.2% -> 1.5%.
+interp is now even more dominant (breakout 68%, maze 61%, plunder 52%) —
+the next levers, if ever needed, are the NG bump / p5 command buffer, both
+deferred. Tables: outputs/prof_<game>_l12pgo_43276822.txt.
+
+## Serial gate VERDICT (login node, gate_qjs.sh --all 3000, logs wt/gates/)
+
+Every variant (base l1 l2 l12 pgo l12pgo) shows the IDENTICAL failure set:
+aim_trainer (all 3 seeds, diverges from the reset frame) and qbert (all 3
+seeds, ONLY line 239 differs — the terminal GAMEOVER frame's obshash after
+237 bit-exact steps). base fails the same way, so both are PRE-EXISTING
+main-tree reference-vs-qjs divergences, not lever regressions; the levers
+reproduce base bit-for-bit everywhere, which is itself the strongest
+faithfulness evidence. All other 3000-step games x 3 seeds: bit-exact.
+FLAG FOR THE AUTHOR: qbert's terminal-frame divergence and aim_trainer's
+wholesale divergence exist on main today and touch the paper's determinism
+claim; they predate this branch (aim_trainer is a continuous-input pointer
+game; qbert's is a terminal-obs rendering difference).
+
+## Lever 4 / BOLT
+
 - Lever 4 audit DONE: vendored qjs/src is a pristine 0.15.1 clone on both
   machines (local 8ef0e71, cluster 0c545ce; zero source mods; frozenmath is
-  compile-time-external). Bump itself stays gated behind banked 1-3.
+  compile-time-external). The bump itself NOT executed: levers 1-3 banked
+  1.24x, the remaining headroom sits in interp, but an engine bump is a
+  paper-invalidating risk the plan reserves for after 1-3 are adopted.
 - llvm-bolt: absent on FASRC — BOLT dropped (plan already treated it as
   garnish).
+
+## RECOMMENDATION
+
+Ship l12pgo (simd blit + rasterizer target-cpu + whole-.so PGO+thin-LTO):
++21% ProcGen16 / +24% all-24 geomean over the live binary, bit-exact
+everywhere the live binary is bit-exact, all three levers individually
+gated and measured, stack multiplicative. Stopping rules say stop here:
+gains are banked, the two remaining levers are deferred-by-plan (command
+buffer) or paper-risk (NG bump).
+
+Decisions that are NOT this branch's to make (plan section 7.5):
+a. ADOPTION: a faster binary invalidates every published PlayTrain number
+   (Fig 4A, Table 1, per-core panels, Table 8) and triggers the ~1-day
+   re-measurement cascade + the 17402 confirm after the pinned chain.
+b. BUILD POLICY: portable x86-64-v3 "shipped" build vs tuned benchmark
+   build. Note PGO makes the shipped/benchmark distinction REAL: the
+   .profdata lives in wt/pgo/ and the build is only reproducible with it;
+   a portable no-PGO build is l12 (+19-20% on the 5-game set).
