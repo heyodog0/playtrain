@@ -15,6 +15,7 @@
 #include <chrono>
 #include "quickjs.h"
 #include "action_table.hpp"
+#include "p5_cmdbuf.hpp"
 #include "../runtime/p5.hpp"
 
 static const int OBS = 64;
@@ -39,6 +40,11 @@ static p5::Color colorFromArgs(JSContext* ctx, int argc, JSValueConst* argv) {
 static bool g_nodraw = false;  // measurement: draw bindings return immediately (JS+call cost only)
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
 #define NODRAW if (g_nodraw) return JS_UNDEFINED;
+
+// Command-buffer early flush (JS wrappers call this near capacity; the normal
+// flush points are host-side). Buf* lives in the context opaque.
+FN(js_p5flush) { (void)argc; (void)argv;
+  p5cb::flush((p5cb::Buf*)JS_GetContextOpaque(ctx), g_nodraw); return JS_UNDEFINED; }
 
 FN(js_createCanvas) {
   p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
@@ -172,8 +178,11 @@ int main(int argc, char** argv) {
     JS_FreeValue(ctx, r);
   };
   evalv(PRELUDE, "<prelude>");
+  p5cb::Buf* CB = p5cb::enabled() ? p5cb::install(ctx, g, js_p5flush) : nullptr;
+  auto cbflush = [&]() { if (CB) p5cb::flush(CB, g_nodraw); };
   p5::setRasterRes(OBS);
   evalv(src.c_str(), gamePath);
+  cbflush();
 
   JSValue jsSetup = JS_GetPropertyStr(ctx, g, "setup");
   JSValue jsReset = JS_GetPropertyStr(ctx, g, "resetGame");
@@ -182,12 +191,13 @@ int main(int argc, char** argv) {
 
   int frameCount = 0;
   auto setFrame = [&](int fc) { JS_SetPropertyStr(ctx, g, "frameCount", JS_NewInt32(ctx, fc)); };
-  auto call0 = [&](JSValue fn) { JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr); if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* s = JS_ToCString(ctx, e); fprintf(stderr, "call err: %s\n", s?s:"?"); JS_FreeCString(ctx, s); JS_FreeValue(ctx, e);} JS_FreeValue(ctx, r); };
+  auto call0 = [&](JSValue fn) { JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr); if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* s = JS_ToCString(ctx, e); fprintf(stderr, "call err: %s\n", s?s:"?"); JS_FreeCString(ctx, s); JS_FreeValue(ctx, e);} JS_FreeValue(ctx, r); cbflush(); };
   auto resetGame = [&](uint32_t s) {
     // env sets Math.random = mulberry32(seed) each reset; bigfish uses its own rng.
     char buf[64]; snprintf(buf, sizeof buf, "Math.random=__mb(%u)", s); evalv(buf, "<seed>");
     JSValue a = JS_NewInt32(ctx, (int)s); JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a);
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, a);
+    cbflush();
   };
   // init (mirror env.init / game-env loadGame)
   call0(jsSetup);
@@ -268,6 +278,7 @@ int main(int argc, char** argv) {
     static char last[32]; last[0]=0; if (s) { strncpy(last, s, 31); last[31]=0; }
     term = last[0] && (!strcmp(last,"WIN")||!strcmp(last,"EXIT")||!strcmp(last,"GAMEOVER"));
     name = last; JS_FreeCString(ctx, s); JS_FreeValue(ctx, gs); JS_FreeValue(ctx, st);
+    cbflush();
   };
 
   auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
@@ -377,6 +388,7 @@ int main(int argc, char** argv) {
         JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s = JS_ToCString(ctx, gs);
         static char last[32]; last[0]=0; if (s) { strncpy(last, s, 31); last[31]=0; } name = last;
         JS_FreeCString(ctx, s); JS_FreeValue(ctx, gs); JS_FreeValue(ctx, st);
+        cbflush();
         steps = 0; lastScore = score;
       } else {  // step
         bool t; stepEnv(arg, score, lives, t, name); steps++;
@@ -415,7 +427,7 @@ int main(int argc, char** argv) {
       JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
       jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
       printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
-      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
+      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); cbflush(); }
     double lastScore = score;
     std::vector<uint16_t> qv(IMAP.n);
     for (long i = 0; i < nsteps; i++) {
@@ -430,7 +442,7 @@ int main(int argc, char** argv) {
              i, abuf, rbuf, term ? 1 : 0, sbuf, lbuf, name, (unsigned long long)obshash());
       lastScore = score;
       if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
-        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
+        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); cbflush(); }
     }
     JS_FreeValue(ctx, jsSetup); JS_FreeValue(ctx, jsReset); JS_FreeValue(ctx, jsDraw); JS_FreeValue(ctx, jsState);
     JS_FreeValue(ctx, g); JS_FreeContext(ctx); JS_FreeRuntime(rt);
@@ -459,7 +471,7 @@ int main(int argc, char** argv) {
       JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
       jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
       printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
-      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
+      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); cbflush(); }
     double lastScore = score;
     for (long i = 0; i < nsteps; i++) {
       int a = action_at(i); bool term; const char* name;
@@ -474,7 +486,7 @@ int main(int argc, char** argv) {
       // previous action's keys still held and ship state drifts from the V8
       // reference (surfaced as post-episode-1 divergence in the asteroids gate).
       if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
-        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
+        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); cbflush(); }
     }
   } else {  // bench
     p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);

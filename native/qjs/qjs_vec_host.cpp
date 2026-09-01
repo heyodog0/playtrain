@@ -35,6 +35,7 @@
 #endif
 #include "quickjs.h"
 #include "action_table.hpp"
+#include "p5_cmdbuf.hpp"
 #include "../runtime/p5.hpp"
 #include "../runtime/raster_abi.h"
 
@@ -63,6 +64,11 @@ static p5::Color colorFromArgs(JSContext* ctx, int argc, JSValueConst* argv) {
 static thread_local bool g_nodraw = false;
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
 #define NODRAW if (g_nodraw) return JS_UNDEFINED;
+
+// Command-buffer early flush (JS wrappers call this near capacity; the normal
+// flush points are host-side). Buf* lives in the context opaque.
+FN(js_p5flush) { (void)argc; (void)argv;
+  p5cb::flush((p5cb::Buf*)JS_GetContextOpaque(ctx), g_nodraw); return JS_UNDEFINED; }
 
 FN(js_createCanvas) {
   p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
@@ -204,6 +210,7 @@ struct Env {
   uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
   void* rstate = nullptr;   // rasterizer per-env state (rs_state_new)
   void* p5state = nullptr;  // p5 shim per-env state (p5::newState)
+  p5cb::Buf* cb = nullptr;  // p5 command buffer (PLAYTRAIN_QJS_CMDBUF=1 only)
   int frameCount = 0;
   long steps = 0;
   double lastScore = 0;
@@ -211,6 +218,7 @@ struct Env {
   std::string err;
 
   inline void select() { rs_state_select(rstate); p5::selectState(p5state); }
+  inline void flushCB() { if (cb) p5cb::flush(cb, g_nodraw); }
   inline void setFrame(int fc) { JS_SetPropertyStr(ctx, g, "frameCount", JS_NewInt32(ctx, fc)); }
   inline void call0(JSValue fn) {
     JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr);
@@ -402,6 +410,7 @@ static void env_init(VecHost* H, Env& e, int idx) {
   { JSValue r = JS_Eval(ctx, PRELUDE, strlen(PRELUDE), "<prelude>", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
+  if (p5cb::enabled()) e.cb = p5cb::install(ctx, g, js_p5flush);
   p5::setRasterRes(H->obs_size);
   { JSValue r = JS_Eval(ctx, src.c_str(), src.size(), "game.js", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"eval"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
@@ -415,6 +424,7 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
   e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
   e.call0(jsSetup);
+  e.flushCB();
   JS_FreeValue(ctx, jsSetup);
 }
 
@@ -449,6 +459,7 @@ static void env_apply_frame(Env& e, const InputFrame& f) {
                            JS_NewFloat64(e.ctx, (f.qaxes[j] / 65535.0) * 2.0 - 1.0));
     JS_SetPropertyStr(e.ctx, e.g, "gamepadAxes", arr);
   }
+  e.flushCB();  // keyPressed/mousePressed handlers may have issued draw calls
 }
 
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
@@ -468,10 +479,13 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   }
   e.frameCount = 0; e.setFrame(0);
   e.resetGame(seed);
+  e.flushCB();
   e.frameCount = 1; e.setFrame(1);
   e.call0(e.jsDraw);
+  e.flushCB();
   double score = 0, lives = 0; uint8_t gs = 0;
   e.readState(score, lives, gs);
+  e.flushCB();
   e.steps = 0; e.lastScore = score;
   p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
 }
@@ -504,8 +518,9 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
     // Render-skip: no-op draw calls on all but the final tick of the skip.
     g_nodraw = H->render_skip && (k + 1 < H->frame_skip);
     e.frameCount++; e.setFrame(e.frameCount);
-    p5::frameBegin(); e.call0(e.jsDraw); p5::frameEnd();
+    p5::frameBegin(); e.call0(e.jsDraw); e.flushCB(); p5::frameEnd();
     term = e.readState(score, lives, gs);
+    e.flushCB();
     e.steps++;
     trunc = (!term && e.steps >= H->max_steps);
     if (term || trunc) break;   // stop ticking a finished episode
@@ -859,6 +874,7 @@ void vec_close(void* h) {
     }
     if (e.p5state) p5::freeState(e.p5state);
     if (e.rstate) rs_state_free(e.rstate);
+    p5cb::destroy(e.cb);
   }
   delete H;
 }
