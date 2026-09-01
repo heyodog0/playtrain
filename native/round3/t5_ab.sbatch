@@ -24,13 +24,13 @@ export OMP_NUM_THREADS=1
 echo "node=$(hostname)"; uname -r
 lscpu | grep -E "Model name|CPU MHz|CPU\(s\):" | head -3
 echo "live .so (untouched): $(md5sum $LIVE/native/build/libqjs_vec.so)"
-md5sum "$WT"/native/build/variants/libqjs_vec.{rv2,rv2r,rv2bolt,cb,cb0}.so
+md5sum "$WT"/native/build/variants/libqjs_vec.{rv2,cb,cb0}.so
 GDIR="$LIVE/examples/games/js"
 JOB="${SLURM_JOB_ID:-x}"
 OUTD="outputs/tune_ab_${JOB}"; mkdir -p "$OUTD"
 
 echo "=== obs checksum on $(hostname)"
-"$PY" "$WT/native/round3/obs_checksum_r3.py" 300 "rv2,rv2r,rv2bolt,cb,cb0" \
+"$PY" "$WT/native/round3/obs_checksum_r3.py" 300 "${CHECKS:-rv2,rv2r,rv2bolt,cb,cb0}" \
   || echo CHECKSUM_FAILED
 
 VARIANTS="${VARIANTS:-live rv2 rv2r rv2bolt cb cb0}"
