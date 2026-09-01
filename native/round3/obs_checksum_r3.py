@@ -29,6 +29,10 @@ def lib(v):
 def run(game, v):
     os.environ["PLAYTRAIN_QJS_CMDBUF"] = \
         "1" if (v.startswith("cb") and v != "cb0") else "0"
+    if v.startswith("dv"):
+        os.environ["QJS_DIRTY"] = "1"
+    else:
+        os.environ.pop("QJS_DIRTY", None)
     env = NativeVecEnv(game, num_envs=ENVS, obs_size=64, max_steps=2000,
                        num_threads=2, autoreset=True, frame_skip=1,
                        games_dir=GDIR, lib_path=lib(v))

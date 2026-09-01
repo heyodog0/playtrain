@@ -28,6 +28,7 @@ OUT="$WT/gates_r3"; mkdir -p "$OUT"
 for V in $GV; do
   cp "build/variants/qjs_host.$V" build/qjs_host
   if [ "$V" = cb ]; then export PLAYTRAIN_QJS_CMDBUF=1; else unset PLAYTRAIN_QJS_CMDBUF; fi
+  case "$V" in dv*) export QJS_DIRTY=1;; *) unset QJS_DIRTY;; esac
   echo; echo "######## gate $V ($(md5sum build/qjs_host | cut -d" " -f1)) cmdbuf=${PLAYTRAIN_QJS_CMDBUF:-0}"
   if ./gate_qjs.sh --all 3000 > "$OUT/gate_$V.log" 2>&1; then
     echo "GATE_CLEAN $V"

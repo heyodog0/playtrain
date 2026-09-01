@@ -240,6 +240,13 @@ struct Env {
   void* rstate = nullptr;   // rasterizer per-env state (rs_state_new)
   void* p5state = nullptr;  // p5 shim per-env state (p5::newState)
   p5cb::Buf* cb = nullptr;  // p5 command buffer (PLAYTRAIN_QJS_CMDBUF=1 only)
+  // Adaptive dirty-rect (QJS_DIRTY): probe the first frames, keep the
+  // whole-frame skip only where the skip rate pays for the record cost
+  // (miner-class games; command-heavy games auto-disable). Output is
+  // identical either way — only the cost profile changes.
+  bool dirty_on = false;
+  int dirty_probe = 0;
+  int dirty_skips = 0;
   int frameCount = 0;
   long steps = 0;
   double lastScore = 0;
@@ -440,6 +447,15 @@ static void env_init(VecHost* H, Env& e, int idx) {
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
   if (p5cb::enabled()) { e.cb = p5cb::create(); JS_SetContextOpaque(ctx, e.cb); }
+  // Opt-in dirty-rect whole-frame skip (QJS_DIRTY, like qjs_host): identical
+  // command streams skip the raster pass entirely; per-env state, so this
+  // applies to the state selected above. Probed adaptively (see Env).
+  if (getenv("QJS_DIRTY")) {
+    p5::setDirty(true);
+    e.dirty_on = true;
+    e.dirty_probe = 32;
+    e.dirty_skips = 0;
+  }
   p5::setRasterRes(H->obs_size);
   { JSValue r = JS_Eval(ctx, src.c_str(), src.size(), "game.js", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"eval"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
@@ -495,6 +511,11 @@ static void env_apply_frame(Env& e, const InputFrame& f) {
 static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
   g_nodraw = false;  // reset frames always render fully
+  // Dirty mode: the reset frame renders OUTSIDE the frame bracket, so the
+  // cached command-stream hash no longer describes the pixels — clear it
+  // (setDirty resets has_last) so the first post-reset frame never skips
+  // against a pre-reset hash.
+  if (e.dirty_on) p5::setDirty(true);
   p5::setKeysDown(nullptr, 0);
   if (H->actions.any_analog || H->box_mode) {
     // Pointer/axes state is per-episode: park at rest, like setKeysDown([]).
@@ -547,7 +568,17 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
     // Render-skip: no-op draw calls on all but the final tick of the skip.
     g_nodraw = H->render_skip && (k + 1 < H->frame_skip);
     e.frameCount++; e.setFrame(e.frameCount);
-    p5::frameBegin(); e.call0(e.jsDraw); e.flushCB(); p5::frameEnd();
+    p5::frameBegin(); e.call0(e.jsDraw); e.flushCB();
+    int fskip = p5::frameEnd();
+    if (e.dirty_probe > 0) {
+      e.dirty_skips += fskip;
+      if (--e.dirty_probe == 0 && e.dirty_skips * 4 < 32 * 3) {
+        // skip rate under 75%: recording costs more than skipping saves
+        // (command-heavy games lose even at ~60% skips — measured on maze)
+        p5::setDirty(false);
+        e.dirty_on = false;
+      }
+    }
     term = e.readState(score, lives, gs);
     e.flushCB();
     e.steps++;

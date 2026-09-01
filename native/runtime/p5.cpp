@@ -219,7 +219,7 @@ static int blit_rgba_to_rgb_avx2(const uint8_t* px, uint8_t* out, int n) {
 
 void setDirty(bool on) { rs_set_dirty(on ? 1 : 0); }
 void frameBegin() { rs_frame_begin(_h); }
-void frameEnd() { rs_frame_end(); }
+int frameEnd() { return rs_frame_end(); }
 
 int width() { return _width; }
 int height() { return _height; }

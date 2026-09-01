@@ -228,6 +228,10 @@ int main(int argc, char** argv) {
     JSValue a = JS_NewInt32(ctx, (int)s); JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a);
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, a);
     cbflush();
+    // Dirty mode: reset frames render outside the frame bracket; clear the
+    // frame-hash cache so a post-reset frame can never skip against a
+    // pre-reset hash (mirrors env_reset in qjs_vec_host.cpp).
+    if (getenv("QJS_DIRTY")) p5::setDirty(true);
   };
   // init (mirror env.init / game-env loadGame)
   call0(jsSetup);
@@ -337,6 +341,7 @@ int main(int argc, char** argv) {
   };
 
   if (!strcmp(mode, "dirtycheck")) {
+    unsetenv("QJS_DIRTY");   // dirtycheck manages dirty itself per pass
     // Differential test: run the SAME game+seed with dirty-rect OFF (baseline direct render)
     // and ON (record/replay/skip), hashing obs every frame; any mismatch = silent corruption
     // caught loudly. This is the safety net for the whole-frame-skip optimization.

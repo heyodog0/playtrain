@@ -42,6 +42,7 @@ for G in $GAMES; do
       cp "$WT/native/build/variants/libqjs_vec.$V.so" "$WT/native/build/libqjs_vec.so" \
         || { echo "MISSING_VARIANT $V — skipped"; continue; }
       if [ "$V" = cb ]; then export PLAYTRAIN_QJS_CMDBUF=1; else unset PLAYTRAIN_QJS_CMDBUF; fi
+      case "$V" in dv*) export QJS_DIRTY=1;; *) unset QJS_DIRTY;; esac
       echo; echo "=== $G rep$R $V $(md5sum "$WT/native/build/libqjs_vec.so" | cut -d' ' -f1) cmdbuf=${PLAYTRAIN_QJS_CMDBUF:-0}"
       "$PY" benchmarks/bench_vec_rollout.py --game "$G" --games-dir "$GDIR" \
         --no-model --device cpu --frame-skip 1 --steps 300 --max-steps 2000 \

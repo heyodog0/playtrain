@@ -110,14 +110,6 @@ struct Canvas {
 // single-global behavior exactly (bit-exact, verified).
 struct RState {
     canvases: Vec<Canvas>,
-    // Memoized ellipse vertex offsets, keyed by (rx, ry, a0, a1) bit patterns.
-    // Offsets depend only on those four params and games redraw the same
-    // ellipse sizes every frame; values are the identical f64s the uncached
-    // path computes, so output is bit-exact (see rs_ellipse_path).
-    // Direct-mapped (64 ways, overwrite on collision): one multiply-mix + one
-    // 32-byte key compare per lookup — a SipHash HashMap measured as much as
-    // the ~17 Horner evals it was saving.
-    ell_cache: Vec<EllEntry>,
     // ---- dirty-rectangle: whole-frame skip via command record/replay ----
     // When `dirty` is on, a frame's draw ops are RECORDED (not executed) between
     // rs_frame_begin and rs_frame_end; if the command stream hashes identical to the
@@ -133,13 +125,21 @@ struct RState {
     cur_h: u32,
     frame_opaque: bool,   // false if any a<255 fill/stroke this frame
     forceskip: bool,      // measurement: skip all render after frame 1
+    // Memoized ellipse vertex offsets, keyed by (rx, ry, a0, a1) bit patterns.
+    // Offsets depend only on those four params and games redraw the same
+    // ellipse sizes every frame; values are the identical f64s the uncached
+    // path computes, so output is bit-exact (see rs_ellipse_path).
+    // Direct-mapped (64 ways, overwrite on collision): one multiply-mix + one
+    // 32-byte key compare per lookup — a SipHash HashMap measured as much as
+    // the ~17 Horner evals it was saving. APPENDED here (codegen hygiene:
+    // round-4 A/B #8 regressed untouched span games when fields shifted).
+    ell_cache: Vec<EllEntry>,
 }
 
 impl RState {
     fn new() -> RState {
         RState {
             canvases: Vec::new(),
-            ell_cache: Vec::new(),
             dirty: false,
             recording: false,
             rec: Vec::new(),
@@ -148,6 +148,7 @@ impl RState {
             cur_h: 0,
             frame_opaque: true,
             forceskip: false,
+            ell_cache: Vec::new(),
         }
     }
 }
@@ -539,7 +540,10 @@ pub extern "C" fn rs_ellipse_path(h: u32, cx: f64, cy: f64, rx: f64, ry: f64, a0
 }
 
 // ---- fill ----
-#[inline]
+// inline(always): span is the rasterizer hot loop; leaving the decision to
+// the inliner let sibling-function edits (round-4 pc lever) perturb its
+// codegen inside rs_fill_rect and cost untouched games 2-8%.
+#[inline(always)]
 fn span(c: &mut Canvas, y: usize, xa: f64, xb: f64, col: [u8; 4]) {
     let w = c.dw;
     let x0 = (xa.round().max(0.0)) as usize;
