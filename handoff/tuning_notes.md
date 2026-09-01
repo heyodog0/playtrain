@@ -524,3 +524,48 @@ rv2 stands as the round-3 recommendation unchanged.
 Lever-3 note for the future: the remaining rasterizer headroom is
 algorithmic (ellipse-path vertex generation, fill_subpaths edge loop), both
 explicitly deferred by the plan; span fills are already vector code.
+
+## A/B #7 VERDICT (job 43411262) — cb2 dead; ROUND 3 CLOSED
+
+cb2 chain (43411259 cbgen -> 43411260 build -> 43411262 ab + 43411263
+gates): checksums PASS, gate cb = qbert x3 baseline only.
+
+    game        live      rv2       cb      cb0
+    bigfish   341,213   1.518    1.497    1.498
+    breakout  162,671   1.175    1.136    1.135
+    maze       62,211   1.374    1.316    1.328
+    miner      33,400   1.248    1.243    1.250
+    plunder   423,050   1.476    1.444    1.439
+    geomean             1.352    1.321    1.323
+    vs rv2:                      0.977    0.979
+
+- **Lever 2 (cb2, C-side record): DEAD — cb/rv2 = 0.977.** cb == cb0 within
+  noise, so the buffer's record+replay bought exactly nothing over direct
+  execution and the ~2% deficit is the added per-binding branch + a slightly
+  different PGO profile. The i-cache-locality hypothesis does not pay on
+  this workload. Dropped; with it, every round-3 lever is dropped.
+
+## ROUND 3 FINAL
+
+All three authorized levers are dead: BOLT 0.997x (nothing left after
+self-consistent PGO+LTO), p5 command buffer 0.274x as specified / 0.977x as
+salvaged (QuickJS binding crossings are cheap; recording from JS bytecode is
+2-4.4x more expensive than the call it replaces; deferred replay wins no
+locality), span vectorization moot (already compiler-vectorized; blend path
+unreachable in the catalog). Every arm was checksum-bit-exact vs live and
+gate-identical to the rv2 baseline, so all three failed SAFE.
+
+**The round-2 recommendation stands unchanged: ship rv2** (+29% ProcGen16 /
++32% all-24 over live). The realistic-ceiling band was already reached in
+round 2; round 3 confirms the mechanical-lever well is dry. Remaining
+headroom, for a future round to propose (all outside round-3 authorization):
+ellipse/path caching in the rasterizer (deterministic by construction,
+~10-15% on bigfish-class games), dirty-rect adoption check (machinery built,
+skip-rate unmeasured in the production config), and the engine tier (V8
+vec host / AOT twins — adoption-decision-sized, not tuning levers).
+
+Cluster state: worktree default .so back at rv2; cb/cb0/rv2r/rv2bolt/boltinst
+variants + pgo/bolt.fdata + pgo/cbnative.profdata kept for the record;
+~/bolt duplicate deleted (tools/llvm21 + ubuntu2404.sif are the canonical
+copies). 17402 chain (43246914) never raced, still pending. The two
+decisions (adoption, build policy) remain Ryan's, unchanged from round 2.
