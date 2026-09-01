@@ -435,3 +435,52 @@ Standing constraints (restated so this section is self-sufficient):
   that decision; it does not pre-make it.
 - Dead levers stay dead: CSPGO, xLTO, NG bump, THP, scheduler surgery,
   GC/jemalloc, topology, NUMA binding. Do not re-run them.
+
+## ROUND 3 — progress (2026-08-31 night session)
+
+Lever 1 (BOLT) — BUILT, measuring. A prior session had already executed the
+whole pipeline (job 43342607 t4_bolt, playtrain-trainers/benchmarks/
+t4_bolt.sbatch): llvm-bolt 21.1.8 sourced as the official LLVM release
+binaries run inside `singularity exec ubuntu2404.sif` (EL8's glibc 2.28 is
+too old to run them natively — GLIBC_2.29 — and conda-forge llvm-tools has
+no bolt; the container only touches ELF files on disk, so it can't affect
+results). Artifacts in wt variants/: libqjs_vec.rv2r.so (rv2 rebuilt with
+--emit-relocs), libqjs_vec.boltinst.so, libqjs_vec.rv2bolt.so
+(ext-tsp + cdsort + split-functions, from pgo/bolt.fdata = 8 games x 30 s
+instrumented), qjs_host.rv2bolt for the gate. Smoke (load + 200 steps):
+PASS. NOTE ~/bolt/ in $HOME was a duplicate download of tools/llvm21 made
+before finding it — deleted.
+
+Lever 3 (span vectorization) — DEAD BY DIAGNOSIS, zero cluster time. The
+plan's premise is stale: objdump of the shipped rasterizer .a shows the
+solid-color span loop is ALREADY auto-vectorized by LLVM at
+target-cpu=x86-64-v3 (vpbroadcastd + 4x-unrolled 32-byte vmovdqu stores) —
+the u32-packed store rewrite that landed with lever 1/round 1 made it
+vectorizable and the compiler did the rest. The only scalar span path left
+is the alpha-blend branch, and grep over examples/games/js finds exactly ONE
+4-arg color call in the whole catalog (frostbite.jungle.js, not in the
+measured 24): the blend path is unreachable in every benchmark game. No code
+change exists to A/B; recorded per the THP precedent.
+
+Lever 2 (p5 command buffer) — IMPLEMENTED, chain running. Committed on
+branch (b11dec3 + 819c03c): native/qjs/p5_cmdbuf.hpp + hooks in both hosts,
+runtime-toggled by PLAYTRAIN_QJS_CMDBUF=1 (one binary serves both arms).
+Draw calls append (opcode,args) doubles into a per-env Float64Array (buffer
+allocated JS-side for 0.15.1/head JS_NewArrayBuffer ABI portability; write
+index lives in buf[0] so the C++ flush needs no JS call); host flushes after
+every JS entry point (draw, handlers, resetGame, getGameState) so ordering
+vs frameBegin/frameEnd/render_obs is preserved; replay skips exactly the
+NODRAW-marked ops under render-skip; color variants mirror colorFromArgs
+including the verbatim-array case; text/* stay no-ops and never enter the
+buffer; createCanvas/createGraphics flush-then-delegate. Local verification
+(arm64): trace parity cmdbuf on vs off, 33 games x seeds x 400-600 steps —
+ALL IDENTICAL; dirtycheck with cmdbuf on: bit-exact except qbert's known
+pre-existing frame-118 divergence (identical without cmdbuf).
+
+In flight (submitted from playtrain-trainers root, scripts committed at
+native/round3/): t5_cbgen 43398251 (instrumented cmdbuf profile, on-node
+on/off parity first) -> t5_build 43398260 (cb = rv2 recipe + cmdbuf sources
++ cbnative.profdata; cb0 = same binary, flag off) -> t5_ab 43398275 (live /
+rv2 / rv2r / rv2bolt / cb / cb0, 5 games x 2 interleaved reps + on-node
+checksums vs live) + t5_gates 43398278 (rv2r rv2bolt cb, gate_qjs.sh --all
+3000, logs wt/gates_r3/). 17402 untouched; 43246914 still pending.
