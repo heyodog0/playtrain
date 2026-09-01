@@ -569,3 +569,57 @@ variants + pgo/bolt.fdata + pgo/cbnative.profdata kept for the record;
 ~/bolt duplicate deleted (tools/llvm21 + ubuntu2404.sif are the canonical
 copies). 17402 chain (43246914) never raced, still pending. The two
 decisions (adoption, build policy) remain Ryan's, unchanged from round 2.
+
+## POST-ROUND-3 PROBE: helper histogram inside the interpreter (job 43422679)
+
+Question: the profile says 55-70% "interp" — but WHAT inside it? The nm-level
+sampler lumps every inlined helper into JS_CallInternal, so this probe built
+rv2g (= rv2 recipe + DBG=1, debug info only — knob added to
+build_qjs_vec_tune.sh) and attributed the same SIGPROF samples to their
+INNERMOST INLINE FRAME via llvm-symbolizer --inlines
+(native/round3/{t7_prof.sbatch,prof_buckets.py}; tables
+outputs/r3prof_<game>_43422679.txt in playtrain-trainers).
+
+Bucket shares (% of .so samples):
+
+    bucket            breakout  plunder  bigfish  miner  maze
+    property access      16.5     16.1     10.5    6.7    5.9
+    refcount/free         7.8      5.7      3.1    5.3    5.5
+    rasterizer            5.8      8.8     41.1   21.8   12.5
+    p5/host/blit          5.7      9.6      6.4    6.4   10.8
+    interp residual*     ~55      ~50      ~31    ~52   ~56
+    strict_eq, conversions, GC, atoms, arrays: ALL <2% each, most <0.5%
+
+  *"other" bucket, dominated by the innermost frame JS_CallInternal itself:
+  tagged-value arithmetic, stack ops, branches, locals — the interpreter
+  core, not any nameable helper.
+
+Findings:
+
+- **find_own_property is the single biggest nameable helper** (16.0%
+  breakout, 12.3% plunder, 8.0% bigfish innermost): QuickJS walks the shape
+  hash chain on EVERY property access — no inline caches. This is the
+  measured upper bound for an interpreter-level IC/shape-cache patch:
+  eliminating ~70% of the property bucket projects to **+13% breakout/
+  plunder, +8% bigfish, +4-5% miner/maze, ~+8-9% geomean** — the first
+  above-threshold lever found since rv2.
+- Refcount traffic (js_dup + JS_FreeValueRT) is 3-8% — visible but only
+  reachable by Perceus-style elision (deep surgery, poor ratio).
+- strict_eq ~= 0 on the 5-game set: the qjit-era "string classification is
+  hot" finding was a coinrun artifact and does NOT generalize; string
+  interning work would be wasted here.
+- The ~50% interp residual is untouchable by ICs — only bytecode
+  specialization/quickening (CPython-3.11-style), AOT, or an engine swap
+  reaches it. This is the hard ceiling of any IC-only round.
+- Rasterizer numbers re-confirm the ellipse/path-caching target (bigfish:
+  fill_subpaths 24.8 + rs_ellipse_path 11.6 innermost).
+
+IC story cost, for the round-4 decision: it ends the "stock quickjs-ng"
+claim deliberately restored in af9a35c (engine becomes ng-0.15.1 + our IC
+patch, maintained by us); the determinism EVIDENCE is untouched (gate is
+engine-independent, ICs change lookup, not arithmetic — and the gate +
+checksum24 + the archived fuzz_jit.mjs fuzzer are the safety net). Upstream
+precedent cuts both ways: quickjs-ng shipped ICs and later removed them
+over correctness bugs — crib the code, audit the bug reports. NOT STARTED:
+engine surgery is outside round-3 authorization; this section is the
+evidence for proposing it.
