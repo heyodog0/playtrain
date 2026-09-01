@@ -801,3 +801,19 @@ the record: variants pc/pc2/rustgen2 + qjs_host.pc{,2}, pgo/rust2.profdata,
 pgo/cbnative.profdata, outputs tune_ab_{43398275,43411262,43453846,
 43460813}, r3prof_*_43422679 helper histograms, gates_r3/. 17402 chain
 (43246914) still pending, never raced.
+
+## Determinism holes CLOSED (laptop, 2026-09-01, ef74835 on this branch, d46fcae on main)
+
+Root cause of BOTH pre-existing gate holes (qbert terminal frame, live's
+aim_trainer reset frame): native p5 style cache. pop() invalidated via a
+single _cacheValid flag, but the next FILL-ONLY draw's afterFill()
+re-validated the whole cache, resurrecting stale stroke mirrors — the next
+stroked draw then skipped rs_set_stroke/rs_set_line_width and stroked with
+the rasterizer's post-restore state (thin ring). Rare on qbert because its
+enemy ellipse is ~2.5 device px (subpixel-alignment dependent); a 15-line
+probe (push/stroke/pop, fill, stroke again) diverged EVERY frame. Fix =
+exact shim semantics: invalidate nulls all three mirrors, afterFill deleted.
+gate_qjs.sh --all 3000: 100 PASS, 0 FAIL on BOTH lineages. New gate
+baseline is ZERO known divergences — A/Bs should expect clean gates now.
+NOTE: the fix changes pixels on previously-divergent frames only; throughput
+effect is negligible (a few extra rs_set calls per style transition).
