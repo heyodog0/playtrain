@@ -19,24 +19,6 @@ struct SubPath {
     closed: bool,
 }
 
-// Flattened fill edge (see fill_subpaths): endpoint coords plus the
-// precomputed y-range (lo, hi) the crossing predicate tests.
-struct Edge { ax: f64, ay: f64, bx: f64, by: f64, lo: f64, hi: f64 }
-
-// One ellipse-offset cache way (see RState.ell_cache).
-struct EllEntry { key: [u64; 4], offs: Vec<(f64, f64)>, full: bool }
-
-const ELL_WAYS: usize = 64;
-
-#[inline]
-fn ell_slot(key: &[u64; 4]) -> usize {
-    let mut h = 0xcbf29ce484222325u64;
-    for &k in key {
-        h = (h ^ k).wrapping_mul(0x100000001b3);
-    }
-    (h >> 32) as usize & (ELL_WAYS - 1)
-}
-
 // Match JS Uint8ClampedArray assignment exactly: clamp to [0,255], round-half-to-even.
 // (Rust `as u8` truncates; JS rounds — that off-by-one was the only wasm!=js divergence,
 // and it only showed on alpha-blended pixels.)
@@ -96,8 +78,6 @@ struct Canvas {
     stroke: [u8; 4],
     line_w: f64,
     path: Vec<SubPath>,
-    escratch: Vec<Edge>,   // reused per-fill flattened-edge buffer (fill_subpaths)
-    xscratch: Vec<(f64, i32)>,   // reused per-scanline crossing buffer
 }
 
 // ---- per-env rasterizer state ----
@@ -110,14 +90,6 @@ struct Canvas {
 // single-global behavior exactly (bit-exact, verified).
 struct RState {
     canvases: Vec<Canvas>,
-    // Memoized ellipse vertex offsets, keyed by (rx, ry, a0, a1) bit patterns.
-    // Offsets depend only on those four params and games redraw the same
-    // ellipse sizes every frame; values are the identical f64s the uncached
-    // path computes, so output is bit-exact (see rs_ellipse_path).
-    // Direct-mapped (64 ways, overwrite on collision): one multiply-mix + one
-    // 32-byte key compare per lookup — a SipHash HashMap measured as much as
-    // the ~17 Horner evals it was saving.
-    ell_cache: Vec<EllEntry>,
     // ---- dirty-rectangle: whole-frame skip via command record/replay ----
     // When `dirty` is on, a frame's draw ops are RECORDED (not executed) between
     // rs_frame_begin and rs_frame_end; if the command stream hashes identical to the
@@ -139,7 +111,6 @@ impl RState {
     fn new() -> RState {
         RState {
             canvases: Vec::new(),
-            ell_cache: Vec::new(),
             dirty: false,
             recording: false,
             rec: Vec::new(),
@@ -340,8 +311,6 @@ pub extern "C" fn rs_new_canvas(lw: f64, lh: f64, dw: f64, dh: f64) -> u32 {
         stroke: [0, 0, 0, 255],
         line_w: 1.0,
         path: Vec::new(),
-        escratch: Vec::new(),
-        xscratch: Vec::new(),
     };
     let s = rs();
     s.canvases.push(c);
@@ -500,35 +469,11 @@ pub extern "C" fn rs_round_rect_path(h: u32, x: f64, y: f64, w: f64, hh: f64, r0
 #[no_mangle]
 pub extern "C" fn rs_ellipse_path(h: u32, cx: f64, cy: f64, rx: f64, ry: f64, a0: f64, a1: f64) {
     if rec(16, [cx, cy, rx, ry, a0, a1]) { return; }
-    // Memoize the vertex OFFSETS (pcos(a)*rx, psin(a)*ry): they depend only on
-    // (rx, ry, a0, a1), and `cx + pcos(a) * rx` associates as cx + (pcos(a)*rx),
-    // so adding (cx, cy) to a cached offset performs the identical f64 ops in
-    // the identical order as the uncached loop — bit-exact by construction.
-    let key = [rx.to_bits(), ry.to_bits(), a0.to_bits(), a1.to_bits()];
-    let s = rs();
-    if s.ell_cache.is_empty() {
-        s.ell_cache.resize_with(ELL_WAYS, || EllEntry { key: [0; 4], offs: Vec::new(), full: false });
-    }
-    let slot = ell_slot(&key);
-    let e = &mut s.ell_cache[slot];
-    if !e.full || e.key != key {
-        let span = a1 - a0;
-        let n = (rx.max(ry) * 0.8).ceil().max(10.0) as i32;
-        e.offs.clear();
-        e.offs.reserve((n.max(0) + 1) as usize);
-        for i in 0..=n {
-            let a = a0 + span * (i as f64 / n as f64);
-            e.offs.push((pcos(a) * rx, psin(a) * ry));
-        }
-        e.key = key;
-        e.full = true;
-    }
-    // Raw-ptr snapshot: rs_move_to/rs_line_to re-enter rs() but never touch
-    // ell_cache, so the Vec stays put for the duration of the loop.
-    let offs: *const Vec<(f64, f64)> = &e.offs;
-    let offs = unsafe { &*offs };
-    for (i, &(ox, oy)) in offs.iter().enumerate() {
-        let (ex, ey) = (cx + ox, cy + oy);
+    let span = a1 - a0;
+    let n = (rx.max(ry) * 0.8).ceil().max(10.0) as i32;
+    for i in 0..=n {
+        let a = a0 + span * (i as f64 / n as f64);
+        let (ex, ey) = (cx + pcos(a) * rx, cy + psin(a) * ry);
         if i == 0 {
             rs_move_to(h, ex, ey);
         } else {
@@ -597,37 +542,21 @@ fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
     }
     let y0 = min_y.floor().max(0.0) as usize;
     let y1 = (max_y.ceil().min((c.dh - 1) as f64)).max(0.0) as usize;
-    // Flat edge prepass. The original per-scanline loop re-walked the subpath
-    // structure and recomputed pts[(i+1)%n] for every edge on every scanline;
-    // flatten the edges ONCE (into the canvas's persistent scratch — no per-
-    // fill allocation) with (lo, hi) precomputed. Bit-exactness by
-    // construction: an edge crosses iff lo <= sy < hi (the same predicate as
-    // (ay<=sy&&by>sy)||(by<=sy&&ay>sy)), the crossing x uses the identical
-    // expression, and the flat order IS the original iteration order, so xs
-    // receives the same values in the same order (equal-x ties through the
-    // stable sort keep the same winding sequence). At 64x64 device res shapes
-    // span few scanlines, so anything cleverer (AET/sorting) measured SLOWER
-    // than this — per-fill constants dominate.
-    let mut edges = core::mem::take(&mut c.escratch);
-    edges.clear();
-    for sp in &path {
-        let pts = &sp.pts;
-        let n = pts.len();
-        for i in 0..n {
-            let a = pts[i];
-            let b = pts[(i + 1) % n];
-            let (lo, hi) = if a.1 <= b.1 { (a.1, b.1) } else { (b.1, a.1) };
-            edges.push(Edge { ax: a.0, ay: a.1, bx: b.0, by: b.1, lo, hi });
-        }
-    }
-    let mut xs = core::mem::take(&mut c.xscratch);
+    let mut xs: Vec<(f64, i32)> = Vec::new();
     for y in y0..=y1 {
         let sy = y as f64 + 0.5;
         xs.clear();
-        for e in &edges {
-            if e.lo <= sy && e.hi > sy {
-                let x = e.ax + (sy - e.ay) / (e.by - e.ay) * (e.bx - e.ax);
-                xs.push((x, if e.by > e.ay { 1 } else { -1 }));
+        for sp in &path {
+            let pts = &sp.pts;
+            let n = pts.len();
+            for i in 0..n {
+                let a = pts[i];
+                let b = pts[(i + 1) % n];
+                let (ay, by) = (a.1, b.1);
+                if (ay <= sy && by > sy) || (by <= sy && ay > sy) {
+                    let x = a.0 + (sy - ay) / (by - ay) * (b.0 - a.0);
+                    xs.push((x, if by > ay { 1 } else { -1 }));
+                }
             }
         }
         if xs.len() < 2 {
@@ -642,8 +571,6 @@ fn fill_subpaths(c: &mut Canvas, col: [u8; 4]) {
             }
         }
     }
-    c.escratch = edges;   // hand the scratches back for the next fill
-    c.xscratch = xs;
     c.path = path;   // restore (unchanged from entry) — matches the old clone-based behavior
 }
 
