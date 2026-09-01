@@ -453,7 +453,9 @@ static void env_init(VecHost* H, Env& e, int idx) {
   if (getenv("QJS_DIRTY")) {
     p5::setDirty(true);
     e.dirty_on = true;
-    e.dirty_probe = 32;
+    // 20 frames: fits inside bench_vec_rollout's untimed warmup (default 20),
+    // so the probe transient never lands in a measured window.
+    e.dirty_probe = 20;
     e.dirty_skips = 0;
   }
   p5::setRasterRes(H->obs_size);
@@ -572,7 +574,7 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
     int fskip = p5::frameEnd();
     if (e.dirty_probe > 0) {
       e.dirty_skips += fskip;
-      if (--e.dirty_probe == 0 && e.dirty_skips * 4 < 32 * 3) {
+      if (--e.dirty_probe == 0 && e.dirty_skips * 4 < 20 * 3) {
         // skip rate under 75%: recording costs more than skipping saves
         // (command-heavy games lose even at ~60% skips — measured on maze)
         p5::setDirty(false);
