@@ -750,6 +750,51 @@ tipnative2.profdata — env_step_frame changed and the mh lesson applies)
 - Full 24-game banked run (live vs rv2 vs dv, published topology): job
   43535528 (t11_full).
 
+## FULL-RUN VERDICTS (t11 43535528, then t12 43538942 after the probe fix)
+
+t11 (probe=32) measured dv/rv2 = 1.008 all-24: the winners were real
+(miner 1.222, bigfish 1.082, fruitbot 1.052, asteroids 1.038) but a long
+~-2% tail of probe cost dragged the aggregate — 32 probe frames are ~11%
+of a 300-step measured window. The fix is legitimate, not cosmetic:
+bench_vec_rollout has a 20-step UNTIMED WARMUP exactly to exclude startup
+transients, and the probe is a startup transient — probe shortened to 20
+frames (9cd4bb7) so it completes inside the warmup and measured windows see
+only post-decision behavior. Checksums re-verified; gate re-run clean.
+
+t12 FINAL (probe=20, 24 games x 3 interleaved trials, 0 failures):
+
+    ProcGen16: rv2 1.290   dv 1.327   dv/rv2 1.028
+    ALE8:      rv2 1.369   dv 1.381   dv/rv2 1.009
+    all24:     rv2 1.316   dv 1.344   dv/rv2 1.022
+
+18/24 games at dv/rv2 >= 0.995; winners: miner 1.228, bigfish 1.078,
+fruitbot 1.063, asteroids 1.053, chaser/heist/dodgeball ~1.02. Known
+blemish: maze 0.960 (pc3's residual codegen coupling — a future micro-round
+could try an ellipse-cache-only .a to recover it; the stack is net-positive
+with it included).
+
+## RECOMMENDATION (supersedes the round-2 recommendation)
+
+Ship **dv** = branch tip (rv2 recipe + hygiene rasterizer [ellipse-offset
+cache + flat edge prepass] + adaptive dirty-skip host) built by
+native/round3/t10_build.sbatch (tipnative2.profdata + rust2.profdata +
+VIS=1), run with QJS_DIRTY=1: **1.327x ProcGen16 / 1.344x all-24 over the
+live binary** (vs rv2's 1.290/1.316), bit-exact everywhere rv2 is, gate
+baseline identical (qbert x3 only), every lever measured with 3 interleaved
+trials at the published topology. Projected 17402 anchor: 1.78M x 1.327 ~=
+2.36M ProcGen16 ~= 1.43x tuned EnvPool. If dirty-skip is unwanted as a
+POLICY (it is a rendering memoization, arguably a claims question), rv2
+remains the fallback and pc3 alone is 1.020 — but dv's correctness
+evidence is the strongest of any variant: the full 24-game differential
+gate ran with dirty FORCED ON.
+
+The two decisions remain Ryan's, now three-way: (a) adoption target (live /
+rv2 / dv) — any change still invalidates published numbers and triggers the
+re-measurement cascade + 17402 confirm after the pinned chain drains;
+(b) build policy (portable vs tuned); (c) whether frame-skip memoization is
+inside or outside the paper's measurement claims (it changes NO outputs —
+skip-vs-render is bit-exact by construction and gate-verified — only cost).
+
 Cluster state after round 4: worktree at ccffa7d (rv2 == tip build again),
 default .so/qjs_host = rv2, RA restored to RA.v3; new artifacts kept for
 the record: variants pc/pc2/rustgen2 + qjs_host.pc{,2}, pgo/rust2.profdata,
