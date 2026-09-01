@@ -477,10 +477,50 @@ buffer; createCanvas/createGraphics flush-then-delegate. Local verification
 ALL IDENTICAL; dirtycheck with cmdbuf on: bit-exact except qbert's known
 pre-existing frame-118 divergence (identical without cmdbuf).
 
-In flight (submitted from playtrain-trainers root, scripts committed at
-native/round3/): t5_cbgen 43398251 (instrumented cmdbuf profile, on-node
-on/off parity first) -> t5_build 43398260 (cb = rv2 recipe + cmdbuf sources
-+ cbnative.profdata; cb0 = same binary, flag off) -> t5_ab 43398275 (live /
-rv2 / rv2r / rv2bolt / cb / cb0, 5 games x 2 interleaved reps + on-node
-checksums vs live) + t5_gates 43398278 (rv2r rv2bolt cb, gate_qjs.sh --all
-3000, logs wt/gates_r3/). 17402 untouched; 43246914 still pending.
+First chain (t5: 43398251 cbgen -> 43398260 build -> 43398275 ab + 43398278
+gates, scripts committed at native/round3/, submitted from playtrain-trainers
+root): checksums ALL PASS (every arm bit-exact vs live, 5 games x 300 steps
+x 32 envs); gates for rv2r/rv2bolt/cb all IDENTICAL to rv2's baseline (qbert
+x3 only, logs wt/gates_r3/).
+
+## A/B #6 VERDICT (job 43398275, holy8a28512)
+
+    game        live      rv2     rv2r  rv2bolt       cb      cb0
+    bigfish   341,122   1.495    1.519    1.504    0.791    1.485
+    breakout  163,940   1.172    1.166    1.151    0.372    1.110
+    maze       62,865   1.350    1.357    1.355    0.178    1.235
+    miner      33,457   1.271    1.269    1.265    0.269    1.166
+    plunder   425,037   1.458    1.465    1.460    0.482    1.379
+    geomean             1.344    1.349    1.341    0.368    1.268
+    vs rv2:          rv2r 1.004  rv2bolt 0.997  cb 0.274  cb0 0.943
+
+- rv2 reproduces a 4th time (~1.34); rv2r (emit-relocs) is a clean null.
+- **Lever 1 (BOLT): DEAD — rv2bolt/rv2 = 0.997.** With self-consistent
+  whole-.so PGO + thin-LTO already in the binary, BOLT's post-link layout
+  had nothing left to win. Gate/checksum clean, so it failed SAFE; dropped
+  under the +3% rule. (Everything up to the optimized .so was already done
+  by job 43342607/t4_bolt before this session.)
+- **Lever 2 as specified (JS-side record, one crossing/frame): DEAD —
+  cb/rv2 = 0.274.** Two causes, diagnosed locally: (a) the wrappers indexed
+  the Float64Array with a float-tagged `n=q[0]` — QuickJS's typed-array fast
+  path needs int32-tagged indices, so every store took the generic property
+  path; (b) even after `|0` coercion, recording from JS bytecode measured
+  2-4.4x slower than the direct bindings under QJS_NODRAW. In an interpreter
+  the QuickJS->C++ crossing is CHEAP; the plan's premise was wrong. cb0
+  (same .so, flag off) = 0.943 vs rv2: the flag-off direct path was
+  PGO-starved (profile collected flag-on), consistent with the mh confound.
+
+Salvage in flight — cb2 (commit c61fcfe): recording moved to the C side.
+Bindings stay native (the cheap crossing stays per-call) but append resolved
+args (colors pre-resolved via colorFromArgs) to the per-env double buffer;
+one flush per frame replays through p5::/rasterizer in a tight loop. The
+win channel is i-cache/branch locality only. Local (arm64): parity 33 games
+x 2 seeds PASS; single-env bench ~neutral (-2..+1%), and the earlier local
++30% bigfish reading was mac run-to-run variance — the x86 vec A/B decides.
+Chain2: 43411259 cbgen -> 43411260 build -> 43411262 ab (live rv2 cb cb0) +
+43411263 gates (cb). If cb2 lands under +3%, lever 2 is dropped for good and
+rv2 stands as the round-3 recommendation unchanged.
+
+Lever-3 note for the future: the remaining rasterizer headroom is
+algorithmic (ellipse-path vertex generation, fill_subpaths edge loop), both
+explicitly deferred by the plan; span fills are already vector code.
