@@ -20,6 +20,9 @@
 #   SKIP_HOST=1   don't build the matching qjs_host (instrumented modes)
 #   EMITRELOCS=1  keep relocations in the output (-Wl,--emit-relocs) so
 #                 llvm-bolt can rewrite it post-link; harmless size increase
+#   DBG=1         add -g everywhere (debug info only, codegen unchanged) so
+#                 SIGPROF samples can be attributed to INLINED helpers via
+#                 llvm-symbolizer --inlines
 #
 # Determinism flags (-ffp-contract=off -fno-fast-math) on every compile and
 # on the link line. C++ thin-LTO is always on (the l12pgo baseline had it).
@@ -34,9 +37,11 @@ XLTO="${XLTO:-0}"
 OUT="${OUT:-build/libqjs_vec.so}"
 
 FPFLAGS="-ffp-contract=off -fno-fast-math"
+[ "${DBG:-0}" = 1 ] && FPFLAGS="$FPFLAGS -g"
 VISFLAG=""; [ "$VIS" = 1 ] && VISFLAG="-fvisibility=hidden"
 CXXFLAGS="-std=c++17 -O3 $FPFLAGS $VISFLAG -Wno-c++11-narrowing -fPIC -I runtime -I qjs/src"
 ENGFLAGS="-O3 -march=x86-64-v3 -ffp-contract=off $VISFLAG -DNDEBUG -D_GNU_SOURCE -fPIC"
+[ "${DBG:-0}" = 1 ] && ENGFLAGS="$ENGFLAGS -g"
 SRCS="qjs/qjs_vec_host.cpp runtime/p5.cpp"
 
 case "$CPP_MODE" in
