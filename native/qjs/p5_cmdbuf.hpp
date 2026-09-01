@@ -20,6 +20,7 @@
 #define PLAYTRAIN_P5_CMDBUF_HPP
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include "quickjs.h"
@@ -47,13 +48,12 @@ inline bool enabled() {
   return s && *s && *s != '0';
 }
 
-inline Buf* create() {
-  Buf* b = new Buf;
-  b->q = (double*)malloc(CAP * sizeof(double));
-  b->q[0] = 1;
-  return b;
-}
-inline void destroy(Buf* b) { if (b) { free(b->q); delete b; } }
+// The buffer memory is a JS-side ArrayBuffer (created in install below) so the
+// same code works on vendored quickjs-ng 0.15.1 and current heads, whose
+// JS_NewArrayBuffer signatures differ. Buf.q borrows the ArrayBuffer's data
+// (stable while the context lives; the global keeps it from being collected),
+// so destroy() frees only the handle.
+inline void destroy(Buf* b) { delete b; }
 
 // Replay + reset. `nodraw` mirrors the hosts' NODRAW macro per-op.
 inline void flush(Buf* b, bool nodraw) {
@@ -170,11 +170,24 @@ globalThis.cursor=()=>{};globalThis.frameRate=()=>{};globalThis.smooth=()=>{};
 // the context opaque (free slot in both hosts) and returned; caller owns it
 // and must destroy() it after the context is freed.
 inline Buf* install(JSContext* ctx, JSValue g, JSCFunction* flushFn) {
-  Buf* b = create();
+  Buf* b = new Buf;
   JS_SetContextOpaque(ctx, b);
   JS_SetPropertyStr(ctx, g, "__p5flush", JS_NewCFunction(ctx, flushFn, "__p5flush", 0));
-  JSValue ab = JS_NewArrayBuffer(ctx, (uint8_t*)b->q, CAP * sizeof(double), 0, nullptr, nullptr, false);
-  JS_SetPropertyStr(ctx, g, "__p5ab", ab);
+  {
+    char mk[80];
+    snprintf(mk, sizeof mk, "globalThis.__p5ab=new ArrayBuffer(%zu)", CAP * sizeof(double));
+    JSValue r0 = JS_Eval(ctx, mk, strlen(mk), "<p5cmdbuf-ab>", JS_EVAL_TYPE_GLOBAL);
+    JS_FreeValue(ctx, r0);
+    JSValue ab = JS_GetPropertyStr(ctx, g, "__p5ab");
+    size_t sz = 0;
+    b->q = (double*)JS_GetArrayBuffer(ctx, &sz, ab);
+    JS_FreeValue(ctx, ab);
+    if (!b->q || sz != CAP * sizeof(double)) {
+      fprintf(stderr, "p5cmdbuf: ArrayBuffer alloc failed\n");
+      delete b; JS_SetContextOpaque(ctx, nullptr); return nullptr;
+    }
+    b->q[0] = 1;
+  }
   JSValue r = JS_Eval(ctx, WRAPPERS, strlen(WRAPPERS), "<p5cmdbuf>", JS_EVAL_TYPE_GLOBAL);
   if (JS_IsException(r)) {
     JSValue e = JS_GetException(ctx);
