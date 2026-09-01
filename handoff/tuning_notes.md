@@ -706,6 +706,50 @@ ONLY in the specialization/engine tier (bytecode quickening of operand
 types, AOT twins, V8 host, Deegen-class generated VM) — adoption-decision-
 sized projects, not tuning levers.
 
+## ROUND 4, LAST PUSH — adaptive dirty-skip CLEARS THE BAR (first since rv2)
+
+The framediff measurement nobody had run: under random play miner produces
+85% IDENTICAL frames (static grid, most actions no-op), maze 50%, qbert
+37%, heist 25% — and the whole-frame-skip machinery (record/hash/skip,
+bit-exact by design) had been built and dirtycheck-gated since before
+round 1 but never enabled anywhere. Enabling it globally LOSES on
+command-heavy games (record cost scales with command count: maze pays 625
+rect-records/frame for 50% skips), so the shipped form is ADAPTIVE
+(commit 36e3645): each env probes its first 32 frames under QJS_DIRTY and
+permanently disables the machinery below a 75% skip rate — output is
+identical in every branch, only the cost profile adapts. Plus a
+correctness fix production needed: reset frames render OUTSIDE the frame
+bracket, so env_reset/resetGame now clear the frame-hash cache (a
+post-reset frame can never skip against a pre-reset hash — very likely
+the mechanism of qbert's old dirtycheck frame-118 divergence).
+
+The rasterizer lever was re-landed with the diagnosed hygiene (append-only
+RState fields, #[inline(always)] span): pc3/rv2 = 1.020 — the coupling
+regressions mostly vanished (bigfish 1.650 vs rv2 1.524, miner +6.7%) but
+it stays under the bar ALONE; it ships as part of the dv stack.
+
+## A/B #10 VERDICT (job 43532272; build 43532271 with fresh self-consistent
+tipnative2.profdata — env_step_frame changed and the mh lesson applies)
+
+    game        live      rv2      pc3       dv
+    bigfish   340,199   1.524    1.650    1.596
+    breakout  163,521   1.163    1.151    1.148
+    maze       63,539   1.333    1.295    1.274
+    miner      33,423   1.248    1.331    1.546
+    plunder   423,343   1.472    1.467    1.457
+    geomean             1.341    1.369    1.394
+    vs rv2:                      1.020    **1.039**
+
+- **dv (= pc3 .so + QJS_DIRTY): +3.9% geomean over rv2, miner +23.9%** —
+  gates clean for BOTH pc3 and dv (qbert x3 baseline only; the dv gate ran
+  the full 24-game differential against the node reference with dirty
+  forced on — the strongest correctness test this machinery has had);
+  checksums bit-exact vs live incl. across autoresets.
+- dv is UNDERSTATED at --steps 300: the 32-frame probe is ~11% of frames
+  there vs <2% at production episode lengths.
+- Full 24-game banked run (live vs rv2 vs dv, published topology): job
+  43535528 (t11_full).
+
 Cluster state after round 4: worktree at ccffa7d (rv2 == tip build again),
 default .so/qjs_host = rv2, RA restored to RA.v3; new artifacts kept for
 the record: variants pc/pc2/rustgen2 + qjs_host.pc{,2}, pgo/rust2.profdata,
