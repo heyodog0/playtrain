@@ -623,3 +623,47 @@ precedent cuts both ways: quickjs-ng shipped ICs and later removed them
 over correctness bugs — crib the code, audit the bug reports. NOT STARTED:
 engine surgery is outside round-3 authorization; this section is the
 evidence for proposing it.
+
+## ROUND 4 — authorized (Ryan, 2026-09-01 session): IC + path caching
+
+**Lever IC — DEAD, measured to the bottom (native/archive/prop-ic/).** Two
+designs implemented against pristine quickjs-ng v0.15.1 and both correct
+(33 games x 3 seeds trace-identical) and both SLOWER at the vec operating
+point (128 envs x 5 threads, arm64 — two independent local regimes agreed,
+so no cluster time was spent):
+
+- front cache ((shape,atom)->idx inside find_own_property): 0.87-0.93.
+- per-site quickening ICs (get_field/get_field2/put_field rewritten to
+  *_ic opcodes, monomorphic, generation-guarded): 0.945 geomean — even
+  after diagnosing and FIXING the invalidation design (per-frame temp-shape
+  frees churn a global generation ~2-22 bumps/step; sharding the generation
+  into 256 shape-pointer-hash buckets took hit rates from as low as 3.4%
+  (maze) to 99.99% everywhere). With ~100% hits it still lost, and the most
+  property-bound game (breakout) lost MOST (0.88).
+
+The finding that closes this line: quickjs's baseline lookup is a 1-2
+probe hash walk over cache lines the caller touches anyway; a monomorphic
+IC hit cannot be shallower, only add working set (IC array + generation
+table) and a dependent load. The t7 histogram's find_own_property share is
+irreducible frequency, not avoidable overhead. This explains upstream ng's
+own IC removal. Interpreter headroom now provably requires SPECIALIZATION
+(quickening of operand types / AOT / engine tier), not lookup caching.
+
+**Lever pc (rasterizer) — locally positive, cluster chain running.**
+Committed 4f32a7c: (1) ellipse vertex-offset memoization keyed on
+(rx,ry,a0,a1) bit patterns, direct-mapped 64 ways (a SipHash HashMap ate
+the win; miner's radii are constant, bigfish's per-fish radii are stable) —
+bit-exact because cx + cached(pcos(a)*rx) is the identical op sequence;
+(2) fill_subpaths flat edge prepass into persistent canvas scratch (kills
+the per-scanline modulo + subpath re-walk; an ACTIVE-EDGE TABLE was tried
+first and measured SLOWER — at 64x64 device res shapes span so few
+scanlines that per-fill sort/alloc constants dominate). Local (arm64,
+single-env): bigfish +9-14%, miner +4.5%, maze/breakout flat, plunder
+~-1.5%; parity 66/66. t8 chain: 43453845 build (fresh rust-PGO on the new
+code — RA.rustpgo is stale for changed functions; merged with rust's own
+llvm-profdata per the round-2 trap) -> 43453846 ab (live rv2 pc, 3 reps)
++ 43453852 gates (pc).
+
+Watchlist for further levers (from the t7 tables): refcount traffic
+(js_dup + JS_FreeValueRT 8-12%), plunder blit 4.5%, worker spin 3-8%
+(bounded by round-2 diagnostics).
