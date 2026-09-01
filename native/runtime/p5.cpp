@@ -37,8 +37,8 @@ struct P5State {
   int _rectMode = CORNER;
   int _ellipseMode = CENTER;
 
-  // style cache (mirrors the shim's _ctxFill/_ctxStroke/_ctxLineW reparse guard)
-  bool _cacheValid = false;
+  // style cache (mirrors the shim's _ctxFill/_ctxStroke/_ctxLineW reparse guard;
+  // sentinels = "unknown", exactly the shim's null mirrors)
   Color _ctxFill{-1, -1, -1, -1};
   Color _ctxStroke{-1, -1, -1, -1};
   double _ctxLineW = -1;
@@ -79,7 +79,6 @@ void freeState(void* s) { delete (P5State*)s; }
 #define _strokeW      (_S()._strokeW)
 #define _rectMode     (_S()._rectMode)
 #define _ellipseMode  (_S()._ellipseMode)
-#define _cacheValid   (_S()._cacheValid)
 #define _ctxFill      (_S()._ctxFill)
 #define _ctxStroke    (_S()._ctxStroke)
 #define _ctxLineW     (_S()._ctxLineW)
@@ -118,26 +117,30 @@ static inline bool sameColor(const Color& a, const Color& b) {
   return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 }
 static void applyFill() {
-  if (!_cacheValid || !sameColor(_ctxFill, _fill)) {
+  if (!sameColor(_ctxFill, _fill)) {
     rs_set_fill(_h, _fill.r, _fill.g, _fill.b, _fill.a);
     _ctxFill = _fill;
   }
 }
 static void applyStroke() {
-  if (!_cacheValid || !sameColor(_ctxStroke, _stroke)) {
+  if (!sameColor(_ctxStroke, _stroke)) {
     rs_set_stroke(_h, _stroke.r, _stroke.g, _stroke.b, _stroke.a);
     _ctxStroke = _stroke;
   }
-  if (!_cacheValid || _ctxLineW != _strokeW) {
+  if (_ctxLineW != _strokeW) {
     rs_set_line_width(_h, _strokeW);
     _ctxLineW = _strokeW;
   }
-  _cacheValid = true;
 }
-static void invalidateCache() { _cacheValid = false; }
-// applyFill leaves the cache marked valid only after applyStroke; ensure fill
-// alone also validates the entries it wrote.
-static void afterFill() { _cacheValid = true; }
+// Match the shim's _invalidateStyleCache exactly: null every mirror so the
+// next draw re-applies. A single validity flag is WRONG here — a fill-only
+// draw after pop() must not resurrect stale stroke mirrors (the qbert
+// terminal-frame divergence, 2026-09-01).
+static void invalidateCache() {
+  _ctxFill = Color{-1, -1, -1, -1};
+  _ctxStroke = Color{-1, -1, -1, -1};
+  _ctxLineW = -1;
+}
 
 // ---- lifecycle ----
 void setRasterRes(int n) { if (n > 0) _rasterRes = n; }
@@ -265,7 +268,6 @@ void rect(double x, double y, double w, double h) {
     rs_rect_path(_h, dx, dy, w, h);
     rs_stroke(_h);
   }
-  afterFill();
 }
 void rect(double x, double y, double w, double h, double r) {
   if (!(r > 0)) { rect(x, y, w, h); return; }
@@ -276,7 +278,6 @@ void rect(double x, double y, double w, double h, double r) {
   rs_round_rect_path(_h, dx, dy, w, h, r);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 
 void ellipse(double x, double y, double w, double h) {
@@ -287,7 +288,6 @@ void ellipse(double x, double y, double w, double h) {
   rs_ellipse_path(_h, cx, cy, w / 2, h / 2, 0, TWO_PI);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 void ellipse(double x, double y, double w) { ellipse(x, y, w, w); }
 
@@ -301,7 +301,6 @@ void arc(double x, double y, double w, double h, double start, double stop) {
   rs_ellipse_path(_h, cx, cy, w / 2, h / 2, start, stop);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 void circle(double x, double y, double d) { ellipse(x, y, d, d); }
 
@@ -314,7 +313,6 @@ void triangle(double x1, double y1, double x2, double y2, double x3, double y3) 
   rs_close_path(_h);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 void quad(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
   applyFill();
@@ -326,7 +324,6 @@ void quad(double x1, double y1, double x2, double y2, double x3, double y3, doub
   rs_close_path(_h);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 void line(double x1, double y1, double x2, double y2) {
   applyStroke();
@@ -369,7 +366,6 @@ static void endShapeImpl(bool close) {
   if (close) rs_close_path(_h);
   rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
-  afterFill();
 }
 void endShape() { endShapeImpl(false); }
 void endShape(int mode) { endShapeImpl(mode == CLOSE); }
