@@ -667,3 +667,48 @@ llvm-profdata per the round-2 trap) -> 43453846 ab (live rv2 pc, 3 reps)
 Watchlist for further levers (from the t7 tables): refcount traffic
 (js_dup + JS_FreeValueRT 8-12%), plunder blit 4.5%, worker spin 3-8%
 (bounded by round-2 diagnostics).
+
+## ROUND 4 FINAL — both levers dead; rv2 STILL stands
+
+**pc (path caching): DEAD at 0.989 vs rv2** (A/B #8 job 43453846, 3
+interleaved reps; reproduced by A/B #9 job 43460813). The predicted wins
+materialized exactly where the t7 profile said — bigfish 1.633 vs rv2's
+1.521 (+7.4%), miner +1.8% — but maze (-8.5%), breakout (-3.3%) and
+plunder (-2.1%) regressed even though their code paths (rs_fill_rect fast
+path) are UNTOUCHED. Isolation arms ruled out the suspects one by one:
+pc2 (new code + round-2 rust profile) = 0.978, so it is not the profile
+realization; objdump shows span still inlined + vectorized in rs_fill_rect
+in the pc .a, so it is not lost inlining of the hot store loop. What
+remains is codegen/layout coupling — editing fill_subpaths perturbs
+optimization of its siblings — which is exactly the fragile-luck class the
+plan's stopping rules exist to stop chasing. Checksums PASS and the gate is
+baseline-clean, so it failed SAFE. The bigfish +7.4% is a real, isolated,
+bit-exact win (the largest single-game lever since round 1) and is
+preserved here for a future round that wants to land the ellipse cache
+with codegen hygiene (append-only struct fields, #[inline(always)] span,
+possibly a separate codegen unit); the lever as measured is dropped and
+the commit REVERTED from the branch tip (ccffa7d reverts 4f32a7c) so the
+adoption candidate stays rv2 exactly.
+
+**IC: DEAD by mechanism** (see the round-4 section above and
+native/archive/prop-ic/). Never sent to the cluster: two designs, correct
+semantics, 99.99% hit rates after invalidation sharding, still 0.945
+geomean at the vec operating point — an IC hit cannot beat quickjs's 1-2
+probe walk; it can only add working set.
+
+Cumulative lever graveyard across rounds 3-4: BOLT (0.997), p5 command
+buffer (0.274 JS-side / 0.977 C-side), span SIMD (moot — already
+vectorized), property IC (0.945 local, two designs), path caching (0.989).
+Every one failed SAFE (bit-exact, gate-clean). The recommendation is
+unchanged for the third time: **ship rv2** (+29% ProcGen16 / +32% all-24
+over live). The measured evidence now says the remaining headroom lives
+ONLY in the specialization/engine tier (bytecode quickening of operand
+types, AOT twins, V8 host, Deegen-class generated VM) — adoption-decision-
+sized projects, not tuning levers.
+
+Cluster state after round 4: worktree at ccffa7d (rv2 == tip build again),
+default .so/qjs_host = rv2, RA restored to RA.v3; new artifacts kept for
+the record: variants pc/pc2/rustgen2 + qjs_host.pc{,2}, pgo/rust2.profdata,
+pgo/cbnative.profdata, outputs tune_ab_{43398275,43411262,43453846,
+43460813}, r3prof_*_43422679 helper histograms, gates_r3/. 17402 chain
+(43246914) still pending, never raced.
