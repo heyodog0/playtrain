@@ -7,7 +7,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
-[ -f "$RASTER_LIB" ] || (cd ../crates/rasterizer && cargo rustc --release --lib --crate-type staticlib)
+if [ ! -f "$RASTER_LIB" ]; then
+  # Match the engine's -march=x86-64-v3 (see QJS_ARCH below); integer-only
+  # rasterizer, so vectorization cannot change output — the gate still runs.
+  RUST_ARCH=""; case "$(uname -m)" in x86_64|amd64) RUST_ARCH="-C target-cpu=x86-64-v3";; esac
+  (cd ../crates/rasterizer && RUSTFLAGS="${RUSTFLAGS:-} $RUST_ARCH" cargo rustc --release --lib --crate-type staticlib)
+fi
 [ -f frozenmath/libfrozenmath.a ] || { echo "run build_qjs.sh first (frozenmath missing)"; exit 1; }
 [ -f qjs/bld/libqjs.a ] || { echo "run build_qjs.sh first (libqjs missing)"; exit 1; }
 

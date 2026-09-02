@@ -1,0 +1,7 @@
+/* Linker version script for libqjs_vec.so: only the ctypes-loaded vec_* API
+ * stays global; everything else (engine JS_*, rasterizer rs_*, frozenmath
+ * fm_*, p5) becomes DSO-local, so intra-library calls bypass the PLT. */
+{
+  global: vec_*;
+  local: *;
+};

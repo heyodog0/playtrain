@@ -35,6 +35,7 @@
 #endif
 #include "quickjs.h"
 #include "action_table.hpp"
+#include "p5_cmdbuf.hpp"
 #include "../runtime/p5.hpp"
 #include "../runtime/raster_abi.h"
 
@@ -64,7 +65,14 @@ static thread_local bool g_nodraw = false;
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
 #define NODRAW if (g_nodraw) return JS_UNDEFINED;
 
+// Command-buffer recording (PLAYTRAIN_QJS_CMDBUF=1): the context carries a
+// p5cb::Buf; draw bindings append resolved args and return, and the host
+// replays the frame in one flush. Without a buffer the direct path runs.
+static inline p5cb::Buf* cbuf(JSContext* ctx) { return (p5cb::Buf*)JS_GetContextOpaque(ctx); }
+#define REC(b) if ((b)->n > p5cb::CAP - 16) p5cb::flush((b), g_nodraw);
+
 FN(js_createCanvas) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
   JSValue g = JS_GetGlobalObject(ctx);
   JS_SetPropertyStr(ctx, g, "width", JS_NewInt32(ctx, p5::width()));
@@ -72,9 +80,15 @@ FN(js_createCanvas) {
   JS_FreeValue(ctx, g);
   return JS_UNDEFINED;
 }
-FN(js_background) { NODRAW p5::background(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_fill)   { NODRAW p5::fill(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_stroke) { NODRAW p5::stroke(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_background) { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::BG, c); } else p5::background(c);
+  return JS_UNDEFINED; }
+FN(js_fill)   { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::FILL, c); } else p5::fill(c);
+  return JS_UNDEFINED; }
+FN(js_stroke) { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::STROKE, c); } else p5::stroke(c);
+  return JS_UNDEFINED; }
 FN(js_color)  { p5::Color c = colorFromArgs(ctx, argc, argv);
   JSValue a = JS_NewArray(ctx);
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
@@ -88,34 +102,55 @@ FN(js_lerpColor) {
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
   JS_SetPropertyUint32(ctx, a, 2, JS_NewFloat64(ctx, c.b)); JS_SetPropertyUint32(ctx, a, 3, JS_NewFloat64(ctx, c.a));
   return a; }
-FN(js_noStroke) { p5::noStroke(); return JS_UNDEFINED; }
-FN(js_noFill) { p5::noFill(); return JS_UNDEFINED; }
-FN(js_strokeWeight) { p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_rect) { NODRAW if (argc >= 5) p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]));
-  else p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
-FN(js_ellipse) { NODRAW if (argc >= 4) p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]));
-  else p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_circle) { NODRAW p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_arc) { NODRAW p5::arc(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
-FN(js_triangle) { NODRAW p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
-FN(js_quad) { NODRAW p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
-FN(js_line) { NODRAW p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
-FN(js_rectMode) { p5::rectMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_ellipseMode) { p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_push) { p5::push(); return JS_UNDEFINED; }
-FN(js_pop) { p5::pop(); return JS_UNDEFINED; }
-FN(js_translate) { p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
-FN(js_rotate) { p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
-FN(js_scale) { if (argc >= 2) p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); else p5::scale(argd(ctx,argv[0])); return JS_UNDEFINED; }
-FN(js_beginShape) { NODRAW p5::beginShape(); return JS_UNDEFINED; }
-FN(js_vertex) { NODRAW p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
-FN(js_endShape) { NODRAW if (argc >= 1) p5::endShape((int)argd(ctx, argv[0])); else p5::endShape(); return JS_UNDEFINED; }
+FN(js_noStroke) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::NOSTROKE); } else p5::noStroke(); return JS_UNDEFINED; }
+FN(js_noFill) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::NOFILL); } else p5::noFill(); return JS_UNDEFINED; }
+FN(js_strokeWeight) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::STROKEW, argd(ctx, argv[0])); } else p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_rect) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  double x=argd(ctx,argv[0]), y=argd(ctx,argv[1]), w=argd(ctx,argv[2]), h=argd(ctx,argv[3]);
+  if (argc >= 5) { double r=argd(ctx,argv[4]);
+    if (b) { REC(b) p5cb::rec5(b, p5cb::RECT5, x, y, w, h, r); } else p5::rect(x, y, w, h, r); }
+  else { if (b) { REC(b) p5cb::rec4(b, p5cb::RECT4, x, y, w, h); } else p5::rect(x, y, w, h); }
+  return JS_UNDEFINED; }
+FN(js_ellipse) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  double x=argd(ctx,argv[0]), y=argd(ctx,argv[1]), w=argd(ctx,argv[2]);
+  if (argc >= 4) { double h=argd(ctx,argv[3]);
+    if (b) { REC(b) p5cb::rec4(b, p5cb::ELLIPSE4, x, y, w, h); } else p5::ellipse(x, y, w, h); }
+  else { if (b) { REC(b) p5cb::rec3(b, p5cb::ELLIPSE3, x, y, w); } else p5::ellipse(x, y, w); }
+  return JS_UNDEFINED; }
+FN(js_circle) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec3(b, p5cb::CIRCLE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2])); }
+  else p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
+FN(js_arc) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec6(b, p5cb::ARC, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5])); }
+  else p5::arc(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
+FN(js_triangle) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec6(b, p5cb::TRIANGLE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5])); }
+  else p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
+FN(js_quad) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec8(b, p5cb::QUAD, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5]), argd(ctx,argv[6]), argd(ctx,argv[7])); }
+  else p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
+FN(js_line) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec4(b, p5cb::LINE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3])); }
+  else p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
+FN(js_rectMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::RECTMODE, argd(ctx, argv[0])); } else p5::rectMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_ellipseMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ELLIPSEMODE, argd(ctx, argv[0])); } else p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_push) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::PUSH); } else p5::push(); return JS_UNDEFINED; }
+FN(js_pop) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::POP); } else p5::pop(); return JS_UNDEFINED; }
+FN(js_translate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::TRANSLATE, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_rotate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ROTATE, argd(ctx,argv[0])); } else p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
+FN(js_scale) { p5cb::Buf* b = cbuf(ctx);
+  if (argc >= 2) { if (b) { REC(b) p5cb::rec2(b, p5cb::SCALE2, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); }
+  else { if (b) { REC(b) p5cb::rec1(b, p5cb::SCALE1, argd(ctx,argv[0])); } else p5::scale(argd(ctx,argv[0])); }
+  return JS_UNDEFINED; }
+FN(js_beginShape) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::BEGINSHAPE); } else p5::beginShape(); return JS_UNDEFINED; }
+FN(js_vertex) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::VERTEX, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_endShape) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  if (argc >= 1) { if (b) { REC(b) p5cb::rec1(b, p5cb::ENDSHAPE1, argd(ctx, argv[0])); } else p5::endShape((int)argd(ctx, argv[0])); }
+  else { if (b) { REC(b) p5cb::rec0(b, p5cb::ENDSHAPE0); } else p5::endShape(); }
+  return JS_UNDEFINED; }
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
-FN(js_createGraphics) { return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
-FN(js_setTarget) { p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_clearTarget) { p5::clearTarget(); return JS_UNDEFINED; }
-FN(js_image) { NODRAW p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
+FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
+  return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
+FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
+  else p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
 
 FN(js_m_pow)   { return JS_NewFloat64(ctx, js::pow(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 FN(js_m_sqrt)  { return JS_NewFloat64(ctx, js::sqrt(argd(ctx, argv[0]))); }
@@ -204,6 +239,14 @@ struct Env {
   uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
   void* rstate = nullptr;   // rasterizer per-env state (rs_state_new)
   void* p5state = nullptr;  // p5 shim per-env state (p5::newState)
+  p5cb::Buf* cb = nullptr;  // p5 command buffer (PLAYTRAIN_QJS_CMDBUF=1 only)
+  // Adaptive dirty-rect (QJS_DIRTY): probe the first frames, keep the
+  // whole-frame skip only where the skip rate pays for the record cost
+  // (miner-class games; command-heavy games auto-disable). Output is
+  // identical either way — only the cost profile changes.
+  bool dirty_on = false;
+  int dirty_probe = 0;
+  int dirty_skips = 0;
   int frameCount = 0;
   long steps = 0;
   double lastScore = 0;
@@ -211,6 +254,7 @@ struct Env {
   std::string err;
 
   inline void select() { rs_state_select(rstate); p5::selectState(p5state); }
+  inline void flushCB() { if (cb) p5cb::flush(cb, g_nodraw); }
   inline void setFrame(int fc) { JS_SetPropertyStr(ctx, g, "frameCount", JS_NewInt32(ctx, fc)); }
   inline void call0(JSValue fn) {
     JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr);
@@ -402,6 +446,18 @@ static void env_init(VecHost* H, Env& e, int idx) {
   { JSValue r = JS_Eval(ctx, PRELUDE, strlen(PRELUDE), "<prelude>", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
+  if (p5cb::enabled()) { e.cb = p5cb::create(); JS_SetContextOpaque(ctx, e.cb); }
+  // Opt-in dirty-rect whole-frame skip (QJS_DIRTY, like qjs_host): identical
+  // command streams skip the raster pass entirely; per-env state, so this
+  // applies to the state selected above. Probed adaptively (see Env).
+  if (getenv("QJS_DIRTY")) {
+    p5::setDirty(true);
+    e.dirty_on = true;
+    // 20 frames: fits inside bench_vec_rollout's untimed warmup (default 20),
+    // so the probe transient never lands in a measured window.
+    e.dirty_probe = 20;
+    e.dirty_skips = 0;
+  }
   p5::setRasterRes(H->obs_size);
   { JSValue r = JS_Eval(ctx, src.c_str(), src.size(), "game.js", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"eval"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
@@ -415,6 +471,7 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
   e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
   e.call0(jsSetup);
+  e.flushCB();
   JS_FreeValue(ctx, jsSetup);
 }
 
@@ -449,12 +506,18 @@ static void env_apply_frame(Env& e, const InputFrame& f) {
                            JS_NewFloat64(e.ctx, (f.qaxes[j] / 65535.0) * 2.0 - 1.0));
     JS_SetPropertyStr(e.ctx, e.g, "gamepadAxes", arr);
   }
+  e.flushCB();  // keyPressed/mousePressed handlers may have issued draw calls
 }
 
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
 static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
   g_nodraw = false;  // reset frames always render fully
+  // Dirty mode: the reset frame renders OUTSIDE the frame bracket, so the
+  // cached command-stream hash no longer describes the pixels — clear it
+  // (setDirty resets has_last) so the first post-reset frame never skips
+  // against a pre-reset hash.
+  if (e.dirty_on) p5::setDirty(true);
   p5::setKeysDown(nullptr, 0);
   if (H->actions.any_analog || H->box_mode) {
     // Pointer/axes state is per-episode: park at rest, like setKeysDown([]).
@@ -468,10 +531,13 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   }
   e.frameCount = 0; e.setFrame(0);
   e.resetGame(seed);
+  e.flushCB();
   e.frameCount = 1; e.setFrame(1);
   e.call0(e.jsDraw);
+  e.flushCB();
   double score = 0, lives = 0; uint8_t gs = 0;
   e.readState(score, lives, gs);
+  e.flushCB();
   e.steps = 0; e.lastScore = score;
   p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
 }
@@ -504,8 +570,19 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
     // Render-skip: no-op draw calls on all but the final tick of the skip.
     g_nodraw = H->render_skip && (k + 1 < H->frame_skip);
     e.frameCount++; e.setFrame(e.frameCount);
-    p5::frameBegin(); e.call0(e.jsDraw); p5::frameEnd();
+    p5::frameBegin(); e.call0(e.jsDraw); e.flushCB();
+    int fskip = p5::frameEnd();
+    if (e.dirty_probe > 0) {
+      e.dirty_skips += fskip;
+      if (--e.dirty_probe == 0 && e.dirty_skips * 4 < 20 * 3) {
+        // skip rate under 75%: recording costs more than skipping saves
+        // (command-heavy games lose even at ~60% skips — measured on maze)
+        p5::setDirty(false);
+        e.dirty_on = false;
+      }
+    }
     term = e.readState(score, lives, gs);
+    e.flushCB();
     e.steps++;
     trunc = (!term && e.steps >= H->max_steps);
     if (term || trunc) break;   // stop ticking a finished episode
@@ -666,6 +743,13 @@ static bool read_file(const char* path, std::string& out) {
 }
 
 // ================================ C ABI =======================================
+// The vec_* functions below are the .so's entire public surface (loaded via
+// ctypes). Under -fvisibility=hidden builds this pragma keeps them exported
+// while everything else (engine, rasterizer, p5) goes DSO-local — intra-.so
+// calls then skip the PLT and stay inlinable under LTO.
+#if defined(__GNUC__)
+#pragma GCC visibility push(default)
+#endif
 extern "C" {
 
 void* vec_create(const char* game_path, int num_envs, int obs_size,
@@ -852,6 +936,7 @@ void vec_close(void* h) {
     }
     if (e.p5state) p5::freeState(e.p5state);
     if (e.rstate) rs_state_free(e.rstate);
+    p5cb::destroy(e.cb);
   }
   delete H;
 }
@@ -967,3 +1052,6 @@ int vec_recv(void* h, int batch_size, int32_t* out_env_ids) {
 }
 
 }  // extern "C"
+#if defined(__GNUC__)
+#pragma GCC visibility pop
+#endif

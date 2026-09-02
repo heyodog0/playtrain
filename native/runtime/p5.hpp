@@ -47,7 +47,7 @@ void render_obs_rgb(uint8_t* out);
 // bracket the game's draw() (a no-op when dirty is off).
 void setDirty(bool on);
 void frameBegin();
-void frameEnd();
+int  frameEnd();   // returns 1 if the frame was skipped (dirty mode), else 0
 
 // Input.
 void setKeysDown(const int* codes, int n);

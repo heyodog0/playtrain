@@ -4,6 +4,9 @@
 #include "raster_abi.h"
 
 #include <vector>
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 
 namespace p5 {
 
@@ -192,9 +195,34 @@ void image(int srcHandle, double x, double y, double w, double h) {
   rs_draw_image(_h, (uint32_t)srcHandle, x * _devSx, y * _devSy, w * _devSx, h * _devSy);
 }
 
+#if defined(__x86_64__) || defined(_M_X64)
+// RGBA->RGB pack, 8 pixels/iter: pshufb drops every 4th byte within each
+// 128-bit lane (two 12-byte halves), a dword permute compacts them to 24
+// contiguous bytes, stored as a 32-byte write whose top 8 bytes are
+// overwritten by the next iteration. Pure byte reorder — bit-exact vs the
+// scalar loop by construction. Returns pixels consumed; the last <=10 pixels
+// are left for the scalar tail so the final 32-byte store stays inside
+// out[0..3n).
+__attribute__((target("avx2")))
+static int blit_rgba_to_rgb_avx2(const uint8_t* px, uint8_t* out, int n) {
+  const __m256i shuf = _mm256_setr_epi8(
+      0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, -1, -1, -1, -1,
+      0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, -1, -1, -1, -1);
+  const __m256i perm = _mm256_setr_epi32(0, 1, 2, 4, 5, 6, 6, 6);
+  int i = 0;
+  for (; i + 11 <= n; i += 8) {
+    __m256i v = _mm256_loadu_si256((const __m256i*)(px + i * 4));
+    v = _mm256_shuffle_epi8(v, shuf);
+    v = _mm256_permutevar8x32_epi32(v, perm);
+    _mm256_storeu_si256((__m256i*)(out + i * 3), v);
+  }
+  return i;
+}
+#endif
+
 void setDirty(bool on) { rs_set_dirty(on ? 1 : 0); }
 void frameBegin() { rs_frame_begin(_h); }
-void frameEnd() { rs_frame_end(); }
+int frameEnd() { return rs_frame_end(); }
 
 int width() { return _width; }
 int height() { return _height; }
@@ -211,7 +239,12 @@ void render_obs_rgb(uint8_t* out) {
   // skipping rs_to_bgra. Byte-identical to V8 (proven by the differential gate).
   const uint8_t* px = rs_pixels_ptr(_h);  // RGBA straight-alpha, device res
   int n = _rasterRes > 0 ? _rasterRes * _rasterRes : _width * _height;
-  for (int i = 0, s = 0, d = 0; i < n; i++, s += 4, d += 3) {
+  int i = 0;
+#if defined(__x86_64__) || defined(_M_X64)
+  static const bool have_avx2 = __builtin_cpu_supports("avx2");
+  if (have_avx2) i = blit_rgba_to_rgb_avx2(px, out, n);
+#endif
+  for (int s = i * 4, d = i * 3; i < n; i++, s += 4, d += 3) {
     out[d]     = px[s];      // R
     out[d + 1] = px[s + 1];  // G
     out[d + 2] = px[s + 2];  // B

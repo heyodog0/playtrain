@@ -73,14 +73,20 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_reset_subset.argtypes = [P, P, P, ctypes.c_int, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
-    lib.vec_set_actions.restype = ctypes.c_int
-    lib.vec_set_actions.argtypes = [P, P, P, ctypes.c_int, ctypes.c_int]
-    lib.vec_set_action_analog.restype = ctypes.c_int
-    lib.vec_set_action_analog.argtypes = [P, P, P, P, P]
-    lib.vec_set_input_map.restype = ctypes.c_int
-    lib.vec_set_input_map.argtypes = [P, P, P, ctypes.c_int]
-    lib.vec_step_q.restype = None
-    lib.vec_step_q.argtypes = [P, P, P, P, P, P]
+    # Custom-action-space entry points, absent from pre-box builds of the .so.
+    # Bind them only if present: the default8 path never calls them, so an old
+    # binary keeps working for default-space games (A/B against archived .so's).
+    try:
+        lib.vec_set_actions.restype = ctypes.c_int
+        lib.vec_set_actions.argtypes = [P, P, P, ctypes.c_int, ctypes.c_int]
+        lib.vec_set_action_analog.restype = ctypes.c_int
+        lib.vec_set_action_analog.argtypes = [P, P, P, P, P]
+        lib.vec_set_input_map.restype = ctypes.c_int
+        lib.vec_set_input_map.argtypes = [P, P, P, ctypes.c_int]
+        lib.vec_step_q.restype = None
+        lib.vec_step_q.argtypes = [P, P, P, P, P, P]
+    except AttributeError:
+        pass
     lib.vec_set_frame_skip.restype = None
     lib.vec_set_frame_skip.argtypes = [P, ctypes.c_int]
     lib.vec_set_render_skip.restype = None

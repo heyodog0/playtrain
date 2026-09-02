@@ -15,6 +15,7 @@
 #include <chrono>
 #include "quickjs.h"
 #include "action_table.hpp"
+#include "p5_cmdbuf.hpp"
 #include "../runtime/p5.hpp"
 
 static const int OBS = 64;
@@ -40,7 +41,14 @@ static bool g_nodraw = false;  // measurement: draw bindings return immediately 
 #define FN(name) static JSValue name(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv)
 #define NODRAW if (g_nodraw) return JS_UNDEFINED;
 
+// Command-buffer recording (PLAYTRAIN_QJS_CMDBUF=1): the context carries a
+// p5cb::Buf; draw bindings append resolved args and return, and the host
+// replays the frame in one flush. Without a buffer the direct path runs.
+static inline p5cb::Buf* cbuf(JSContext* ctx) { return (p5cb::Buf*)JS_GetContextOpaque(ctx); }
+#define REC(b) if ((b)->n > p5cb::CAP - 16) p5cb::flush((b), g_nodraw);
+
 FN(js_createCanvas) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
   JSValue g = JS_GetGlobalObject(ctx);
   JS_SetPropertyStr(ctx, g, "width", JS_NewInt32(ctx, p5::width()));
@@ -48,9 +56,15 @@ FN(js_createCanvas) {
   JS_FreeValue(ctx, g);
   return JS_UNDEFINED;
 }
-FN(js_background) { NODRAW p5::background(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_fill)   { NODRAW p5::fill(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
-FN(js_stroke) { NODRAW p5::stroke(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_background) { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::BG, c); } else p5::background(c);
+  return JS_UNDEFINED; }
+FN(js_fill)   { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::FILL, c); } else p5::fill(c);
+  return JS_UNDEFINED; }
+FN(js_stroke) { NODRAW p5::Color c = colorFromArgs(ctx, argc, argv);
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::recColor(b, p5cb::STROKE, c); } else p5::stroke(c);
+  return JS_UNDEFINED; }
 FN(js_color)  { p5::Color c = colorFromArgs(ctx, argc, argv);
   JSValue a = JS_NewArray(ctx);
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
@@ -64,36 +78,57 @@ FN(js_lerpColor) {
   JS_SetPropertyUint32(ctx, a, 0, JS_NewFloat64(ctx, c.r)); JS_SetPropertyUint32(ctx, a, 1, JS_NewFloat64(ctx, c.g));
   JS_SetPropertyUint32(ctx, a, 2, JS_NewFloat64(ctx, c.b)); JS_SetPropertyUint32(ctx, a, 3, JS_NewFloat64(ctx, c.a));
   return a; }
-FN(js_noStroke) { p5::noStroke(); return JS_UNDEFINED; }
-FN(js_noFill) { p5::noFill(); return JS_UNDEFINED; }
-FN(js_strokeWeight) { p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_rect) { NODRAW if (argc >= 5) p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]));
-  else p5::rect(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
-FN(js_ellipse) { NODRAW if (argc >= 4) p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]));
-  else p5::ellipse(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_circle) { NODRAW p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
-FN(js_arc) { NODRAW p5::arc(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
-FN(js_triangle) { NODRAW p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
-FN(js_quad) { NODRAW p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
-FN(js_line) { NODRAW p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
-FN(js_rectMode) { p5::rectMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_ellipseMode) { p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_push) { p5::push(); return JS_UNDEFINED; }
-FN(js_pop) { p5::pop(); return JS_UNDEFINED; }
-FN(js_translate) { p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
-FN(js_rotate) { p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
-FN(js_scale) { if (argc >= 2) p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); else p5::scale(argd(ctx,argv[0])); return JS_UNDEFINED; }
-FN(js_beginShape) { NODRAW p5::beginShape(); return JS_UNDEFINED; }
-FN(js_vertex) { NODRAW p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
-FN(js_endShape) { NODRAW if (argc >= 1) p5::endShape((int)argd(ctx, argv[0])); else p5::endShape(); return JS_UNDEFINED; }
+FN(js_noStroke) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::NOSTROKE); } else p5::noStroke(); return JS_UNDEFINED; }
+FN(js_noFill) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::NOFILL); } else p5::noFill(); return JS_UNDEFINED; }
+FN(js_strokeWeight) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::STROKEW, argd(ctx, argv[0])); } else p5::strokeWeight(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_rect) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  double x=argd(ctx,argv[0]), y=argd(ctx,argv[1]), w=argd(ctx,argv[2]), h=argd(ctx,argv[3]);
+  if (argc >= 5) { double r=argd(ctx,argv[4]);
+    if (b) { REC(b) p5cb::rec5(b, p5cb::RECT5, x, y, w, h, r); } else p5::rect(x, y, w, h, r); }
+  else { if (b) { REC(b) p5cb::rec4(b, p5cb::RECT4, x, y, w, h); } else p5::rect(x, y, w, h); }
+  return JS_UNDEFINED; }
+FN(js_ellipse) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  double x=argd(ctx,argv[0]), y=argd(ctx,argv[1]), w=argd(ctx,argv[2]);
+  if (argc >= 4) { double h=argd(ctx,argv[3]);
+    if (b) { REC(b) p5cb::rec4(b, p5cb::ELLIPSE4, x, y, w, h); } else p5::ellipse(x, y, w, h); }
+  else { if (b) { REC(b) p5cb::rec3(b, p5cb::ELLIPSE3, x, y, w); } else p5::ellipse(x, y, w); }
+  return JS_UNDEFINED; }
+FN(js_circle) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec3(b, p5cb::CIRCLE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2])); }
+  else p5::circle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
+FN(js_arc) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec6(b, p5cb::ARC, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5])); }
+  else p5::arc(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
+FN(js_triangle) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec6(b, p5cb::TRIANGLE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5])); }
+  else p5::triangle(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5])); return JS_UNDEFINED; }
+FN(js_quad) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec8(b, p5cb::QUAD, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3]), argd(ctx,argv[4]), argd(ctx,argv[5]), argd(ctx,argv[6]), argd(ctx,argv[7])); }
+  else p5::quad(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3]),argd(ctx,argv[4]),argd(ctx,argv[5]),argd(ctx,argv[6]),argd(ctx,argv[7])); return JS_UNDEFINED; }
+FN(js_line) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec4(b, p5cb::LINE, argd(ctx,argv[0]), argd(ctx,argv[1]), argd(ctx,argv[2]), argd(ctx,argv[3])); }
+  else p5::line(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2]),argd(ctx,argv[3])); return JS_UNDEFINED; }
+FN(js_rectMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::RECTMODE, argd(ctx, argv[0])); } else p5::rectMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_ellipseMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ELLIPSEMODE, argd(ctx, argv[0])); } else p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_push) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::PUSH); } else p5::push(); return JS_UNDEFINED; }
+FN(js_pop) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::POP); } else p5::pop(); return JS_UNDEFINED; }
+FN(js_translate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::TRANSLATE, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_rotate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ROTATE, argd(ctx,argv[0])); } else p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
+FN(js_scale) { p5cb::Buf* b = cbuf(ctx);
+  if (argc >= 2) { if (b) { REC(b) p5cb::rec2(b, p5cb::SCALE2, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); }
+  else { if (b) { REC(b) p5cb::rec1(b, p5cb::SCALE1, argd(ctx,argv[0])); } else p5::scale(argd(ctx,argv[0])); }
+  return JS_UNDEFINED; }
+FN(js_beginShape) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::BEGINSHAPE); } else p5::beginShape(); return JS_UNDEFINED; }
+FN(js_vertex) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::VERTEX, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::vertex(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_endShape) { NODRAW p5cb::Buf* b = cbuf(ctx);
+  if (argc >= 1) { if (b) { REC(b) p5cb::rec1(b, p5cb::ENDSHAPE1, argd(ctx, argv[0])); } else p5::endShape((int)argd(ctx, argv[0])); }
+  else { if (b) { REC(b) p5cb::rec0(b, p5cb::ENDSHAPE0); } else p5::endShape(); }
+  return JS_UNDEFINED; }
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 
 // Offscreen graphics (layer-cache experiment; see native/HANDOFF-coinrun-perf.md).
-FN(js_createGraphics) { return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
-FN(js_setTarget) { p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
-FN(js_clearTarget) { p5::clearTarget(); return JS_UNDEFINED; }
-FN(js_image) { NODRAW p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
+FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
+  return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
+FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
+  else p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
 
 // Bit-exact Math overrides: QuickJS's built-in transcendentals differ from V8 by
 // ULPs (breaks bit-exactness over time). Route to the SAME js:: math the
@@ -172,8 +207,12 @@ int main(int argc, char** argv) {
     JS_FreeValue(ctx, r);
   };
   evalv(PRELUDE, "<prelude>");
+  p5cb::Buf* CB = p5cb::enabled() ? p5cb::create() : nullptr;
+  if (CB) JS_SetContextOpaque(ctx, CB);
+  auto cbflush = [&]() { if (CB) p5cb::flush(CB, g_nodraw); };
   p5::setRasterRes(OBS);
   evalv(src.c_str(), gamePath);
+  cbflush();
 
   JSValue jsSetup = JS_GetPropertyStr(ctx, g, "setup");
   JSValue jsReset = JS_GetPropertyStr(ctx, g, "resetGame");
@@ -182,12 +221,17 @@ int main(int argc, char** argv) {
 
   int frameCount = 0;
   auto setFrame = [&](int fc) { JS_SetPropertyStr(ctx, g, "frameCount", JS_NewInt32(ctx, fc)); };
-  auto call0 = [&](JSValue fn) { JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr); if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* s = JS_ToCString(ctx, e); fprintf(stderr, "call err: %s\n", s?s:"?"); JS_FreeCString(ctx, s); JS_FreeValue(ctx, e);} JS_FreeValue(ctx, r); };
+  auto call0 = [&](JSValue fn) { JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr); if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* s = JS_ToCString(ctx, e); fprintf(stderr, "call err: %s\n", s?s:"?"); JS_FreeCString(ctx, s); JS_FreeValue(ctx, e);} JS_FreeValue(ctx, r); cbflush(); };
   auto resetGame = [&](uint32_t s) {
     // env sets Math.random = mulberry32(seed) each reset; bigfish uses its own rng.
     char buf[64]; snprintf(buf, sizeof buf, "Math.random=__mb(%u)", s); evalv(buf, "<seed>");
     JSValue a = JS_NewInt32(ctx, (int)s); JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a);
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, a);
+    cbflush();
+    // Dirty mode: reset frames render outside the frame bracket; clear the
+    // frame-hash cache so a post-reset frame can never skip against a
+    // pre-reset hash (mirrors env_reset in qjs_vec_host.cpp).
+    if (getenv("QJS_DIRTY")) p5::setDirty(true);
   };
   // init (mirror env.init / game-env loadGame)
   call0(jsSetup);
@@ -268,6 +312,7 @@ int main(int argc, char** argv) {
     static char last[32]; last[0]=0; if (s) { strncpy(last, s, 31); last[31]=0; }
     term = last[0] && (!strcmp(last,"WIN")||!strcmp(last,"EXIT")||!strcmp(last,"GAMEOVER"));
     name = last; JS_FreeCString(ctx, s); JS_FreeValue(ctx, gs); JS_FreeValue(ctx, st);
+    cbflush();
   };
 
   auto stepEnv = [&](int a, double& score, double& lives, bool& term, const char*& name) {
@@ -296,6 +341,7 @@ int main(int argc, char** argv) {
   };
 
   if (!strcmp(mode, "dirtycheck")) {
+    unsetenv("QJS_DIRTY");   // dirtycheck manages dirty itself per pass
     // Differential test: run the SAME game+seed with dirty-rect OFF (baseline direct render)
     // and ON (record/replay/skip), hashing obs every frame; any mismatch = silent corruption
     // caught loudly. This is the safety net for the whole-frame-skip optimization.
@@ -377,6 +423,7 @@ int main(int argc, char** argv) {
         JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s = JS_ToCString(ctx, gs);
         static char last[32]; last[0]=0; if (s) { strncpy(last, s, 31); last[31]=0; } name = last;
         JS_FreeCString(ctx, s); JS_FreeValue(ctx, gs); JS_FreeValue(ctx, st);
+        cbflush();
         steps = 0; lastScore = score;
       } else {  // step
         bool t; stepEnv(arg, score, lives, t, name); steps++;
@@ -415,7 +462,7 @@ int main(int argc, char** argv) {
       JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
       jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
       printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
-      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
+      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); cbflush(); }
     double lastScore = score;
     std::vector<uint16_t> qv(IMAP.n);
     for (long i = 0; i < nsteps; i++) {
@@ -430,7 +477,7 @@ int main(int argc, char** argv) {
              i, abuf, rbuf, term ? 1 : 0, sbuf, lbuf, name, (unsigned long long)obshash());
       lastScore = score;
       if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
-        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
+        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); cbflush(); }
     }
     JS_FreeValue(ctx, jsSetup); JS_FreeValue(ctx, jsReset); JS_FreeValue(ctx, jsDraw); JS_FreeValue(ctx, jsState);
     JS_FreeValue(ctx, g); JS_FreeContext(ctx); JS_FreeRuntime(rt);
@@ -459,7 +506,7 @@ int main(int argc, char** argv) {
       JSValue gs = JS_GetPropertyStr(ctx, st, "gameState"); const char* s=JS_ToCString(ctx,gs);
       jsnum(score, sbuf, sizeof sbuf); jsnum(lives, lbuf, sizeof lbuf);
       printf("reset seed=%u score=%s lives=%s state=%s obshash=%llu\n", seed, sbuf, lbuf, s?s:"?", (unsigned long long)obshash());
-      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); }
+      JS_FreeCString(ctx,s); JS_FreeValue(ctx,gs); JS_FreeValue(ctx,st); cbflush(); }
     double lastScore = score;
     for (long i = 0; i < nsteps; i++) {
       int a = action_at(i); bool term; const char* name;
@@ -474,7 +521,7 @@ int main(int argc, char** argv) {
       // previous action's keys still held and ship state drifts from the V8
       // reference (surfaced as post-episode-1 divergence in the asteroids gate).
       if (term) { p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0); resetGame(seed + (uint32_t)i + 1); setFrame(++frameCount); call0(jsDraw);
-        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); }
+        JSValue st = JS_Call(ctx, jsState, JS_UNDEFINED, 0, nullptr); JSValue sc = JS_GetPropertyStr(ctx, st, "score"); JS_ToFloat64(ctx,&lastScore,sc); JS_FreeValue(ctx,sc); JS_FreeValue(ctx,st); cbflush(); }
     }
   } else {  // bench
     p5::setKeysDown(nullptr, 0); resetPointerState(); frameCount = 0; setFrame(0);
