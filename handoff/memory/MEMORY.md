@@ -2,16 +2,12 @@
 - [FASRC figure pipeline](fasrc-figure-pipeline.md) — figures only regenerate on the cluster, under rtruong not truong
 - [FASRC benchmark hazards](fasrc-benchmark-hazards.md) — uv sync eats envpool, nodes differ 1.56x, pin 17xxx, hetjob traps
 - [PlayTrain benchmark results](playtrain-benchmark-results.md) — the measured numbers, and which published ones did not reproduce
-- [Human study plan](playtrain-human-study-plan.md) — 20 people, 8 games, 2.5 min, wall-clock plot; harness not built
+- [Human study plan](playtrain-human-study-plan.md) — 20 people, 8 games, 2.5 min, wall-clock plot; harness built and replay-verified
+- [caveflyer action space](caveflyer-action-space.md) — Discrete(8) can't rotate-and-thrust; likely why greedy scores below random
 - [Terse commits, no trailer](paper-terse-commits.md) — one short phrase, never a Co-Authored-By line
 - [Prose editing style](paper-prose-editing-style.md) — minimal diffs in his wording; diagnose before rewriting
 - [Open paper issues](paper-open-issues.md) — dead links, freeway pending, missing DMLab appendix, action-space claim
-- [FASRC trainer throughput traps](fasrc-trainer-throughput-traps.md) — vec_worker_device overlap halves IMPALA; compile/bf16 slow PPO down
-- [Human study state](human-study-state.md) — ran, latest 20 usable, what's in the paper and what's still open
-- [Procgen local playtest](procgen-local-playtest.md) — `procgen-play <env>`; Rosetta x86_64 py3.10, must upgrade glfw
-- [ProcGen faithful ports](procgen-faithful-ports.md) — literal climber/jumper ports in games/procgen_faithful/, outside both catalogs
-- [fasrc quoting](fasrc-quoting-base64.md) — the shell eats quotes in embedded scripts; send base64
-- [Figure pipeline traps](playtrain-figure-pipeline-traps.md) — four ways a figure showed wrong data and looked fine
-- [Local LaTeX build](paper-local-latex-build.md) — tectonic works if you stub fontawesome5; float and floatrow cannot coexist
-- [Fragile LaTeX spots](paper-latex-fragile-spots.md) — the wraptable drops rows silently; the JSON listing needs its emph lists updated
-- [Env diagnostics](playtrain-env-diagnostics.md) — the games-dir trap; random-policy screen; why maze and freeway were broken
+- [Action-space appendix facts](action-space-appendix-facts.md) — configurable spaces shipped on branch action-spaces; the four facts the appendix needs
+- [Three.js history map](threejs-history-map.md) — the removed 3D runtime's recovery tags, measured numbers, and PLAYTRAIN_3D_PLAN.md
+- [Continuous input status](continuous-input-status.md) — mouse/gamepad + box spaces live on branch continuous-input; what's verified and open
+- [PlayTrain website](playtrain-website.md) — playtrain/website, MkDocs Material restyled flat, Play tab embeds build-pages output, GH Pages + CNAME

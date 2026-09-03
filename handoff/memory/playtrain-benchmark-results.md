@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: cd4c6b8b-fd45-4369-b921-2f401fe36bf4
-  modified: 2026-08-03T00:51:26.084Z
+  modified: 2026-09-01T11:57:16.006Z
 ---
 
 Measured on FASRC, 2026-08-02. Scripts live in
@@ -32,46 +32,44 @@ Measured on FASRC, 2026-08-02. Scripts live in
   ProcGen 7/16 (geomean 1.13x, arithmetic mean 1.48x, 33.0k vs 22.3k). Raw data
   is committed in `playtrain-paper/results/env_throughput/`.
 
-**Best single-node training config, measured 2026-08-07 (jobs 37661544/45/47):
-`b256`, 15 vec workers, 5 env threads, MPS on.** 15 workers beats both 12 and 18
-on every environment-bound game; 75 env threads is the peak, 60 starves and 90
-oversubscribes a 92-96 core node. Learner-bound games are unmoved (breakout
-1.06M at all three worker counts).
-
-| game | 12w | **15w** | 18w | fleet |
-|---|---|---|---|---|
-| miner | 399,695 | **484,638** | 439,084 | 737,270 |
-| coinrun | 553,679 | **668,352** | 570,060 | 785,910 |
-| qbert | 576,705 | **694,570** | 570,064 | 773,312 |
-| climber | 602,920 | **753,528** | 615,929 | 753,633 |
-
-climber on one node now **equals its fleet number** (753,528 vs 753,633). With
-these four, the 24-game single-node geomean is **959,467**, against the 987,415
-printed in `tab:train-throughput` — which uses fleet runs for those same four
-games under a header saying "one node". An all-single-node table is now within
-2.8% and needs no footnote. See [[fasrc-benchmark-hazards]] for the MPS trap
-that made every earlier suite sweep read ~590k.
-
 Note the per-core and pipeline pictures differ sharply: 7/16 per core becomes
 15/16 end to end. See [[fasrc-benchmark-hazards]] before rerunning any of this.
 
-**ALE arms of the A/B, both finished and verified 2026-08-19.**
-- *Training swap*, job **36215614** (2026-07-29, COMPLETED): 8/8 games PASS,
-  geomean **872,514 vs 174,763 = 4.99x**, PlayTrain faster on all eight. Range
-  2.58x (qbert, its slowest replica at 449k) to 6.37x (freeway). Reproduces the
-  873k/175k table rows exactly. Launcher `benchmarks/baselines/as_run/run_ale_ab_matched.sh`.
-- *Env-only scaling*, job **39032276** (2026-08-13): the arm that commit e5eed04
-  called "ALE arm pending". PlayTrain 243,803 -> 3,855,055 (99% efficiency) vs
-  EnvPool 20,232 -> 254,653 (79%), **12.05x at 5 threads growing to 15.14x at 80**.
-  The ProcGen counterpart is job **38145651**. Both ran on **holygpu8a17402**, so
-  the two panels are directly comparable.
+**Superseded in part, 2026-08-31 (see HANDOFF-2026-08-31.md):** the published
+EnvPool Fig-4A arm (445k ProcGen, one sync pool, 2,048 envs through one Python
+process) was partly a driver artifact. EnvPool at PlayTrain's topology (16
+pools × 128 envs × 5 threads, still sync) hits 1.8-2.0M on the same nodes;
+EnvPool's documented-best async+NUMA is 1.354M on 17402. PlayTrain anchor
+1.798M ProcGen / 3.964M ALE on 17402; PlayTrain+NUMA is a null (~1.01x).
+Honest ratios pre-rv2: ~1.33x ProcGen / ~11x ALE vs tuned EnvPool. Gate job
+**43246914** (EnvPool sync16 on 17402) decides the final framing — no Fig
+4A/line 540-541/Table 7-8 edits until it lands. rv2 (branch native-tuning,
+1.29-1.32x, bit-exact) adoption is an open user decision. Two determinism
+holes found on main: qbert terminal frame, aim_trainer reset frame.
 
-**The A/B arms match observations; the per-core figure does not.** Both training
-arms force `obs_shape [3,64,64]`, frame_skip 1, `net: nature`, 12 workers x 5 env
-threads, `vec_double_buffer: false`, and the launcher preflight-asserts ALE really
-emits 64x64x3 (exit 3 otherwise). EnvPool's Atari default is 84x84 gray stack-4
-skip-4, which would have made the EnvPool arm look 4x faster. The one residual
-mismatch is `num_actions`: 18 (ALE `full_action_space`) vs 8. `fig:learning` D is
-the opposite case, its caption says ALE "emits its native frame", so the 7.0x
-per-core ALE number is NOT observation-matched and must not be compared with the
-5x swap number.
+**Round 3 closed 2026-08-31 night (handoff/tuning_notes.md, ROUND 3 FINAL):**
+all three authorized levers dead — BOLT 0.997x vs rv2 (nothing after
+self-consistent PGO+LTO), p5 command buffer 0.274x JS-side / 0.977x C-side
+(QuickJS binding crossings are cheap; JS-bytecode recording costs 2-4.4x the
+call it replaces), span SIMD moot (already auto-vectorized; alpha-blend path
+unreachable in the catalog). All failed safe (bit-exact, gates clean). rv2
+remains the final recommendation; profile says 55-70% interpreter, so the
+only remaining levers are ellipse/path caching (safe tier) and the engine
+tier (V8 vec host / AOT twins), both unauthorized so far.
+
+**Round 4 (closed 2026-09-01): the last push BANKED a winner — dv.**
+Property inline caches died by mechanism (an IC hit can't beat quickjs's
+1-2 probe walk; two correct designs, 99.99% hit rates, still 0.945 —
+archived at native/archive/prop-ic/). But the last hurrah found the
+never-measured lever: miner has 85% IDENTICAL frames under random play,
+and the dirty-rect whole-frame-skip machinery had been built and gated
+since before round 1 but never enabled. **dv** = rv2 recipe + hygiene
+rasterizer (ellipse-offset cache + flat edge prepass) + ADAPTIVE dirty-skip
+(20-frame probe inside the bench warmup, 75% skip-rate threshold, per-env
+permanent off; cross-reset hash invalidation added for correctness):
+**1.327x ProcGen16 / 1.344x all-24 over live** (dv/rv2 = 1.028/1.022; t12
+job 43538942), miner +22.8%, bigfish +7.8%, maze -4% known blemish;
+bit-exact, and the 24-game differential gate ran with dirty FORCED ON.
+Recommendation in tuning_notes.md is now dv (rv2 = fallback); adoption +
+build policy + whether frame-skip memoization is inside the paper's
+measurement claims are Ryan's three calls.

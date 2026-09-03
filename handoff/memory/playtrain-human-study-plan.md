@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: cd4c6b8b-fd45-4369-b921-2f401fe36bf4
-  modified: 2026-08-03T00:51:41.038Z
+  modified: 2026-08-04T01:46:44.121Z
 ---
 
 Design Ryan settled on, not yet collected. IRB is believed to cover it.
@@ -34,6 +34,16 @@ discard the episode in progress when the timer fires, randomise game order, and
 pre-register an exclusion rule on keypress count rather than score.
 
 Context: the field norm is 1-5 players (DQN used one professional tester,
-Crafter five), so 20 is generous. The harness — link, order randomisation,
-episode logging against seed — does not exist yet and is the only item with an
-external dependency. Related: [[paper-open-issues]].
+Crafter five), so 20 is generous.
+
+**Harness built 2026-08-03** in `playtrain/tools/`: `build-study.mjs`,
+`study-templates.mjs`, `study-config.json`, `verify-replay.mjs`, docs in
+`tools/STUDY.md`, recipes `just study-build|study-serve|study-verify`. Static
+HTML, no React/TS/build step; it inlines `runtime/p5/p5-shim.mjs` + `raster.mjs`
+(isomorphic by design) so the human plays through the agent's own runtime.
+Verified: 13/13 browser episodes replay through the headless env with identical
+score, frames and termination. Human input is *quantized* to `Discrete(8)` via a
+held-key recency stack rather than macro-expanded — see
+[[caveflyer-action-space]]. Only the upload endpoint is still missing, plus a
+decision on which `frameSkip` matches the eval config behind `tab:eval` (trainer
+configs disagree: 7 vs 1). Related: [[paper-open-issues]].

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4dc4b283-70be-487c-a981-f272b2041ace
-  modified: 2026-08-07T19:09:43.770Z
+  modified: 2026-08-01T19:31:04.690Z
 ---
 
 `github.com/heyodog0/ICLR-PlayTrain-Fast-LLM-VGEs` (cloned at
@@ -18,11 +18,7 @@ over it — a normal commit, but the effect looks like a revert. When it can't
 merge it parks changes on an `overleaf-<timestamp>` branch and blocks with
 "Please manually merge…". This happened three times in one session.
 
-**How to apply:** Never push without asking first — say what will be pushed and
-wait for an explicit yes, even when the edits themselves were approved and even
-when a prior turn in the session involved a push. Approval to edit is not
-approval to publish; a push reaches Ryan and the collaborator.
-Always `git fetch && git merge --ff-only origin/main` before
+**How to apply:** Always `git fetch && git merge --ff-only origin/main` before
 editing. After every push, tell Ryan explicitly to **pull in Overleaf** before
 anyone types there. To clear an `overleaf-*` branch prompt: merge the branch into
 main (it is usually main's content plus a small edit, so `git checkout --theirs`

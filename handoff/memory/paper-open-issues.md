@@ -42,3 +42,13 @@ been reworked; these survived that.
 
 See [[overleaf-github-sync]] before pushing, and [[playtrain-benchmark-results]]
 for numbers that are settled.
+
+**Added 2026-08-31:** (a) Fig 4A + caption + lines 540-541 + Tables 7-8 must
+be rewritten in ONE pass, only after job 43246914 lands (HANDOFF-2026-08-31 §4
+has the five-point list and the approved-pending framing). (b) qbert and
+aim_trainer diverge from the V8 reference (terminal/reset frames) — touches
+the bit-identical claim; uninvestigated. (c) rv2 tuned-build adoption and
+build policy are open user decisions that invalidate published numbers if
+taken. (d) app:backend prose is being drafted by Ryan (laptop session,
+95cbb4b handoff version has state + 7 factual corrections); two-hosts
+material CUT by his decision — at most one clause in the gate sentence.
