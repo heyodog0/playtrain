@@ -1427,3 +1427,74 @@ attributed to the `call*` opcode bodies ("AOT residual") and to
 `JS_CallInternal` itself. Next: tuned build `e3_tune24.sbatch` (profile
 re-collected on all 24 games with `-P`, arms adv / futT2 / futIT2, gate 33×3,
 checksum24), then the banked run if ≥ +3% all-24 over futT2.
+
+**Tuned build (job 44473809, holy8a24305 genoa, non-exclusive `-c 32`,
+2026-09-04 18:57–19:43).** Recipe = l1_tune24 with `INTR=1`: instrumented
+build → vec profile 30 s × 24 games (fork + fut) + single-core 5 → 58
+profraws → `forkI24.profdata` → `-fprofile-use` + thin-LTO + hidden vis +
+Rust-PGO rasterizer, TAG=IT2. Gate f0IT2 + f1IT2: **198/198**; checksum24
+futIT2 vs stock ng **24/24**. A first attempt (44471503) lost 7/24
+instrumented builds to a race on the intrinsics list file (parallel
+`build_fork.sh` invocations rewrote it in place; a reader saw it truncated
+and exited); fixed with an atomic write, and the job now fails hard on an
+incomplete build or profile. Arms adv / futT2 / futI (untuned) / futIT2,
+3 reps on the five profiled games, 2 on the other 19, 212/212 runs, no
+failures. md5 futIT2_miner e9ce216e…, forkIT2 ea46589f…, host_f1IT2_miner bd934cf9….
+
+    game                 adv    futT2     futI   futIT2  IT2/T2  IT2/I   IT2/adv  T2/adv  n
+    bigfish           554137   627249   577477   668969   1.067   1.158   1.207   1.132  3
+    maze               82133   119719   148018   188547   1.575   1.274   2.296   1.458  3
+    miner              51584    77959    85750   106376   1.365   1.241   2.062   1.511  3
+    plunder           628437   775788   796174   895961   1.155   1.125   1.426   1.234  3
+    breakout          190149   292935   311814   366107   1.250   1.174   1.925   1.541  3
+    bossfight         441872   598093   563319   656342   1.097   1.165   1.485   1.354  2
+    caveflyer          79022   127948   131662   158532   1.239   1.204   2.006   1.619  2
+    chaser             88382   123638   122012   143604   1.161   1.177   1.625   1.399  2
+    climber            69764    83776    76142    87267   1.042   1.146   1.251   1.201  2
+    coinrun            68488   114594   113324   131419   1.147   1.160   1.919   1.673  2
+    dodgeball         103386   134659   134716   151216   1.123   1.122   1.463   1.302  2
+    fruitbot           57612    73828    67334    79662   1.079   1.183   1.383   1.281  2
+    heist             144562   228147   227521   328015   1.438   1.442   2.269   1.578  2
+    jumper             96448   114652   105780   122964   1.072   1.162   1.275   1.189  2
+    leaper            127173   170895   178587   172920   1.012   0.968   1.360   1.344  2
+    ninja             539475   610053   572850   653385   1.071   1.141   1.211   1.131  2
+    starpilot         338378   400782   417742   479396   1.196   1.148   1.417   1.184  2
+    asteroids         331862   373182   342934   384673   1.031   1.122   1.159   1.125  2
+    freeway           658533   741358   750260   868298   1.171   1.157   1.319   1.126  2
+    frostbite         308502   315513   300836   360268   1.142   1.198   1.168   1.023  2
+    pong             1383426  1663191  1570568  1799140   1.082   1.146   1.300   1.202  2
+    qbert              67402    79588    76588    97452   1.224   1.272   1.446   1.181  2
+    seaquest          537946   654780   653599   727959   1.112   1.114   1.353   1.217  2
+    space_invaders    251357   344206   352851   389274   1.131   1.103   1.549   1.369  2
+    geomean-five                                          1.270   1.193   1.734   1.365
+    geomean-pg                                            1.169   1.172   1.565   1.339
+    geomean-ale                                           1.141   1.160   1.385   1.214
+    geomean-all                                           1.159   1.168   1.502   1.296
+
+    SINGLE-CORE (qjs_host bench steps/s, medians of 7)
+    game                adv     f1T2      f1I    f1IT2 f1IT2/f1T2  f1IT2/f1I  f1IT2/adv
+    bigfish          146250   166057   148864   170582      1.027      1.146      1.166
+    breakout          41360    67195    71645    81386      1.211      1.136      1.968
+    maze              18084    29276    38762    47310      1.616      1.221      2.616
+    miner             11149    18568    21490    27006      1.454      1.257      2.422
+    plunder          156867   199681   205455   231003      1.157      1.124      1.473
+    geomean-5                                               1.276      1.176      1.846
+
+**E3 TUNED VERDICT: passes the bank gate by 5x.** futIT2/futT2 = **1.159
+all-24 / 1.169 ProcGen16 / 1.141 ALE8** (bank threshold +3%); every game
+≥ 1.01 (leaper 1.012, asteroids 1.031, climber 1.042; heist 1.438, maze
+1.575, miner 1.365, breakout 1.250). Against adv: **1.502 all-24 / 1.565
+PG16 / 1.385 ALE8**, 1.734 on the five. Single-core five: f1IT2/f1T2 1.276,
+f1IT2/adv 1.846 (maze 2.62, miner 2.42). The futT2/adv column of this job
+(1.296 all-24) reproduces the banked 1.297 to 0.1%, so the non-exclusive
+node did not move ratios. PGO on top of the intrinsics is worth 1.168 (IT2/I),
+about what PGO was worth before (futT2/fut 1.14): the two compose. Banked
+run `e3_bank.sbatch` (16 workers × 128 × 5, 24 games × 3 trials, arms adv /
+futT2 / futIT2, + panel C adv / f1T2 / f1IT2) submitted as job 44482682,
+`--exclusive` because the topology needs the whole node.
+
+What this implies for the rest of the round: E2 (stack → locals) is now
+measured against futIT2, and the remaining `call`/`call_method` cost is
+mostly JS→JS calls (game helper functions), which E3 does not touch. Fields
+(breakout/plunder/bigfish/coinrun) and refcount are the next-largest
+buckets; a futIT2 re-profile (E0 recipe, `TAG=IT2dbg`) should precede E2.
