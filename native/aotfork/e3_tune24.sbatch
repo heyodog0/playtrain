@@ -4,9 +4,11 @@
 #SBATCH -e logs/%x_%j.err
 #SBATCH -p serial_requeue
 #SBATCH -C genoa
-#SBATCH --exclusive
 #SBATCH -N 1
+#SBATCH -c 32
 #SBATCH --mem=64G
+# Non-exclusive (no idle genoa node 2026-09-04); compensated with more reps: 3 on the five
+# profiled games, 2 on the other 19, 7 single-core. Ratios are same-job, same-node, interleaved.
 #SBATCH -t 0-05:00
 # E3 tuned build (PLAN-engine-tier-round6.md §4: tuned build only for a lever that
 # passed the untuned probe). Same recipe as l1_tune24 (instrumented build -> vec
@@ -39,7 +41,7 @@ cp "$WT/crates/rasterizer/target/release/libplaytrain_rasterizer.a.rustpgo_adv" 
 NGSO=$WE/native/build/libqjs_vec.so; NGHOST=$WE/native/build/qjs_host
 for f in "$RA_PLAIN" "$NGSO" "$NGHOST" "$OUT/qjsc" "$OUT/libqjs_vec.adv.so" "$OUT/qjs_host.adv" "$OUT/libqjs_vec.fork.so" "$OUT/host_f0"; do [ -e "$f" ] || { echo "missing $f — run l1_fork/l1_vec_ab first"; exit 1; }; done
 cd native/aotfork; export FORK_OUT=$OUT INTR=1
-for g in $PROCGEN $ALE; do [ -f "$OUT/libqjs_vec.futT2_$g.so" ] || { echo "missing futT2 $g"; exit 1; }; done
+for g in $PROCGEN $ALE; do [ -f "$OUT/libqjs_vec.futT2_$g.so" ] && [ -f "$OUT/libqjs_vec.futI_$g.so" ] || { echo "missing futT2/futI $g"; exit 1; }; done
 
 echo "== 1. instrumented builds (TAG=Igen, INTR=1) =="
 PROFDIR=$OUT/prof_rawI24; rm -rf "$PROFDIR"; mkdir -p "$PROFDIR"
@@ -91,14 +93,14 @@ bench() {  # game arm libpath rep
     --steps 300 --warmup 20 --max-steps 2000 --frame-skip 1 \
     --out "$OUTD/${g}_${a}_r${r}.json" 2>&1 | grep -o '"env_steps_per_s": [0-9]*' || echo "RUN_FAIL $g $a r$r"
 }
-arms() { echo "adv=$OUT/libqjs_vec.adv.so futT2=$OUT/libqjs_vec.futT2_$1.so futIT2=$OUT/libqjs_vec.futIT2_$1.so"; }
-echo "== 5. vec A/B: 5 games x 2 reps interleaved, then all-24 x 1 =="
-for g in $FIVE; do for r in 1 2; do for kv in $(arms $g); do bench "$g" "${kv%%=*}" "${kv#*=}" $r; done; done; done
-for g in $PROCGEN $ALE; do case " $FIVE " in *" $g "*) continue;; esac; for kv in $(arms $g); do bench "$g" "${kv%%=*}" "${kv#*=}" 1; done; done
-echo "== 6. single-core: adv f1T2 f1IT2, 5 games x 5 reps x 50k, QJS_DIRTY=1 =="
+arms() { echo "adv=$OUT/libqjs_vec.adv.so futT2=$OUT/libqjs_vec.futT2_$1.so futI=$OUT/libqjs_vec.futI_$1.so futIT2=$OUT/libqjs_vec.futIT2_$1.so"; }
+echo "== 5. vec A/B: 5 games x 3 reps interleaved, then the other 19 x 2 reps =="
+for g in $FIVE; do for r in 1 2 3; do for kv in $(arms $g); do bench "$g" "${kv%%=*}" "${kv#*=}" $r; done; done; done
+for r in 1 2; do for g in $PROCGEN $ALE; do case " $FIVE " in *" $g "*) continue;; esac; for kv in $(arms $g); do bench "$g" "${kv%%=*}" "${kv#*=}" $r; done; done; done
+echo "== 6. single-core: adv f1T2 f1I f1IT2, 5 games x 7 reps x 50k, QJS_DIRTY=1 =="
 RAW=$OUTD/sc_raw.txt; : > "$RAW"
-for g in $FIVE; do for r in 1 2 3 4 5; do
-  for kv in "f1T2=$OUT/host_f1T2_$g" "f1IT2=$OUT/host_f1IT2_$g" "adv=$OUT/qjs_host.adv"; do
+for g in $FIVE; do for r in 1 2 3 4 5 6 7; do
+  for kv in "f1T2=$OUT/host_f1T2_$g" "f1I=$OUT/host_f1I_$g" "f1IT2=$OUT/host_f1IT2_$g" "adv=$OUT/qjs_host.adv"; do
     n=${kv%%=*}; b=${kv#*=}
     sps=$(QJS_DIRTY=1 "$b" "$GDIR/$g.js" bench 1 50000 2>/dev/null | sed -n 's/.*= \([0-9.]*\) steps\/sec/\1/p')
     echo "$n $g $r $sps" | tee -a "$RAW"
@@ -128,11 +130,11 @@ def table(d, arms, ratios, title):
 d = collections.defaultdict(list)
 for f in glob.glob(sys.argv[1] + "/*.json"):
     g, a, r = os.path.basename(f)[:-5].rsplit("_", 2); d[(g, a)].append(json.load(open(f))["env_steps_per_s"])
-table(d, ["adv", "futT2", "futIT2"], [("futIT2", "futT2"), ("futIT2", "adv"), ("futT2", "adv")], "VEC (env steps/s, medians)")
+table(d, ["adv", "futT2", "futI", "futIT2"], [("futIT2", "futT2"), ("futIT2", "futI"), ("futIT2", "adv"), ("futT2", "adv")], "VEC (env steps/s, medians of 3 / 2)")
 d2 = collections.defaultdict(list)
 for line in open(sys.argv[1] + "/sc_raw.txt"):
     p = line.split()
     if len(p) == 4 and p[3]: d2[(p[1], p[0])].append(float(p[3]))
-table(d2, ["adv", "f1T2", "f1IT2"], [("f1IT2", "f1T2"), ("f1IT2", "adv")], "SINGLE-CORE (qjs_host bench steps/s, medians of 5)")
+table(d2, ["adv", "f1T2", "f1I", "f1IT2"], [("f1IT2", "f1T2"), ("f1IT2", "f1I"), ("f1IT2", "adv")], "SINGLE-CORE (qjs_host bench steps/s, medians of 7)")
 EOF
 echo "== done $(date) =="
