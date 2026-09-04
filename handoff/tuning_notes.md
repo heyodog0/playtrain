@@ -1158,3 +1158,148 @@ quickjs-ng" description and re-triggers the full re-measurement cascade.
     L5 NaN-boxing                           not run
     L6 tail-call dispatch                   = the fork interpreter row
     (* vs stock ng, not adv)
+
+## ROUND 6 — engine tier 2 (what `qjsc -A` leaves on the table)
+
+Spec: `handoff/PLAN-engine-tier-round6.md`. Baseline for this round is
+futT2 (L1 banked, 1.297x all-24 over adv); every lever is measured against
+both futT2 and adv. Branch `engine-tier`, code under `native/aotfork/`.
+
+### E0 — profile futT2 (job 44449147, holy8a28510 genoa, 2026-09-04 16:13–16:31)
+
+**Hypothesis.** Round 3 profiled the stock interpreter; nobody has profiled
+the AOT build. Every round-6 lever's expectation has to come from where futT2
+actually spends its time, not from the round-3 table.
+
+**Built.** `build_fork.sh` gained `DBG=1` (-g on engine objects, AOT unit,
+host; codegen unchanged). Tuned recipe rebuilt under `TAG=T2dbg`
+(fork24.profdata, thin-LTO, hidden vis, Rust-PGO rasterizer) for
+forkT2dbg + futT2dbg x {breakout plunder bigfish miner maze coinrun heist}.
+Sanity, no profiler, 20 s each: futT2 304.0k vs futT2dbg 298.8k (breakout),
+116.7k vs 121.1k (maze); forkT2 243.8k vs 241.6k, 101.2k vs 100.9k. Text
+size identical to 16 bytes. No "Bytecode mismatch" on any arm.
+Profiler: `prof_preload.so` (ITIMER_PROF ~1 kHz, in-process), vec workload
+128 envs x 5 threads, QJS_DIRTY=1, 60 s per (arm, game); 70–79k samples per
+run, 97–98% inside the `.so`. Symbolized with `llvm-symbolizer --inlines`;
+`prof_buckets_aot.py` attributes each sample to its innermost NON-trivial
+inline frame (JS_IsUninitialized / JS_NewInt32 / set_value-style helpers are
+folded into their caller or into refcount), buckets it, and — because the
+emitted functions are `aotN_<jsname>` and every opcode body sits under a
+`/*pcN:*/ /*op*/` marker — also gives per-JS-function and per-opcode views.
+Reports: `out/e0_44449147/{buckets_{fut,fork}_<g>.txt,summary.txt}`.
+
+**futT2dbg — % of .so samples** (includes the host's worker spin; see below)
+
+    bucket                breakout   plunder   bigfish     miner      maze   coinrun     heist
+    AOT residual              32.7      30.0      14.7      31.7      35.0      34.5      33.8
+    refcount/free             15.9      10.3       6.4      14.4      17.0      19.7      19.5
+    property access           13.8      11.8       7.7       2.2       0.6      15.3       2.3
+    call machinery             4.6       4.9       2.6       8.4       8.7       5.8       7.2
+    arith slow paths           5.9       2.5       2.5       1.1       0.0       1.7       2.8
+    conversions                2.5       1.1       1.0       1.3       0.2       0.7       1.8
+    atoms/strings              0.8       2.2       1.9       0.4       0.4       1.2       0.7
+    strict_eq/str-cmp          0.0       0.0       0.0       0.0       0.0       1.4       0.0
+    rasterizer                 9.6      11.3      39.7      19.2      23.8       8.1      17.4
+    p5/host/blit               7.3      10.9       8.8       8.1       8.0       4.7       9.8
+    vec host spin              4.8      10.1      11.0       9.2       5.4       5.2       2.8
+    other                      2.0       4.4       3.3       3.3       1.0       1.6       1.9
+
+"AOT residual" = the sample's innermost non-trivial frame is the `aotN_`
+function itself: operand-stack loads/stores through `sp[]`/`var_buf[]`, tag
+tests, boxing, the inline int/f64 fast paths, loop back-edges. It is what
+"interp dispatch" (43–50% on forkT2dbg, same games, same job) became after
+`-A`: dispatch+decode are gone, the rest of the interpreter's residual is
+not.
+
+**Same samples by bytecode opcode family** (fut arm; 46–62% of samples map to
+a marker, the rest are rasterizer/host/callees not inlined into an aot fn):
+
+    family                breakout   plunder   bigfish     miner      maze   coinrun     heist
+    fields (get/put_field, get_length)   21.7   15.1   8.8    0.9    0.5    5.2    1.6
+    E2 stack/local            18.3      12.3       7.5      16.2      29.6      22.7      22.9
+    E3 calls/globals          13.7      14.0       7.1      19.4      14.1      15.1      21.6
+    E1 array element           5.5       2.4       1.3       3.0       2.7       8.2       4.2
+    E1 arith/compare           2.1       3.7       1.5       6.4       4.6       4.5       3.9
+
+Hottest opcodes (fut): breakout `get_field` 20.0% (find_own_property is the
+single hottest non-AOT frame, 13.1%), `get_loc_check` 4.1, `get_array_el`
+4.0, `call`/`call3`/`call_method` 3.6/3.2/3.4, `put_loc_check` 3.6,
+`put_loc8` 3.5, `get_var` 3.0, `drop` 2.5. maze: `goto8` 11.1 (loop
+back-edge + interrupt poll), `call` 10.1, `put_loc_check` 7.1, `drop` 6.5,
+`get_var` 3.5, `get_array_el` 2.7, `lt` 2.6. heist/coinrun/miner:
+`put_loc_check` 9.2/7.9/4.7, `call3` 8.3/3.9/6.2, `call` 7.7/2.4/6.7,
+`drop` 5.4/2.1/4.3, `get_var` 4.3/2.5/3.7, `get_array_el` 4.2/3.6/2.8.
+`put_loc_check`/`put_loc8`/`drop` are 50–99% refcount (the `set_value` /
+`JS_FreeValue` of the value being overwritten or dropped). `lt/add/sub/mul`
+are 100% "AOT residual", i.e. they already run on the inline int/f64 fast
+path; the only arithmetic that leaves the function is `js_relational_slow`
+(breakout 4.8%: the compare fast path is int-only, every f64 compare is a
+call through JS_ToPrimitiveFree x2) and `js_binary_arith_slow` (~1%: mixed
+int x f64 operands, not covered by the int/int and f64/f64 paths).
+Per JS function: `draw` is 37–52% of samples on every game (drawEntities
+another 25 on breakout; moveAndCollide 12 on coinrun); update/collision
+functions are ≤ 12%.
+
+**Two host-side findings, not engine.** (1) `worker_loop` +
+`vector<WorkerCtl>::operator[]` = 3–11% of ALL CPU samples: the vec host's
+worker threads spin-wait between steps at 128 x 5 (busiest on bigfish and
+plunder, the fastest games). It is idle CPU, not latency — throughput is
+unaffected at 1 worker — but at 16 workers x 5 threads on an 80-thread node
+it is CPU taken from other workers. Worth one A/B of a futex/short-backoff
+wait later; not this round. (2) Rasterizer + p5 host = 17–49% (bigfish 49,
+maze 32, miner 27): untouched by anything below; the ceiling statements in
+the plan §0 stand.
+
+**Verdict and re-derived expectations (rule: every lever restates its number
+from this table before it is built).**
+
+- **E1 (type-feedback specialization of arith/compare/array): KILLED before
+  build.** The family it attacks is 3.6–12.7% of samples and already runs
+  on inline fast paths; the only part that leaves the function is the slow
+  bucket, 0.0–5.9% (geomean of ceilings over the 5 profiled games ≈ 2%).
+  The proceed threshold is +5% geomean on the 5; unreachable even at 100%
+  recovery. The profile step, the `-R/-T` flags and the ≥99% monomorphism
+  machinery buy nothing here. What survives is **E1-lite**: f64 and mixed
+  int/f64 fast paths in the `lt/lte/gt/gte/eq/neq/strict_eq` and
+  `add/sub/mul` handler bodies (a ~30-line engine patch, no profile, exact by
+  construction — same conditions as `js_relational_slow`'s number branch).
+  Expected +3–5% on breakout, +1–2% elsewhere; fold into E2's build and
+  measurement, do not run alone.
+- **E2 (operand stack → C locals): the top engine lever.** E2 family 7.5–30%,
+  AOT residual 30–35%; on maze/coinrun/heist the `put_loc_check`/
+  `get_loc_check`/`put_loc8`/`drop`/`goto8` group alone is 20–28%. Two
+  static wins come with it: the `_check` TDZ tests (`JS_IsUninitialized` on
+  every let/const access, 4–10%/game) are removable when the emitter proves
+  the slot initialized on all paths, and `set_value` frees of int/f64 locals
+  disappear once the emitter tracks that a slot holds a non-refcounted tag.
+  Expected 1.08–1.15x on the interpreter-heavy games, ~1.03x on bigfish.
+  Kill unchanged (< +5% on the 5 with hot opcodes whitelisted).
+- **E3 (p5 intrinsics): bigger than the plan assumed.** Calls/globals family
+  7–22%, call machinery 2.6–8.7%, `js_call_c_function` 2.2–5.4% innermost,
+  plus the arg refcount frees under `drop`/`call*`. On maze/miner/heist
+  (draw = 39–52% of samples, ~all of it `get_var rect/fill; call3`) the
+  reachable slice is ~15–25%. Expected 1.06–1.12x on draw-heavy games,
+  1.03x on breakout/plunder. Kill unchanged (< +3% miner+maze). Cheapest
+  lever per point; can go before or in parallel with E2.
+- **E4 (refcount elision): real bucket, 6–20%.** Mostly `set_value` under
+  put_loc and `JS_FreeValue` under drop/call. Only after E2 (needs the
+  static stack); measured inside E2's tuned build.
+- **Fields (not a round-6 lever): 22/15/9/15% on breakout/plunder/bigfish/
+  coinrun, ~0 on the ProcGen grid games.** `find_own_property` is the
+  hottest non-AOT frame on breakout (13.1%). Round 4 killed interpreter ICs
+  at 0.87–0.945x; the emitter version (static per-site `{shape*, slot}`
+  cache, atom a compile-time constant, no bytecode rewriting) is a different
+  mechanism but attacks the same "1–2 probe hash walk" the autopsy said
+  cannot be beaten. Recommend a **probe only** (~40 lines, untuned, 3
+  games), kill < +3% on breakout; Ryan's call whether to spend the day.
+- **E5 (NaN-boxing)**: untouched by this profile; boxing cost is inside "AOT
+  residual" and cannot be separated at this granularity. Still last.
+
+Order for the rest of the round, from this table: **E2 (with E1-lite folded
+in) → E3 → E4 (inside E2's build) → field-IC probe if Ryan wants it → E5 →
+E6 packaging + adv re-cut.** E6.2/E6.3 do not depend on any of this and can
+run whenever the queue is free of bench jobs.
+
+Artifacts: `out/libqjs_vec.{forkT2dbg,futT2dbg_<g>}.so`, `out/{objT2dbg,picT2dbg}/`,
+`out/e0_44449147/`; scripts `e0_prof.sbatch`, `prof_buckets_aot.py`,
+`e0_summary.py`; log `logs/e0_prof_44449147.out`. Commits 85d86c8, 42b2468.

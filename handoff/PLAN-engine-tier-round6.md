@@ -1,6 +1,6 @@
 # PLAN — Engine tier, round 6: what `qjsc -A` leaves on the table
 
-**Written 2026-09-04 (end of round 5). Status: PROPOSED, not authorized.**
+**Written 2026-09-04 (end of round 5). Status: IN PROGRESS — E0 done (§0b), E1 killed pre-build, E2 next.**
 Round 5 banked L1 (Futamura AOT via the ivankra fork's `qjsc -A`) at
 **1.297× all-24 / 1.335× ProcGen16 / 1.223× ALE8 over adv** at the published
 topology, 1.377× panel C, bit-exact, checksum-clean — see
@@ -42,6 +42,30 @@ rasterizer). If everything lands: ProcGen ~2.2× → ~2.5–2.7× tuned EnvPool.
 **Miner does not flip on engine work**; its cost is 787 draw commands
 (generator choice — the template rules, still unwritten, are the only lever
 for that). Do not sum per-lever expectations; they hit the same slice.
+
+### 0b. E0 result (2026-09-04, job 44449147) — read this before §5
+
+futT2 profiled on 7 games (`tuning_notes.md` § "ROUND 6" has the full tables).
+% of .so samples: AOT residual 30–35 (bigfish 15) · refcount/free 6–20 ·
+property access 0.6–15 (breakout 14, plunder 12, coinrun 15; ~0 on the grid
+games) · call machinery 3–9 · arith slow paths 0–6 · rasterizer 8–40 · p5
+host 5–11 · vec-host worker spin 3–11 (host finding, not engine). By opcode
+family: fields 22/15/9 on breakout/plunder/bigfish; stack/local 7.5–30;
+calls/globals 7–22; arith+compare 1.5–6.4; array element 1.3–8.2.
+`lt/add/sub/mul` are already on inline fast paths; only f64 compares
+(`js_relational_slow`, breakout 4.8%) and mixed int/f64 arithmetic leave
+the function.
+
+Consequences for §5: **E1 is killed before build** (its ceiling, the slow
+bucket, is ~2% geomean on the 5 — below the +5% proceed gate); what
+survives is "E1-lite", static f64/mixed fast paths in the compare/arith
+bodies, folded into E2. **E2 is the top lever** (1.08–1.15x expected; the
+`_check` TDZ tests and `set_value` frees of numeric locals come with it).
+**E3 is larger than written below** (calls family 15–25% on draw-heavy
+games; expect 1.06–1.12x there). **Fields** are the hottest single frame on
+breakout (`find_own_property` 13%): an emitter-side per-site cache is a
+probe candidate, Ryan's call. Execution order is now E2 (+E1-lite) → E3 →
+E4 → field probe → E5 → E6.
 
 ## 1. Already measured — do NOT re-derive (adds to PLAN-engine-tier §1)
 

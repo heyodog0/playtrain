@@ -151,6 +151,11 @@ browser playtesting, which never touches the `.so`).
 
 ## 5b. Next round
 
+**Round 6 status (2026-09-04 evening):** E0 (profile futT2) is done — job
+44449147, tables in `tuning_notes.md` § "ROUND 6"; E1 as specified is
+killed before build (its bucket is ~2%); E2 is next, E3 promoted. See
+`PLAN-engine-tier-round6.md` §0b.
+
 `handoff/PLAN-engine-tier-round6.md` — re-profile futT2, then the levers `-A`
 leaves on the table (type-feedback specialization in the AOT emitter,
 operand-stack-to-locals, p5 intrinsics, refcount elision, NaN-boxing), plus
