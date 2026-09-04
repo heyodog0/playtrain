@@ -1,0 +1,117 @@
+# HANDOFF 2026-09-04 — Engine tier, L1 (Futamura AOT via `qjsc -A`)
+
+**Status: MEASURED, NOT ADOPTED.** Everything below lives on branch
+`engine-tier` (local + `origin/engine-tier`; cluster worktree
+`$BASE/playtrain-wt-engine`). The tuning worktree, the live tree, the adopted
+`libqjs_vec.so` (md5 b3709b39…) and `qjs_host.adv` (46ea4999…) were never
+written. Nothing here is quoted in the paper. Ryan's decision (PLAN §7 #1:
+adopt the Bellard-lineage fork or stay on stock quickjs-ng) is open.
+
+Read with: `handoff/PLAN-engine-tier.md` (the plan this executes) and
+`handoff/tuning_notes.md` § "ROUND 5 — engine tier" (full tables, one entry
+per job).
+
+## 1. Result in one paragraph
+
+Compiling each game's bytecode to C with the ivankra QuickJS fork's `qjsc -A`
+(first Futamura projection: the interpreter specialized to the fixed bytecode;
+values stay boxed, no type information used) and building it with the same
+PGO + thin-LTO + hidden-visibility recipe the adopted binary uses gives
+**1.30× over adv, geomean of all 24 paper games, every game ≥ 1.07×**, on the
+plan's 1-worker iteration protocol (128 envs × 5 threads, QJS_DIRTY=1, same
+node, interleaved arms). On the 5 profiled games it is 1.37× (vec) and 1.45×
+(single-core). Roughly 1.13× of the 1.30× is the fork *interpreter* itself
+(tail-call dispatch); AOT adds 1.14× on top. Bit-exact against the V8
+reference on all 33 games × 3 seeds; vec observation checksums identical to
+stock quickjs-ng on all 24 games × 2000 steps. Projected onto Fig 4A: ProcGen
+1.64× → ~2.2× tuned EnvPool; ALE ~15× → ~18×. The banked run (§4 protocol,
+16×128×5, 3 trials, holy8a24307) is job **44434186**, pending at the time of
+writing.
+
+## 2. What was built (all under `native/aotfork/`)
+
+| file | what |
+|---|---|
+| `qjsc-hostmode.patch` | +37 lines to the fork's `qjsc.c`. `QJSC_HOST_MODE=1`: one shared compile context created like an embedding host (`JS_NewContext`, no std helpers) across all input files, AOT table emitted once, compiled objects kept alive. Needed because **atom indices are baked into the AOT bytecode**: the host must `JS_ReadObject` the blobs in the same order, right after `JS_NewContext`, with no atoms created in between, or the engine silently falls back to interpreting that function ("Bytecode mismatch" on stderr). |
+| `qjs_host_fork.cpp` | `qjs_host.cpp` (tuning-tree copy, md5 f813ce92) compiled against the fork. `JS_IsArray(ctx, v)` signature; `-DHOST_AOT` reads the prelude + game blobs first, installs bindings, then `JS_EvalFunction`s them in the same order as the interpreted path. The p5 PRELUDE is compiled as its own AOT unit (never concatenated with the game — a game declaring its own `dist`/`lerp` would otherwise lose to hoisting order). |
+| `qjs_vec_host_fork.cpp` | same treatment for `qjs_vec_host.cpp` (per-env runtime; AOT'd C functions and static bytecode arrays are shared read-only across worker threads). Build-time FNV-1a hash of the game source is checked in `env_init` so a per-game `.so` cannot silently run a different game. |
+| `build_fork.sh` | clones the fork pinned at `cee72b9` (branch `aot`, "QuickJS-AOT 20251209"), applies the patch, builds engine/qjsc, F0 host (`host_f0`), F1 hosts per game (`host_f1_<g>`), vec `.so`s (`libqjs_vec.fork.so`, `libqjs_vec.fut_<g>.so`). Knobs: `TUNE=gen PROFDIR=…` / `TUNE=use PROFDATA=…` / `TAG=<suffix>` for PGO builds. Flags identical across arms: `-O3 -march=x86-64-v3 -ffp-contract=off -DNDEBUG -funsigned-char -fwrapv`. |
+| `gate_fork.sh` | differential gate (V8+wasm reference via `reference_trace.mjs`, 3 seeds × 3000 steps) for any set of host binaries in one run; F1 stderr scanned for "Bytecode mismatch" (= FAIL even if the trace matches). |
+| `bench_fork.sh` | interleaved single-core `qjs_host bench` A/B with medians, ratios, geomean. |
+| `aot_obs_checksum.py` | vec obs/reward/done checksum across explicit `--lib-path`s (no `.so` swapping). |
+| `vec_prof_driver.py` | PGO profile driver on the vec workload (128 envs × 5 threads). |
+| `l1_fork.sbatch` | single-core arms f0/f1/ng/adv: build, gate 33 games, bench. |
+| `l1_vec_ab.sbatch` | vec arms adv/ng/fork/fut: checksum24 + §4 A/B. |
+| `l1_tune.sbatch`, `l1_tune24.sbatch` | PGO recipe (8-game profile, then all-24 profile), gate, checksum, A/B. |
+| `l1_ab_t2.sbatch` | read-only A/B rerun after a preemption. |
+| `l1_bank.sbatch` | §4 banked run on holy8a24307 + panel-C single-core ProcGen16. |
+
+No file outside `native/aotfork/` and `handoff/` was changed on this branch.
+The fork source is not vendored (cloned at build, pinned commit).
+
+## 3. Jobs and what each showed (all genoa, `--exclusive`, same-job interleaved arms)
+
+| job | what | headline |
+|---|---|---|
+| 44420887 | first single-core job | failed at link: GNU ld needs archives after the objects that reference them (macOS didn't care). Fixed. |
+| 44421807 | single-core f0/f1/ng/adv, untuned fork | gate 33/33 for f0, f1, ng. **f1/f0 1.20** (5 games), 1.17 all-24; fork interpreter ≈ ng; f1/adv 1.18 all-24. |
+| 44423769 | vec adv/ng/fork/fut, untuned | checksum24 clean; **fut/fork 1.20**, fut/adv 1.20 (5), 1.14 all-24. |
+| 44425939 | PGO+LTO, 8-game profile | gate 114/114; futT/adv **1.36** (5) but only 1.19 all-24 — the 16 unprofiled games' AOT units were *de-optimized* by the PGO inliner (unprofiled call sites treated as cold). |
+| 44430166 | PGO+LTO, all-24 profile | builds + gate 114/114 + checksum 24/24 done, then **preempted** by serial_requeue. Restart cancelled (it would have rebuilt the `.so`s under the banked job). |
+| 44434726 | A/B of the all-24-profile arms (read-only) | **futT2/adv 1.37 (5), 1.30 all-24, min 1.07 (frostbite), max 1.68 (coinrun); forkT2/adv 1.18 / 1.13; single-core f1T2/adv 1.45 (5).** |
+| 44434186 | banked run, holy8a24307 | pending. |
+
+Node for the measured A/Bs: holy8a24308 (untuned), holy8a2xxxx (tuned #1),
+holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes.
+
+## 4. Things learned that are not in the plan
+
+1. **Dispatch removal is not ~0 on this workload.** Commit a252840's note
+   ("only unboxing wins") was wrong for the fork; `-A` alone is 1.17–1.20×
+   on the interpreter with the engine held constant.
+2. **The fork interpreter beats stock ng** by ~7% on the 5 profiled games
+   (tail-call dispatch), ~1.0 all-24 untuned, 1.13× over adv tuned.
+3. **PGO must cover every game whose AOT unit is built**, and **one merged
+   `.profdata` per link** (ThinLTO rejects mixed profiles: "ProfileSummary
+   IDs have conflicting values"). Per-game profiles are therefore not an option;
+   profile all games into one file.
+4. **`qjs_host.adv` diverges from the current worktree's V8 reference on qbert**
+   (all 3 seeds); f0/f1/ng do not. Vec checksum shows the same (adv differs
+   from ng/fork/fut on qbert only). Not touched here; belongs to the adopted
+   lineage.
+5. The live `examples/games/js` on the cluster has 115 files (analogen,
+   `a-cq-*`); the paper's 33 are the worktree's. Gates must use the latter.
+6. `serial_requeue` preempts; a job whose build phase writes artifacts another
+   job reads is a hazard. Build and measure in separate jobs, or pin.
+
+## 5. What is NOT done
+
+- **Banked run** (job 44434186) — the protocol the paper quotes. Read it,
+  then a 17402 confirm if Ryan wants absolutes (do not race the pinned chain).
+- **Production packaging.** Today: one `.so` per game (~1.5 MB, ~40 s compile,
+  `libqjs_vec.futT2_<game>.so`), selected by `--lib-path`. For the trainers
+  either compile-at-load cached by game md5, or one `.so` carrying all games'
+  AOT tables (needs the fork's global `aot_id` space partitioned per game).
+- **Engine maintenance cost.** Adopting means leaving stock quickjs-ng 0.15.1
+  for a Bellard-lineage fork (2025-09-13) + tail-call dispatch + `-A` + our
+  37-line qjsc patch. The `-A` output `#include`s the whole preprocessed engine
+  per game; any engine change recompiles every game and re-collects PGO.
+- L2 (superinstructions) and L6 (tail-call dispatch) are moot if the fork is
+  adopted (L6 comes with it; L2 is a subset of what `-A` does). L4
+  (quickening: tag checks/boxing) is the only remaining lever `-A` does not
+  cover, and only composes inside the fork.
+- **Template rules** (PLAN "out of scope"): still the highest ratio-per-day
+  item and still unwritten.
+
+## 6. Reproduce
+
+```bash
+# cluster, engine worktree
+cd /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-engine/native/aotfork
+sbatch l1_fork.sbatch      # single-core arms + gate            (~25 min)
+sbatch l1_vec_ab.sbatch    # vec arms, untuned                  (~10 min)
+sbatch l1_tune24.sbatch    # PGO all-24 → tuned arms, gate, checksum, A/B (~1.5 h)
+sbatch l1_bank.sbatch      # §4 banked run on holy8a24307       (~2 h)
+# artifacts: out/{host_f0*,host_f1*_<g>,libqjs_vec.{fork,fut_<g>,forkT2,futT2_<g>}.so,
+#            fork24.profdata,gate_*.txt,bench_*.txt,vec_ab_*/,abT2_*/,bank_*/}
+```
