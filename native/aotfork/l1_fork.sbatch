@@ -63,8 +63,8 @@ ls "$GDIR"/*.js | xargs -P 12 -I{} bash -c 'bash build_fork.sh f1 "$1" 2>&1 | gr
 echo "F1 hosts built: $(ls "$OUT"/host_f1_* | wc -l) / $(ls "$GDIR"/*.js | wc -l)"
 for h in f0 f1_bigfish f1_miner; do echo "md5 $h $(md5sum "$OUT/host_$h" | cut -c1-32)"; done
 
-echo "== GATE: all games x 3 seeds x 3000, arms f0 f1 ng adv, one reference run =="
-GAMES_DIR=$GDIR EXTRA_HOSTS="ng=$NG adv=$OUT/qjs_host.adv" bash gate_fork.sh "$OUT" --all 3000 2>&1 | tee "$OUT/gate_all.txt" | grep -v "^  PASS"
+echo "== GATE: the 33 paper games (engine-worktree examples/, NOT the live dir's 113 incl. analogen) x 3 seeds x 3000, arms f0 f1 ng adv, one reference run =="
+GAMES_DIR=$WE/examples/games/js EXTRA_HOSTS="ng=$NG adv=$OUT/qjs_host.adv" bash gate_fork.sh "$OUT" --all 3000 2>&1 | tee "$OUT/gate_all.txt" | grep -v "^  PASS"
 echo "== GATE (QJS_DIRTY=1 forced, 5 games): dirty-skip path under the fork =="
 QJS_DIRTY=1 GAMES_DIR=$GDIR EXTRA_HOSTS="ng=$NG adv=$OUT/qjs_host.adv" bash gate_fork.sh "$OUT" $FIVE 2>&1 | tee "$OUT/gate_dirty5.txt" | grep -v "^  PASS"
 
