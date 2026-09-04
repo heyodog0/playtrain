@@ -873,3 +873,96 @@ gate 5 games x 3 seeds x 3000: f0/f1/ng-local all bit-exact vs V8 (45/45);
 f0 on all 33 games 99/99. Bench 5 reps x 20k, medians, f1/f0: breakout
 1.257, plunder 1.116, bigfish 1.066, miner 1.253, maze 1.374, geomean
 1.208; ng/f0 1.032 (fork interpreter ~3% behind ng on arm64).
+
+**Cluster results (2026-09-04; both jobs genoa `--exclusive`, same-job interleaved arms).**
+
+*Gate* (job 44421807, holy8a24308; V8 reference = engine-worktree
+`reference_trace.mjs`, 3 seeds x 3000 steps): f0, f1 and stock ng PASS all
+33 paper games (99/99 each). f1 stderr clean — every AOT'd function is
+actually running compiled (113 game files x prelude compiled; 0 "Bytecode
+mismatch"). QJS_DIRTY=1 forced gate on the 5 profiled games: 60/60. The
+live dir has 115 files (analogen, a-cq-*); those have no V8 reference here
+and fail on EVERY arm — noise, gate now points at the 33 (f09efbe).
+**Observation for Ryan, not mine to act on: `qjs_host.adv` (46ea4999)
+diverges from this reference on qbert, all 3 seeds; f0/f1/ng do not.** The
+vec checksum below shows the same: adv is the odd one out on qbert.
+
+*Vec obs checksum* (job 44423769, 2000 steps x 32 envs, 24 games, QJS_DIRTY=1):
+ng == fork == fut byte-identical on 23/24 (jumper's fut .so was built after
+the checksum step — rerun pending); adv differs from all three on qbert only.
+
+*Single-core A/B* (job 44421807, `qjs_host bench`, medians of 5 reps x 50k,
+QJS_DIRTY=1; f0/f1/ng = -O3 v3 no PGO; adv = adopted PGO/LTO):
+
+    game        f0      f1      ng     adv   f1/f0  ng/f0  adv/f0
+    breakout  45513   59926   43285   41181  1.317  0.951  0.905
+    plunder  161877  180995  156385  156654  1.118  0.966  0.968
+    bigfish  135823  144206  137409  147013  1.062  1.012  1.082
+    miner     12056   16220   11111   11147  1.345  0.922  0.925
+    maze      20976   24835   17427   18065  1.184  0.831  0.861
+    geomean                                  1.200  0.934  0.945
+    (no dirty-skip, 3 reps:                  1.194  0.936  0.958)
+
+*Vec-host A/B* (job 44423769, holy8a24308; §4 iteration protocol: 1 worker,
+128 envs, 5 threads, 300 steps, 20 warmup, QJS_DIRTY=1, bench_vec_knobs
+--lib-path, arms interleaved adv,ng,fork,fut; 2 reps on the 5, 1 rep on the
+rest; env steps/s):
+
+    game            adv      ng    fork     fut  fut/fork fork/ng fut/adv
+    bigfish      549849  502934  510981  540706   1.058   1.016   0.983
+    breakout     189070  189249  201866  260886   1.292   1.067   1.380
+    maze          82265   72122   85242  103227   1.211   1.182   1.255
+    miner         51463   47190   51482   67450   1.310   1.091   1.311
+    plunder      622003  597786  613486  698718   1.139   1.026   1.123
+    asteroids    329512  303398  296792  326986   1.102   0.978   0.992
+    bossfight    437697  432420  448930  499861   1.113   1.038   1.142
+    caveflyer     79039   73708   84860  109859   1.295   1.151   1.390
+    chaser        88689   84260   85202  105350   1.236   1.011   1.188
+    climber       69850   64329   64575   73671   1.141   1.004   1.055
+    coinrun       68408   60229   73773   98014   1.329   1.225   1.433
+    dodgeball    103325  107692  100126  121278   1.211   0.930   1.174
+    freeway      646313  608765  602078  692781   1.151   0.989   1.072
+    frostbite    305904  278771  250132  269729   1.078   0.897   0.882
+    fruitbot      57375   54097   52303   62501   1.195   0.967   1.089
+    heist        143314  134736  139733  182923   1.309   1.037   1.276
+    jumper        96342   88084   86650   98356   1.135   0.984   1.021
+    leaper       125610  119614  123940  164147   1.324   1.036   1.307
+    ninja        538861  492431  474682  536953   1.131   0.964   0.996
+    pong        1344120 1272453 1294416 1400741   1.082   1.017   1.042
+    qbert         67534   62933   63352   67559   1.066   1.007   1.000
+    seaquest     535544  517807  513692  588371   1.145   0.992   1.099
+    space_inv    248527  242781  254546  322832   1.268   1.048   1.299
+    starpilot    335641  310558  312495  363245   1.162   1.006   1.082
+    geomean-5                                    1.198   1.075   1.202
+    geomean-24                                   1.184   1.025   1.140
+
+**Verdict (L1): PROCEED. F1/F0 = 1.20 single-core, 1.20 vec (5 games),
+1.18 vec all-24 — well past the 1.15 floor.** Two components, both real:
+(a) the fork *interpreter* (Bellard 2025-09 + tail-call dispatch, no PGO) is
+1.07 over stock ng on the 5 and ~1.0 all-24 on the vec host (wins: maze
+1.18, coinrun 1.23, caveflyer 1.15; losses: frostbite 0.90, dodgeball 0.93);
+(b) `-A` adds 1.18–1.20 on top, uniformly positive (worst bigfish 1.06 —
+41% rasterizer; best miner 1.31, coinrun 1.33, leaper 1.32). Against the
+ADOPTED build: fut/adv 1.20 on the 5, 1.14 all-24, with adv PGO/LTO'd and
+fut plain -O3 — the confound runs against fut. Dispatch removal is NOT ~0
+on this workload (contradicts commit a252840's note; agrees with DESIGN.md's
+direction, though 1.2x not 1.6x).
+
+What this settles for the other levers: L2 (superinstructions) and L6 are
+bounded by roughly this number and are now moot if the fork is adopted (L6
+comes with it; L2 is a strict subset of what -A does). L4 (quickening) is
+the remaining lever that attacks something -A does not (tag checks/boxing);
+it composes with -A only inside the fork, i.e. only after decision 1.
+
+Not yet done (in order): (1) jumper checksum rerun; (2) PGO for the fork
+arms (fresh profile per §2 rule 2 — F1 per game means per-game profiles or
+one merged profile; decide) so fut-vs-adv is tuned-vs-tuned; (3) the §4
+BANKED run (16 workers x 128 x 5, 24 games, -w holy8a24307, 3 trials) plus
+single-core panel-C on the 16 ProcGen games; (4) engineering for real use:
+per-game .so today (libqjs_vec.fut_<game>.so, ~1.5 MB each, ~40 s compile);
+production needs compile-at-load cached by game md5, or one .so with all
+24 games' AOT tables (needs the aot_id space partitioned — the table is
+global per process). Nothing here is adopted; decision 1 (§7) is Ryan's.
+Artifacts: $WE/native/aotfork/out/{host_f0,host_f1_*,libqjs_vec.fork.so,
+libqjs_vec.fut_*.so,gate_all.txt,bench_*.txt,vec_ab_44423769/}, logs in
+$WE/native/aotfork/logs/.
