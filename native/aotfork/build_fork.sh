@@ -124,7 +124,9 @@ vec1() {
   local tmp="$OUT/aot_$g"
   if [ ! -s "$tmp/game_aot.c" ]; then mkdir -p "$tmp"; cp "$game" "$tmp/game.js"; cp "$OUT/prelude.js" "$tmp/prelude.js"
     ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c -o game_aot.c prelude.js game.js ); fi
-  engine_pic
+  # build the PIC engine archives once (vec0 does it); parallel vec1 calls racing
+  # on the same .o/.a files produced corrupt archives (2/24 links failed per job)
+  [ -f "$PIC/libqjs_forkaot.a" ] || engine_pic
   clang $CFLAGS -fPIC -Wno-everything -I "$SRC" -c -o "$tmp/game_aot_pic$TAG.o" "$tmp/game_aot.c"
   # build-time identity of the game source, checked by env_init against what Python hands over
   read -r fnv len < <(python3 - "$game" <<'PY'
