@@ -68,22 +68,27 @@ sym = subprocess.run(
 blocks = sym.stdout.rstrip("\n").split("\n\n")
 assert len(blocks) == len(so_samples), (len(blocks), len(so_samples))
 
+# Trivial inline helpers are never the "cause" of a sample: attribute them to
+# the first non-trivial frame outward (JS_IsUninitialized inside get_loc_check
+# is the get_loc_check body; set_value is the JS_FreeValue it performs).
+TRIVIAL = re.compile(r"^(JS_Is\w+|JS_New(Bool|Int32|Uint32|Float64|Int64)|__JS_NewFloat64|JS_VALUE_\w+|JS_MKVAL|JS_MKPTR|get_u(8|16|32)|get_i(8|16|32)|js_get_stack_pointer|JS_ToBool|JS_VALUE_GET_\w+)$")
 BUCKETS = [
+    ("vec host spin",     r"^worker_loop|WorkerCtl"),
     ("strict_eq/str-cmp", r"js_strict_eq|^js_eq|string_compare|js_string_memcmp|string_eq"),
     ("property access",   r"JS_GetProperty|JS_SetProperty|find_own_property|find_hashed_shape|add_property|_shape|Shape|JS_DefineProperty|delete_property|set_array_length|js_get_length"),
     ("conversions",       r"JS_To(Number|Float64|Int32|Int64|Uint32|Primitive|String|PropertyKey)|js_atof|js_dtoa|js_ftoa|i64toa|u32toa|js_fcvt"),
     ("atoms/strings",     r"Atom|js_new_string|string_buffer|JS_ConcatString|js_sub_string|JS_NewString"),
     ("gc/alloc",          r"gc_|js_trigger_gc|JS_RunGC|mark_children|js_malloc|js_free|js_realloc|js_mallocz|memory_used"),
-    ("refcount/free",     r"JS_FreeValue|free_value|free_object|free_var_ref|free_gc_object|free_zero_refcount|JS_DupValue"),
+    ("refcount/free",     r"JS_FreeValue|free_value|free_object|free_var_ref|free_gc_object|free_zero_refcount|JS_DupValue|^set_value$"),
     ("arith slow paths",  r"js_binary_arith_slow|js_unary_arith_slow|js_relational_slow|js_eq_slow|js_add_slow|js_binary_logic_slow|js_post_inc_slow|js_not_slow|js_shr_slow"),
-    ("call machinery",    r"js_call_c_function|js_call_bound_function|JS_CallConstructor|build_arg_list|js_closure|async_func|JS_NewObjectFromShape|JS_CallInternal_exception"),
+    ("call machinery",    r"js_call_c_function|js_call_bound_function|JS_CallConstructor|build_arg_list|js_closure|async_func|JS_NewObjectFromShape|JS_CallInternal_exception|^JS_CallInternal(\.|$)|js_poll_interrupts|js_check_stack_overflow|js_create_function|js_function_apply"),
     ("array ops",         r"js_array|expand_fast_array|convert_fast_array|JS_GetPropertyValue|JS_SetPropertyValue|js_get_fast_array"),
     ("regexp/unicode",    r"^lre_|unicode|libregexp"),
     ("math (fm/libm)",    r"^fm_|__ieee754|^js::(sin|cos|pow|sqrt|atan2|hypot)|frozenmath|^js_math"),
     ("rasterizer",        r"playtrain_rasterizer|^rs_|^_RN"),
     ("p5/host/blit",      r"^p5::|qjs_vec|env_step|env_apply|obs|blit|colorFromArgs|^js_(fill|rect|ellipse|stroke|background|circle|arc|line|triangle|quad)"),
-    ("AOT residual",      r"^aot\d+_"),
-    ("interp dispatch",   r"^JS_CallInternal$|^js_OP_"),
+    ("AOT residual",      r"^aot\d+(_|\.|$)"),
+    ("interp dispatch",   r"^js_OP_"),
 ]
 
 
@@ -98,7 +103,7 @@ def bucket_of(fn):
 markers = []
 if aot_c and os.path.exists(aot_c):
     mk = re.compile(r"/\*pc(\d+):\*/\s*/\*(\w+)\*/")
-    fn_rx = re.compile(r"JSValue (aot\d+_\w+)\(")
+    fn_rx = re.compile(r"JSValue (aot\d+\w*)\(")
     cur_fn = "?"
     for ln, text in enumerate(open(aot_c, errors="replace"), 1):
         m = fn_rx.search(text)
@@ -125,13 +130,19 @@ aot_frame_total = 0
 for (va, n), block in zip(so_samples, blocks):
     lines = block.split("\n")
     frames = [(lines[i], lines[i + 1] if i + 1 < len(lines) else "") for i in range(0, len(lines), 2)]
-    inner = frames[0][0] if frames and frames[0][0] else "??"
+    inner = "??"
+    for fn, _ in frames:
+        if fn and not TRIVIAL.match(fn):
+            inner = fn
+            break
+    if inner == "??" and frames and frames[0][0]:
+        inner = frames[0][0]
     inner_counter[inner] += n
     b = bucket_of(inner)
     bucket_counter[b] += n
     jsfn = None
     for fn, _ in frames:
-        m = re.match(r"aot\d+_(\w+)", fn)
+        m = re.match(r"aot\d+(_\w+|\.|$)", fn)
         if m:
             jsfn = fn
             break
