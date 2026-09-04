@@ -817,3 +817,59 @@ gate_qjs.sh --all 3000: 100 PASS, 0 FAIL on BOTH lineages. New gate
 baseline is ZERO known divergences — A/Bs should expect clean gates now.
 NOTE: the fix changes pixels on previously-divergent frames only; throughput
 effect is negligible (a few extra rs_set calls per style transition).
+
+## ROUND 5 — engine tier (PLAN-engine-tier.md), started 2026-09-04
+
+Branch `engine-tier` (local + cluster worktree `playtrain-wt-engine`); the
+tuning worktree, `native/build/libqjs_vec.so` (b3709b39…) and
+`variants/qjs_host.adv` (46ea4999…) are never written. Everything here is
+PROPOSED until Ryan adopts; nothing is quoted anywhere else.
+
+### L1 — Futamura AOT of bytecode (`qjsc -A`, ivankra fork)
+
+**Hypothesis.** Specializing the interpreter to the fixed bytecode removes
+dispatch/decode and lets clang constant-fold operands; values stay boxed and
+`get_field` still walks the shape. Bounds L2/L6 (dispatch-side levers) from
+above. Proceed threshold F1/F0 >= 1.15 geomean on the 5 profiled games.
+
+**What was built** (`native/aotfork/`, commit 0c9d9ba on engine-tier):
+- Fork `github.com/ivankra/quickjs` branch `aot` @ cee72b9 ("QuickJS-AOT
+  20251209"; Bellard lineage 2025-09-13 + tail-call dispatch). `qjsc -A -c`
+  emits, per JS function, a C function = the interpreter's handler bodies
+  stitched in bytecode order (`#include "quickjs.i"`, the whole preprocessed
+  engine, so the AOT'd functions and the engine are ONE translation unit).
+  At `JS_ReadObject` the engine memcmp's each function's bytecode against
+  the compile-time copy and, on match, points `b->aot_func` at the C
+  function ("aot enabled" on stderr); on mismatch it silently interprets
+  ("Bytecode mismatch …" on stderr — the gate treats that as FAIL).
+- `qjsc-hostmode.patch` (+37 lines to qjsc.c, env `QJSC_HOST_MODE=1`): one
+  shared compile context created like an embedding host (`JS_NewContext`,
+  no std helpers) across all input files, table emitted once, compiled
+  objects kept alive. Needed because atom indices are baked into the AOT
+  bytecode: the host must `JS_ReadObject` the blobs in the same order,
+  right after `JS_NewContext`, with no atoms created in between. (First
+  attempt freed each file's object after compiling it → freed-atom slots
+  reused by the next file → 2 of 16 bigfish functions fell back to the
+  interpreter. Fixed; gate now checks stderr for it.)
+- `qjs_host_fork.cpp` = `qjs_host.cpp` (md5 f813ce92, the tuning-tree copy)
+  + `JS_IsArray(ctx, v)` (Bellard signature) + `#ifdef HOST_AOT`: read the
+  two blobs (prelude, game) first, install bindings, `JS_EvalFunction`
+  prelude then game — the same order as F0/ng. The p5 PRELUDE is compiled
+  with `-A` too (as its own unit, NOT concatenated with the game: a game that
+  declares its own `dist`/`lerp` would otherwise lose to the hoisting order).
+- Flags identical across arms: `-O3 -march=x86-64-v3 -ffp-contract=off
+  -DNDEBUG -funsigned-char -fwrapv` (the last two are fork semantics, not
+  tuning). No PGO on f0/f1/ng; `adv` is the adopted PGO/LTO build.
+- Arms: f0 = fork interpreter host; f1 = f0 + `-A` per game (prelude +
+  game); ng = stock quickjs-ng 0.15.1 host built by build_qjs.sh in the
+  engine worktree (same flags); adv = `variants/qjs_host.adv` (read-only
+  copy). Scripts: `build_fork.sh`, `gate_fork.sh` (all 4 arms vs ONE V8
+  reference run), `bench_fork.sh` (interleaved A,B,C,D per rep),
+  `l1_fork.sbatch` (genoa, --exclusive).
+
+**Local preview (mac arm64, Apple clang, no QJS_DIRTY, live-tree p5.cpp —
+NOT a result, recorded only because it motivated spending the cluster job):**
+gate 5 games x 3 seeds x 3000: f0/f1/ng-local all bit-exact vs V8 (45/45);
+f0 on all 33 games 99/99. Bench 5 reps x 20k, medians, f1/f0: breakout
+1.257, plunder 1.116, bigfish 1.066, miner 1.253, maze 1.374, geomean
+1.208; ng/f0 1.032 (fork interpreter ~3% behind ng on arm64).
