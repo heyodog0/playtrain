@@ -71,10 +71,22 @@ holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes
    on the interpreter with the engine held constant.
 2. **The fork interpreter beats stock ng** by ~7% on the 5 profiled games
    (tail-call dispatch), ~1.0 all-24 untuned, 1.13× over adv tuned.
-3. **PGO must cover every game whose AOT unit is built**, and **one merged
-   `.profdata` per link** (ThinLTO rejects mixed profiles: "ProfileSummary
-   IDs have conflicting values"). Per-game profiles are therefore not an option;
-   profile all games into one file.
+3. **PGO and new games — read this one carefully, it was misstated earlier.**
+   Two facts, then what they imply:
+   - An AOT unit compiled *with* `-fprofile-use` but *without* its own
+     functions in the profile is DE-optimized (the PGO inliner treats the
+     game's unprofiled call sites as cold). Job 44425939: the 16 games outside
+     the 8-game profile fell 2–8% below the *untuned* AOT build.
+   - ThinLTO rejects a link whose objects carry *different* profile summaries
+     ("ProfileSummary IDs have conflicting values"). It does NOT reject an
+     object with *no* profile linked against PGO'd objects. Verified locally
+     (bigfish: unprofiled AOT unit + PGO'd engine objects + thin-LTO links,
+     is bit-exact vs V8, and runs +3% over the untuned AOT build, 6% below
+     the fully profiled one).
+   So the constraint is not "profile every game or lose". It is "never pass
+   `-fprofile-use` to a unit that has no profile". And because every game is
+   its own `.so` (its own link), adding a new game's profile to the merged
+   file relinks that one game plus five tiny aux objects, not everything.
 4. **`qjs_host.adv` / `libqjs_vec.adv.so` predate the style-cache determinism
    fix.** The adopted artifacts were built by job 43780730 from `5a42f71`
    (2026-09-01 07:56); the fix `ef74835` ("fix native style cache: null
@@ -91,14 +103,35 @@ holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes
 6. `serial_requeue` preempts; a job whose build phase writes artifacts another
    job reads is a hazard. Build and measure in separate jobs, or pin.
 
+## 4b. What a brand-new generated game gets (no authoring change, no per-game human work)
+
+| tier | build | cost at load | measured/expected vs adv |
+|---|---|---|---|
+| 1. interpreter fallback | fork interpreter, PGO'd (`libqjs_vec.forkT2.so`, one shared `.so`) | none | **1.13×** all-24 (measured, job 44434726) |
+| 2. AOT, unprofiled unit | `qjsc -A` + clang -O3 thin-LTO on the game unit, linked against the PGO'd engine objects; no `-fprofile-use` on the game unit | ~40 s clang | ~1.17–1.20× (expected: between untuned AOT 1.14 and profiled 1.30; one local datapoint, needs a banked arm) |
+| 3. AOT, profiled | tier 2 + instrumented build + 30 s random-play run + rebuild with the game's profile merged in | ~2 min | **1.30×** all-24 (measured, job 44434726) |
+
+All three are scriptable in a compile-at-load pipeline keyed by game md5.
+Tier 1 is the safe default; tier 2 is what a fresh game gets the first time it
+is trained; tier 3 is the headline number and is reached after an automatic
+two-minute step. The paper should say exactly that if this is adopted, and
+tier 2 should be added as a measured arm before the sentence is written.
+Frictions that remain: the training host needs clang + the pinned fork source
++ the profdata at load time (fine on the cluster, heavy for a released wheel);
+every edit to a game in the refine loop invalidates its cache (irrelevant for
+browser playtesting, which never touches the `.so`).
+
 ## 5. What is NOT done
 
 - **Banked run** (job 44434186) — the protocol the paper quotes. Read it,
   then a 17402 confirm if Ryan wants absolutes (do not race the pinned chain).
 - **Production packaging.** Today: one `.so` per game (~1.5 MB, ~40 s compile,
-  `libqjs_vec.futT2_<game>.so`), selected by `--lib-path`. For the trainers
-  either compile-at-load cached by game md5, or one `.so` carrying all games'
-  AOT tables (needs the fork's global `aot_id` space partitioned per game).
+  `libqjs_vec.futT2_<game>.so`), selected by `--lib-path`. For the trainers:
+  compile-at-load cached by game md5 with the three tiers of §4b (tier 1
+  fallback while tiers 2/3 build in the background), or one `.so` carrying all
+  games' AOT tables (needs the fork's global `aot_id` space partitioned).
+- **Tier-2 arm** (AOT unit without `-fprofile-use`) measured at the banked
+  protocol, so the "fresh game" sentence has a 24-game number.
 - **Engine maintenance cost.** Adopting means leaving stock quickjs-ng 0.15.1
   for a Bellard-lineage fork (2025-09-13) + tail-call dispatch + `-A` + our
   37-line qjsc patch. The `-A` output `#include`s the whole preprocessed engine
