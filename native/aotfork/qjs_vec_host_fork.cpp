@@ -215,6 +215,34 @@ static const Binding BINDINGS[] = {
   {"__m_cos", js_m_cos, 1}, {"__m_atan2", js_m_atan2, 2}, {"__m_hypot", js_m_hypot, 2},
 };
 
+#ifdef HOST_AOT
+// ---- E3: p5 intrinsics (PLAN-engine-tier-round6.md). The AOT emitter (qjsc -P,
+// aot-intrinsics.patch) calls aot_intr_<name>() directly at `get_var <name>; ...;
+// call` sites when the callee object is the one captured below for this context,
+// skipping JS_CallInternal + js_call_c_function. The wrapper calls the SAME
+// JSCFunction with the same arguments and this=undefined, so behaviour is
+// identical by construction. The captured values are strong references, so the
+// pointer the guard compares against can never be reused while the env lives.
+#define AOT_INTR(n, m, f) extern "C" JSValue aot_intr_##n(JSContext* ctx, JSValue t, int argc, JSValue* argv) { return f(ctx, t, argc, argv); }
+#include "aot_intr_list.h"
+#undef AOT_INTR
+static const char* const AOT_INTR_NAMES[] = {
+#define AOT_INTR(n, m, f) #n,
+#include "aot_intr_list.h"
+#undef AOT_INTR
+};
+static constexpr int AOT_INTR_N = (int)(sizeof(AOT_INTR_NAMES) / sizeof(*AOT_INTR_NAMES));
+static_assert(AOT_INTR_N <= 64, "grow the intr arrays");
+static void aot_intr_capture(JSContext* ctx, JSValue g, JSValue* vals, const void** tbl) {
+  for (int k = 0; k < AOT_INTR_N; k++) { vals[k] = JS_GetPropertyStr(ctx, g, AOT_INTR_NAMES[k]); tbl[k] = JS_VALUE_GET_PTR(vals[k]); }
+  JS_SetAOTIntrinsics(ctx, tbl);
+}
+static void aot_intr_release(JSContext* ctx, JSValue* vals) {
+  JS_SetAOTIntrinsics(ctx, nullptr);
+  for (int k = 0; k < AOT_INTR_N; k++) JS_FreeValue(ctx, vals[k]);
+}
+#endif
+
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
 
 static const char* PRELUDE = R"JS(
@@ -286,6 +314,9 @@ struct Env {
   double lastScore = 0;
   bool ok = true;
   std::string err;
+#ifdef HOST_AOT
+  JSValue intr_vals[64]; const void* intr_tbl[64];   // E3 intrinsic capture (see aot_intr_capture)
+#endif
 
   inline void select() { rs_state_select(rstate); p5::selectState(p5state); }
   inline void flushCB() { if (cb) p5cb::flush(cb, g_nodraw); }
@@ -478,6 +509,9 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.g = JS_GetGlobalObject(ctx);
   JSValue g = e.g;
   for (const auto& b : BINDINGS) JS_SetPropertyStr(ctx, g, b.name, JS_NewCFunction(ctx, b.fn, b.name, b.nargs));
+#ifdef HOST_AOT
+  aot_intr_capture(ctx, g, e.intr_vals, e.intr_tbl);
+#endif
   setConst(ctx, g, "LEFT_ARROW", 37); setConst(ctx, g, "UP_ARROW", 38);
   setConst(ctx, g, "RIGHT_ARROW", 39); setConst(ctx, g, "DOWN_ARROW", 40); setConst(ctx, g, "ENTER", 13);
   setConst(ctx, g, "CENTER", p5::CENTER); setConst(ctx, g, "CORNER", p5::CORNER);
@@ -1008,6 +1042,9 @@ void vec_close(void* h) {
       JS_FreeValue(e.ctx, e.jsReset); JS_FreeValue(e.ctx, e.jsDraw);
       JS_FreeValue(e.ctx, e.jsState); JS_FreeValue(e.ctx, e.jsKeyPressed);
       JS_FreeValue(e.ctx, e.jsMousePressed);
+#ifdef HOST_AOT
+      aot_intr_release(e.ctx, e.intr_vals);
+#endif
       JS_FreeValue(e.ctx, e.g);
       JS_FreeContext(e.ctx); JS_FreeRuntime(e.rt);
     }

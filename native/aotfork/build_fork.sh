@@ -12,7 +12,7 @@
 #
 # Env: FORK_OUT (default ./out), NATIVE (default ..), RA (rasterizer .a),
 #      QJS_ARCH (default -march=x86-64-v3 on x86_64, empty otherwise),
-#      OPT (default -O3), DBG=1 (-g everywhere, codegen unchanged). Engine objects, F0 and F1 all use the same
+#      OPT (default -O3), DBG=1 (-g everywhere, codegen unchanged), INTR=1 (E3 p5 intrinsics). Engine objects, F0 and F1 all use the same
 #      $OPT $QJS_ARCH -ffp-contract=off so F1/F0 isolates AOT only.
 # Never touches native/build/ or native/build/variants/.
 set -euo pipefail
@@ -45,6 +45,15 @@ esac
 # DBG=1: -g on engine objects, AOT unit and host (debug info only; codegen unchanged) for SIGPROF symbolization
 DBGFLAG=""; [ "${DBG:-}" = 1 ] && DBGFLAG="-g"
 CFLAGS="$CFLAGS $TUNEFLAGS $VISFLAG $DBGFLAG"
+# INTR=1 (E3): qjsc -P <intrinsics> -> guarded direct calls to the p5 bindings in the
+# emitted C; the list is derived from aot_intr_list.h (single source), and the
+# emitted C goes to out/aotI_<game>/ so the plain arms' game_aot.c stay untouched.
+QJSC_INTR=""; AOTDIR=""
+if [ "${INTR:-}" = 1 ]; then
+  sed -nE 's/^AOT_INTR\(([A-Za-z_0-9]+), *([0-9]+),.*/\1 \2/p' "$HERE/aot_intr_list.h" > "$OUT/aot_intr.txt"
+  [ "$(wc -l < "$OUT/aot_intr.txt")" -ge 10 ] || { echo "aot_intr.txt derivation failed" >&2; exit 1; }
+  QJSC_INTR="-P $OUT/aot_intr.txt"; AOTDIR="I"
+fi
 RA="${RA:-$NATIVE/../crates/rasterizer/target/release/libplaytrain_rasterizer.a}"
 FROZEN="$NATIVE/frozenmath/libfrozenmath.a"
 EXTRA=""; case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
@@ -57,8 +66,8 @@ engine() {
     git clone -q "$FORK_REPO" "$SRC"
     ( cd "$SRC" && git checkout -q "$FORK_COMMIT" )
   fi
-  ( cd "$SRC" && git checkout -q "$FORK_COMMIT" -- qjsc.c && git apply "$HERE/qjsc-hostmode.patch" )
-  echo "fork: $(cd "$SRC" && git log -1 --format='%h %s') + qjsc-hostmode.patch"
+  ( cd "$SRC" && git checkout -q "$FORK_COMMIT" -- qjsc.c quickjs.c quickjs.h && git apply "$HERE/qjsc-hostmode.patch" && git apply "$HERE/aot-intrinsics.patch" )
+  echo "fork: $(cd "$SRC" && git log -1 --format='%h %s') + qjsc-hostmode.patch + aot-intrinsics.patch"
   cd "$SRC"
   # 1. preprocessed interpreter (what every `qjsc -A` output #includes) + the
   #    opcode-body table qjsc uses to stitch handlers.
@@ -72,7 +81,7 @@ engine() {
   ar rcs "$OUT/libqjs_fork$TAG.a"    "$OUT"/obj$TAG/quickjs.o "$OUT"/obj$TAG/dtoa.o "$OUT"/obj$TAG/libregexp.o "$OUT"/obj$TAG/libunicode.o "$OUT"/obj$TAG/cutils.o "$OUT"/obj$TAG/quickjs-libc.o
   ar rcs "$OUT/libqjs_forkaot$TAG.a" "$OUT"/obj$TAG/dtoa.o "$OUT"/obj$TAG/libregexp.o "$OUT"/obj$TAG/libunicode.o "$OUT"/obj$TAG/cutils.o "$OUT"/obj$TAG/quickjs-libc.o
   # 3. qjsc itself (compiler; plain objects of its own — never instrumented/LTO'd)
-  if [ ! -x "$OUT/qjsc" ]; then
+  if [ ! -x "$OUT/qjsc" ] || [ "$HERE/aot-intrinsics.patch" -nt "$OUT/qjsc" ] || [ "$HERE/qjsc-hostmode.patch" -nt "$OUT/qjsc" ]; then
     mkdir -p "$OUT/qjscobj"
     for f in quickjs dtoa libregexp libunicode cutils quickjs-libc qjsc; do
       clang -O2 $CDEFS -Wno-everything -c -o "$OUT/qjscobj/$f.o" "$f.c"
@@ -123,9 +132,9 @@ vec_common() {  # $1 = output .so, rest = extra flags/objects/archives
 vec0() { engine_pic; vec_common "$OUT/libqjs_vec.fork$TAG.so" "$PIC/libqjs_fork.a"; echo "built $OUT/libqjs_vec.fork$TAG.so"; }
 vec1() {
   local game g; game="$(abspath "$1")"; g="$(basename "$game" .js)"
-  local tmp="$OUT/aot_$g"
+  local tmp="$OUT/aot${AOTDIR}_$g"
   if [ ! -s "$tmp/game_aot.c" ]; then mkdir -p "$tmp"; cp "$game" "$tmp/game.js"; cp "$OUT/prelude.js" "$tmp/prelude.js"
-    ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c -o game_aot.c prelude.js game.js ); fi
+    ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c $QJSC_INTR -o game_aot.c prelude.js game.js ); fi
   # build the PIC engine archives once (vec0 does it); parallel vec1 calls racing
   # on the same .o/.a files produced corrupt archives (2/24 links failed per job)
   [ -f "$PIC/libqjs_forkaot.a" ] || engine_pic
@@ -149,12 +158,12 @@ f0() {
 abspath() { echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; }
 f1() {
   local game g; game="$(abspath "$1")"; g="$(basename "$game" .js)"
-  local tmp="$OUT/aot_$g"; mkdir -p "$tmp"
+  local tmp="$OUT/aot${AOTDIR}_$g"; mkdir -p "$tmp"
   cp "$game" "$tmp/game.js"               # c_name of the blob := "game"
   cp "$OUT/prelude.js" "$tmp/prelude.js"  # c_name := "prelude"; compiled first
   # -A: Futamura projection; -c: bytecode+aot funcs only (no main). Host mode =
   # one shared compile context, no std helpers (qjsc-hostmode.patch).
-  [ -s "$tmp/game_aot.c" ] || ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c -o game_aot.c prelude.js game.js )
+  [ -s "$tmp/game_aot.c" ] || ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c $QJSC_INTR -o game_aot.c prelude.js game.js )
   # the generated C #includes quickjs.i (the whole interpreter) — same flags as quickjs.o
   clang $CFLAGS -Wno-everything -I "$SRC" -c -o "$tmp/game_aot$TAG.o" "$tmp/game_aot.c"
   host_common "$OUT/host_f1${TAG}_$g" -DHOST_AOT "$tmp/game_aot$TAG.o" "$OUT/libqjs_forkaot$TAG.a"
