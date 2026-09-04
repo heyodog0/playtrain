@@ -41,7 +41,7 @@ FIVE="breakout plunder bigfish miner maze"
 [ -d native/qjs/src ]    || cp -r "$WT/native/qjs/src" native/qjs/src          # quickjs-ng 0.15.1 (what adv was built from)
 [ -d native/frozenmath ] || cp -r "$WT/native/frozenmath" native/frozenmath   # fdlibm objects (V8-exact pow/atan2/sin/cos)
 [ -d "$OUT/src/.git" ]   || { git clone -q https://github.com/ivankra/quickjs "$OUT/src" && git -C "$OUT/src" checkout -q cee72b9c99fac98426a3bbb4fbfa493b7e5619f2; }
-echo "ng src: $(head -c 200 native/qjs/src/VERSION 2>/dev/null || grep -m1 -o 'CONFIG_VERSION.*' native/qjs/src/quickjs.c | head -1)"
+echo "ng src: $(grep -m1 -o 'QJS_VERSION_[A-Z]* [0-9]*' native/qjs/src/quickjs.h | tr '\n' ' ')"
 
 echo "== rasterizer .a (v3, plain — same as every non-PGO arm) =="
 ( cd crates/rasterizer && RUSTFLAGS="-C target-cpu=x86-64-v3" cargo rustc --release --lib --crate-type staticlib 2>&1 | tail -1 )

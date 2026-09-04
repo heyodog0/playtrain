@@ -7,6 +7,8 @@
 #   build_fork.sh f0                # F0 = fork interpreter host  -> out/host_f0
 #   build_fork.sh f1 <game.js>...   # F1 = qjsc -A per game       -> out/host_f1_<game>
 #   build_fork.sh all <game.js>...  # engine + f0 + f1 for each game
+#   build_fork.sh vec0              # vec host .so, fork interpreter -> out/libqjs_vec.fork.so
+#   build_fork.sh vec1 <game.js>... # vec host .so, qjsc -A per game -> out/libqjs_vec.fut_<game>.so
 #
 # Env: FORK_OUT (default ./out), NATIVE (default ..), RA (rasterizer .a),
 #      QJS_ARCH (default -march=x86-64-v3 on x86_64, empty otherwise),
@@ -64,12 +66,53 @@ engine() {
   echo "engine built: $OUT/{qjsc,libqjs_fork.a,libqjs_forkaot.a}"
 }
 
-host_common() {  # $1 = output, rest = extra objects/flags
+host_common() {  # $1 = output, rest = extra objects/flags/archives (linked AFTER the sources: GNU ld order)
   local out="$1"; shift
   need "$RA"; need "$FROZEN"
   clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing \
     -I "$NATIVE/runtime" -I "$NATIVE/qjs" -I "$OUT/include" \
-    "$@" "$HERE/qjs_host_fork.cpp" "$NATIVE/runtime/p5.cpp" "$RA" "$FROZEN" $EXTRA -o "$out"
+    "$HERE/qjs_host_fork.cpp" "$NATIVE/runtime/p5.cpp" "$@" "$RA" "$FROZEN" $EXTRA -o "$out"
+}
+
+# ---- vec host (.so loaded by ctypes; the Fig-4A / trainer path) ----------------
+# PIC copies of the engine objects, kept apart from the non-PIC ones qjs_host uses
+# (same split as build_qjs_vec.sh). vec_exports.map makes everything but vec_*
+# DSO-local so intra-library calls skip the PLT, as in the adopted .so.
+FROZEN_PIC="$NATIVE/frozenmath/libfrozenmath_pic.a"
+engine_pic() {
+  mkdir -p "$OUT/pic"; cd "$SRC"
+  for f in quickjs dtoa libregexp libunicode cutils quickjs-libc; do
+    [ -f "$OUT/pic/$f.o" ] || clang $CFLAGS -fPIC -Wno-everything -c -o "$OUT/pic/$f.o" "$f.c"
+  done
+  ar rcs "$OUT/pic/libqjs_fork.a"    "$OUT"/pic/quickjs.o "$OUT"/pic/dtoa.o "$OUT"/pic/libregexp.o "$OUT"/pic/libunicode.o "$OUT"/pic/cutils.o "$OUT"/pic/quickjs-libc.o
+  ar rcs "$OUT/pic/libqjs_forkaot.a" "$OUT"/pic/dtoa.o "$OUT"/pic/libregexp.o "$OUT"/pic/libunicode.o "$OUT"/pic/cutils.o "$OUT"/pic/quickjs-libc.o
+}
+vec_common() {  # $1 = output .so, rest = extra flags/objects/archives
+  local out="$1"; shift
+  need "$RA"
+  local so_flags="-shared -Wl,--version-script=$NATIVE/vec_exports.map"; local frozen="$FROZEN_PIC"
+  case "$(uname)" in Darwin) so_flags="-dynamiclib"; frozen="$FROZEN";; esac
+  [ -f "$frozen" ] || { echo "missing $frozen (run build_qjs_vec.sh once, or copy frozenmath/ from the tuning tree)" >&2; exit 1; }
+  clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing -fPIC $so_flags \
+    -I "$NATIVE/runtime" -I "$NATIVE/qjs" -I "$OUT/include" \
+    "$HERE/qjs_vec_host_fork.cpp" "$NATIVE/runtime/p5.cpp" "$@" "$RA" "$frozen" $EXTRA -o "$out"
+}
+vec0() { engine_pic; vec_common "$OUT/libqjs_vec.fork.so" "$OUT/pic/libqjs_fork.a"; echo "built $OUT/libqjs_vec.fork.so"; }
+vec1() {
+  local game="$1" g; g="$(basename "$game" .js)"
+  local tmp="$OUT/aot_$g"
+  [ -f "$tmp/game_aot.c" ] || f1 "$game"     # reuse the qjsc -A output of the single-core build
+  engine_pic
+  clang $CFLAGS -fPIC -Wno-everything -I "$SRC" -c -o "$tmp/game_aot_pic.o" "$tmp/game_aot.c"
+  # build-time identity of the game source, checked by env_init against what Python hands over
+  read -r fnv len < <(python3 - "$game" <<'PY'
+import sys; b=open(sys.argv[1],'rb').read(); h=0xcbf29ce484222325
+for c in b: h=((h^c)*0x100000001b3)&0xFFFFFFFFFFFFFFFF
+print(h, len(b))
+PY
+)
+  vec_common "$OUT/libqjs_vec.fut_$g.so" -DHOST_AOT -DAOT_GAME_FNV=${fnv}ULL -DAOT_GAME_LEN=$len "$tmp/game_aot_pic.o" "$OUT/pic/libqjs_forkaot.a"
+  echo "built $OUT/libqjs_vec.fut_$g.so"
 }
 
 f0() {
@@ -95,6 +138,8 @@ case "${1:-}" in
   engine) engine ;;
   f0) f0 ;;
   f1) shift; for g in "$@"; do f1 "$g"; done ;;
+  vec0) vec0 ;;
+  vec1) shift; for g in "$@"; do vec1 "$g"; done ;;
   all) shift; engine; f0; for g in "$@"; do f1 "$g"; done ;;
   *) sed -n '2,12p' "$0"; exit 1 ;;
 esac
