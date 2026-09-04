@@ -1,6 +1,6 @@
 # PLAN — Engine tier, round 6: what `qjsc -A` leaves on the table
 
-**Written 2026-09-04 (end of round 5). Status: IN PROGRESS — E0 done (§0b), E1 killed pre-build, E2 next.**
+**Written 2026-09-04 (end of round 5). Status: IN PROGRESS — E0 done (§0b), E1 killed pre-build, E3 probe PASSED (1.20x geo-5 untuned over same-engine control, job 44468624), E3 tuned build next, then E2.**
 Round 5 banked L1 (Futamura AOT via the ivankra fork's `qjsc -A`) at
 **1.297× all-24 / 1.335× ProcGen16 / 1.223× ALE8 over adv** at the published
 topology, 1.377× panel C, bit-exact, checksum-clean — see
@@ -64,8 +64,18 @@ bodies, folded into E2. **E2 is the top lever** (1.08–1.15x expected; the
 **E3 is larger than written below** (calls family 15–25% on draw-heavy
 games; expect 1.06–1.12x there). **Fields** are the hottest single frame on
 breakout (`find_own_property` 13%): an emitter-side per-site cache is a
-probe candidate, Ryan's call. Execution order is now E2 (+E1-lite) → E3 →
-E4 → field probe → E5 → E6.
+probe candidate, Ryan's call. Execution order is now E3 → E2 (+E1-lite) →
+E4 → field probe → E5 → E6 (E3 moved first: draw-call arguments must land in
+memory for the callee anyway, so E2 cannot pay off on draw code until the
+call is direct; and E3 is a one-day build).
+
+**E3 as built (2026-09-04, `tuning_notes.md` § E3):** not the unboxed
+`double`-argument variant described in §5 — the emitter calls the binding's
+own JSCFunction directly (same arguments, same `this`) through a per-name
+wrapper, guarded by the callee object's identity; exact by construction, no
+argument-type guard needed. Also covers `Math.floor/abs/ceil/sqrt/pow/sin/
+cos/atan2/hypot` through `call_method`. Probe: futI/futN 1.204 geo-5 vec,
+1.239 single-core, gate 198/198, checksum24 clean.
 
 ## 1. Already measured — do NOT re-derive (adds to PLAN-engine-tier §1)
 

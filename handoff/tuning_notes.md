@@ -1385,3 +1385,45 @@ heist, coinrun × seeds 1/42/777 × 3000 steps, no "Bytecode mismatch". Local
 single-core `bench 1 30000` (not a measurement, just the sign): breakout
 +8% with globals only → +19% with Math.*; maze +18%; heist +17%; coinrun
 +15%.
+
+**Probe (job 44468624, holy8a24304 genoa, NON-exclusive `-c 32` — no idle
+genoa node all evening; same-job interleaved arms, 2 reps, 70/70 runs).**
+Gate f0N + f1I: **198/198** (33 games × 3 seeds × 3000, no Bytecode mismatch).
+Checksum24 futI vs stock ng: 24/24 identical; futN 7/7. Sites emitted on the
+24 paper games: 15 (bigfish) … 52 (caveflyer), Math.* 1–20 per game.
+
+    VEC 128x5, 1 worker (medians of 2)   adv      fut    futT2     futN     futI   I/N    I/fut  I/futT2  I/adv
+    bigfish                           539772   546908   619601   543736   573930   1.056   1.049   0.926   1.063
+    breakout                          189112   255718   289730   261875   311196   1.188   1.217   1.074   1.646
+    maze                               81872   103384   118872   103889   147036   1.415   1.422   1.237   1.796
+    miner                              50414    66730    77221    66123    84714   1.281   1.270   1.097   1.680
+    plunder                           625166   703447   770286   706824   787668   1.114   1.120   1.023   1.260
+    coinrun                            68034    97978   114146    96548   113772   1.178   1.161   0.997   1.672
+    heist                             144160   185025   228254   180832   227288   1.257   1.228   0.996   1.577
+    geomean-5                                                                      1.204   1.209   1.067   1.461
+    geomean-7                                                                      1.208   1.205   1.046   1.506
+
+    SINGLE-CORE bench 1 50k (medians of 5)   adv     f1T2      f1N      f1I   I/N     I/T2    I/adv
+    bigfish                               146656   166450   143021   149904   1.048   0.901   1.022
+    breakout                               41367    66782    59899    71489   1.193   1.070   1.728
+    maze                                   17835    29291    24814    38792   1.563   1.324   2.175
+    miner                                  11158    18575    16254    21091   1.298   1.135   1.890
+    plunder                               157090   197055   179130   206163   1.151   1.046   1.312
+    geomean-5                                                                 1.239   1.087   1.570
+
+**E3 PROBE VERDICT: PROCEED.** futI/futN (same engine source, same flags,
+only `-P` differs) = **1.204 geomean-5 vec, 1.239 single-core**; the §4
+proceed gate is +5%. The E3 kill (< +3% on miner+maze) is cleared by 1.28×
+and 1.42×. futN/fut = 0.99–1.02 on every game: the engine patch (context
+field, no `-P`) is neutral, as it should be. The *untuned* lever already
+beats the *banked tuned* build on the five profiled games (1.067) and ties
+it on coinrun/heist; bigfish (41% rasterizer) is the one game where PGO
+still matters more than the calls (0.926 untuned vs tuned). The gain is
+larger than the E0-derived expectation (1.06–1.12 on draw-heavy games): the
+per-call cost removed — JS_CallInternal dispatch, C stack frame, the alloca
+padding copy, cproto switch, `sf->ret_val` round trip — was more than the
+`js_call_c_function` innermost share suggested, because much of it had been
+attributed to the `call*` opcode bodies ("AOT residual") and to
+`JS_CallInternal` itself. Next: tuned build `e3_tune24.sbatch` (profile
+re-collected on all 24 games with `-P`, arms adv / futT2 / futIT2, gate 33×3,
+checksum24), then the banked run if ≥ +3% all-24 over futT2.
