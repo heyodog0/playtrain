@@ -42,7 +42,7 @@ cd native/aotfork; export FORK_OUT=$OUT RA
 echo "== 1. engine (patched: qjsc-hostmode + aot-intrinsics), TAG=N control and TAG=I lever, untuned =="
 export TAG=N; rm -rf "$OUT/objN" "$OUT/picN"
 bash build_fork.sh engine 2>&1 | grep -E "^fork:|^engine built|error"
-[ -x "$OUT/qjsc" ] && "$OUT/qjsc" -h 2>&1 | grep -q "^-P" || { echo "qjsc lacks -P"; exit 1; }
+( "$OUT/qjsc" -h 2>&1 || true ) | grep -q "^-P" || { echo "qjsc lacks -P"; exit 1; }
 bash build_fork.sh f0 2>&1 | grep -E "^built|error"
 bash build_fork.sh vec0 2>&1 | grep -E "^built|error"
 for g in $SEVEN; do echo "$GDIR/$g.js"; done | xargs -P 7 -I{} bash -c 'bash build_fork.sh vec1 "$1" 2>&1 | grep -E "^built|error" || echo "BUILD_FAIL vec1 N $1"' _ {}
