@@ -469,7 +469,7 @@ static void env_init(VecHost* H, Env& e, int idx) {
 #ifdef HOST_AOT
   extern const uint8_t qjsc_prelude[]; extern const uint32_t qjsc_prelude_size;
   extern const uint8_t qjsc_game[];    extern const uint32_t qjsc_game_size;
-  { uint64_t h = 1469598103934665603ULL; for (unsigned char c : src) { h ^= c; h *= 1099511628211ULL; }
+  { uint64_t h = 0xcbf29ce484222325ULL; for (unsigned char c : src) { h ^= c; h *= 0x100000001b3ULL; }   // FNV-1a 64, same as build_fork.sh vec1
     if (src.size() != (size_t)AOT_GAME_LEN || h != (uint64_t)AOT_GAME_FNV) { e.err = "AOT .so was built for a different game source"; e.ok = false; } }
   JSValue aotPrelude = JS_ReadObject(ctx, qjsc_prelude, qjsc_prelude_size, JS_READ_OBJ_BYTECODE);
   JSValue aotGame    = JS_ReadObject(ctx, qjsc_game,    qjsc_game_size,    JS_READ_OBJ_BYTECODE);
