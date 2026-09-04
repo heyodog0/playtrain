@@ -1,6 +1,6 @@
 # HANDOFF 2026-09-04 — Engine tier, L1 (Futamura AOT via `qjsc -A`)
 
-**Status: MEASURED, NOT ADOPTED.** Everything below lives on branch
+**Status: BANKED (all §4 thresholds passed), NOT ADOPTED.** Everything below lives on branch
 `engine-tier` (local + `origin/engine-tier`; cluster worktree
 `$BASE/playtrain-wt-engine`). The tuning worktree, the live tree, the adopted
 `libqjs_vec.so` (md5 b3709b39…) and `qjs_host.adv` (46ea4999…) were never
@@ -23,10 +23,13 @@ node, interleaved arms). On the 5 profiled games it is 1.37× (vec) and 1.45×
 (single-core). Roughly 1.13× of the 1.30× is the fork *interpreter* itself
 (tail-call dispatch); AOT adds 1.14× on top. Bit-exact against the V8
 reference on all 33 games × 3 seeds; vec observation checksums identical to
-stock quickjs-ng on all 24 games × 2000 steps. Projected onto Fig 4A: ProcGen
-1.64× → ~2.2× tuned EnvPool; ALE ~15× → ~18×. The banked run (§4 protocol,
-16×128×5, 3 trials, holy8a24307) is job **44434186**, pending at the time of
-writing.
+stock quickjs-ng on all 24 games × 2000 steps. **Banked (job 44439298, 16
+workers × 128 envs × 5 threads, 24 games × 3 interleaved trials): futT2/adv
+1.297 all-24, 1.335 ProcGen16, 1.223 ALE8; panel-C single-core ProcGen16
+1.377.** Engine swap alone (forkT2): 1.136 / 1.202. Projected onto Fig 4A:
+ProcGen 1.64× → ~2.2× tuned EnvPool; ALE ~15× → ~18×; panel C ×1.38. The
+banked job ran on holy8a28510, not the 17402 anchor: ratios are same-job and
+final, absolutes need a 17402 confirm.
 
 ## 2. What was built (all under `native/aotfork/`)
 
@@ -59,7 +62,8 @@ The fork source is not vendored (cloned at build, pinned commit).
 | 44425939 | PGO+LTO, 8-game profile | gate 114/114; futT/adv **1.36** (5) but only 1.19 all-24 — the 16 unprofiled games' AOT units were *de-optimized* by the PGO inliner (unprofiled call sites treated as cold). |
 | 44430166 | PGO+LTO, all-24 profile | builds + gate 114/114 + checksum 24/24 done, then **preempted** by serial_requeue. Restart cancelled (it would have rebuilt the `.so`s under the banked job). |
 | 44434726 | A/B of the all-24-profile arms (read-only) | **futT2/adv 1.37 (5), 1.30 all-24, min 1.07 (frostbite), max 1.68 (coinrun); forkT2/adv 1.18 / 1.13; single-core f1T2/adv 1.45 (5).** |
-| 44434186 | banked run, holy8a24307 | pending. |
+| 44434186 | banked run pinned to holy8a24307 | cancelled — node reserved (ReqNodeNotAvail). |
+| 44439298 | **banked run**, any genoa (holy8a28510), 16×128×5, 24 games × 3 trials | **futT2/adv 1.297 all-24 / 1.335 PG16 / 1.223 ALE8; forkT2/adv 1.136; panel-C PG16 f1T2/adv 1.377, f0T2/adv 1.202.** 216/216 runs. |
 
 Node for the measured A/Bs: holy8a24308 (untuned), holy8a2xxxx (tuned #1),
 holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes.
@@ -123,8 +127,10 @@ browser playtesting, which never touches the `.so`).
 
 ## 5. What is NOT done
 
-- **Banked run** (job 44434186) — the protocol the paper quotes. Read it,
-  then a 17402 confirm if Ryan wants absolutes (do not race the pinned chain).
+- **17402 confirm** for absolutes (Fig 4A y-axis), if adopted. Ratios are
+  done. Do not race the pinned chain there.
+- **Re-cut adv from a tree containing ef74835** so the bit-exact baseline is
+  clean (see §4 item 4); same-node null A/B vs the current adv.
 - **Production packaging.** Today: one `.so` per game (~1.5 MB, ~40 s compile,
   `libqjs_vec.futT2_<game>.so`), selected by `--lib-path`. For the trainers:
   compile-at-load cached by game md5 with the three tiers of §4b (tier 1
@@ -143,6 +149,13 @@ browser playtesting, which never touches the `.so`).
 - **Template rules** (PLAN "out of scope"): still the highest ratio-per-day
   item and still unwritten.
 
+## 5b. Next round
+
+`handoff/PLAN-engine-tier-round6.md` — re-profile futT2, then the levers `-A`
+leaves on the table (type-feedback specialization in the AOT emitter,
+operand-stack-to-locals, p5 intrinsics, refcount elision, NaN-boxing), plus
+packaging (compile-at-load tiers) and the adv re-cut.
+
 ## 6. Reproduce
 
 ```bash
@@ -151,7 +164,7 @@ cd /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-engine/native/aotfork
 sbatch l1_fork.sbatch      # single-core arms + gate            (~25 min)
 sbatch l1_vec_ab.sbatch    # vec arms, untuned                  (~10 min)
 sbatch l1_tune24.sbatch    # PGO all-24 → tuned arms, gate, checksum, A/B (~1.5 h)
-sbatch l1_bank.sbatch      # §4 banked run on holy8a24307       (~2 h)
+sbatch l1_bank_any.sbatch  # §4 banked run, any genoa node (~20 min); l1_bank.sbatch = pinned to holy8a24307
 # artifacts: out/{host_f0*,host_f1*_<g>,libqjs_vec.{fork,fut_<g>,forkT2,futT2_<g>}.so,
 #            fork24.profdata,gate_*.txt,bench_*.txt,vec_ab_*/,abT2_*/,bank_*/}
 ```

@@ -1090,3 +1090,71 @@ an ancestor of that SHA — the adopt_build.sbatch comment claiming the
 re-cut includes it does not match the artifacts on disk (mtime 09-01
 22:30). Throughput numbers are unaffected; bit-exactness of adv vs the
 current reference is off by that one frame until adv is re-cut.
+
+### L1 BANKED (job 44439298, holy8a28510 genoa exclusive, 2026-09-04 15:59)
+
+§4 banked protocol: 16 workers x 128 envs x 5 env threads (80 threads), all
+24 games, 300-step window (20 warmup), QJS_DIRTY=1 on every arm, 3
+interleaved trials, arms by explicit --lib-path (bench_vec_knobs.py):
+adv (b3709b39) / forkT2 / futT2. Unpinned (holy8a24307 was reserved) —
+ratios are same-job; absolutes here are NOT comparable to the 17402 matrix.
+216/216 runs completed, 0 RUN_FAIL.
+
+    game               adv    forkT2     futT2  forkT2/adv  futT2/adv
+    bigfish        8551747   9129488   9565077     1.068      1.118
+    bossfight      6839251   8149054   9245958     1.192      1.352
+    caveflyer      1326777   1640429   2096569     1.236      1.580
+    chaser         1405580   1636457   1951226     1.164      1.388
+    climber        1116231   1205118   1342316     1.080      1.203
+    coinrun        1099136   1425033   1837994     1.297      1.672
+    dodgeball      1662452   1970098   2163968     1.185      1.302
+    fruitbot        921915   1045875   1154306     1.134      1.252
+    heist          2317670   2883457   3633986     1.244      1.568
+    jumper         1525786   1657829   1819650     1.087      1.193
+    leaper         2035727   2303097   2740160     1.131      1.346
+    maze           1314379   1605753   1907963     1.222      1.452
+    miner           821020   1031779   1237310     1.257      1.507
+    ninja          8471823   8975331   9589148     1.059      1.132
+    plunder        9877632  11025284  12168715     1.116      1.232
+    starpilot      5315745   5773942   6494577     1.086      1.222
+    asteroids      5272452   5582034   5903589     1.059      1.120
+    breakout       3026092   3741832   4679369     1.237      1.546
+    freeway       10273381  11257796  12021573     1.096      1.170
+    frostbite      4893328   4692304   5233908     0.959      1.070
+    pong          21379690  22814489  25315746     1.067      1.184
+    qbert          1080925   1190385   1259668     1.101      1.165
+    seaquest       8471164   9434408  10380242     1.114      1.225
+    space_inv      3989913   4566487   5463506     1.145      1.369
+    geomean-PG16                                   1.158      1.335
+    geomean-ALE8                                   1.095      1.223
+    geomean-all24                                  1.136      1.297
+
+Panel C (single-core, sweep4_adv.sh protocol: QJS_DIRTY=1 qjs_host bench 0
+100000, 16 ProcGen, 3 interleaved reps, medians): f0T2/adv 1.202, **f1T2/adv
+1.377** (min ninja 1.157, bigfish 1.139; max coinrun 1.670, miner 1.653,
+heist 1.624, maze 1.614). Full table: logs/l1_bank_any_44439298.out.
+
+**L1 VERDICT: BANKED at 1.297x all-24 / 1.335x ProcGen16 / 1.223x ALE8
+over adv at the published topology (3 trials), 1.377x panel C; matches the
+1-worker iteration number (1.296) to 0.1%; gate 33/33 x 3 seeds bit-exact;
+vec checksum 24/24 identical to stock ng.** Bank threshold (+3% all-24) is
+passed by an order of magnitude. Engine swap alone (forkT2) banks 1.136 /
+1.202 panel C on its own. Paper effect if adopted (ratios only; 17402
+confirm needed for absolutes): Fig 4A ProcGen 1.64x -> ~2.2x tuned EnvPool,
+ALE ~15x -> ~18x; panel C x1.38 (ProcGen16 win count will rise from 10/16).
+Adoption = Ryan's decision 1 (PLAN-engine-tier §7); it ends the "stock
+quickjs-ng" description and re-triggers the full re-measurement cascade.
+
+### ROUND 5 summary table (lever x geomean-5 x all-24 x panel-C x gate)
+
+    lever                                 geo-5 vec  all-24 vec  panel-C PG16  gate
+    L1 fork interpreter, untuned (fork)     1.016*     1.025*        0.980       33/33
+    L1 fork + -A, untuned (fut)             1.20       1.14          1.18        33/33
+    L1 fork, PGO/LTO (forkT2)               1.18       1.136 (bank)  1.202       33/33
+    L1 fork + -A, PGO/LTO (futT2)           1.37       1.297 (bank)  1.377       33/33
+    L2 superinstructions                    subsumed by -A (not run)
+    L3 p5 intrinsics                        not run (see PLAN-engine-tier-round6.md)
+    L4 quickening                           not run; re-specified as AOT type feedback (round 6)
+    L5 NaN-boxing                           not run
+    L6 tail-call dispatch                   = the fork interpreter row
+    (* vs stock ng, not adv)
