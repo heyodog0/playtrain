@@ -966,3 +966,13 @@ global per process). Nothing here is adopted; decision 1 (§7) is Ryan's.
 Artifacts: $WE/native/aotfork/out/{host_f0,host_f1_*,libqjs_vec.fork.so,
 libqjs_vec.fut_*.so,gate_all.txt,bench_*.txt,vec_ab_44423769/}, logs in
 $WE/native/aotfork/logs/.
+
+*Single-core all-24* (job 44421807, medians of 3 reps x 30k, QJS_DIRTY=1):
+f1/f0 1.174, ng/f0 0.980, adv/f0 0.997 → f1/adv ≈ 1.18 geomean-24 on the
+panel-C protocol (f1 wins every game; smallest pong 1.024, qbert 1.051;
+largest heist 1.357, miner 1.341, coinrun 1.313). Engine-swap alone (f0 vs
+adv) is a wash all-24 single-core (0.997): fork wins maze/coinrun/caveflyer
+by 12–15%, loses frostbite/ninja/asteroids by 10–19%. Full table:
+`$WE/native/aotfork/out/bench_24_dirty.txt`.
+Jumper vec checksum rerun after the rebuild: fut == fork == ec43e57d4f (the
+digest adv/ng produced in-job) → vec checksum24 is 24/24 clean for ng/fork/fut.
