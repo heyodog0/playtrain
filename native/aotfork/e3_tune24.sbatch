@@ -50,7 +50,7 @@ rm -rf "$OUT/objIgen" "$OUT/picIgen"
 bash build_fork.sh engine 2>&1 | tail -1
 bash build_fork.sh f0 2>&1 | tail -1
 bash build_fork.sh vec0 2>&1 | tail -1
-for g in $PROF8; do echo "$GDIR/$g.js"; done | xargs -P 12 -I{} bash -c 'bash build_fork.sh vec1 "$1" 2>&1 | grep "^built"' _ {}
+for g in $PROF8; do echo "$GDIR/$g.js"; done | xargs -P 12 -I{} bash -c 'bash build_fork.sh vec1 "$1" 2>&1 | grep -E "^built|error|failed" || echo "BUILD_FAIL vec1 $1"' _ {}
 for g in $FIVE; do echo "$GDIR/$g.js"; done | xargs -P 5 -I{} bash -c 'bash build_fork.sh f1 "$1" 2>&1 | grep "^built"' _ {}
 
 echo "== 2. profiles: vec workload 30 s per game (fork + fut), single-core 10 s (f0 + f1) =="
@@ -63,6 +63,8 @@ for g in $FIVE; do
   LLVM_PROFILE_FILE="$PROFDIR/hf1-$g-%m-%p.profraw" QJS_DIRTY=1 "$OUT/host_f1Igen_$g" "$GDIR/$g.js" bench 1 100000 >/dev/null 2>&1
 done
 n=$(ls "$PROFDIR"/*.profraw 2>/dev/null | wc -l); echo "profraws: $n"; [ "$n" -gt 0 ] || { echo NO_PROFILES; exit 1; }
+[ "$(ls "$OUT"/libqjs_vec.futIgen_*.so | wc -l)" -eq 24 ] || { echo "INSTRUMENTED_BUILD_INCOMPLETE ($(ls "$OUT"/libqjs_vec.futIgen_*.so | wc -l)/24)"; exit 1; }
+grep -c PROF_FAIL "logs/e3_tune24_$JOB.out" >/dev/null 2>&1 && grep -q PROF_FAIL "logs/e3_tune24_$JOB.out" && { echo "PROFILE_INCOMPLETE"; exit 1; }
 llvm-profdata merge -o "$OUT/forkI24.profdata" "$PROFDIR"/*.profraw && ls -la "$OUT/forkI24.profdata"
 
 echo "== 3. tuned builds (TAG=IT2): PGO-use + thin-LTO + hidden vis, Rust-PGO rasterizer =="
@@ -71,9 +73,10 @@ rm -rf "$OUT/objIT2" "$OUT/picIT2"
 bash build_fork.sh engine 2>&1 | tail -1
 bash build_fork.sh f0 2>&1 | tail -1
 bash build_fork.sh vec0 2>&1 | tail -1
-for g in $PROCGEN $ALE; do echo "$GDIR/$g.js"; done | xargs -P 12 -I{} bash -c 'bash build_fork.sh vec1 "$1" 2>&1 | grep "^built"' _ {}
+for g in $PROCGEN $ALE; do echo "$GDIR/$g.js"; done | xargs -P 12 -I{} bash -c 'bash build_fork.sh vec1 "$1" 2>&1 | grep -E "^built|error|failed" || echo "BUILD_FAIL vec1 $1"' _ {}
 for f in "$WE"/examples/games/js/*.js; do echo "$f"; done | xargs -P 12 -I{} bash -c 'bash build_fork.sh f1 "$1" 2>&1 | grep "^built"' _ {}
 echo "futIT2 .so built: $(ls "$OUT"/libqjs_vec.futIT2_*.so | wc -l) / 24; host_f1IT2: $(ls "$OUT"/host_f1IT2_* | wc -l) / 33"
+[ "$(ls "$OUT"/libqjs_vec.futIT2_*.so | wc -l)" -eq 24 ] || { echo TUNED_BUILD_INCOMPLETE; exit 1; }
 for f in libqjs_vec.forkIT2.so libqjs_vec.futIT2_miner.so host_f0IT2 host_f1IT2_miner; do echo "md5 $f $(md5sum "$OUT/$f" | cut -c1-32)"; done
 unset TUNE PROFDATA TAG
 
