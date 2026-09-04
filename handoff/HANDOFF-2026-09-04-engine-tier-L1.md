@@ -75,10 +75,17 @@ holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes
    `.profdata` per link** (ThinLTO rejects mixed profiles: "ProfileSummary
    IDs have conflicting values"). Per-game profiles are therefore not an option;
    profile all games into one file.
-4. **`qjs_host.adv` diverges from the current worktree's V8 reference on qbert**
-   (all 3 seeds); f0/f1/ng do not. Vec checksum shows the same (adv differs
-   from ng/fork/fut on qbert only). Not touched here; belongs to the adopted
-   lineage.
+4. **`qjs_host.adv` / `libqjs_vec.adv.so` predate the style-cache determinism
+   fix.** The adopted artifacts were built by job 43780730 from `5a42f71`
+   (2026-09-01 07:56); the fix `ef74835` ("fix native style cache: null
+   mirrors on invalidate, drop afterFill") landed 11:51 the same day and is
+   NOT an ancestor of that SHA, although `adopt_build.sbatch`'s comment says
+   the re-cut included it (the variant files still carry the 09-01 22:30
+   mtime of the earlier job). Symptom: exactly one frame in 3000 differs on
+   qbert (step 237, the GAMEOVER terminal frame, obshash only; reward, score,
+   lives, state identical) on all 3 seeds; ng/f0/f1 built from main tip match
+   the reference. Throughput is unaffected; the "bit-exact" claim for adv has
+   this one-frame blemish until adv is re-cut from a tree containing ef74835.
 5. The live `examples/games/js` on the cluster has 115 files (analogen,
    `a-cq-*`); the paper's 33 are the worktree's. Gates must use the latter.
 6. `serial_requeue` preempts; a job whose build phase writes artifacts another

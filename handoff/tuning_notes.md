@@ -1081,3 +1081,12 @@ Expected paper effect if banked: Fig 4A vs EnvPool-best 1.64x → ~2.1x
 
 Banked run (§4: 16 x 128 x 5, 24 games, 3 trials, -w holy8a24307, arms adv /
 forkT2 / futT2, + panel-C single-core 16 ProcGen) = job 44434186, pending.
+
+**adv qbert divergence, root cause (2026-09-04):** one frame in 3000 (step
+237, GAMEOVER terminal frame, obshash only) on all 3 seeds. The adopted
+artifacts (job 43780730, md5s b3709b39/46ea4999) were built from 5a42f71
+(09-01 07:56); the style-cache determinism fix ef74835 (09-01 11:51) is NOT
+an ancestor of that SHA — the adopt_build.sbatch comment claiming the
+re-cut includes it does not match the artifacts on disk (mtime 09-01
+22:30). Throughput numbers are unaffected; bit-exactness of adv vs the
+current reference is off by that one frame until adv is re-cut.
