@@ -12,7 +12,7 @@
 #
 # Env: FORK_OUT (default ./out), NATIVE (default ..), RA (rasterizer .a),
 #      QJS_ARCH (default -march=x86-64-v3 on x86_64, empty otherwise),
-#      OPT (default -O3). Engine objects, F0 and F1 all use the same
+#      OPT (default -O3), DBG=1 (-g everywhere, codegen unchanged). Engine objects, F0 and F1 all use the same
 #      $OPT $QJS_ARCH -ffp-contract=off so F1/F0 isolates AOT only.
 # Never touches native/build/ or native/build/variants/.
 set -euo pipefail
@@ -42,7 +42,9 @@ case "$TUNE" in
   "") ;;
   *) echo "bad TUNE=$TUNE" >&2; exit 1 ;;
 esac
-CFLAGS="$CFLAGS $TUNEFLAGS $VISFLAG"
+# DBG=1: -g on engine objects, AOT unit and host (debug info only; codegen unchanged) for SIGPROF symbolization
+DBGFLAG=""; [ "${DBG:-}" = 1 ] && DBGFLAG="-g"
+CFLAGS="$CFLAGS $TUNEFLAGS $VISFLAG $DBGFLAG"
 RA="${RA:-$NATIVE/../crates/rasterizer/target/release/libplaytrain_rasterizer.a}"
 FROZEN="$NATIVE/frozenmath/libfrozenmath.a"
 EXTRA=""; case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
@@ -89,7 +91,7 @@ engine() {
 host_common() {  # $1 = output, rest = extra objects/flags/archives (linked AFTER the sources: GNU ld order)
   local out="$1"; shift
   need "$RA"; need "$FROZEN"
-  clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing $TUNEFLAGS \
+  clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing $TUNEFLAGS $DBGFLAG \
     -I "$NATIVE/runtime" -I "$NATIVE/qjs" -I "$OUT/include" \
     "$HERE/qjs_host_fork.cpp" "$NATIVE/runtime/p5.cpp" "$@" "$RA" "$FROZEN" $EXTRA -o "$out"
 }
@@ -114,7 +116,7 @@ vec_common() {  # $1 = output .so, rest = extra flags/objects/archives
   local so_flags="-shared -Wl,--version-script=$NATIVE/vec_exports.map"; local frozen="$FROZEN_PIC"
   case "$(uname)" in Darwin) so_flags="-dynamiclib"; frozen="$FROZEN";; esac
   [ -f "$frozen" ] || { echo "missing $frozen (run build_qjs_vec.sh once, or copy frozenmath/ from the tuning tree)" >&2; exit 1; }
-  clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing -fPIC $TUNEFLAGS $VISFLAG $so_flags \
+  clang++ -std=c++17 $OPT $QJS_ARCH -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing -fPIC $TUNEFLAGS $VISFLAG $DBGFLAG $so_flags \
     -I "$NATIVE/runtime" -I "$NATIVE/qjs" -I "$OUT/include" \
     "$HERE/qjs_vec_host_fork.cpp" "$NATIVE/runtime/p5.cpp" "$@" "$RA" "$frozen" $EXTRA -o "$out"
 }
