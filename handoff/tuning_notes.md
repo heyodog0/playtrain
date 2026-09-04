@@ -1025,3 +1025,59 @@ profiled ones (chaser 1.16, coinrun 1.15, dodgeball 1.11). Job 44430166
 (l1_tune24.sbatch) re-cuts with all 24 games in the merged profile; that is
 the number to compare against adv all-24. forkT (one TU, fully profiled)
 has no such artifact: forkT/adv 1.118 all-24 stands as measured.
+
+### L1 tuned, all-24 profile (jobs 44430166 build+gate+checksum → preempted; 44434726 A/B, holy8a28511, 2026-09-04 15:25)
+
+Same recipe, merged profile from ALL 24 games (58 profraws: vec fork + vec
+fut-per-game on 24, single-core on 5). Gate f0T2/f1T2 114/114; vec checksum
+forkT2/futT2 vs stock ng 24/24 PASS. (44430166 was preempted by
+serial_requeue after those steps; its restart was cancelled — it would have
+rebuilt the .so files under the banked job — and steps 5–6 re-run read-only
+as l1_ab_t2.sbatch.)
+
+Vec, §4 iteration protocol (5 games x 2 reps, all-24 x 1; medians):
+
+    game            adv     fut    futT  forkT2   futT2  futT2/forkT2 futT2/futT futT2/adv forkT2/adv
+    bigfish      542697  542464  621528  584236  616870   1.056  0.993  1.137  1.077
+    breakout     190158  259929  291810  234100  291470   1.245  0.999  1.533  1.231
+    maze          82014  103058  119364  100039  119126   1.191  0.998  1.453  1.220
+    miner         51083   67426   75166   64364   77360   1.202  1.029  1.514  1.260
+    plunder      616925  700148  772737  697560  770494   1.105  0.997  1.249  1.131
+    asteroids    328685  326321  333404  350439  367010   1.047  1.101  1.117  1.066
+    bossfight    439566  511665  518214  517064  589515   1.140  1.138  1.341  1.176
+    caveflyer     79216  109813  119054   98563  127259   1.291  1.069  1.606  1.244
+    chaser        88273  105459  122979  103164  123792   1.200  1.007  1.402  1.169
+    climber       69448   73668   68339   73239   83086   1.134  1.216  1.196  1.055
+    coinrun       68391   98050  113376   88569  114805   1.296  1.013  1.679  1.295
+    dodgeball    102687  121820  135560  121664  135493   1.114  1.000  1.319  1.185
+    freeway      647121  687048  681812  714332  723610   1.013  1.061  1.118  1.104
+    frostbite    306871  270614  282190  293327  329199   1.122  1.167  1.073  0.956
+    fruitbot      57734   62653   62180   65091   74087   1.138  1.191  1.283  1.127
+    heist        145134  182965  200197  180390  229125   1.270  1.144  1.579  1.243
+    jumper        95022   99062   95497  100581  113256   1.126  1.186  1.192  1.059
+    leaper       126625  164333  153169  142628  157865   1.107  1.031  1.247  1.126
+    ninja        534677  537782  543614  555137  608033   1.095  1.119  1.137  1.038
+    pong        1332475 1391407 1454854 1433712 1601186   1.117  1.101  1.202  1.076
+    qbert         66886   67144   67789   74734   79666   1.066  1.175  1.191  1.117
+    seaquest     534869  590935  587482  593873  654239   1.102  1.114  1.223  1.110
+    space_inv    248202  324193  310338  282613  337232   1.193  1.087  1.359  1.139
+    starpilot    335698  363203  363971  361940  406079   1.122  1.116  1.210  1.078
+    geomean-5                                             1.158  1.003  1.368  1.182
+    geomean-24                                            1.143  1.083  1.296  1.134
+
+Single-core (5 x 50k, QJS_DIRTY=1): f1T2/adv 1.449 geomean-5 (bigfish
+1.131, breakout 1.613, maze 1.633, miner 1.678, plunder 1.277); f0T2/adv
+1.208; f1T2/f0T2 1.200.
+
+**The all-24-profile artifact is confirmed and gone**: futT2/futT = 1.00 on
+the 5 (both profiled), 1.08 all-24 (the 16 previously unprofiled games gain
+6–22%). **Tuned-vs-tuned, iteration protocol: futT2/adv 1.37 on the 5,
+1.30 all-24, every one of the 24 games ≥ 1.07 (min frostbite 1.073, max
+coinrun 1.679).** Engine swap alone (forkT2/adv): 1.18 / 1.13, one loss
+(frostbite 0.956). AOT on top of the tuned fork (futT2/forkT2): 1.16 / 1.14.
+Expected paper effect if banked: Fig 4A vs EnvPool-best 1.64x → ~2.1x
+(1.64 x 1.30) — the top of the §0 range; panel C 1.35 → ~1.9 on the 5
+(1.35 x 1.45), to be measured on the 16 in the banked job.
+
+Banked run (§4: 16 x 128 x 5, 24 games, 3 trials, -w holy8a24307, arms adv /
+forkT2 / futT2, + panel-C single-core 16 ProcGen) = job 44434186, pending.
