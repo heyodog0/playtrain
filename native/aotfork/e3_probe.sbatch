@@ -4,9 +4,11 @@
 #SBATCH -e logs/%x_%j.err
 #SBATCH -p serial_requeue
 #SBATCH -C genoa
-#SBATCH --exclusive
 #SBATCH -N 1
+#SBATCH -c 32
 #SBATCH --mem=64G
+# NOTE: non-exclusive (no idle genoa node on 2026-09-04 evening); same-job interleaved arms still give
+# valid ratios, but a result near the +5% gate must be re-run --exclusive before it is trusted.
 #SBATCH -t 0-03:00
 # E3 probe (PLAN-engine-tier-round6.md §5 E3, §4 protocol, untuned first):
 # p5 intrinsics in the AOT emitter (aot-intrinsics.patch + qjsc -P + host
