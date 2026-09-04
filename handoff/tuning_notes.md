@@ -1303,3 +1303,85 @@ run whenever the queue is free of bench jobs.
 Artifacts: `out/libqjs_vec.{forkT2dbg,futT2dbg_<g>}.so`, `out/{objT2dbg,picT2dbg}/`,
 `out/e0_44449147/`; scripts `e0_prof.sbatch`, `prof_buckets_aot.py`,
 `e0_summary.py`; log `logs/e0_prof_44449147.out`. Commits 85d86c8, 42b2468.
+
+### E3 — p5 intrinsics in the AOT emitter (built 2026-09-04 evening; probe job 44463225)
+
+**Order change.** Written up as E2 → E3 in the E0 verdict above; executed E3
+first. Reason from the E0 opcode table: on the draw-heavy games the hot
+sequence is `get_var rect; <4 pushes>; call 4; drop` and the arguments must
+land in memory anyway for `JS_CallInternal` to hand them to the C binding, so
+operand-stack-to-locals (E2) cannot pay off on that code until the call
+itself is direct. E3 is also the smaller build (one day, not weeks).
+
+**Hypothesis (from E0).** Calls/globals family 7–22% of samples, call
+machinery 2.6–8.7%, `js_call_c_function` innermost 2.2–5.4%, `JS_CallInternal`
+innermost 1.5–2.9%; on maze/miner/heist `draw` is 39–52% of all samples and is
+essentially rect/fill calls. Each p5 call today goes `call` body →
+`JS_CallInternal` (tag/class dispatch through `rt->class_array[].call`) →
+`js_call_c_function` (stack check, JSStackFrame push/pop, realm switch,
+**alloca + copy to pad the arguments up to the declared length** — `rect` is
+declared 5 and called with 4, `fill` 4 and called with 1–3, so nearly every
+draw call pays the copy — then a `switch(cproto)`), result back through
+`sf->ret_val` in memory. Expected: 1.06–1.12x on draw-heavy games, ~1.03x
+on breakout/plunder; kill < +3% on miner+maze.
+
+**What was built** (`native/aotfork/`, commits 34401f0 → 26c1ee2):
+
+- `aot-intrinsics.patch` (on top of `qjsc-hostmode.patch`; applied by
+  `build_fork.sh engine`): (1) `JSContext.aot_intr` + `JS_SetAOTIntrinsics()`
+  — a per-context table of callee objects; (2) `qjsc -P <file>` loads
+  `name min_argc` / `Obj.name min_argc` lines; (3) in `aot_compile()` a
+  forward-dataflow pre-pass over the bytecode (stack depth is a bytecode
+  invariant; candidate callee slots are joined by intersection at merge
+  points) marks every `get_var <name> … call/callN` site and every
+  `get_var <Obj>; get_field2 <name> … call_method` site whose argument count
+  is ≥ `min_argc`; (4) at such a site the emitter puts a guarded fast path in
+  front of the verbatim call body:
+  `if (tag(f)==OBJECT && ctx->aot_intr && ptr(f)==ctx->aot_intr[k]) { r = aot_intr_<name>(ctx, this, argc, argv); free this/f/args; push r; } else <verbatim body>`.
+  The `-A` output without `-P` is byte-identical to before.
+- `aot_intr_list.h` (single source): 30 globals (rect, fill, stroke,
+  background, noStroke, noFill, strokeWeight, ellipse, circle, arc, triangle,
+  quad, line, rectMode, ellipseMode, push, pop, translate, rotate, scale,
+  beginShape, vertex, endShape, keyIsDown, image, setTarget, clearTarget,
+  textSize, textAlign, text) and 9 `Math.*` methods (floor, abs, ceil, sqrt,
+  pow, sin, cos, atan2, hypot). `min_argc` = arguments the binding reads
+  unconditionally; below it the generic path's undefined-padding is
+  observable, so the fast path is not emitted. Not included: `Math.min/max`
+  (`js_math_min_max`, internal, semantics not worth replicating),
+  `Math.round/imul/random`, `color()/lerpColor()` (allocate), createCanvas.
+- Both hosts (`qjs_host_fork.cpp`, `qjs_vec_host_fork.cpp`): one wrapper per
+  entry, `extern "C" JSValue aot_intr_<name>(ctx, this, argc, argv) { return js_<name>(ctx, this, argc, argv); }`
+  — **the same JSCFunction with the same arguments and the same `this`
+  (undefined for `call`, the receiver for `call_method`)**, so behaviour is
+  identical by construction; the only things skipped are dispatch, the C
+  stack frame, the padding copy and the realm switch. `Math.floor/abs/ceil`
+  are engine `f_f` builtins: the wrapper replicates `js_call_c_function`'s
+  `f_f` case verbatim (`JS_ToFloat64(argv[0])` → exception, else
+  `JS_NewFloat64(fn(d))`); `Math.sqrt/pow/sin/cos/atan2/hypot` are already the
+  host's frozen-math bindings after the PRELUDE rebinds them, so their
+  wrappers call `js_m_*` directly. After the prelude, each env captures the
+  39 function objects (strong references, so the pointer the guard compares
+  can never be reused while the env lives) and hands the table to the
+  context; released before `JS_FreeContext`. A game that shadows `rect` or
+  reassigns `Math.floor` simply fails the pointer guard and takes the generic
+  body.
+- `build_fork.sh`: `INTR=1` derives `out/aot_intr.txt` from the header,
+  passes `-P`, and writes the emitted C to `out/aotI_<game>/` (the plain arms'
+  `aot_<game>/game_aot.c` are untouched); `qjsc` is rebuilt whenever a patch
+  is newer than the binary. `e3_probe.sbatch` (untuned probe, arms adv / fut /
+  futT2 / futN / futI on 7 games + gate 33×3 + checksum24), `e3_tune24.sbatch`
+  (tuned recipe, arms adv / futT2 / futIT2).
+
+**Sites emitted (7 profiled games).** breakout 22 (rect 3, fill 4, Math.abs
+3, sqrt 2, sin 2, cos 2 …), maze 22 (Math.floor 8, rect 3, fill 3), heist 28
+(Math.floor 8, fill 6, rect 4, hypot 2), miner 35 (Math.floor 9, fill 9, rect
+7), coinrun 43 (Math.floor 19, rect 7, fill 7), plunder 28, bigfish 15. Every
+p5 call in every `draw`/`update` function of the seven is matched; the
+remaining source occurrences are in setup/reset code.
+
+**Local exactness (arm64 laptop, untuned, N = same patched engine without
+-P):** `host_f1N` vs `host_f1I` traces byte-identical on breakout, maze,
+heist, coinrun × seeds 1/42/777 × 3000 steps, no "Bytecode mismatch". Local
+single-core `bench 1 30000` (not a measurement, just the sign): breakout
++8% with globals only → +19% with Math.*; maze +18%; heist +17%; coinrun
++15%.
