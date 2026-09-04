@@ -4,7 +4,11 @@
  * from it. AOT_INTR(name, min_argc, fn): fn = the host's JSCFunction for the
  * binding; min_argc = number of arguments fn reads unconditionally; a call with
  * fewer arguments keeps the generic path, whose undefined-padding is observable.
- * Order defines the index k used in ctx->aot_intr[k]; append only. */
+ * AOT_INTRM(obj, name, min_argc, fn): method <obj>.<name> reached through
+ * `get_var obj; get_field2 name; ...; call_method` (Math.* here); fn must
+ * reproduce js_call_c_function's behaviour for that builtin exactly (see the
+ * f_f helpers in the hosts). Order defines the index k used in
+ * ctx->aot_intr[k]; append only. */
 AOT_INTR(rect, 4, js_rect)
 AOT_INTR(fill, 1, js_fill)
 AOT_INTR(stroke, 1, js_stroke)
@@ -35,3 +39,12 @@ AOT_INTR(clearTarget, 0, js_clearTarget)
 AOT_INTR(textSize, 0, js_noop)
 AOT_INTR(textAlign, 0, js_noop)
 AOT_INTR(text, 0, js_noop)
+AOT_INTRM(Math, floor, 1, aot_m_floor)
+AOT_INTRM(Math, abs, 1, aot_m_abs)
+AOT_INTRM(Math, ceil, 1, aot_m_ceil)
+AOT_INTRM(Math, sqrt, 1, js_m_sqrt)
+AOT_INTRM(Math, pow, 2, js_m_pow)
+AOT_INTRM(Math, sin, 1, js_m_sin)
+AOT_INTRM(Math, cos, 1, js_m_cos)
+AOT_INTRM(Math, atan2, 2, js_m_atan2)
+AOT_INTRM(Math, hypot, 2, js_m_hypot)

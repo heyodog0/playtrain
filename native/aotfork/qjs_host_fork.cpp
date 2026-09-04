@@ -17,6 +17,7 @@
 //   qjs_host <game.js> trace <seed> <nsteps>
 //   qjs_host <game.js> bench <ignored> <nsteps>
 #include <cstdio>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
@@ -180,18 +181,38 @@ static const Binding BINDINGS[] = {
 // JSCFunction with the same arguments and this=undefined, so behaviour is
 // identical by construction. The captured values are strong references, so the
 // pointer the guard compares against can never be reused while the env lives.
+// Engine builtins declared JS_CFUNC_SPECIAL_DEF(name, 1, f_f, fn) are called by
+// js_call_c_function as: JS_ToFloat64(argv[0]) -> exception, else JS_NewFloat64(fn(d)).
+// The emitter only takes the fast path with argc >= 1, so argv[0] is the caller's
+// value exactly as the generic path would see it (no padding case).
+static JSValue aot_ff(JSContext* ctx, JSValue* argv, double (*fn)(double)) {
+  double d; if (JS_ToFloat64(ctx, &d, argv[0])) return JS_EXCEPTION; return JS_NewFloat64(ctx, fn(d)); }
+static JSValue aot_m_floor(JSContext* ctx, JSValueConst, int, JSValueConst* argv) { return aot_ff(ctx, (JSValue*)argv, floor); }
+static JSValue aot_m_abs(JSContext* ctx, JSValueConst, int, JSValueConst* argv)   { return aot_ff(ctx, (JSValue*)argv, fabs); }
+static JSValue aot_m_ceil(JSContext* ctx, JSValueConst, int, JSValueConst* argv)  { return aot_ff(ctx, (JSValue*)argv, ceil); }
 #define AOT_INTR(n, m, f) extern "C" JSValue aot_intr_##n(JSContext* ctx, JSValue t, int argc, JSValue* argv) { return f(ctx, t, argc, argv); }
+#define AOT_INTRM(o, n, m, f) extern "C" JSValue aot_intr_##o##_##n(JSContext* ctx, JSValue t, int argc, JSValue* argv) { return f(ctx, t, argc, argv); }
 #include "aot_intr_list.h"
 #undef AOT_INTR
-static const char* const AOT_INTR_NAMES[] = {
-#define AOT_INTR(n, m, f) #n,
+#undef AOT_INTRM
+struct AotIntrName { const char* obj; const char* name; };
+static const AotIntrName AOT_INTR_NAMES[] = {
+#define AOT_INTR(n, m, f) { nullptr, #n },
+#define AOT_INTRM(o, n, m, f) { #o, #n },
 #include "aot_intr_list.h"
 #undef AOT_INTR
+#undef AOT_INTRM
 };
 static constexpr int AOT_INTR_N = (int)(sizeof(AOT_INTR_NAMES) / sizeof(*AOT_INTR_NAMES));
 static_assert(AOT_INTR_N <= 64, "grow the intr arrays");
+// Must run AFTER the prelude: it rebinds Math.sqrt/pow/sin/cos/atan2/hypot to the
+// host's frozen-math bindings, and the captured object must be the one calls see.
 static void aot_intr_capture(JSContext* ctx, JSValue g, JSValue* vals, const void** tbl) {
-  for (int k = 0; k < AOT_INTR_N; k++) { vals[k] = JS_GetPropertyStr(ctx, g, AOT_INTR_NAMES[k]); tbl[k] = JS_VALUE_GET_PTR(vals[k]); }
+  for (int k = 0; k < AOT_INTR_N; k++) {
+    if (AOT_INTR_NAMES[k].obj) { JSValue o = JS_GetPropertyStr(ctx, g, AOT_INTR_NAMES[k].obj); vals[k] = JS_GetPropertyStr(ctx, o, AOT_INTR_NAMES[k].name); JS_FreeValue(ctx, o); }
+    else vals[k] = JS_GetPropertyStr(ctx, g, AOT_INTR_NAMES[k].name);
+    tbl[k] = JS_VALUE_GET_PTR(vals[k]);
+  }
   JS_SetAOTIntrinsics(ctx, tbl);
 }
 static void aot_intr_release(JSContext* ctx, JSValue* vals) {
@@ -243,7 +264,6 @@ int main(int argc, char** argv) {
   for (const auto& b : BINDINGS) JS_SetPropertyStr(ctx, g, b.name, JS_NewCFunction(ctx, b.fn, b.name, b.nargs));
 #ifdef HOST_AOT
   JSValue intr_vals[64]; const void* intr_tbl[64];
-  aot_intr_capture(ctx, g, intr_vals, intr_tbl);
 #endif
   setConst(ctx, g, "LEFT_ARROW", 37); setConst(ctx, g, "UP_ARROW", 38);
   setConst(ctx, g, "RIGHT_ARROW", 39); setConst(ctx, g, "DOWN_ARROW", 40); setConst(ctx, g, "ENTER", 13);
@@ -268,6 +288,9 @@ int main(int argc, char** argv) {
   evalf(aotPrelude);
 #else
   evalv(PRELUDE, "<prelude>");
+#endif
+#ifdef HOST_AOT
+  aot_intr_capture(ctx, g, intr_vals, intr_tbl);   // after the prelude (see aot_intr_capture)
 #endif
   p5cb::Buf* CB = p5cb::enabled() ? p5cb::create() : nullptr;
   if (CB) JS_SetContextOpaque(ctx, CB);

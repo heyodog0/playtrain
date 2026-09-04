@@ -50,7 +50,7 @@ CFLAGS="$CFLAGS $TUNEFLAGS $VISFLAG $DBGFLAG"
 # emitted C goes to out/aotI_<game>/ so the plain arms' game_aot.c stay untouched.
 QJSC_INTR=""; AOTDIR=""
 if [ "${INTR:-}" = 1 ]; then
-  sed -nE 's/^AOT_INTR\(([A-Za-z_0-9]+), *([0-9]+),.*/\1 \2/p' "$HERE/aot_intr_list.h" > "$OUT/aot_intr.txt"
+  sed -nE 's/^AOT_INTR\(([A-Za-z_0-9]+), *([0-9]+),.*/\1 \2/p; s/^AOT_INTRM\(([A-Za-z_0-9]+), *([A-Za-z_0-9]+), *([0-9]+),.*/\1.\2 \3/p' "$HERE/aot_intr_list.h" > "$OUT/aot_intr.txt"
   [ "$(wc -l < "$OUT/aot_intr.txt")" -ge 10 ] || { echo "aot_intr.txt derivation failed" >&2; exit 1; }
   QJSC_INTR="-P $OUT/aot_intr.txt"; AOTDIR="I"
 fi
