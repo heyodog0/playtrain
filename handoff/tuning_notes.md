@@ -976,3 +976,52 @@ by 12–15%, loses frostbite/ninja/asteroids by 10–19%. Full table:
 `$WE/native/aotfork/out/bench_24_dirty.txt`.
 Jumper vec checksum rerun after the rebuild: fut == fork == ec43e57d4f (the
 digest adv/ng produced in-job) → vec checksum24 is 24/24 clean for ng/fork/fut.
+
+### L1, tuned-vs-tuned (job 44425939, holy8a2xxxx genoa, 2026-09-04 14:35)
+
+Recipe = the adopted one (adopt_build.sbatch): `-fprofile-generate` builds
+→ vec-workload profile (vec_prof_driver.py, 128 envs x 5 threads, 30 s) on
+the 8 profile games for BOTH fork and fut(per game) + 10 s single-core →
+ONE merged `fork.profdata` (26 profraws) → `-fprofile-use -flto=thin
+-fvisibility=hidden` + version script + the Rust-PGO'd rasterizer .a adv
+uses (`libplaytrain_rasterizer.a.rustpgo_adv`, sources identical). ThinLTO
+REQUIRES one .profdata across every object in a link ("ProfileSummary IDs
+have conflicting values" otherwise) — so per-game profiles are not an
+option; everything goes in one merged file. Gate f0T/f1T: 114/114 on the 33
+paper games. Vec checksum forkT/futT vs stock ng: 24/24 (2 rebuilt after a
+parallel-build race, then checked; race fixed in 591d8f5).
+
+Vec (§4 iteration protocol, 5 games x 2 reps + all-24 x 1, medians):
+
+    game            adv    fork     fut   forkT    futT  futT/forkT futT/adv forkT/adv
+    bigfish      545234  511278  517043  591522  630586   1.066    1.157    1.085
+    breakout     189110  202102  261058  234250  289198   1.235    1.529    1.239
+    maze          81700   85846  103266  100130  118618   1.185    1.452    1.226
+    miner         51308   51556   67304   64422   74386   1.155    1.450    1.256
+    plunder      621896  612822  705303  681789  773576   1.135    1.244    1.096
+    geomean-5                                             1.154    1.359    1.178
+    geomean-24                                            1.067    1.193    1.118
+    (futT/fut 1.135 on the 5, but 1.046 all-24 — see the artifact below)
+
+Single-core (qjs_host bench, 5 x 50k, QJS_DIRTY=1, medians):
+
+    game          adv     f0     f1    f0T    f1T  f1T/f0T f0T/f0 f1T/f1 f1T/adv f0T/adv
+    bigfish    146043 135905 144647 154085 157408  1.022  1.134  1.088  1.078  1.055
+    breakout    41176  45385  59633  53706  67529  1.257  1.183  1.132  1.640  1.304
+    maze        18060  20945  24892  24136  28545  1.183  1.152  1.147  1.581  1.336
+    miner       11067  12075  16240  14930  18777  1.258  1.236  1.156  1.697  1.349
+    plunder    156362 162216 181048 181525 199748  1.100  1.119  1.103  1.277  1.161
+    geomean-5                                      1.160  1.164  1.125  1.434  1.236
+
+Reading: PGO+LTO buys the fork what it bought ng (+16% interpreter,
++12% AOT). Tuned-vs-tuned on the 5 profiled games: **futT/adv 1.36 vec,
+1.43 single-core; forkT/adv (engine swap alone, no AOT) 1.18 / 1.24.**
+Artifact in the all-24 number: the profile covered only the 8 games, and a
+per-game AOT TU whose functions have NO profile is de-optimized under
+-fprofile-use (unprofiled call sites are treated as cold by the inliner):
+futT < fut on every unprofiled game (climber 0.92, jumper 0.97, frostbite
+0.99, asteroids 0.97, freeway 0.96, ninja 0.99) and futT > fut on all 8
+profiled ones (chaser 1.16, coinrun 1.15, dodgeball 1.11). Job 44430166
+(l1_tune24.sbatch) re-cuts with all 24 games in the merged profile; that is
+the number to compare against adv all-24. forkT (one TU, fully profiled)
+has no such artifact: forkT/adv 1.118 all-24 stands as measured.
