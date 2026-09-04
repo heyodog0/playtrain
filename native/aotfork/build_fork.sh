@@ -79,14 +79,14 @@ host_common() {  # $1 = output, rest = extra objects/flags/archives (linked AFTE
 # (same split as build_qjs_vec.sh). vec_exports.map makes everything but vec_*
 # DSO-local so intra-library calls skip the PLT, as in the adopted .so.
 FROZEN_PIC="$NATIVE/frozenmath/libfrozenmath_pic.a"
-engine_pic() {
+engine_pic() { (
   mkdir -p "$OUT/pic"; cd "$SRC"
   for f in quickjs dtoa libregexp libunicode cutils quickjs-libc; do
     [ -f "$OUT/pic/$f.o" ] || clang $CFLAGS -fPIC -Wno-everything -c -o "$OUT/pic/$f.o" "$f.c"
   done
   ar rcs "$OUT/pic/libqjs_fork.a"    "$OUT"/pic/quickjs.o "$OUT"/pic/dtoa.o "$OUT"/pic/libregexp.o "$OUT"/pic/libunicode.o "$OUT"/pic/cutils.o "$OUT"/pic/quickjs-libc.o
   ar rcs "$OUT/pic/libqjs_forkaot.a" "$OUT"/pic/dtoa.o "$OUT"/pic/libregexp.o "$OUT"/pic/libunicode.o "$OUT"/pic/cutils.o "$OUT"/pic/quickjs-libc.o
-}
+) }
 vec_common() {  # $1 = output .so, rest = extra flags/objects/archives
   local out="$1"; shift
   need "$RA"
@@ -99,7 +99,7 @@ vec_common() {  # $1 = output .so, rest = extra flags/objects/archives
 }
 vec0() { engine_pic; vec_common "$OUT/libqjs_vec.fork.so" "$OUT/pic/libqjs_fork.a"; echo "built $OUT/libqjs_vec.fork.so"; }
 vec1() {
-  local game="$1" g; g="$(basename "$game" .js)"
+  local game g; game="$(abspath "$1")"; g="$(basename "$game" .js)"
   local tmp="$OUT/aot_$g"
   [ -f "$tmp/game_aot.c" ] || f1 "$game"     # reuse the qjsc -A output of the single-core build
   engine_pic
@@ -120,8 +120,9 @@ f0() {
   echo "built $OUT/host_f0"
 }
 
+abspath() { echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; }
 f1() {
-  local game="$1" g; g="$(basename "$game" .js)"
+  local game g; game="$(abspath "$1")"; g="$(basename "$game" .js)"
   local tmp="$OUT/aot_$g"; mkdir -p "$tmp"
   cp "$game" "$tmp/game.js"               # c_name of the blob := "game"
   cp "$OUT/prelude.js" "$tmp/prelude.js"  # c_name := "prelude"; compiled first
