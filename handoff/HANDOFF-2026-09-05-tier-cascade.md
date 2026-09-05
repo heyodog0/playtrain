@@ -726,3 +726,63 @@ Cancel 44515752 and redesign before resubmitting:
 4. Consider a shared `TORCHINDUCTOR_CACHE_DIR` so max-autotune is compiled once
    and reused across processes — untested, but it would cut ~11 min/game
    without touching the measured configuration.
+
+## 17. ROOT CAUSE of the 44515752 zeros, and the replacement arrays
+
+### 17.1 Root cause: a worker->learner deadlock, not an env or binary fault
+
+The hung ICNN runs log this once per minute for the whole window:
+
+```
+step=0 sps=0.0 total_rss=39228MB main=10294 actors=['2412','2411','2412',...]
+stats={}
+```
+
+Sequence in every failed game (e.g. maze, 04:39:39-04:47:42):
+1. 12 VecWorkers start normally on cuda:2/cuda:3, "aot enabled" each;
+2. all 12 log `[mem] vec_worker_db.N rollouts=1` — each produces exactly ONE
+   rollout;
+3. then nothing. The learner never consumes it. `step` stays 0 for eight
+   minutes, worker rss is flat and healthy (~2.41 GB each), **no exception is
+   ever raised**, and the harness exits cleanly with `final_step: 0, stats: {}`.
+
+A working game's log is byte-identical up to step 2. So the failure is a
+deadlock in the worker->learner handoff (DDP learner init / queue pickup),
+**not** the environment, the binary, or the tier-3 .so — every one of those had
+already done its job by the time it hangs. That is why one-process-per-game did
+not help: the leak outlives process exit and is job-scoped (MPS/driver/DDP
+rendezvous state), which a fresh Slurm task resets and a fresh process does not.
+It is also the same defect as the published ICNN row and 44162619 — pre-existing,
+not caused by tier 3.
+
+### 17.2 Replacement: four per-row arrays, tier3 only (submitted 09:38)
+
+44515752 CANCELLED at 09:55:11 elapsed.
+
+| job | row | harness |
+|---|---|---|
+| **44602115** | IMPALA + Nature-CNN | `bench_train_suite` on `_mk_sweep_cfg(pt_bigfish_nature_fullnode, 15, 5, 256)` |
+| **44602116** | IMPALA + IMPALA-CNN | `bench_train_suite` on `impala_fullnode_throughput.json` |
+| **44602117** | PPO + Nature-CNN | `bench_ppo_suite --nproc 4` |
+| **44602118** | PPO + IMPALA-CNN | `bench_ppo_suite --nproc 4`, bf16 |
+
+All `t1a_row.sbatch`, `--array=0-23%1`, one game per task, `-t 0-00:45/task`,
+tier 3 only, per-task shadow tree + md5 gate + `QJS_DIRTY=1`, fresh `mps_up`
+per task. Results: `outputs/t1a_<row>_<arrayjob>_<game>.json`.
+
+**Why tier3-only is sound:** adv2/adv1 = 1.005 globally and 44515752's own adv2
+Nature row (994,596, 24/24) reproduces adv1's 997,689 to 0.3%. Re-measuring adv2
+per row buys nothing, doubles cost, and — critically — its removal eliminates
+the arm-ordering confound by construction.
+
+**Reference row to use for adv2:** 994,596 (24/24, geomean; ProcGen16 982,087 /
+ALE8 1,020,093), salvaged from 44515752 on holygpu8a13301.
+
+### 17.3 Cross-row comparability
+
+The four rows are separate jobs and will land on different nodes. Accepted:
+the adv1 cascade measured all four rows' structure on ONE node (44162618/20/21,
+holygpu8a15204), so the per-row tier3/adv ratios carry the cross-row story.
+**Record the node each row used.** `%1` keeps each row's 24 games serialized,
+but a row's array can still migrate between allocations — if a row scatters
+across nodes, flag it rather than averaging over it. Each task prints its node.
