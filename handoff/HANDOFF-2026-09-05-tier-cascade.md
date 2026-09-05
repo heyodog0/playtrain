@@ -573,3 +573,85 @@ game gets tier 2 immediately and tier 3 about a minute later, bit-exact, with
 the same PGO increment as the paper games; the gain scales with the game's
 engine share, 1.05-2.1x, geomean 1.19/1.30 on the nine held-out games.
 Do not let the deletion stand as the final word — it is currently unmentioned.
+
+## 15. RESULTS — ProcGen swap row DONE; 7-point grid DONE but its EnvPool arm is WRONG
+
+44516162 COMPLETED 06:14:21 on holygpu8a15502, exit 0.
+44545120 COMPLETED 02:10:52 on holy8a28510, exit 0, 720/720 PlayTrain runs.
+
+### 15.1 Table 1(b) ProcGen row — READY TO EDIT
+
+Baseline reproduces the published value again (unpinned): **371,617** vs
+published 372k, adv1 372,539. Node class matched; absolutes usable.
+
+| binary | PlayTrain | real ProcGen | ratio |
+|---|---|---|---|
+| published (live) | 618k | 372k | 1.66x |
+| adv1 | 701,992 | 372,539 | 1.88x |
+| adv2 (this job) | 695,014 | 371,617 | 1.87x |
+| **tier3** | **837,639** | **371,617** | **2.25x** |
+
+**PlayTrain is now faster on 16/16, and the worst game is 1.43x.** miner, the
+published row's only loss at 0.81x, is now **1.67x**. tier3/adv2 = 1.205.
+Biggest tier-3 gains: miner 1.520, maze 1.458, caveflyer 1.449, coinrun 1.444,
+heist 1.319. Smallest: plunder 1.020, bigfish 1.030, ninja 1.055.
+
+### 15.2 PlayTrain 7-point curves — READY (geomean env steps/s)
+
+Threads 5 / 10 / 20 / 30 / 40 / 60 / 80:
+
+| suite | arm | curve |
+|---|---|---|
+| ProcGen16 | **tier3** | **225,875 / 453,744 / 907,954 / 1,363,524 / 1,814,048 / 2,729,986 / 3,636,231** |
+| ProcGen16 | adv2 | 145,502 / 290,839 / 581,892 / 872,838 / 1,166,241 / 1,749,424 / 2,331,766 |
+| ALE8 | **tier3** | **458,714 / 917,021 / 1,838,391 / 2,752,241 / 3,657,695 / 5,466,618 / 7,226,918** |
+| ALE8 | adv2 | 333,250 / 666,052 / 1,330,191 / 1,995,438 / 2,658,963 / 3,983,308 / 5,317,124 |
+
+Step-to-step growth tracks the thread ratio EXACTLY — 2.01/2.00/1.50/1.33/1.50/
+1.33 against an ideal 2.0/2.0/1.5/1.333/1.5/1.333 (the grid is not all
+doublings). **PlayTrain is linear at 100% efficiency across all seven points**,
+a stronger version of the existing claim.
+
+Cross-check vs the 4-point job on the same node: ProcGen 80thr 3,636,231 vs
+3,642,545 (**-0.17%**), ALE 7,226,918 vs 7,355,750 (-1.75%). Consistent.
+
+### 15.3 TRAP — 44545120's EnvPool arm is NOT the documented-best config
+
+I replicated `final_any.sbatch`'s `async_numa` (numactl NUMA binding). The
+paper's "EnvPool tuned / documented best" is `ep_best_sweep.sbatch`: async, one
+pool per NUMA domain, **envpool's own `thread_affinity_offset`** (not numactl),
+bs = 3x threads-per-pool. Mine understates it, worst at low thread counts:
+
+| threads | mine (async_numa) | documented-best | mine/best |
+|---|---|---|---|
+| 10 | 256,963 | 355,451 | 0.723 |
+| 20 | 454,633 | 587,070 | 0.774 |
+| 40 | 784,018 | 931,786 | 0.841 |
+| 80 | 1,264,550 | 1,413,748 | 0.894 |
+
+**Using my arm as "tuned" would report 2.88x at eighty threads instead of the
+correct 2.58x — a 12% overstatement in our favour.** Do not use
+`outputs/tier3_fig4a7_44545120/envpool_7pt.json` for the figure. The
+`sync1` (as-shipped) arm in that file is fine: 463,817 vs 468,997 at 80 threads
+(-1.1%), 176,017 vs 178,217 at 10 (-1.2%).
+
+**Job 44601287** (`ep_best_7pt.sbatch`) re-measures the tuned arm at all seven
+points with ep_best_sweep's child VERBATIM. Confirmation the config is right:
+at 80 threads its BS computes to exactly **120**, matching the "bs120" recorded
+in HANDOFF-2026-09-04 §1. It also runs a PlayTrain tier3 anchor at 80 threads
+(24 games x 2) so that if it lands off holy8a28510 the node offset is measured,
+not assumed. ~1-1.5 h.
+
+### 15.4 Main-text status after this round
+
+| line | edit | status |
+|---|---|---|
+| 520 | `372k & 618k` -> `372k & 838k` | **READY** |
+| 521 | `175k & 873k` -> `175k & 1{,}018k` | **READY** |
+| 539 | "15 ... 1.7$\times$ ... miner the only exception 0.81$\times$" -> **all 16, 2.25$\times$, no exception** | **READY** |
+| 539/540 | ALE swap 5$\times$ -> 5.8$\times$ | **READY** |
+| 542 | ALE-flattening rewrite | **READY** |
+| 1546 (t40 ALE) | 20.53 -> 20.49 | **READY** |
+| 547 | fruitbot/miner at 80 threads | blocked on 44601287 |
+| 1538-1546 | 4 scaling rows -> 7 | blocked on 44601287 |
+| Table 1(a) | four PlayTrain rows | blocked on 44515752 (~12:15-13:15) |
