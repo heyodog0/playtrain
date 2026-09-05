@@ -388,3 +388,40 @@ EnvPool side the bulk.
 
 Until it lands, the §10.1 four-point numbers stand and are correct as far as
 they go — 44545120 adds resolution, it does not revise them.
+
+## 13. RESULT — Table 1(b) ALE row (job 44516167, COMPLETED 02:56:02, holygpu8a17603)
+
+**The unpinned-node risk flagged in §6 did NOT materialise.** The in-job ALE
+baseline arm reproduces the published value almost exactly, so holygpu8a17603
+matched the class and the absolutes are usable, not just the ratio:
+
+| ALE baseline geomean | source |
+|---|---|
+| 175k | published (job 36215614, holygpu8a15204, pinned) |
+| 171,423 | adv1 re-measure (44161947, pinned to the same node) |
+| **175,119** | **this job, UNPINNED** |
+
+### Table 1(b) ALE row
+
+| binary | PlayTrain | real ALE | ratio |
+|---|---|---|---|
+| published (live) | 873k | 175k | 4.99x |
+| adv1 | 917,289 | 171,423 | 5.35x |
+| adv2 (this job) | 934,133 | 175,119 | 5.33x |
+| **tier3** | **1,017,529** | **175,119** | **5.81x** |
+
+PlayTrain faster on 8/8 for both arms. **tier3/adv2 = 1.089** geomean.
+
+Per game (tier3/adv2): qbert 1.267, breakout 1.178, seaquest 1.114,
+space_invaders 1.069, frostbite 1.048, asteroids 1.042, freeway 1.028,
+pong 0.994.
+
+**Read the per-game numbers before quoting them.** The ALE baseline is
+trainer-bound, not env-bound: it reads 170,391 for breakout, frostbite AND
+qbert, and 183,497/183,498 for asteroids, seaquest and pong — identical
+values because the learner, not the environment, sets the rate. The PlayTrain
+arms are likewise flat at ~1.0M except qbert (491k adv2 / 623k tier3), the one
+game still env-bound on the PlayTrain side. That is why qbert shows the largest
+tier3 gain (1.267) and pong none (0.994): tier 3 only moves a row where the
+environment is still the constraint. This is the same trainer-bound story as
+line ~539 and it now has a clean within-table demonstration.
