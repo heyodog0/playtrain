@@ -655,3 +655,74 @@ not assumed. ~1-1.5 h.
 | 547 | fruitbot/miner at 80 threads | blocked on 44601287 |
 | 1538-1546 | 4 scaling rows -> 7 | blocked on 44601287 |
 | Table 1(a) | four PlayTrain rows | blocked on 44515752 (~12:15-13:15) |
+
+## 16. FAILURE — Table 1(a) job 44515752 is not usable; recommend cancel + redesign
+
+Diagnosed 2026-09-05 09:34, job still RUNNING at 9:50 elapsed. Three
+independent problems; the row data is not salvageable as designed.
+
+### 16.1 The ICNN row is producing zeros (14 of 18)
+
+Only the first four games returned a number (plunder, bigfish, bossfight,
+ninja, geomean 348,962). Every game from starpilot onward wrote
+`final_step: 0, stats: {}` — 14 zero runs — and `freeway` was reported by the
+harness itself as "1 GAME(S) FAILED ... geomean covers 0 of 1 games".
+**One-process-per-game did NOT prevent the documented hang**; it only moved it
+from game 2 to game 5. Whatever leaks is surviving process exit, so it is
+GPU/MPS state at the job level, not process state. The Slurm-array form
+(44382216) got a fresh MPS per task, which this job does not.
+
+`seaquest` has been hung since 07:36:50 — nearly 2 h with no output at all,
+its suite log untouched since the Nature row wrote it at 02:31.
+
+### 16.2 The Nature row's tier3 arm is order-confounded
+
+| arm | ProcGen16 | ALE8 | all-24 geomean |
+|---|---|---|---|
+| adv2 | 982,087 | 1,020,093 | **994,596** |
+| tier3 | 889,818 | 1,027,710 | 933,593 |
+
+**tier3/adv2 = 0.939** — tier 3 apparently 6% SLOWER attached to a trainer,
+and 9.4% slower on ProcGen. That is not credible next to the ALE swap row
+(1.089) and ProcGen swap row (1.205) measured the same night.
+
+The cause is my loop: `for arm in adv2 tier3` runs **adv2 first every time**,
+so tier 3 always occupies second position within each game's pair and eats any
+within-pair degradation (MPS/GPU state accumulating across the 120 processes —
+the same leak §16.1 exposes). Corroboration that adv2 is the clean arm: its
+994,596 matches the adv1 Nature row's 997,689 (job 44162618) to 0.3%.
+**Fix for any re-run: alternate arm order per game** (adv2-first on even games,
+tier3-first on odd) so position cancels.
+
+### 16.3 It cannot finish anyway
+
+Measured ICNN rate is **16:55 per game**, dead regular. Remaining at 09:34:
+6 ICNN + 24 PPO-Nature + 24 PPO-IMPALA = 54 runs x 16:55 = **15.2 h** against
+**10.1 h** of wall left (expires 19:43). Best case if ICNN were stopped now:
+PPO-Nature alone completes ~18:05 and PPO-IMPALA does not start.
+
+Note the Nature row ran at 4:25/game but ICNN at 16:55 — the ICNN template sets
+`compile_learner: true` with `max-autotune`, and one-process-per-game pays that
+compile **per game** instead of once. My earlier claim that per-process startup
+was negligible held only for the Nature row.
+
+### 16.4 What IS salvageable
+
+- **IMPALA+Nature, adv2 arm, 24/24 games: geomean 994,596** (mean 1,002,852;
+  ProcGen16 982,087 / ALE8 1,020,093). Reproduces adv1 to 0.3%, so the node is
+  sound. This is a valid adv2 reference row.
+- Nothing else. tier3 Nature is confounded, ICNN is 14/18 zeros, PPO never ran.
+
+### 16.5 Recommendation
+
+Cancel 44515752 and redesign before resubmitting:
+1. **Alternate arm order per game.**
+2. **Restart MPS between games** (or go back to a Slurm array, one task per
+   game, which is the only form empirically shown to survive 24 ICNN games).
+3. **Budget realistically**: at 16:55/game a single 24-game ICNN row is 6.8 h.
+   Four rows x 2 arms does not fit one allocation. Either drop the adv2 arm on
+   the three expensive rows (keeping it only on Nature, which is cheap at
+   4:25/game) or accept rows on different nodes and record them.
+4. Consider a shared `TORCHINDUCTOR_CACHE_DIR` so max-autotune is compiled once
+   and reused across processes — untested, but it would cut ~11 min/game
+   without touching the measured configuration.
