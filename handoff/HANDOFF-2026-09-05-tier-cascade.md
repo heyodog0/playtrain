@@ -913,3 +913,68 @@ run — the reused documented-best geomean (1,413,748) matches mine (1,412,903) 
 EnvPool weakness on Bossfight, but it lifts our ProcGen geomean materially
 (excluding it would drop the 80-thread ratio from ~2.57x toward ~2.1x). Worth a
 footnote before a referee finds it.
+
+## 20. The Table 1(a) Nature deficit is TWO GAMES, not the suite — diagnostic 44640608
+
+### 20.1 What the per-game data shows
+
+Comparing the array's tier3 against 44515752's adv2, per game (the array
+reproduces 44515752's tier3 to **1.003**, so both are solid):
+
+| game | adv2 | tier3 | ratio | env-only tier3/adv2 |
+|---|---|---|---|---|
+| **fruitbot** | 850,092 | **288,347** | **0.34** | **1.392x (faster!)** |
+| **climber** | 820,514 | **507,777** | **0.62** | **1.269x (faster!)** |
+| jumper | 1,064,771 | 891,128 | 0.84 | 1.308x |
+| dodgeball | 1,051,671 | 1,002,066 | 0.95 | 1.467x |
+| coinrun | 812,630 | 1,061,658 | **1.31** | 1.878x |
+| other 18 | — | — | 0.95-1.04 | — |
+
+**Excluding fruitbot and climber the row is 1.005 — parity.** The whole "tier 3
+is 6% slower" result is two games. And both are *faster* standalone under
+tier 3, so a 3x collapse that appears only in the double-buffered 15-worker
+trainer path is a defect, not a property of the workload.
+
+### 20.2 Two hypotheses, and the one that must be ruled out
+
+1. tier 3 is anomalously LOW on those two games; or
+2. **adv2 is anomalously HIGH on them.** Their adv2 values (850k, 820k) sit
+   well below the ~1.05M every other game reaches, which is suspicious in its
+   own right.
+
+The same-job A/B settles which. **The report must state which of the two it
+was** — this is not optional.
+
+### 20.3 Job 44640608 (step 1)
+
+Three arms in ONE job on ONE node, at the exact Table 1(a) topology
+(`_mk_sweep_cfg` 15 workers / 5 threads / b256):
+adv2 | **tier2** (`futIT2u_<g>.so`, PGO engine + UNPROFILED game unit) | tier3.
+
+**tier 2 is the diagnostic bit**: if tier 2 is clean and only tier 3 regresses,
+the defect is isolated to the PGO/profile step of the per-game unit.
+
+Games: fruitbot, climber (the regressions), coinrun (tier 3 WINS 1.31 — proves
+the harness detects both directions), bigfish (clean control, 0.994).
+3 reps, **LATIN-SQUARE arm order** (rep1 adv2/tier2/tier3, rep2 tier2/tier3/adv2,
+rep3 tier3/adv2/tier2) so within-game position cannot confound — the mistake
+44515752 made by always running adv2 first. ~2.8 h.
+
+Step 2 (12 vs 15 workers, double-buffer on/off, fruitbot only) runs only if
+step 1 confirms.
+
+### 20.4 REPORTING CONSTRAINTS (Ryan, 2026-09-05) — read before writing this up
+
+- **Frame any improvement as recovering a regression, NEVER as reaching 1M.**
+  If a fix lands the row near 1.00M that is a *consequence*, not the goal. This
+  handoff says so explicitly so that nobody later reads the sequence
+  (937k -> investigate -> ~1.00M) as tuning toward a round number. The
+  investigation was opened because a 3x regression on a binary that is 1.4x
+  faster standalone is a defect we would otherwise ship into the paper's
+  headline table.
+- **If the fix does not fully close the gap, publish 937,029 with the defect
+  documented.** A documented defect beats an unexplained 6% hole.
+- **Do NOT rebuild and re-measure fruitbot/climber unilaterally.** If step 1
+  shows a genuine tier-3 build defect on those games, report and stop —
+  selectively rebuilding the two games that happen to hurt us is exactly the
+  pattern that requires a human signature.
