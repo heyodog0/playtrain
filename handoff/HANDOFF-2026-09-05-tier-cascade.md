@@ -163,6 +163,18 @@ That is why the array form was not reused here.
   binary. The ProcGen/ALE baselines are unaffected. Do not carry those two
   per-game QuickJS values forward; take them from 44515373, which runs the
   live dir.
+  **Games-dir resolution was verified for all five jobs, and every PlayTrain
+  arm reads the LIVE tree** — i.e. the current maze and freeway. 44515188 and
+  44515373 pass the live path explicitly; the trainer jobs get it from the
+  as-run configs' `vec_games_dir` / `native_games_dir`
+  (`../playtrain/examples/games/js`, relative to the process CWD, which is
+  analogen-jaxbench for Table 1(a) and playtrain-trainers for the swap rows —
+  both land on the live tree). `bench_train_suite.py` / `bench_ppo_suite.py`
+  overwrite only `cfg["game"]`, never the dir. Note `suite_mps_adv.sbatch`
+  exports `NODE_GYM_GAMES_DIR=$(pwd)/games/js`; that dir holds only the
+  `analogen_*` research games and the string appears nowhere in the playtrain
+  source, so the export is inert and was inert for the adv1 runs too. It is not
+  set in `tier3_table1a.sbatch`. All templates carry `frame_skip: 1`.
 - **serial_requeue can requeue 44515188.** If it restarts, the whole job
   re-runs from scratch on a possibly different node; that is fine (both arms
   restart together) but check the node line before using the absolutes.
