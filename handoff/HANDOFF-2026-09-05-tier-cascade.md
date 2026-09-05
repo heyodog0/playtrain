@@ -146,6 +146,23 @@ That is why the array form was not reused here.
   dir and additionally runs adv2 on the node-gym dir for all 24, so the
   published-protocol absolutes stay bridgeable and the size of the discrepancy
   is measured rather than assumed.
+  **Which copy is current: the LIVE tree's, for both.** Live maze/freeway are
+  dated 2026-08-24/25 and are byte-identical to repo `main`
+  (maze `004b673f…`, freeway `b240938e…`, history `817082d` / `a69ea3c` /
+  `e116b04`); node-gym-smoke's are 2026-07-12, from its single "initial commit",
+  with no later commit touching either. The diffs are gameplay, not cosmetics:
+  maze now samples the maze size per level (9-21, centred in a fixed world) to
+  reproduce ProcGen's curriculum, picks the goal uniformly among open cells
+  rather than at max BFS distance, and forbids diagonal movement — that is the
+  change that put the random baseline at 41% against real ProcGen's 44%;
+  freeway moved to ALE's model (one life, a collision knocks you back one lane
+  instead of ending the run) with slower, sparser cars (1.0-3.0 and 1-2 per
+  lane, was 1.5-5.0 and 1-3). Both also change per-step cost, so **the
+  published AND the adv1 panel-C/ladder QuickJS numbers for maze and freeway
+  were measured against superseded games** — a staleness independent of the
+  binary. The ProcGen/ALE baselines are unaffected. Do not carry those two
+  per-game QuickJS values forward; take them from 44515373, which runs the
+  live dir.
 - **serial_requeue can requeue 44515188.** If it restarts, the whole job
   re-runs from scratch on a possibly different node; that is fine (both arms
   restart together) but check the node line before using the absolutes.
