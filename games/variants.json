@@ -1,4 +1,15 @@
 {
+  "asteroids.dash": {
+    "base_root": "asteroids",
+    "created": "2026-09-03T15:26:19",
+    "duration_s": 107.62,
+    "log": "20260903-152619_asteroids.dash_variant.json",
+    "model": "pro",
+    "parent": "asteroids",
+    "physics": null,
+    "prompt": "can you let the blue space ship dash by double tapping the directional buttons.",
+    "strategy": "rewrite"
+  },
   "breakout.multi": {
     "base_root": "breakout",
     "created": "2026-07-25T09:08:11",
@@ -152,6 +163,17 @@
     "physics": null,
     "prompt": "can u try to make this a bit more 2.5D ish but still be faithful",
     "strategy": "patch"
+  },
+  "frostbite.v2": {
+    "base_root": "frostbite",
+    "created": "2026-09-03T15:20:52",
+    "duration_s": 143.92,
+    "log": "20260903-152052_frostbite.v2_variant.json",
+    "model": "pro",
+    "parent": "frostbite.jungle",
+    "physics": null,
+    "prompt": "add in a fish and bird element in this game, but make sure it is stylized properly like the rest of the game (this is jungle stuff)",
+    "strategy": "rewrite"
   },
   "jetpack_joyride.spaceship-viz": {
     "base_root": "jetpack_joyride",

@@ -47,3 +47,12 @@ outputs/
 # Vercel CLI project link (contains project/org ids, not secrets)
 .vercel/
 .vercel
+
+# Project page build output (website/build.sh)
+website/site/
+
+# Trained-policy checkpoints pulled from FASRC to render the header rollouts.
+# The working copies live one level up (../checkpoints, ../checkpoints_ppo, both
+# outside any repo); these entries cover the case of copying them in here.
+checkpoints/
+checkpoints_ppo/

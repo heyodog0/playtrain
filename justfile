@@ -254,3 +254,13 @@ sync-analogen:
 ci:
     just validate
     just bench
+
+# === project page (website/) ===
+
+# Build the project page + playable games into website/site/ (what playtrain.org serves).
+site:
+    bash website/build.sh
+
+# Build and serve it on http://127.0.0.1:8000
+site-serve:
+    bash website/build.sh serve

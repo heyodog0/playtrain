@@ -493,6 +493,9 @@ function draw() {
 
   const L = ladderAt(player);
   const up = keyIsDown(38), down = keyIsDown(40), lf = keyIsDown(37), rt = keyIsDown(39), jump = keyIsDown(32);
+  const jumpNewlyPressed = jump && !player.lastJump;
+  player.lastJump = jump;
+
   if (lf) player.facing = -1; else if (rt) player.facing = 1;
   const cols = activeBlocks();
 
@@ -524,6 +527,20 @@ function draw() {
     const wasSup = player.supported;
     if (player.supported) { let t = 0; if (lf) t = -WALK_SPEED; if (rt) t = WALK_SPEED; player.vx = t; }
     if (jump && player.supported) { player.vy = JUMP_V0; player.supported = false; }
+
+    if (!wasSup && !player.supported && jumpNewlyPressed) {
+      let touchDir = 0;
+      player.x -= 2; for (const b of cols) if (AABB(player, b)) touchDir = -1; player.x += 2;
+      if (touchDir === 0) {
+        player.x += 2; for (const b of cols) if (AABB(player, b)) touchDir = 1; player.x -= 2;
+      }
+      if (touchDir === -1 && lf) {
+        player.vy = JUMP_V0; player.vx = WALK_SPEED; player.facing = 1;
+      } else if (touchDir === 1 && rt) {
+        player.vy = JUMP_V0; player.vx = -WALK_SPEED; player.facing = -1;
+      }
+    }
+
     player.vy += GRAVITY; if (player.vy > FALL_MAX) player.vy = FALL_MAX;
 
     player.x += player.vx;

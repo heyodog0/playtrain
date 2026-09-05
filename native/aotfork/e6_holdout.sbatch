@@ -27,7 +27,9 @@ export PATH="$HOME/.cargo/bin:/n/home06/truong/.local-node/bin:$PATH"
 export PYTHONPATH="$TR/src:$WE/src" OMP_NUM_THREADS=1
 echo "node=$(hostname) kernel=$(uname -r) job=${SLURM_JOB_ID:-none}"; lscpu | grep "Model name" | head -1
 cd "$WE" || exit 1; git log --oneline -1
-OUT=$WE/native/aotfork/out; GDIR=$LIVE/examples/games/js
+# GDIR is the ENGINE worktree's games dir: aim_trainer is not in the live tree and flappy_bird /
+# qbert.v2 differ there; the AOT unit embeds the source FNV, so build and bench must share one dir.
+OUT=$WE/native/aotfork/out; GDIR=$WE/examples/games/js
 HOLD="aim_trainer breakout.multi downwell_fresh flappy_bird flappy_bird.dunk2 frostbite.jungle jump_king qbert.v2 vvvvvv"
 JOB="${SLURM_JOB_ID:-x}"; OUTD="$OUT/e6hold_$JOB"; mkdir -p "$OUTD"
 RA_PGO=$OUT/libplaytrain_rasterizer.a.rustpgo_adv; RA_PLAIN=$WE/crates/rasterizer/target/release/libplaytrain_rasterizer.a
