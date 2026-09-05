@@ -516,7 +516,19 @@ Suggested replacement for 542:
 > $\approx$20$\times$ advantage is a constant factor rather than a scaling
 > effect.
 
-Drop "which is remarkable" (HANDOFF-2026-09-04 §2).
+**"which is remarkable" STAYS — Ryan's advisor wants it (2026-09-05).** Do not
+re-cut it; the 09-04 checklist entry is superseded. The objection was never the
+sentiment, only that the referent was ambiguous and the word asserted a reaction
+instead of earning one. Fix by giving it a subject: attach it to *our JS scaling
+where hand-written C++ does not*, NOT to *EnvPool flattening* — the latter reads
+as an attack on the baseline and invites "you misconfigured it".
+
+Attaching it to the SCALING sentence is also the defensible placement given the
+open build-provenance asymmetry (HANDOFF-2026-09-04 §4.5: tier 3 is a
+PGO/-march binary, EnvPool runs its generic manylinux wheel). That asymmetry
+moves absolute throughput, so 2.58x is contestable; it does NOT move scaling
+efficiency, since a faster binary lifts the curve without changing its slope.
+Use once per paragraph — twice reads as pleading.
 
 ### 14.2 Line 540's explanation is now demonstrable, and needs a second clause
 
