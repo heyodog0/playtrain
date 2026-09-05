@@ -165,17 +165,43 @@ def _spawn(game: Path, d: Path, tc: Toolchain, want: int) -> None:
     d.mkdir(parents=True, exist_ok=True)
     lock, failed = d / ".building", d / "FAILED"
     now = time.time()
-    if lock.exists() and now - lock.stat().st_mtime < _STALE_LOCK_S:
+    if _lock_live(lock):
         return
     if failed.exists() and now - failed.stat().st_mtime < _RETRY_FAILED_S:
         return
     logf = open(d / "build.log", "ab")  # noqa: SIM115 — inherited by the detached child
-    subprocess.Popen([sys.executable, "-m", "playtrain.runtime.aot_cache", str(game), str(d), str(want)],
+    # A detached session so a Ctrl-C to the trainer does not kill it; under Slurm the
+    # job's cgroup still reaps it when the job ends (a stale lock is then detected by pid).
+    subprocess.Popen([sys.executable, "-c", "from playtrain.runtime.aot_cache import _main; _main()",
+                      str(game), str(d), str(want)],
                      stdin=subprocess.DEVNULL, stdout=logf, stderr=subprocess.STDOUT,
                      start_new_session=True, close_fds=True, cwd=str(_AOTFORK),
                      env={**os.environ, "PLAYTRAIN_AOT_FORK_OUT": str(tc.fork_out)})
     logf.close()
     log.info("engine-tier: building tier %d for %s in the background (%s)", want, game.name, d)
+
+
+def _lock_live(lock: Path) -> bool:
+    """True if ``lock`` exists, is fresh, and its builder pid is still alive."""
+    try:
+        st = lock.stat()
+    except FileNotFoundError:
+        return False
+    if time.time() - st.st_mtime > _STALE_LOCK_S:
+        return False
+    try:
+        pid = int(lock.read_text().strip() or 0)
+    except (OSError, ValueError):
+        return True
+    if pid <= 0:
+        return True
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
 
 
 # ---------------------------------------------------------------- the builder ----
@@ -191,11 +217,12 @@ def build(game: Path, d: Path, tc: Toolchain, want: int) -> None:
     lock = d / ".building"
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
         os.close(fd)
     except FileExistsError:
-        if time.time() - lock.stat().st_mtime < _STALE_LOCK_S:
+        if _lock_live(lock):
             raise RuntimeError("another builder holds the lock")
-        lock.touch()
+        lock.write_text(str(os.getpid()))
     try:
         _build_locked(game, d, tc, want)
         (d / "FAILED").unlink(missing_ok=True)
@@ -264,11 +291,15 @@ print(f"profiled {n * 128:,} steps in {time.time() - t0:.0f} s", flush=True)
 env.close()
 """
 
-if __name__ == "__main__":
-    _game, _d, _want = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
-    _tc = toolchain()
-    if _tc is None:
+def _main() -> None:
+    game, d, want = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
+    tc = toolchain()
+    if tc is None:
         sys.exit("toolchain unavailable")
-    print(f"== {time.ctime()} build tier {_want} for {_game} -> {_d}", flush=True)
-    build(_game, _d, _tc, _want)
+    print(f"== {time.ctime()} pid {os.getpid()} build tier {want} for {game} -> {d}", flush=True)
+    build(game, d, tc, want)
     print(f"== {time.ctime()} done", flush=True)
+
+
+if __name__ == "__main__":
+    _main()
