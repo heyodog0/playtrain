@@ -313,3 +313,36 @@ regenerate both `_EXPECTED_*` tables. The new per-trial raw is
 `analogen-jaxbench/outputs/tier3_pcd_44515373/raw_panelc.txt` (format:
 `arm game trial steps_per_s`; take the `tier3` rows) and `raw_ladder.txt`.
 The ProcGen/ALE baseline JSONs do not change.
+
+## 11. Where the Fig 4A data is, for regenerating the figure
+
+Three different things live in three places; the `ab_pt_*` glob only matches the
+OLD published run, which is why searching for it finds nothing new.
+
+| what | where |
+|---|---|
+| **new tier3 + adv2 per-trial raw** | `analogen-jaxbench/outputs/tier3_fig4a_44515188/` — 432 files `<game>_<arm>_w<W>_r<R>.json`, each a 1-element list with `workers` / `decisions_per_s`. arm in {adv2, tier3}, W in {2,4,8,16}, R in {1,2,3} |
+| **new data in `ab_` schema** (generated 2026-09-05, ready for `load_scaling`) | `analogen-jaxbench/outputs/tier3_ab_44515188/` — 48 files, `ab_pt_<game>_44515188.json` (tier3) and `ab_ptadv2_<game>_44515188.json` (adv2), 24 games each, medians over trials, 4 thread points |
+| **old published panel-A A/B run** | `playtrain-trainers/results/ab_{pt,ep}_<game>_38145651.json` (ProcGen16) and `_39032276.json` (ALE8) — superseded, but the only per-game EnvPool arm in `ab_` schema |
+
+**The fastest path is not `load_scaling` at all.** The adv-era panel A was
+already redesigned and lives in `handoff/fig_preview_2026-09-03/plot_4a_adv.py`
+(plus `plot_env_efficiency_2arm.py` / `plot_env_efficiency_bestonly.py` for the
+two treatments in §4 decision 1). Those scripts **hardcode the curves in a
+`DATA` dict** — no file loading. Updating to tier 3 is a two-line edit:
+
+```python
+"procgen": {"PlayTrain": [453493, 909788, 1812814, 3642545], ...}
+"ale":     {"PlayTrain": [918228, 1827240, 3645279, 7355750], ...}
+```
+
+Both EnvPool rows stay exactly as they are — binary-independent, not re-measured:
+ProcGen documented-best `[355451, 587070, 931786, 1413748]`, as-shipped
+`[178217, 278042, 417106, 468997]`; ALE documented-best `[45662, 89285, 177869,
+350601]`, as-shipped `[38478, 73884, 141421, 238829]`.
+
+Ratio per thread point under tier 3 — ProcGen **1.28 / 1.55 / 1.95 / 2.58x**,
+ALE **20.1 / 20.5 / 20.5 / 21.0x**. ProcGen climbs because EnvPool flattens;
+ALE is flat because both scale, PlayTrain just starts 20x up.
+
+`plot_env_efficiency.py`'s panels (b)-(d) are a separate pipeline — see §10.7.
