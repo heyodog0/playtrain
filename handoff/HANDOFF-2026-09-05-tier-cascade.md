@@ -13,6 +13,102 @@ as an in-job reference arm**, so tier3/adv2 ratios are same-node by
 construction even though absolutes depend on where each job landed. Record the
 node with every absolute — the node is printed as the first line of each log.
 
+## 0. READ THIS FIRST — a shipping defect, found 2026-09-05
+
+*Self-contained; no prior context needed. Details and job ids are in §20-34.*
+
+**Background in three sentences.** PlayTrain runs its game environments on a
+QuickJS engine. On 2026-09-04 an "engine tier" was adopted: each game's
+JavaScript is compiled ahead of time to C and linked into a per-game shared
+library — **tier 2** (compiled, unprofiled) and **tier 3** (compiled + PGO) —
+selected automatically at load time. The previous build, a plain interpreter,
+is called **adv2** throughout this document.
+
+### 0.1 The defect
+
+**Under double-buffered sampling the tier binaries run the environment ~6x
+SLOWER than adv2, on every one of the 24 games.** Verified env-only on CPU,
+with no trainer and no GPU (job 44649737):
+
+| game | mode | adv2 | tier3 | tier3/adv2 |
+|---|---|---|---|---|
+| fruitbot | sync | 102,923 | 146,992 | **1.43** |
+| fruitbot | **double-buffer** | 61,265 | **8,735** | **0.14** |
+| bigfish | sync | 673,618 | 799,294 | **1.19** |
+| bigfish | **double-buffer** | 362,562 | **61,198** | **0.17** |
+
+### 0.2 Why this is a shipping problem, not just a paper problem
+
+`PingPongVecEnv` — the class that implements double-buffering — calls
+`resolve_lib()` at **`src/playtrain/runtime/native_vec_env.py:483`**, so it
+receives the tiers **by default, with no opt-in**. Double-buffering is the
+recommended training configuration and is worth **+38%** (adv2 617,666 ->
+850,212). Anyone who trains with the recommended config on adopted `main`
+therefore gets a ~6x slower environment on every game, silently. It is gated by
+no flag and no environment variable; only passing an explicit `lib_path` or
+setting `PLAYTRAIN_AOT=off` avoids it.
+
+**Three options (Ryan's call, no recommendation made here):**
+1. revert the adoption;
+2. gate `resolve_lib` so the ping-pong/group path falls back to the stock build;
+3. fix the fork host.
+
+**This blocks anything further being built on the tier adoption.**
+
+### 0.3 Scope — the tier work is NOT invalid
+
+Sync-path AOT is genuinely **1.19-1.43x faster** and everything measured through
+it stands. Only double-buffered outputs are affected, and **Table 1(a) is the
+only one in the paper**.
+
+| output | path | status |
+|---|---|---|
+| Fig 4A, all 7 thread points | sync (`NativeVecEnv`) | **unaffected** |
+| Panel C / D (single-core hosts) | standalone host | **unaffected** |
+| Panel B (backend ladder) | standalone host | **unaffected** |
+| Table 1(b), both swap rows | single-buffered | **unaffected** (tier3 1.205 / 1.089) |
+| **Table 1(a), four rows** | **double-buffered** | **affected** |
+
+### 0.4 Where the fault is, and a 10-second reproduction
+
+- **tier 2 and tier 3 regress identically** (0.308 vs 0.300 on fruitbot). They
+  differ only in whether the game unit is PGO-profiled, so **the fault is
+  upstream of AOT compilation** — it is in what both share and adv2 does not:
+  **`native/aotfork/qjs_vec_host_fork.cpp`**.
+- The **sync** entry point (`vec_create` / `worker_loop`) is fine. The
+  **async/group** entry point (`vec_create_async` + `vec_set_group_mode` +
+  `worker_async`) is broken.
+- **Repro: `~/pp_driver.py` on any CPU node, ~10 s, no GPU, no trainer.**
+- **Already excluded:** `vec_send` does bump `send_gen` and call `wake_parked`
+  with a correct lock/notify handshake, so this is *not* a plain missed wakeup.
+  Start after that, not before it.
+- **Prior art:** the `default_threads()` comment in that same file records an
+  oversubscribed spin barrier collapsing throughput **~70x** (job 30281357).
+  This host degrades catastrophically rather than gracefully under scheduling
+  pressure, which fits the observed 2.09x window-to-window swings far better
+  than any memory-pressure explanation.
+
+### 0.5 How this reached the headline table — the validation gap
+
+**Every gate exercised the sync path. The fork host's async entry point was
+never run at all.** Checksum 24/24, gate 198/198, the 9-game holdout, all of
+Fig 4A, panels B/C/D — every one uses `vec_create` / `NativeVecEnv`.
+`vec_create_async`, `vec_set_group_mode` and `worker_async` have no coverage
+anywhere in the adoption evidence.
+
+This is the version that belongs in the paper's methodology or limitations
+section, because it names an untested function rather than a vague gap.
+
+### 0.6 Why Table 1(a) appeared to have only two bad games
+
+The learner caps that row at ~1.05M agent-steps/s. Per-worker double-buffered
+rates x 15 workers: bigfish tier3 61,198 x 15 = 918k, still near the ceiling, so
+the row reads a healthy 0.994. fruitbot tier3 8,735 x 15 = 131k, far below it,
+so that row collapses. **The 19 games reading 0.95-1.04 are masked, not
+healthy** — all of them are stepping ~6x slower than they should.
+
+---
+
 ## 1. Jobs
 
 | job | measures | partition / node it landed on | arms | wall |
