@@ -127,6 +127,11 @@ browser playtesting, which never touches the `.so`).
 
 ## 5. What is NOT done
 
+(Round 6 additions, 2026-09-04 night: the E3 intrinsic build `futIT2_<g>` /
+`host_f1IT2_<g>` / `forkI24.profdata` is the new engine-tier head; every item
+below now applies to it. Packaging gains one more piece: the qjsc `-P` list and
+the two host wrapper blocks (`aot_intr_list.h` is the single source).)
+
 - **17402 confirm** for absolutes (Fig 4A y-axis), if adopted. Ratios are
   done. Do not race the pinned chain there.
 - **Re-cut adv from a tree containing ef74835** so the bit-exact baseline is
@@ -151,7 +156,7 @@ browser playtesting, which never touches the `.so`).
 
 ## 5b. Next round
 
-**Round 6 status (2026-09-04 evening):** E0 (profile futT2) is done — job
+**Round 6 status (2026-09-04 night): E3 BANKED — futIT2/futT2 1.154× all-24, futIT2/adv 1.500× all-24 / 1.561 PG16 / 1.387 ALE8, panel C 1.629× (job 44482682); every game ≥ 1.035; gate 198/198; checksum24 clean. Cumulative engine tier = L1 + E3. Details:** E0 (profile futT2) is done — job
 44449147, tables in `tuning_notes.md` § "ROUND 6"; E1 as specified is
 killed before build (its bucket is ~2%); E3 (p5 + Math.* intrinsics) built and
 probed at **1.20× geo-5 over the same-engine control, untuned** (job 44468624,

@@ -1547,3 +1547,104 @@ Sizing what remains, for the next levers:
   (arith slow paths 7.3%) and heist (6.1%); the other games are ≤ 2.9%.
 - `lt`/`mul` on maze (4.1 / 2.9%, 100% inline fast path) are register
   pressure, not tag checks: E2, not E1.
+
+### E3 BANKED (job 44482682, holy8a24303 genoa exclusive, 2026-09-04 19:50–20:11)
+
+§4 banked protocol, identical to job 44439298 (L1): 16 workers × 128 envs ×
+5 env threads, all 24 games, 300-step window (20 warmup), QJS_DIRTY=1 on
+every arm, 3 interleaved trials, arms by explicit --lib-path: adv
+(b3709b39, md5 verified) / futT2 (L1 banked) / futIT2 (E3, job 44473809
+artifacts, futIT2_miner e9ce216e). 216/216 runs, 0 RUN_FAIL. Unpinned
+(holy8a24303): ratios are same-job; absolutes are not 17402 numbers.
+
+    game                  adv     futT2    futIT2  T2/adv  IT2/adv  IT2/T2  n
+    bigfish           8592843   9620188  10149133   1.120   1.181   1.055  3
+    bossfight         6874143   9352473  10150836   1.361   1.477   1.085  3
+    caveflyer         1329046   2100473   2641730   1.580   1.988   1.258  3
+    chaser            1406990   1970226   2289023   1.400   1.627   1.162  3
+    climber           1116756   1341172   1407319   1.201   1.260   1.049  3
+    coinrun           1100067   1840598   2094089   1.673   1.904   1.138  3
+    dodgeball         1660628   2172634   2356194   1.308   1.419   1.084  3
+    fruitbot           907197   1188420   1281947   1.310   1.413   1.079  3
+    heist             2319552   3645741   5210379   1.572   2.246   1.429  3
+    jumper            1530036   1825706   1994415   1.193   1.304   1.092  3
+    leaper            2045144   2660079   2796512   1.301   1.367   1.051  3
+    maze              1315277   1907241   3041822   1.450   2.313   1.595  3
+    miner              822044   1246104   1707634   1.516   2.077   1.370  3
+    ninja             8483058   9691437  10333358   1.142   1.218   1.066  3
+    plunder           9919483  12194758  14014731   1.229   1.413   1.149  3
+    starpilot         5361966   6528406   7401660   1.218   1.380   1.134  3
+    asteroids         5257504   5932294   6142106   1.128   1.168   1.035  3
+    breakout          3023877   4650294   5809382   1.538   1.921   1.249  3
+    freeway          10275772  12328980  13679768   1.200   1.331   1.110  3
+    frostbite         4902616   5243301   5732641   1.069   1.169   1.093  3
+    pong             21657240  25422248  28010773   1.174   1.293   1.102  3
+    qbert             1076382   1265341   1565284   1.176   1.454   1.237  3
+    seaquest          8520323  10392433  11451595   1.220   1.344   1.102  3
+    space_invaders    4000125   5412621   6196382   1.353   1.549   1.145  3
+    geomean-pg                                      1.339   1.561   1.166
+    geomean-ale                                     1.225   1.387   1.132
+    geomean-all                                     1.300   1.500   1.154
+    sum-of-medians adv        113498069
+    sum-of-medians futT2      139933168
+    sum-of-medians futIT2     157458713
+
+    PANEL C single-core ProcGen16 (steps/s, medians of 3)
+    game                 adv      f1T2     f1IT2    f1T2/adv   f1IT2/adv  f1IT2/f1T2
+    bigfish           145975    163463    170223       1.120       1.166       1.041
+    bossfight         105663    141367    156605       1.338       1.482       1.108
+    caveflyer          19654     31299     38945       1.593       1.982       1.244
+    chaser             17637     25663     30073       1.455       1.705       1.172
+    climber            14824     18449     19010       1.245       1.282       1.030
+    coinrun            12483     21138     24592       1.693       1.970       1.163
+    dodgeball          23395     30028     34532       1.284       1.476       1.150
+    fruitbot           13673     18075     19510       1.322       1.427       1.079
+    heist              29567     47780     69812       1.616       2.361       1.461
+    jumper             19661     23743     25904       1.208       1.318       1.091
+    leaper             49086     63622     75285       1.296       1.534       1.183
+    maze               18080     28853     47460       1.596       2.625       1.645
+    miner              11197     18714     27235       1.671       2.432       1.455
+    ninja             120294    138139    146874       1.148       1.221       1.063
+    plunder           157341    200277    236885       1.273       1.506       1.183
+    starpilot          74362     94015    105365       1.264       1.417       1.121
+    geomean-PG16                                       1.370       1.629       1.189
+    sum-of-medians adv            832892
+    sum-of-medians f1T2          1064625
+    sum-of-medians f1IT2         1228310
+
+**E3 VERDICT: BANKED at 1.154x all-24 / 1.166x ProcGen16 / 1.132x ALE8
+over futT2 (L1 banked), 1.189x panel C; every game ≥ 1.035; gate 198/198
+× 3 seeds bit-exact; checksum24 identical to stock ng.** Bank threshold
+(+3% all-24) cleared by 5x; tuned-vs-tuned, PGO re-collected. Same-job
+L1 column reproduces 44439298 to 0.3% (1.300 vs 1.297). Cumulative engine
+tier over adv, banked: **1.500x all-24 / 1.561x ProcGen16 / 1.387x ALE8,
+panel C 1.629x** (maze 2.31/2.63, heist 2.25/2.36, miner 2.08/2.43,
+caveflyer 1.99/1.98, breakout 1.92 vec). Paper effect if adopted (ratios
+only; 17402 confirm needed for absolutes): Fig 4A ProcGen 1.64x → ~2.6x
+tuned EnvPool, ALE ~15x → ~21x; panel C x1.63 over adv. Adoption remains
+Ryan's decision (PLAN-engine-tier §7 #1, now with E3 folded in) — E3 is
+inside the fork lineage, so it does not change that decision's shape, only
+its size.
+
+### ROUND 6 summary table (lever × geomean-5 vec × all-24 vec × panel-C PG16 × gate)
+
+    lever                                         geo-5 vec   all-24 vec       panel-C PG16   gate
+    E0 profile futT2 (job 44449147)               —           —                —              —       (AOT residual 30–35, refcount 6–20, fields 22/15/9, calls 7–22, arith 1.5–6)
+    E1 type-feedback specialization               KILLED pre-build: ceiling ≈ 2% (slow-path bucket); survives as E1-lite (f64 compares), unbuilt
+    E3 p5+Math intrinsics, untuned (futI/futN)    1.204       (7 games 1.208)  1.239 (5, sc)  198/198 (job 44468624)
+    E3 tuned (futIT2/futT2)                       1.270       1.159            1.276 (5, sc)  198/198 (job 44473809)
+    E3 BANKED (futIT2/futT2)                      —           1.154 (bank)     1.189          —       (job 44482682)
+    E3 BANKED vs adv (futIT2/adv)                 —           1.500 (bank)     1.629          —
+    E2 operand stack → locals                     not run (next; re-profile 44483163 sizes it at 7–26% + put_loc_check 9–11%)
+    E4 refcount elision                           not run (inside E2)
+    E5 NaN-boxing                                 not run
+    E6 packaging / tier-2 arm / adv re-cut         not run
+    field IC probe (not a §5 lever)               not run; fields = 28.6% of breakout after E3 — strongest probe case in the round; Ryan's call
+
+Decision list for Ryan (adds to PLAN-engine-tier-round6 §7): (1) adopt the
+fork with E3 (1.50x all-24 over adv, bit-exact, 39 intrinsic names, one
+patch on the pinned fork + 2 host wrappers per host)? (2) spend a day on
+the field-IC probe (breakout/plunder/bigfish/coinrun are the only games it
+touches)? (3) framing: E3 is "the compiler knows the p5 API" — is that
+still "plain JS that runs fast"? (It is exact and guarded, and a game that
+shadows a p5 name simply runs the generic path.)

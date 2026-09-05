@@ -1,6 +1,6 @@
 # PLAN — Engine tier, round 6: what `qjsc -A` leaves on the table
 
-**Written 2026-09-04 (end of round 5). Status: IN PROGRESS — E0 done (§0b), E1 killed pre-build, E3 tuned = 1.159x all-24 over futT2 / 1.502x over adv (job 44473809, gate 198/198, checksum24 clean); banked run 44482682 queued; then re-profile futIT2 and E2.**
+**Written 2026-09-04 (end of round 5). Status: IN PROGRESS — E0 done (§0b), E1 killed pre-build, E3 BANKED 1.154x all-24 over L1 / 1.500x over adv (job 44482682), futIT2 re-profiled (job 44483163); next = E2 (with E1-lite), field-IC probe if Ryan wants it, E6.**
 Round 5 banked L1 (Futamura AOT via the ivankra fork's `qjsc -A`) at
 **1.297× all-24 / 1.335× ProcGen16 / 1.223× ALE8 over adv** at the published
 topology, 1.377× panel C, bit-exact, checksum-clean — see
@@ -75,9 +75,12 @@ own JSCFunction directly (same arguments, same `this`) through a per-name
 wrapper, guarded by the callee object's identity; exact by construction, no
 argument-type guard needed. Also covers `Math.floor/abs/ceil/sqrt/pow/sin/
 cos/atan2/hypot` through `call_method`. Probe: futI/futN 1.204 geo-5 vec,
-1.239 single-core, gate 198/198, checksum24 clean. **Tuned (job 44473809):
-futIT2/futT2 1.159 all-24 / 1.169 PG16 / 1.141 ALE8, every game ≥ 1.01;
-futIT2/adv 1.502 all-24.** Banked run = job 44482682.
+1.239 single-core, gate 198/198, checksum24 clean. Tuned (job 44473809):
+futIT2/futT2 1.159 all-24. **BANKED (job 44482682, 16×128×5, 24×3):
+futIT2/futT2 1.154 all-24 / 1.166 PG16 / 1.132 ALE8, panel C 1.189;
+futIT2/adv 1.500 / 1.561 / 1.387, panel C 1.629.** Re-profile of futIT2
+(job 44483163): fields 28.6% on breakout, `put_loc_check` 9–11% on the
+grid games, call machinery down to 0.7–3.3%. E2 is measured against futIT2.
 
 ## 1. Already measured — do NOT re-derive (adds to PLAN-engine-tier §1)
 
