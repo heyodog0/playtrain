@@ -212,3 +212,104 @@ fasrc 'A=/n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/logs; tail -80
 fasrc 'A=/n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/logs; tail -60 $A/tier3_table1a_44515752.out'
 fasrc 'A=/n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/logs; tail -50 $A/tier3_pg_ab_*.out $A/tier3_ale_ab_*.out'
 ```
+
+---
+
+## 10. RESULTS — the two CPU jobs are DONE and these numbers are final
+
+44515188 COMPLETED in 20:53 on holy8a28510 (432/432 runs).
+44515373 COMPLETED in 35:03 on holy8a32608 (504 + 144 raw lines).
+
+**Validation first: the adv2 reference arm reproduces the adv1 cascade**, so the
+unpinned nodes matched the class and every reused baseline is valid.
+
+| quantity | adv1 (HANDOFF-2026-09-04 §1) | adv2 here | agreement |
+|---|---|---|---|
+| Fig 4A ProcGen16 curve | 290,228 / 582,092 / 1,161,420 / 2,325,995 | 291,016 / 582,548 / 1,162,569 / 2,331,893 | within 0.3% |
+| Fig 4A ALE8 @80 | 5,308,537 | 5,308,804 | within 0.01% |
+| Panel C geomean / arith / wins | 1.35 / 1.87 / 10 of 16 | 1.341 / 1.831 / 10 of 16 | exact |
+| Panel D (6-game protocol) | 8.1x | 8.20x | 1.2% |
+| Ladder QuickJS rung | 37,350 | 37,850 | 1.3% |
+
+### 10.1 Figure 4A — env-only scaling, geomean env steps/s at 10/20/40/80 threads
+
+| arm | ProcGen16 | ALE8 @80 |
+|---|---|---|
+| **PlayTrain tier3** | **453,493 / 909,788 / 1,812,814 / 3,642,545** | **7,355,750** |
+| PlayTrain adv2 (reference) | 291,016 / 582,548 / 1,162,569 / 2,331,893 | 5,308,804 |
+| EnvPool tuned (REUSE, unchanged) | 355,451 / 587,070 / 931,786 / 1,413,748 | 350,601 |
+| EnvPool as-shipped (REUSE, unchanged) | 178,217 / 278,042 / 417,106 / 468,997 | 238,829 |
+
+ALE8 tier3 full curve: 918,228 / 1,827,240 / 3,645,279 / 7,355,750.
+
+- Headline at 80 threads: **2.58x ProcGen / 20.98x ALE** vs tuned (was 1.64x / 15.1x);
+  **7.77x / 30.8x** vs as-shipped (was 5.0x / 22x).
+- Scaling per doubling: 2.01 / 1.99 / 2.01 (ProcGen16), 1.99 / 1.99 / 2.02 (ALE8).
+- **THE CROSSOVER IS GONE.** tier3 vs EnvPool tuned is 1.28x / 1.55x / 1.95x /
+  2.58x — PlayTrain now wins at every thread count. The adv-era concession
+  ("EnvPool tuned WINS at 10 threads and ties at 20 — the claim is about
+  scaling, and conceding that point is what makes it defensible") no longer
+  describes the data and must be rewritten, not just re-numbered. §2 line ~540
+  and the panel-A caption both depend on it.
+
+### 10.2 Panel C — per-core vs ProcGen C++ (16 games, 7 trials)
+
+geomean **1.35x -> 2.185x**; wins **10 of 16 -> 14 of 16** (so "remaining six"
+becomes "remaining two"); arithmetic mean 1.831 -> 2.795 (**never print this**,
+see the mean-type trap). tier3/adv2 on this panel is 1.630.
+Losses are now only chaser (0.99) and climber (0.74).
+
+### 10.3 Panel D — per-core vs ALE
+
+Published **6.95x** -> adv1 8.1x -> **tier3 11.98x** on the published 6-game
+protocol (`qbert seaquest pong breakout space_invaders frostbite`, which is
+what `sweep_atari8.sh` actually geomeans — it drops freeway and asteroids).
+Over all 8 games with a baseline it is **12.62x** (adv2 8.85x). Quote 11.98x
+unless the protocol is deliberately widened; say which.
+
+### 10.4 Panel B — backend ladder (24 games)
+
+Playwright **502** and Node/V8 **4,374** REUSED unchanged; QuickJS rung
+**37,350 (adv1) -> 58,827 (tier3)**.
+Ladder reads **502 / 4,374 / 58,827**: PW->V8 8.7x, **V8->QJS 13.4x** (was
+8.5x), **PW->QJS 117x** (was 74x).
+
+### 10.5 The games-dir effect, now measured
+
+Only **maze** and **freeway** differ between the live tree and node-gym across
+all 24 (full md5 sweep). Same-node, same-binary (adv2), mean of 7:
+
+| game | live | node-gym | ng/live |
+|---|---|---|---|
+| maze | 16,098 | 17,944 | 1.115 |
+| freeway | 128,363 | 108,688 | 0.847 |
+
+The cross-check's noise floor is ~3% (caveflyer, byte-identical, read 1.030),
+so both are real. The live maze is 12% SLOWER (the ProcGen-matched curriculum
+draws more) and the live freeway 18% FASTER (fewer, slower cars). Panel C/D use
+the live dir, which is correct and current — but it means part of panel D's
+adv-to-tier3 movement is the freeway file, not the binary. Panels quoted above
+are all live-dir.
+
+### 10.6 What is still pending
+
+Only the three GPU jobs — Table 1(a) 44515752 (ETA ~12:00-13:00), Table 1(b)
+ProcGen 44516162 (~05:40) and ALE 44516167 (~02:45). Early per-game reads have
+tier3/adv2 at 1.030 (bigfish), 1.070 (bossfight), 0.994 (pong), 1.028
+(freeway) — i.e. a 1.5x faster environment buys ~0-7% once the trainer is
+attached, which strengthens rather than weakens the trainer-bound explanation
+near line 539.
+
+### 10.7 Figure-pipeline mechanics
+
+`playtrain-paper/tools/plot_env_efficiency.py` draws panels (b)-(d) through
+`throughput_panels.py`, which derives them from the committed per-trial files in
+`playtrain-paper/results/env_throughput/` (`qjs_raw4.txt`, `procgen4.json`,
+`qjs_atari6_raw.txt`, `ale_atari6.json`, `backend_ladder_fasrc.json`,
+`pw_fasrc.json`) and **hard-fails** against the `_EXPECTED_PROCGEN` /
+`_EXPECTED_ATARI` tables (game, qjs_mean, qjs_std, base_mean, base_std). So
+updating those panels is two mechanical steps: drop in the new raw files, then
+regenerate both `_EXPECTED_*` tables. The new per-trial raw is
+`analogen-jaxbench/outputs/tier3_pcd_44515373/raw_panelc.txt` (format:
+`arm game trial steps_per_s`; take the `tier3` rows) and `raw_ladder.txt`.
+The ProcGen/ALE baseline JSONs do not change.
