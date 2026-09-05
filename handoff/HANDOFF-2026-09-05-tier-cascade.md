@@ -1021,3 +1021,66 @@ path — the mechanism behind every tier-2/tier-3 number in the paper — has a
 trainer-path defect on at least fruitbot and climber. That is a bigger question
 than one table cell and needs a human decision, not a selective rebuild of the
 two games that happen to hurt the geomean.
+
+## 22. STEP 2 RESULT (44642543) — DOUBLE-BUFFERING is the trigger
+
+fruitbot, same job, same node (holygpu8a17603), alternating arm order:
+
+| config | adv2 | tier3 | tier3/adv2 | tier3 window spread |
+|---|---|---|---|---|
+| **w15, double-buffer ON** | 850,212 | **298,180** | **0.35** | **2.09x (unstable)** |
+| **w15, double-buffer OFF** | 617,666 | **720,806** | **1.17** | **1.06x (stable)** |
+
+**With double-buffering off, tier 3 is FASTER than adv2 and perfectly stable.**
+The defect is not the AOT unit per se — it is the AOT unit *under
+double-buffering*. This was hypothesis 1's prediction (§21 note: "predicts the
+db=0 variants come out clean").
+
+Note double-buffering is worth +38% to adv2 (617,666 -> 850,212), so simply
+turning it off is not a fix — it would cost more than the regression.
+
+### 22.1 Mechanism (strongly supported, not yet proven)
+
+The worker banner reads **`VecWorker N starting [double-buffer]: 2x256 envs`** —
+double-buffering instantiates **TWO** full sets of envs per worker, so 15
+workers hold **7,680 live env instances** instead of 3,840. A surviving tier-3
+worker log shows **rss ~10.7-11.1 GB per worker**, i.e. ~160 GB across 15
+workers against the job's 300 GB request.
+
+If the AOT game unit carries materially more per-instance state than the
+interpreter — plausibly because the compiled unit gives every instance its own
+copy of data the interpreter shares (constant pools, static tables) — then
+doubling the instance count crosses a pressure threshold and the run starts
+stalling. That matches the signature exactly: not a lower steady state, but
+2.1x window-to-window swings.
+
+**MISSING MEASUREMENT that would prove it:** per-worker RSS for adv2 vs tier3 at
+the SAME topology. No adv2 fruitbot worker log survived (suite_logs are
+overwritten per run). This is cheap to capture and should be the next step.
+
+### 22.2 Fix options, ranked
+
+| option | effect | cost |
+|---|---|---|
+| **A. Remove per-env duplication in the AOT unit** (share immutable compiled data across instances) | real fix; helps every game and every topology | engine work, days |
+| **B. Halve envs/worker when double-buffering with AOT** (keep 2 buffers, 128 each) | restores instance count while keeping db's pipelining | config-level, testable in ~30 min |
+| C. Disable double-buffering for AOT envs | costs -38% (850k -> 618k on adv2) | worse than the disease |
+| D. Publish Table 1(a) single-buffered | changes the published config, drops all absolutes | no |
+
+**B is the cheap experiment worth running next**; A is the real fix.
+
+### 22.3 Scope — what is and is not affected
+
+- **Table 1(b) swap rows: NOT affected.** Single-buffered at 12 workers; tier 3
+  wins 1.205 (ProcGen) and 1.089 (ALE). Those numbers stand.
+- **Fig 4A, panels B/C/D: NOT affected.** All env-only, no double buffer.
+- **Table 1(a): affected**, and only on games whose per-env footprint is large
+  enough to cross the threshold (fruitbot 0.30, climber 0.62, jumper 0.84;
+  19 of 23 games are 0.95-1.04).
+
+### 22.4 Process lesson for the paper
+
+Every gate the tier adoption passed — checksum 24/24, gate 198/198, the 9-game
+holdout, all of Fig 4A — is **env-only**. The AOT tiers were never validated
+with a trainer attached, which is why a 3x regression reached the headline
+table. Worth one line wherever the compile-at-load path is described.
