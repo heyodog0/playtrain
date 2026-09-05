@@ -1084,3 +1084,67 @@ Every gate the tier adoption passed — checksum 24/24, gate 198/198, the 9-game
 holdout, all of Fig 4A — is **env-only**. The AOT tiers were never validated
 with a trainer attached, which is why a 3x regression reached the headline
 table. Worth one line wherever the compile-at-load path is described.
+
+## 23. w12 RESULT — it is the DOUBLING itself, not instance count
+
+| config | adv2 | tier3 | tier3/adv2 | tier3 spread |
+|---|---|---|---|---|
+| w15, db ON | 850,212 (1.07x) | 298,180 | **0.351** | 2.09x |
+| w12, db ON | 702,861 (1.03x) | 212,982 | **0.303** | 1.76x |
+| w15, db OFF | 617,666 (1.08x) | 720,806 | **1.167** | 1.06x |
+
+**Dropping 15 -> 12 workers does not help at all** (0.351 -> 0.303). That cuts
+live instances 20%, from 7,680 to 6,144, and changes nothing. Turning
+double-buffering off fixes it completely at either worker count.
+
+**Branch: the doubling itself, NOT total instance count.** This weakens option 3
+(2x128 envs/worker) considerably — if a 20% instance cut does nothing, a 50% cut
+via smaller buffers may not either — and moves option 4 (share immutable AOT
+state across instances) up, exactly as flagged in §22.2.
+
+It also shifts the mechanism from *total memory* to *working set*: alternating
+between two large AOT env sets per worker may thrash cache/TLB, where the
+interpreter's smaller shared footprint fits. Note THP is already `[always]` on
+these nodes, so huge pages are not the missing piece.
+
+## 24. FRAMING CORRECTION (Ryan, 2026-09-05) — double-buffering is NOT unstable
+
+Anywhere §21-23 reads as "double-buffering is unstable", correct it.
+**adv2 under double-buffering is the fastest AND steadiest configuration
+measured anywhere in this cascade: 850,212 at a 1.07x window spread.** It is
+also worth +38% over single-buffered adv2 (617,666). Double-buffering is a
+contribution the paper claims and it works.
+
+The defect is **AOT env instances under doubling** — precisely and only that.
+Stating it as "double-buffering is unstable" would concede a working
+contribution to a bug in a different component.
+
+## 25. VALIDATION GAP — belongs in the paper, not just here
+
+Every gate the tier adoption passed is **env-only**: checksum 24/24, gate
+198/198, the 9-game holdout, all of Fig 4A, panels B/C/D. The AOT tiers were
+never exercised with a trainer attached. That is the whole reason a 3x
+regression reached the headline table unnoticed, and it is a methodology
+limitation worth **one sentence in the paper's own limitations or methodology
+section**, not only in this handoff.
+
+## 26. Step 3 submitted: 44645920 (the two approved diagnostics, no rebuild)
+
+fruitbot, w15_db1 only, 2 reps, arm order alternated:
+A adv2/default | B tier3/default | C tier3/`MALLOC_ARENA_MAX=2` | D tier3/`=4`.
+
+1. **RSS comparison** — the measurement nobody had. `suite_logs` are overwritten
+   per run, so each run's log is copied out before the next. Reports per-worker
+   and total RSS for adv2 vs tier3 at the same broken topology.
+2. **Allocator probe** — mimalloc, jemalloc and tcmalloc are installed nowhere
+   on this cluster and there is no reliable egress to fetch one, so the probe
+   uses glibc's own arena control, which tests the same hypothesis with nothing
+   to install. glibc is **2.28**: `MALLOC_ARENA_MAX` is supported;
+   `glibc.malloc.hugetlb` is not (2.35+) and THP is already `[always]`.
+
+**If the arena setting closes it, say so precisely: the fix is an allocator
+swap, NOT a change to the measured configuration.** That distinction is what
+makes it publishable without a disclosure clause — unlike option 3, which moves
+the operating point and must be disclosed rather than quietly substituted.
+
+Stopping after these two. Options 3 and 4 need Ryan.
