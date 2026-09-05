@@ -416,12 +416,45 @@ Per game (tier3/adv2): qbert 1.267, breakout 1.178, seaquest 1.114,
 space_invaders 1.069, frostbite 1.048, asteroids 1.042, freeway 1.028,
 pong 0.994.
 
-**Read the per-game numbers before quoting them.** The ALE baseline is
-trainer-bound, not env-bound: it reads 170,391 for breakout, frostbite AND
-qbert, and 183,497/183,498 for asteroids, seaquest and pong — identical
-values because the learner, not the environment, sets the rate. The PlayTrain
-arms are likewise flat at ~1.0M except qbert (491k adv2 / 623k tier3), the one
-game still env-bound on the PlayTrain side. That is why qbert shows the largest
-tier3 gain (1.267) and pong none (0.994): tier 3 only moves a row where the
-environment is still the constraint. This is the same trainer-bound story as
-line ~539 and it now has a clean within-table demonstration.
+**What the baseline arm actually is (and is NOT).** The EnvPool arm here is
+`configs/pt_throughput/pt_ale_<game>_envpool.json`, unchanged from the as-run
+published methodology: `vec_backend: "envpool"`, **12 vec workers x 5 env
+threads**, `envpool_kwargs` = 64x64 RGB, stack 1, frame_skip 1,
+full_action_space. It is **NOT** the Fig 4A "EnvPool tuned" arm. Those are two
+different baselines on purpose:
+
+- Table 1(b) is a **matched swap**: both arms are the same trainer at the same
+  topology, the same batch/unroll/precision/compile settings — literally the
+  same config with `vec_backend` swapped. The point is to isolate the backend
+  inside an otherwise identical system.
+- Fig 4A's tuned arm (async `recv`/`send` over NUMA-bound shards) is a
+  different PROCESS ARCHITECTURE, not a config flag. It is not selectable
+  inside the trainer, so its absence here is structural, not a handicap.
+
+**Do not let the two ratios be read as the same kind of claim** — this is the
+same family of error as the panel C/D vs 4A trap in HANDOFF-2026-09-04 §1.
+5.81x is a system-throughput ratio with the backend swapped at a fixed
+topology; Fig 4A's 21x is env-only against a separately tuned EnvPool.
+
+**Two measurement facts to know before quoting per-game numbers:**
+
+1. **The reported sps is quantized.** Values move in steps of ~3,277 — one
+   16,384-step batch (batch 256 x unroll 64) per 5 s log window. At the ALE
+   arm's ~170k that quantum is **1.9%**, which is why breakout, frostbite and
+   qbert all report 170,390.x: they are within one rung, not identical. At the
+   PlayTrain arm's ~1.0M it is 0.3%, negligible. Effective resolution on the
+   baseline geomean is about +/-1% — fine for a 5.81x ratio, but per-game
+   baseline differences below ~2% are not real.
+2. **The EnvPool arm is not limited by per-game environment cost.** Across the
+   8 games it spans only 160.6k-183.5k (+/-6%, no correlation with game
+   complexity) while the PlayTrain arm spans 491k-1.17M. Something
+   game-independent caps it. qbert is the one game still env-bound on the
+   PlayTrain side (491k adv2 / 623k tier3), which is exactly why it shows the
+   largest tier3 gain (1.267) while pong shows none (0.994): tier 3 only moves
+   a row where the environment is still the constraint. That is the same
+   trainer-bound story as line ~539, now with a within-table demonstration.
+
+**Minor asymmetry, inherited from the published configs:** the ALE arm runs
+`full_action_space: true` -> `num_actions: 18`, the PlayTrain arm
+`num_actions: 8` for pong. A slightly larger policy head on the baseline side.
+Compute-negligible, but it is a real difference in the as-run pair.
