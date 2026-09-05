@@ -1148,3 +1148,81 @@ makes it publishable without a disclosure clause — unlike option 3, which move
 the operating point and must be disclosed rather than quietly substituted.
 
 Stopping after these two. Options 3 and 4 need Ryan.
+
+## 27. THE KEY EVIDENCE — tier2 == tier3 puts the fault UPSTREAM of AOT compilation
+
+**This is the single strongest result in the whole investigation and should not
+have to be re-derived from a table.**
+
+fruitbot, w15 double-buffered, same job, same node:
+
+| arm | sps | vs adv2 |
+|---|---|---|
+| adv2 | 851,594 | — |
+| tier2 (`futIT2u`) | 262,101 | **0.308** |
+| tier3 (`futIT2`) | 255,585 | **0.300** |
+
+Tier 2 and tier 3 differ **only** in whether the game unit is PGO-profiled.
+They regress **identically**. Therefore the fault is NOT in the AOT compilation
+of the game, the profile, or anything per-game. It is in what those two builds
+share and adv2 does not: **the fork host, `native/aotfork/qjs_vec_host_fork.cpp`.**
+
+Combined with §22-23 (double-buffering is the trigger; worker count is not),
+that localises it to **the fork host's async entry point**:
+
+| path | entry point | worker | status |
+|---|---|---|---|
+| single-buffer | `vec_create` | `worker_loop`, spin barrier | **fine** (tier3 1.167x, stable) |
+| double-buffer | `vec_create_async` + `vec_set_group_mode` | `worker_async` | **broken** (0.30-0.35, 2.09x swings) |
+
+adv2 ships the original host (`native/qjs/qjs_vec_host.cpp`); the tier `.so`
+ships its own `qjs_vec_host_fork.cpp`. Under double-buffering we are not merely
+running a different game unit — we are running a **different host
+implementation of the async path**.
+
+## 28. VALIDATION GAP, sharper version (supersedes §25)
+
+Not "the tiers were never tested with a trainer attached." The precise lesson:
+
+> **Every gate exercised the SYNC path. The fork host's async entry point was
+> never run at all.**
+
+checksum 24/24, gate 198/198, the 9-game holdout, all of Fig 4A, panels B/C/D —
+every one uses `vec_create` / `NativeVecEnv`. `vec_create_async`,
+`worker_async` and `group_mode` in the fork host have no coverage anywhere in
+the adoption evidence. This is the version that belongs in the paper's
+methodology or limitations, because it is actionable: it names an untested
+function, not a missing integration test.
+
+## 29. PRIOR ART for this failure mode — read before fixing
+
+`default_threads()` in `qjs_vec_host_fork.cpp` carries this comment:
+
+> Respect the cgroup/affinity limit (SLURM --cpus-per-task), NOT the node's
+> full core count: hardware_concurrency() reported 96 inside a 47-core
+> allocation and **the oversubscribed spin barrier collapsed throughput ~70x**
+> (measured: 1.4k vs 104k decisions/s, H100 bench job 30281357).
+
+This host has a documented history of **catastrophic rather than graceful**
+degradation under scheduling pressure. That fits the 2.09x window-to-window
+swings far better than a memory-pressure story, which would predict a lower but
+steady rate and would scale with worker count (it does not — §23). Whoever
+fixes this should start with thread/spin/parking behaviour in the async path,
+not with allocation.
+
+## 30. Env-only repro submitted: 44649325 (CPU, no GPU, no trainer)
+
+3 hosts (adv2 / tier2 / tier3) x 3 modes x 2 games (fruitbot, bigfish control),
+`group_size=256`, `num_threads=5`, 512 envs — the per-worker topology of the
+broken trainer config.
+
+The `pingpong` arm drives **`PingPongVecEnv` directly**, i.e. the exact class
+the double-buffered trainer uses (`vec_create_async` + `vec_set_group_mode`).
+Note `bench_vec_knobs.py --mode async` uses `AsyncNativeVecEnv`, which is the
+async entry point **without** group_mode — both are included so the two can be
+told apart.
+
+If pingpong reproduces on CPU while sync does not, **the trainer is incidental
+and the bug is in the fork host's async path** — a materially different claim
+from anything earlier in this handoff, and it converts a 5-minute-per-run H100
+job into a seconds-per-run local debug loop.
