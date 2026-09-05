@@ -786,3 +786,64 @@ holygpu8a15204), so the per-row tier3/adv ratios carry the cross-row story.
 **Record the node each row used.** `%1` keeps each row's 24 games serialized,
 but a row's array can still migrate between allocations — if a row scatters
 across nodes, flag it rather than averaging over it. Each task prints its node.
+
+## 18. The array fix WORKED; two Table 1(a) rows done; EnvPool 7-point validated
+
+### 18.1 Zero deadlocks — the array form fixed it
+
+All four rows, no `final_step: 0` anywhere (44515752 had 14 of 18 on ICNN).
+Per-task time also collapsed: **ICNN 4:33-7:30 per game in the array vs 16:55
+in the single job.** The in-job form was not just deadlocking, it was ~2.5x
+slower per game — consistent with the diagnosis that accumulated job-scoped
+MPS/GPU state was the cause. Fresh MPS per Slurm task fixes both.
+
+### 18.2 Two rows COMPLETE
+
+| row | tier3 | published | adv1 | tier3/adv1 |
+|---|---|---|---|---|
+| **PPO + Nature-CNN** | **186,494** (24/24) | 171k | 177,786 | 1.049 |
+| **PPO + IMPALA-CNN** | **67,273** (24/24) | 64k | 66,583 | 1.010 |
+
+In progress: IMPALA+Nature **1,045,132** over 13 games (ETA ~11:52) —
+**over 1M**, as predicted; IMPALA+ICNN 351,565 over 10 games (ETA ~12:20).
+PPO+ICNN at 1.010 is another clean trainer-bound datapoint: a 1.5x faster
+environment buys 1%.
+
+### 18.3 EnvPool 7-point (44601287) validates to within 0.5%
+
+Re-measured with `ep_best_sweep`'s child verbatim, same node as the PlayTrain
+curves (holy8a28510):
+
+| threads | 10 | 20 | 40 | 80 |
+|---|---|---|---|---|
+| ProcGen new vs reused | -0.22% | -0.44% | -0.03% | -0.06% |
+| ALE new vs reused | -0.14% | -0.02% | -0.11% | +0.10% |
+
+So the documented-best config is confirmed and the curve is now same-node
+end to end. Full curves:
+ProcGen 147,716 / 354,686 / 584,458 / 777,384 / 931,467 / 1,197,708 / 1,412,903;
+ALE 18,390 / 45,600 / 89,270 / 134,145 / 177,666 / 265,505 / 350,959.
+
+### 18.4 DEFECT at T=5 — do not use that point (fix: job 44614598)
+
+44601287 split every point over K=2 NUMA pools with `pt = max(1, T//K)`, so
+**T=5 ran 2 pools x 2 threads = FOUR threads, not five.** EnvPool is
+under-threaded by 20% at that point only. The tell is impossible superlinear
+growth 5->10 (**2.40x** ProcGen, **2.48x** ALE) and an inflated ratio there
+(1.53x vs 1.28x at ten threads; ALE 24.94x vs 20.11x) — inflated in OUR favour.
+All other points use whole threads and validate above.
+
+Job **44614598** re-runs T=5 as ONE pool of 5 real threads. ~10 min.
+Until it lands, quote the curve from 10 threads up.
+
+### 18.5 Ratios with the corrected EnvPool arm (10 threads and above)
+
+| threads | 10 | 20 | 30 | 40 | 60 | 80 |
+|---|---|---|---|---|---|---|
+| ProcGen tier3/tuned | 1.28x | 1.55x | 1.75x | 1.95x | 2.28x | **2.57x** |
+| ALE tier3/tuned | 20.11x | 20.59x | 20.52x | 20.59x | 20.59x | **20.59x** |
+
+The two-mechanism story holds at seven points: ProcGen climbs monotonically
+(EnvPool per-doubling 1.65 -> 1.18), ALE is flat at ~20.6x. Note 80-thread
+ProcGen is **2.57x** on this arm (vs 2.58x from the reused number) and ALE
+**20.59x** (vs 20.98x) — use these, they are same-node with the PlayTrain curve.
