@@ -42,7 +42,7 @@ BK=$OUTD/backup; mkdir -p "$BK"
 cp -a native/build/libqjs_vec.so native/build/qjs_host "$BK/"; cp -a "$RA" "$BK/libplaytrain_rasterizer.a"
 restore() { cp -a "$BK/libqjs_vec.so" "$BK/qjs_host" native/build/ && cp -a "$BK/libplaytrain_rasterizer.a" "$RA" && echo "restored stock artifacts: $(md5sum native/build/libqjs_vec.so | cut -c1-8) (expect $(md5sum "$BK/libqjs_vec.so" | cut -c1-8))"; }
 trap restore EXIT
-echo "stock ng $(md5sum native/build/libqjs_vec.so | cut -c1-32)  adv $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923)"
+echo "stock ng $(md5sum native/build/libqjs_vec.so | cut -c1-32)  adv $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923 = adv1; since 2026-09-04 out/libqjs_vec.adv.so IS adv2 1c514936)"
 
 echo "== 1. plain-v3 rasterizer for the gen phase =="
 ( cd crates/rasterizer && rm -f target/release/libplaytrain_rasterizer.a && RUSTFLAGS="-C target-cpu=x86-64-v3" cargo rustc -q --release --lib --crate-type staticlib ) || { echo RUST_BUILD_FAIL; exit 1; }

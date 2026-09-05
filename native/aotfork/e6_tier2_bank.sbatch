@@ -30,10 +30,10 @@ JOB="${SLURM_JOB_ID:-x}"; OUTD="$OUT/e6bank_$JOB"; mkdir -p "$OUTD"
 for f in "$OUT/libqjs_vec.adv.so" "$OUT/qjs_host.adv"; do [ -e "$f" ] || { echo "missing $f"; exit 1; }; done
 for g in $PROCGEN $ALE; do [ -f "$OUT/libqjs_vec.futIT2u_$g.so" ] && [ -f "$OUT/libqjs_vec.futIT2_$g.so" ] || { echo "MISSING futIT2u/futIT2 $g"; exit 1; }; done
 for g in $PROCGEN; do [ -x "$OUT/host_f1IT2u_$g" ] && [ -x "$OUT/host_f1IT2_$g" ] || { echo "MISSING host_f1IT2u/f1IT2 $g"; exit 1; }; done
-echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923)"
+echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect 1c5149364c32fb58ce9b81cda49fa763)"
 echo "md5 futIT2_miner  $(md5sum "$OUT/libqjs_vec.futIT2_miner.so" | cut -c1-32) (expect e9ce216e…)"
 echo "md5 futIT2u_miner $(md5sum "$OUT/libqjs_vec.futIT2u_miner.so" | cut -c1-32)"
-echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 46ea49991fe2c6321cb5a0a9b558aebe)"
+echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 5dcce14f4dfddc59a6b0f4e33d8a3127)"
 
 cd native/aotfork
 

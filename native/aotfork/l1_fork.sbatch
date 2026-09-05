@@ -51,7 +51,7 @@ echo "== ng control host (stock quickjs-ng, -O3 v3, this worktree's build/) =="
 ( cd native && bash build_qjs.sh 2>&1 | tail -1 )
 NG=$WE/native/build/qjs_host; ADV=$WT/native/build/variants/qjs_host.adv
 cp "$ADV" "$OUT/qjs_host.adv"   # read-only copy; the tuning tree is never written
-echo "md5 ng  $(md5sum "$NG" | cut -c1-32)"; echo "md5 adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 46ea49991fe2c6321cb5a0a9b558aebe)"
+echo "md5 ng  $(md5sum "$NG" | cut -c1-32)"; echo "md5 adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 5dcce14f4dfddc59a6b0f4e33d8a3127)"
 
 echo "== fork engine + F0 =="
 cd native/aotfork

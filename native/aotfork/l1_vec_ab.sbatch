@@ -10,7 +10,7 @@
 #SBATCH -t 0-04:00
 # L1 step 6 (PLAN-engine-tier.md §4 iteration protocol) on the VEC host — the
 # Fig-4A / trainer path. Arms, all loaded by explicit --lib-path (no .so swap):
-#   adv  = adopted tuned ng .so (variants/libqjs_vec.adv.so, md5 b3709b39…; PGO/LTO)
+#   adv  = adopted tuned ng .so (variants/libqjs_vec.adv.so, since 2026-09-04 adv2 1c514936; before that b3709b39…; PGO/LTO)
 #   ng   = stock quickjs-ng .so built here by build_qjs_vec.sh (-O3 v3, no PGO)
 #   fork = fork interpreter vec host (libqjs_vec.fork.so)            [F0]
 #   fut  = fork + qjsc -A per game (libqjs_vec.fut_<game>.so)        [F1]
@@ -47,7 +47,7 @@ echo "== ng control .so (stock quickjs-ng, -O3 v3, engine worktree build/) =="
 ( cd native && [ -f qjs/bld/libqjs.a ] || bash build_qjs.sh 2>&1 | tail -1; bash build_qjs_vec.sh 2>&1 | tail -1 )
 NGSO=$WE/native/build/libqjs_vec.so
 cp "$WT/native/build/variants/libqjs_vec.adv.so" "$OUT/libqjs_vec.adv.so"
-echo "md5 adv  $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923)"
+echo "md5 adv  $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect 1c5149364c32fb58ce9b81cda49fa763)"
 echo "md5 ng   $(md5sum "$NGSO" | cut -c1-32)"
 
 echo "== fork vec .so: F0 + F1 for ProcGen16 + ALE8 =="

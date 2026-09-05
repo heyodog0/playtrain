@@ -13,7 +13,7 @@
 # 16 workers x 128 envs x 5 env threads (80 threads -> needs the whole node, hence
 # --exclusive), all 24 games, 300-step window, 3 interleaved trials, QJS_DIRTY=1.
 # Arms by explicit --lib-path:
-#   adv    = adopted tuned ng .so (b3709b39…)
+#   adv    = adopted tuned ng .so (adv2 = adv re-cut with ef74835, 1c514936…; the pre-fix adv b3709b39 is kept as libqjs_vec.adv1.so)
 #   futT2  = L1 banked (fork + qjsc -A, PGO all-24 + thin-LTO)
 #   futIT2 = futT2 + E3 p5/Math intrinsics (qjsc -P), own all-24 profile (job 44473809)
 # Panel C single-core ProcGen16: qjs_host.adv vs host_f1T2_<g> vs host_f1IT2_<g>.
@@ -33,9 +33,9 @@ JOB="${SLURM_JOB_ID:-x}"; OUTD="$OUT/e3bank_$JOB"; mkdir -p "$OUTD"
 for f in "$OUT/forkI24.profdata" "$OUT/libqjs_vec.adv.so" "$OUT/qjs_host.adv"; do [ -e "$f" ] || { echo "missing $f"; exit 1; }; done
 for g in $PROCGEN $ALE; do [ -f "$OUT/libqjs_vec.futT2_$g.so" ] && [ -f "$OUT/libqjs_vec.futIT2_$g.so" ] || { echo "MISSING futT2/futIT2 $g"; exit 1; }; done
 for g in $PROCGEN; do [ -x "$OUT/host_f1T2_$g" ] && [ -x "$OUT/host_f1IT2_$g" ] || { echo "MISSING host_f1T2/f1IT2 $g"; exit 1; }; done
-echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923)"
+echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect 1c5149364c32fb58ce9b81cda49fa763)"
 echo "md5 futIT2_miner $(md5sum "$OUT/libqjs_vec.futIT2_miner.so" | cut -c1-32)"
-echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 46ea49991fe2c6321cb5a0a9b558aebe)"
+echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 5dcce14f4dfddc59a6b0f4e33d8a3127)"
 
 cd native/aotfork
 

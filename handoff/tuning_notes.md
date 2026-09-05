@@ -1774,9 +1774,20 @@ observable in the vec path too, not just in the single-env trace.
 
 **Read.** Throughput-neutral (1.005, inside the 1–2% per-game noise of a
 non-exclusive node); the draw-counter branch costs nothing measurable. adv2
-is adv with the determinism hole closed. Whether it replaces adv as the paper
-baseline is Ryan's call; every engine-tier ratio vs adv2 = ratio vs adv /
-1.005 (e.g. tier 3 1.500 → 1.493, tier 2 1.382 → 1.375).
+is adv with the determinism hole closed. Every engine-tier ratio vs adv2 =
+ratio vs adv / 1.005 (e.g. tier 3 1.500 → 1.493, tier 2 1.382 → 1.375).
+
+**ADOPTED (Ryan, 2026-09-04 late): adv2 replaces adv.** Installed as
+`playtrain-wt-tuning/native/build/variants/libqjs_vec.adv.so` (1c514936) +
+`qjs_host.adv` (5dcce14f), as the tuning tree's `native/build/libqjs_vec.so`
++ `qjs_host`, and as `playtrain-wt-engine/native/aotfork/out/libqjs_vec.adv.so`
++ `qjs_host.adv`; `pgo/adv2.profdata` saved. The pre-fix artifact is kept
+verbatim as `libqjs_vec.adv1.so` / `qjs_host.adv1` in both places (and
+`native/build/libqjs_vec.so.adv1`). `pt_knobs.sbatch`'s provenance md5 and the
+aotfork job scripts' "expect" strings now name adv2. Every "adv" number in
+these notes up to this line was measured against adv1 (b3709b39); the two
+differ by 1.005 in throughput and on one qbert frame. The paper's absolutes
+on 17402 still have to be re-measured against adv2 (the cascade).
 
 ### ROUND 6 summary table (lever × geomean-5 vec × all-24 vec × panel-C PG16 × gate)
 
@@ -1793,7 +1804,7 @@ baseline is Ryan's call; every engine-tier ratio vs adv2 = ratio vs adv /
     E6.2 TIER 2 BANKED (futIT2u/adv)              —           1.382 (bank)     1.501          198/198 (jobs 44492183/44492184; IT2u/IT2 0.917)
     E6.2 HOLDOUT 9 never-profiled (tier2 / tier3) —           1.189 / 1.302 (1 worker, 9 games)  —   checksum 9/9 (job 44493447; tier3/tier2 1.095)
     E6.1 compile-at-load (aot_cache.py)           built, tested 5/5, rehearsed (tier 2 in 25 s, tier 3 in 105 s); stock behaviour unchanged without the toolchain
-    adv re-cut with ef74835 (adv2)                null A/B adv2/adv 1.005 all-24 (0.983–1.023 per game); gate adv2 99/99 vs adv 96/99 (qbert ×3); checksum adv2 = ng 24/24, adv ≠ on qbert (job 44498267, holy8a28510)
+    adv re-cut with ef74835 (adv2) — ADOPTED        null A/B adv2/adv 1.005 all-24 (0.983–1.023 per game); gate adv2 99/99 vs adv 96/99 (qbert ×3); checksum adv2 = ng 24/24 (job 44498267); installed as adv 2026-09-04, old adv kept as adv1
     field IC probe (not a §5 lever)               not run; fields = 28.6% of breakout after E3 — strongest probe case in the round; Ryan's call
 
 Decision list for Ryan (adds to PLAN-engine-tier-round6 §7): (1) adopt the

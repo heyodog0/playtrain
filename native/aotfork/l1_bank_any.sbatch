@@ -14,7 +14,7 @@
 # the matrix/anchor node holy8a24307, QJS_DIRTY=1 on every arm. Arms loaded by
 # explicit --lib-path (bench_vec_knobs.py, the byte-equivalent --no-model loop
 # the plan prefers — no .so swapping anywhere):
-#   adv    = adopted tuned ng .so (b3709b39…)
+#   adv    = adopted tuned ng .so (adv2 = adv re-cut with ef74835, 1c514936…; the pre-fix adv b3709b39 is kept as libqjs_vec.adv1.so)
 #   forkT2 = fork interpreter, PGO(all 24)+thin-LTO+vis   [engine swap alone]
 #   futT2  = forkT2 + qjsc -A per game                      [engine swap + AOT]
 # Plus the panel-C single-core protocol (QJS_DIRTY=1 qjs_host bench 0 100000,
@@ -35,9 +35,9 @@ ALE="asteroids breakout freeway frostbite pong qbert seaquest space_invaders"
 JOB="${SLURM_JOB_ID:-x}"; OUTD="$OUT/bank_$JOB"; mkdir -p "$OUTD"
 for f in "$OUT/fork24.profdata" "$OUT/libqjs_vec.forkT2.so" "$OUT/host_f0T2" "$OUT/libqjs_vec.adv.so" "$OUT/qjs_host.adv"; do [ -e "$f" ] || { echo "missing $f"; exit 1; }; done
 for g in $PROCGEN $ALE; do [ -f "$OUT/libqjs_vec.futT2_$g.so" ] || echo "MISSING futT2 $g"; done
-echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect b3709b3980193d0890856dedc923e923)"
+echo "md5 adv    $(md5sum "$OUT/libqjs_vec.adv.so" | cut -c1-32) (expect 1c5149364c32fb58ce9b81cda49fa763)"
 echo "md5 forkT2 $(md5sum "$OUT/libqjs_vec.forkT2.so" | cut -c1-32)"
-echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 46ea49991fe2c6321cb5a0a9b558aebe)"
+echo "md5 host.adv $(md5sum "$OUT/qjs_host.adv" | cut -c1-32) (expect 5dcce14f4dfddc59a6b0f4e33d8a3127)"
 
 echo "== single-core T2 hosts for the 16 ProcGen games (same recipe/profile as the .so's) =="
 cd native/aotfork

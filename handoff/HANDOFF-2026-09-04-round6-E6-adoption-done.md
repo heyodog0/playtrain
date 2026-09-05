@@ -1,13 +1,12 @@
-# HANDOFF 2026-09-04 (late night) — Round 6 E6: tier 2 banked, holdout run, compile-at-load built; merge + adv2 pending
+# HANDOFF 2026-09-04 (late night) — Round 6 E6: tier 2 banked, holdout run, compile-at-load built, MERGED to main, adv2 adopted
 
 **Read this first.** Continues `HANDOFF-2026-09-04-round6-E3-adoption.md` (the
 decision and the four-step sequence, §0/§6 there). Every number has a job id;
 every file is on branch `engine-tier` (local repo
 `/Users/heyodogo2/code/lab/playtrain/playtrain`, `origin/engine-tier`, cluster
 worktree `/n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-engine`, all at
-`fedd99c` or later). `origin/main` is still `f4a2db0`; engine-tier is a strict
-descendant (0 commits behind), so the merge is a fast-forward. The tuning
-worktree, the live tree, `libqjs_vec.adv.so` and `qjs_host.adv` were not written.
+`fedd99c` or later). **`main` was fast-forwarded to engine-tier (41d440f and
+later) at Ryan's request**; the two branches are identical. **adv2 is now the adopted adv** (Ryan): see §4. The live tree was not written.
 Full tables: `handoff/tuning_notes.md` § E6.2 / § E6.1 (before the round-6 summary table).
 
 ## 0. Status of the four steps
@@ -17,8 +16,8 @@ Full tables: `handoff/tuning_notes.md` § E6.2 / § E6.1 (before the round-6 sum
 | 1. E6.2 tier-2 banked arm | **DONE.** futIT2u/adv **1.382** all-24 (1.438 PG16, 1.276 ALE8), panel C 1.501; tier 2 = 0.917 of tier 3; futIT2 reproduces the bank (1.506 vs 1.500). Gate 198/198, checksum 24/24. Jobs 44492183 (build+gate, holy8a24303) / 44492184 (bank, holy8a24307 exclusive). |
 | 2. Holdout, 9 never-profiled games | **DONE.** tier2/adv **1.189**, tier3/adv **1.302**, tier3/tier2 **1.095** (matches the 24's 1.091). 9/9 built both tiers in 56–69 s each; checksum 9/9 exact. Job 44493447. The absolute gain is below the 24-game number — game mix, see §2. |
 | 3. E6.1 compile-at-load | **DONE and rehearsed.** `src/playtrain/runtime/aot_cache.py`, hooked into the three env constructors; 5/5 tests on the cluster; rehearsal on coinrun: tier 2 in 25 s, tier 3 in 105 s, next process picks tier 3. |
-| 4a. adv re-cut (adv2) | **DONE.** Job 44498267 (holy8a28510): `out/libqjs_vec.adv2.so` 1c514936, `out/qjs_host.adv2` 5dcce14f (rasterizer md5 unchanged). Gate vs V8: adv2 99/99, adv 96/99 (qbert × 3 seeds diverge). Checksum24: adv2 = stock ng 24/24, adv mismatches on qbert. Null A/B adv2/adv **1.005** all-24 (0.983–1.023). Stock artifacts restored (0eb1b27b). Replace-adv decision is Ryan's; ratios vs adv2 = ratios vs adv / 1.005. |
-| 4b. merge engine-tier → main | **NOT DONE — needs Ryan.** The push was blocked by the session's permission policy. It is a fast-forward: `git push origin engine-tier:main` (then `git branch -f main origin/main` locally). Nothing on main changes behaviour without the toolchain dir (§3). |
+| 4a. adv re-cut (adv2) | **DONE and ADOPTED.** Job 44498267 (holy8a28510): `out/libqjs_vec.adv2.so` 1c514936, `out/qjs_host.adv2` 5dcce14f (rasterizer md5 unchanged). Gate vs V8: adv2 99/99, adv 96/99 (qbert × 3 seeds diverge). Checksum24: adv2 = stock ng 24/24, adv mismatches on qbert. Null A/B adv2/adv **1.005** all-24 (0.983–1.023). Stock artifacts restored (0eb1b27b). Installed as adv in the tuning variants, the tuning tree's `native/build/`, and `$WE/native/aotfork/out`; the old adv is kept as `*.adv1*` everywhere. Ratios vs adv2 = ratios vs adv1 / 1.005. |
+| 4b. merge engine-tier → main | **DONE** (fast-forward, Ryan's request). Nothing on main changes behaviour without the toolchain dir (§3). |
 | 4c. measurement cascade on 17402 | not started (Fig 4A absolutes, panel C, ladder, Tables 1(b)/7/8, paper wording). |
 
 ## 1. Numbers (all same-job, same-node, interleaved; ratios only)
@@ -125,8 +124,13 @@ vs tuned EnvPool 1.414M → 2.1× / 2.37×.
   (adv2 as `host_f0`, adv via `EXTRA_HOSTS`) on 33 × 3 — expect adv to fail
   one qbert seed and adv2 to pass —, checksum24 ng/adv/adv2 (adv2 should
   match ng, adv may differ on qbert), null A/B adv vs adv2 24 × 3 at 1 worker.
-- Whether adv2 replaces adv as the paper baseline is Ryan's call. Engine-tier
-  ratios vs adv2 = ratios vs adv × (adv/adv2 from the null A/B).
+- **Adopted 2026-09-04 late (Ryan).** Old adv → `libqjs_vec.adv1.so` / `qjs_host.adv1`
+  (tuning variants, `$WE/native/aotfork/out`; tuning `native/build/libqjs_vec.so.adv1`);
+  adv2 installed under the adv names and as the tuning tree's `native/build/` pair;
+  `pgo/adv2.profdata` saved. `pt_knobs.sbatch` WANT md5 and the aotfork scripts'
+  expect strings updated to 1c514936 / 5dcce14f. Engine-tier ratios vs adv2 =
+  ratios vs adv1 / 1.005. Every number in the notes before the adoption line was
+  against adv1.
 
 ## 5. Gotchas added tonight
 
@@ -164,10 +168,8 @@ aot_cache_test,aot_e2e,adv_recut}_*.out`.
 
 ## 7. Next actions, in order
 
-1. Ryan: merge (`git push origin engine-tier:main`), decide adv vs adv2 (§4; the
-   re-cut result is in `tuning_notes.md` § "adv RE-CUT → adv2").
-2. 17402 confirm + cascade; paper wording (tier sentence from §2; "stock quickjs-ng").
-3. Optional: E0 profile of qbert.v2 / frostbite.jungle to close the holdout gap
+1. 17402 confirm + cascade; paper wording (tier sentence from §2; "stock quickjs-ng").
+2. Optional: E0 profile of qbert.v2 / frostbite.jungle to close the holdout gap
    explanation; E2 / field-IC per the round-6 plan.
 
 ## 8. Commands
