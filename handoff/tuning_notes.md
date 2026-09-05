@@ -1498,3 +1498,52 @@ measured against futIT2, and the remaining `call`/`call_method` cost is
 mostly JS→JS calls (game helper functions), which E3 does not touch. Fields
 (breakout/plunder/bigfish/coinrun) and refcount are the next-largest
 buckets; a futIT2 re-profile (E0 recipe, `TAG=IT2dbg`) should precede E2.
+
+### E3 re-profile of futIT2 (job 44483163, holy8a24304, E0 recipe, `TAG=IT2dbg`)
+
+Same 7 games, 60 s each, futIT2dbg vs the E0 futT2dbg build re-profiled on
+the same node. Sanity: IT2 vs IT2dbg throughput within 1% (breakout 375.7k vs
+379.7k, maze 196.6k vs 196.3k); no Bytecode mismatch. Reports:
+`out/e3prof_44483163/`.
+
+    futIT2dbg, % of .so samples   breakout   plunder   bigfish     miner      maze   coinrun     heist    (futT2dbg in brackets)
+    AOT residual                      26.6      23.7      12.0      27.1      25.9      31.4      26.9    (32.8 30.7 14.3 31.1 35.1 34.5 34.0)
+    call machinery                     1.1       2.1       1.4       3.3       0.7       2.2       1.2    ( 4.4  5.0  2.5  8.5  8.8  5.8  7.4)
+    property access                   18.0      13.9       8.6       2.7       0.9      18.5       3.4
+    refcount/free                     15.7      11.8       5.8      15.1      16.6      19.7      18.0
+    arith slow paths                   7.3       2.9       2.7       1.4       0.0       2.3       6.1
+    rasterizer                        11.8      13.7      42.6      27.0      38.8       9.5      24.5    ( 9.8 11.3 40.8 19.5 23.8  8.2 17.6)
+    p5/host/blit                       5.5      10.7       8.4       5.0       8.3       3.3       7.9
+    vec host spin                      5.5      10.6      11.3      12.1       6.5       5.8       3.5
+    -- by opcode family
+    fields                            28.6      16.3       9.4       1.1       0.8       6.7       2.6
+    E2 stack/local                    17.1      10.8       6.7      18.6      23.3      26.1      22.8
+    E3 calls/globals                   8.9      12.2       5.6      14.3      12.5      11.9      16.8
+    E1 array element                   6.2       4.0       1.4       4.3       4.0       9.3       5.0
+    E1 arith/compare                   2.9       4.7       1.6       9.0       8.6       6.1       5.4
+
+What E3 did, in the profile: call machinery 4.4–8.8 → 0.7–3.3; the `call`
+opcode's samples are now 63–79% *inside the p5 binding bodies* (LTO inlined
+`js_rect` → `p5::rect` into the AOT function), so what is left of the
+"calls" family is the argument pushes, the `get_var` of the callee (5–6.6%
+on maze/heist: `*var_refs[idx]->pvalue` double indirection + TDZ test + dup
+for every global read, constants included) and the arg frees. The
+rasterizer share rose to 39% on maze and 27% on miner: on the grid games the
+interpreter is no longer the majority of the frame.
+
+Sizing what remains, for the next levers:
+- **Fields** are now the largest single bucket on the object-heavy games:
+  get_field alone 25.9% on breakout (find_own_property 57% of it),
+  fields family 28.6 / 16.3 / 9.4 / 6.7 on breakout / plunder / bigfish /
+  coinrun. The emitter-side per-site shape cache probe (Ryan's call, §7)
+  has the strongest case in the round.
+- **E2 stack/local 6.7–26%**, with `put_loc_check` 8.7–11.3% on the grid
+  games (97–99% attributed to the `set_value` free of the overwritten local)
+  and `get_loc_check` 2.4–4.6% (TDZ test). Locals in C registers with the
+  TDZ tests proven away and numeric slots known non-refcounted is exactly
+  this bucket; expectation for E2 stays 1.08–1.15× on maze/heist/coinrun/miner.
+- **E4 refcount 6–20%** unchanged in share; composes with E2.
+- **E1-lite** (f64/mixed compare fast paths) now has a case on breakout
+  (arith slow paths 7.3%) and heist (6.1%); the other games are ≤ 2.9%.
+- `lt`/`mul` on maze (4.1 / 2.9%, 100% inline fast path) are register
+  pressure, not tag checks: E2, not E1.
