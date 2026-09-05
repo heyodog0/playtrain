@@ -461,6 +461,12 @@ Compute-negligible, but it is a real difference in the as-run pair.
 
 ## 14. Main-text edits this round forces (`ICLR-PlayTrain-Fast-LLM-VGEs/main.tex`)
 
+Line numbers are against **origin/main 9273521**, pulled from the Overleaf-synced
+repo on 2026-09-05 (`git merge --ff-only`, clean fast-forward, 0 ahead / 2 behind).
+Those two commits were prose and appendix polish only — no number and none of the
+sentences below changed. Per [[overleaf-github-sync]]: fetch before editing, and
+after any push tell Ryan to pull in Overleaf before anyone types there.
+
 Panels B/C/D numbers are already in the text (12.62x, 2.19x, "fourteen of the
 sixteen", "remaining two", 13.4x, 117x, 20.98x, 2.58x). What the Table 1(b) ALE
 result and the 7-point grid change:
@@ -474,7 +480,7 @@ result and the 7-point grid change:
 | 540 | "ALE ratio is 5$\times$ here rather than 12.62$\times$" | **5.8$\times$** | **READY** |
 | 542 | "PlayTrain scale linearly while Envpool's ProcGen **and ALE** flatten ... which is remarkable" | **WRONG for ALE — rewrite, see below** | **READY** |
 | 547 | "at eighty threads \texttt{fruitbot} and \texttt{miner} join them" | must be re-derived under tier 3 | blocked on 44545120 |
-| 1542 / 1548 | 4 scaling rows | 7 rows | blocked on 44545120 |
+| 1540 / 1546 | 4 scaling rows | 7 rows | blocked on 44545120 |
 
 ### 14.1 Line 542 is factually wrong for ALE
 
@@ -535,3 +541,23 @@ under the old binary. Under tier 3 miner nearly doubles env-only (815,862 ->
 threads. This needs per-game PlayTrain-vs-EnvPool at 80 threads; job 44545120
 produces exactly that, same node, for all 24 games. Do not edit this line until
 it lands.
+
+### 14.4 The pull deleted the draft sentence the tier-3 story needs
+
+Commit 11a2442 removed these two commented-out lines from main.tex:
+
+```
+% By default, we perform an ahead-of-compilation step across all of our 24 games.
+% A game's JavaScript can also be compiled to C and built into its own shared
+% library, which removes the interpreter's dispatch from every step.
+```
+
+That is a draft of exactly the mechanism this whole round measures. Tier 3 IS
+that shared library, built per game; with adoption, the paper needs a sentence
+describing the compile-at-load path (E6.1, `src/playtrain/runtime/aot_cache.py`)
+because every Fig 4A / panel C / panel D number now comes from it. The
+supported claim is in HANDOFF-2026-09-04-round6-E6-adoption-done.md §2: a new
+game gets tier 2 immediately and tier 3 about a minute later, bit-exact, with
+the same PGO increment as the paper games; the gain scales with the game's
+engine share, 1.05-2.1x, geomean 1.19/1.30 on the nine held-out games.
+Do not let the deletion stand as the final word — it is currently unmentioned.
