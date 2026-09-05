@@ -1626,6 +1626,126 @@ Ryan's decision (PLAN-engine-tier §7 #1, now with E3 folded in) — E3 is
 inside the fork lineage, so it does not change that decision's shape, only
 its size.
 
+### E6.2 — TIER 2 BANKED (jobs 44492183 build+gate on holy8a24303, 44492184 bank on holy8a24307 genoa exclusive, 2026-09-04 20:20–20:57)
+
+**Question.** What does a game with NO profile of its own get? Tier 2 = the
+game's `qjsc -A` unit compiled without `-fprofile-use` (`build_fork.sh
+UNIT_NOPGO=1`, only the two `game_aot.c` compiles lose the flag), linked
+against the forkI24-PGO'd + thin-LTO'd engine objects and host, with E3
+intrinsics. `TAG=IT2u`. Engine and interpreter host are byte-identical to
+tier 3's (forkIT2u.so ea46589f = forkIT2.so; host_f0IT2u d7a92e74 =
+host_f0IT2); only the per-game units differ (futIT2u_miner 8867caaf vs
+futIT2_miner e9ce216e). Gate f0IT2u + f1IT2u **198/198**; checksum24 vs
+stock ng **24/24**. Bank protocol as 44482682: 16 × 128 × 5, 24 games × 3
+interleaved trials, arms adv / futIT2u / futIT2, 216/216, 0 RUN_FAIL; panel C
+adv / f1IT2u / f1IT2 144/144.
+
+    game                 adv   futIT2u    futIT2   IT2u/adv  IT2/adv  IT2u/IT2
+    bigfish          8568793   9710269  10052389      1.133    1.173     0.966
+    bossfight        6858383   8985593  10140513      1.310    1.479     0.886
+    caveflyer        1329429   2429102   2640993      1.827    1.987     0.920
+    chaser           1402927   2071945   2293479      1.477    1.635     0.903
+    climber          1117239   1192884   1408360      1.068    1.261     0.847
+    coinrun          1098057   1960344   2099366      1.785    1.912     0.934
+    dodgeball        1658673   2272430   2431102      1.370    1.466     0.935
+    fruitbot          924392   1168546   1280039      1.264    1.385     0.913
+    heist            2314884   4251174   5190500      1.836    2.242     0.819
+    jumper           1529617   1772388   1997517      1.159    1.306     0.887
+    leaper           2036861   2994722   2920119      1.470    1.434     1.026
+    maze             1312132   2809044   3041344      2.141    2.318     0.924
+    miner             822238   1547551   1705975      1.882    2.075     0.907
+    ninja            8465718   9358500  10254885      1.105    1.211     0.913
+    plunder          9907315  13505290  14096619      1.363    1.423     0.958
+    starpilot        5355533   7137341   7556067      1.333    1.411     0.945
+    asteroids        5256607   5796110   6156082      1.103    1.171     0.942
+    breakout         3018862   5328467   5812459      1.765    1.925     0.917
+    freeway         10284309  12769878  13542485      1.242    1.317     0.943
+    frostbite        4889205   5197055   5732500      1.063    1.172     0.907
+    pong            21437199  25884956  27982161      1.207    1.305     0.925
+    qbert            1077920   1310531   1558132      1.216    1.445     0.841
+    seaquest         8492136  10985790  11433806      1.294    1.346     0.961
+    space_invaders   3988163   5749892   6214123      1.442    1.558     0.925
+    geomean-PG16                                      1.438    1.569     0.916
+    geomean-ALE8                                      1.276    1.388     0.919
+    geomean-24                                        1.382    1.506     0.917
+    sum-of-medians adv      113146592   futIT2u 146189802   futIT2 157541015
+
+    PANEL C single-core ProcGen16 (medians of 3): f1IT2u/adv 1.501, f1IT2/adv 1.619,
+    f1IT2u/f1IT2 0.927 (maze 2.48/2.60, miner 2.17/2.38, heist 1.97/2.36, coinrun
+    1.88/1.99, caveflyer 1.85/2.00; bigfish 1.11/1.16, climber 1.11/1.27).
+
+**Read.** Tier 2 keeps 92% of tier 3 (all-24) and is **1.382× over adv**
+banked; the futIT2 column reproduces 44482682 to 0.4% (1.506 vs 1.500).
+The per-game PGO increment (IT2/IT2u) is 1.03–1.22: largest on heist 1.22,
+qbert 1.19, climber 1.18, bossfight 1.13; leaper 0.97 (its profile hurts).
+Sum-of-medians ratio 1.292 (vs 1.392 tier 3) → the paper's ProcGen16
+aggregate projects to ~3.0M on 17402 for a game that has never been
+profiled, ~3.35M once its own profile is in.
+
+### E6.2 — HOLDOUT: the 9 never-profiled paper games (job 44493447, holy8a24303, non-exclusive -c 16, 2026-09-04 20:47–21:07)
+
+Games: aim_trainer breakout.multi downwell_fresh flappy_bird flappy_bird.dunk2
+frostbite.jungle jump_king qbert.v2 vvvvvv (the 33 in the engine tree's
+`examples/games/js` minus the 24; aim_trainer and the current flappy_bird /
+qbert.v2 differ from or are absent in the live tree, so build AND bench use
+the engine tree's dir — the AOT unit embeds the source FNV). Per game: tier 2
+as above, and **tier 3 exactly as compile-at-load will do it**: instrumented
+unit (TAG=Igen, the e3_tune24 instrumented engine), 30 s random-play vec run
+on THAT game only, its profraw merged INTO a copy of forkI24.profdata, engine
+PIC objects + unit rebuilt with the merged profile (TAG=IT3h_<g>). 56–69 s
+per game end to end, 9/9 both tiers. Exactness: vec obs checksum 2000 × 32
+envs vs stock ng, tier 2 and tier 3, **9/9 identical** (aim_trainer ran fine
+under the keyboard bench). Bench 1 worker × 128 × 5, 3 interleaved reps.
+
+    game                     adv     tier2     tier3   tier2/adv   tier3/adv  tier3/tier2
+    aim_trainer          1280248   1456003   1517102       1.137       1.185       1.042
+    breakout.multi         48149     90686    100922       1.883       2.096       1.113
+    downwell_fresh        273572    309466    347347       1.131       1.270       1.122
+    flappy_bird          1334644   1498108   1625554       1.122       1.218       1.085
+    flappy_bird.dunk2     950708   1119944   1142865       1.178       1.202       1.020
+    frostbite.jungle       25194     26330     27839       1.045       1.105       1.057
+    jump_king             161061    174984    206569       1.086       1.283       1.181
+    qbert.v2                2378      2572      3029       1.082       1.274       1.178
+    vvvvvv                461889    559243    596792       1.211       1.292       1.067
+    geomean-9                                              1.189       1.302       1.095
+
+**Read.** The PGO increment transfers exactly: tier3/tier2 **1.095** on the
+9 vs 1.091 (1/0.917) on the 24, per-game 1.02–1.18 vs 1.03–1.22. The
+absolute engine gain is smaller on this set (tier 2 1.19 vs 1.38, tier 3
+1.30 vs 1.51) — outside the ~5% pass band set in §6.2 of the adoption
+handoff. The gap is the game mix, not the tier: the three fast games
+(aim_trainer, flappy_bird ×2, ~1.0–1.3M steps/s at one worker) land at
+1.12–1.18, exactly where the 24's fast, host-bound games sit (bigfish 1.13,
+ninja 1.11, asteroids 1.10, frostbite 1.06); the two very slow games
+(qbert.v2 2.4k steps/s, frostbite.jungle 25k) are rasterizer-bound and no
+engine tier can move them much (1.05–1.08); breakout.multi behaves like
+breakout (1.88 vs 1.77). No holdout game is slower on any tier. What the
+paper may say: a brand-new game gets tier 2 at once and tier 3 ~1 min later,
+bit-exact, with the same PGO increment as the paper games; the engine-tier
+gain depends on the game's engine share, from ~1.05 (rasterizer-bound) to
+~2.1 (engine-bound), 1.19/1.30 geomean on the 9 held-out paper games.
+Unproven: the engine-share explanation for the gap (an E0-style profile of
+frostbite.jungle / qbert.v2 would settle it; not run).
+
+### E6.1 — compile-at-load (branch `engine-tier`, commits c778c3d, cd1bf7f; tested jobs 44494099, 44494912)
+
+`src/playtrain/runtime/aot_cache.py` + the three `NativeVecEnv` constructors:
+no explicit `lib_path` → `resolve_lib(game)`: stock ng .so when no toolchain
+(laptop, live tree — behaviour unchanged) or `PLAYTRAIN_AOT=off`; else tier 1
+(`libqjs_vec.forkIT2.so`) at once, tier 2 / tier 3 from the cache when built,
+otherwise a detached builder writes them (pid-stamped lock, FAILED marker,
+1 h retry). Key = sha256 of game source + qjsc + prelude + intrinsics list +
+host/p5 sources + build script + engine archive + profile + rasterizer +
+clang version. Tests `tests/test_aot_cache.py` 5/5 on the cluster (tier-2
+build + 200-step checksum vs tier 1 in 22 s). Rehearsal (coinrun, holy8a28510,
+8 cores shared): first construction → tier 1, builder in the background,
+tier2.so after 25 s, tier3.so after 105 s; second construction → tier3.so;
+91k / 127k / 135k steps/s tier 1/2/3 on the same core budget. Slurm note: the
+builder is inside the job's cgroup, so it dies with the job (a 6-second test
+script killed it; a training job does not) and the stale lock is detected by
+pid. Cluster cache: `PLAYTRAIN_AOT_CACHE=$BASE/aot-cache`,
+`PLAYTRAIN_AOT_FORK_OUT=$WE/native/aotfork/out`.
+
 ### ROUND 6 summary table (lever × geomean-5 vec × all-24 vec × panel-C PG16 × gate)
 
     lever                                         geo-5 vec   all-24 vec       panel-C PG16   gate
@@ -1638,7 +1758,10 @@ its size.
     E2 operand stack → locals                     not run (next; re-profile 44483163 sizes it at 7–26% + put_loc_check 9–11%)
     E4 refcount elision                           not run (inside E2)
     E5 NaN-boxing                                 not run
-    E6 packaging / tier-2 arm / adv re-cut         not run
+    E6.2 TIER 2 BANKED (futIT2u/adv)              —           1.382 (bank)     1.501          198/198 (jobs 44492183/44492184; IT2u/IT2 0.917)
+    E6.2 HOLDOUT 9 never-profiled (tier2 / tier3) —           1.189 / 1.302 (1 worker, 9 games)  —   checksum 9/9 (job 44493447; tier3/tier2 1.095)
+    E6.1 compile-at-load (aot_cache.py)           built, tested 5/5, rehearsed (tier 2 in 25 s, tier 3 in 105 s); stock behaviour unchanged without the toolchain
+    adv re-cut with ef74835 (adv2)                job 44498267 submitted 2026-09-04 ~21:30 on holy8a28510 (gate + checksum + null A/B); result not yet in these notes
     field IC probe (not a §5 lever)               not run; fields = 28.6% of breakout after E3 — strongest probe case in the round; Ryan's call
 
 Decision list for Ryan (adds to PLAN-engine-tier-round6 §7): (1) adopt the

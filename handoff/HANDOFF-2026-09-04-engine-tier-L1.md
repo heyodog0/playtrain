@@ -111,15 +111,17 @@ holy8a28511 (tuned #2). Ratios only; absolutes differ 1.56× across node classes
 
 | tier | build | cost at load | measured/expected vs adv |
 |---|---|---|---|
-| 1. interpreter fallback | fork interpreter, PGO'd (`libqjs_vec.forkT2.so`, one shared `.so`) | none | **1.13×** all-24 (measured, job 44434726) |
-| 2. AOT, unprofiled unit | `qjsc -A` + clang -O3 thin-LTO on the game unit, linked against the PGO'd engine objects; no `-fprofile-use` on the game unit | ~40 s clang | ~1.17–1.20× (expected: between untuned AOT 1.14 and profiled 1.30; one local datapoint, needs a banked arm) |
-| 3. AOT, profiled | tier 2 + instrumented build + 30 s random-play run + rebuild with the game's profile merged in | ~2 min | **1.30×** all-24 (measured, job 44434726) |
+| 1. interpreter fallback | fork interpreter, PGO'd (`libqjs_vec.forkIT2.so`, one shared `.so`) | none | **1.13×** all-24 (measured, job 44434726, L1 engine; the IT2 engine is not separately banked) |
+| 2. AOT, unprofiled unit | `qjsc -A` + E3 intrinsics + clang -O3 thin-LTO on the game unit, linked against the PGO'd engine objects; no `-fprofile-use` on the game unit (`UNIT_NOPGO=1`) | ~25–40 s clang | **1.382×** all-24 / 1.438 PG16 / 1.276 ALE8, panel C 1.501 (BANKED, jobs 44492183/44492184); **1.189×** on the 9 never-profiled paper games (job 44493447) |
+| 3. AOT, profiled | tier 2 + instrumented build + 30 s random-play run + rebuild with the game's profile merged into the 24-game profile | ~60–105 s | **1.500×** all-24 (BANKED, 44482682; 1.506 in 44492184), panel C 1.629; **1.302×** on the 9 held-out games, tier3/tier2 1.095 there vs 1.091 on the 24 |
 
 All three are scriptable in a compile-at-load pipeline keyed by game md5.
 Tier 1 is the safe default; tier 2 is what a fresh game gets the first time it
 is trained; tier 3 is the headline number and is reached after an automatic
-two-minute step. The paper should say exactly that if this is adopted, and
-tier 2 should be added as a measured arm before the sentence is written.
+two-minute step. The paper should say exactly that if this is adopted. Tier 2 is now a
+banked arm and the ladder is implemented as compile-at-load
+(`src/playtrain/runtime/aot_cache.py`, round 6 E6.1; `tuning_notes.md`
+§ E6.2 / E6.1 for the tables and the Slurm caveat).
 Frictions that remain: the training host needs clang + the pinned fork source
 + the profdata at load time (fine on the cluster, heavy for a released wheel);
 every edit to a game in the refine loop invalidates its cache (irrelevant for
