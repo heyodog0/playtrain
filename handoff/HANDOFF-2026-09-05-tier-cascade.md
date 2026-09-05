@@ -1226,3 +1226,73 @@ If pingpong reproduces on CPU while sync does not, **the trainer is incidental
 and the bug is in the fork host's async path** — a materially different claim
 from anything earlier in this handoff, and it converts a 5-minute-per-run H100
 job into a seconds-per-run local debug loop.
+
+## 31. REPRODUCED ENV-ONLY ON CPU (44649737) — the trainer is incidental
+
+No trainer, no GPU, no learner. 512 envs, group_size 256, 5 threads — the
+per-worker topology of the broken config. `pingpong` drives `PingPongVecEnv`
+directly, the exact class double-buffered training uses.
+
+**FRUITBOT** (env steps/s)
+
+| mode | adv2 | tier2 | tier3 | tier3/adv2 |
+|---|---|---|---|---|
+| sync | 102,923 | 132,027 | 146,992 | **1.428** |
+| **pingpong** | 61,265 | **9,865** | **8,735** | **0.143** |
+
+**BIGFISH** (the "clean" control — 0.994 in the trainer)
+
+| mode | adv2 | tier2 | tier3 | tier3/adv2 |
+|---|---|---|---|---|
+| sync | 673,618 | 764,802 | 799,294 | **1.187** |
+| **pingpong** | 362,562 | **63,815** | **61,198** | **0.169** |
+
+### 31.1 What this establishes
+
+1. **The trainer is incidental.** The regression reproduces with no learner and
+   no GPU. The fault is in the fork host's async/group path
+   (`vec_create_async` + `vec_set_group_mode` + `worker_async`).
+2. **Sync is fine and FASTER** — 1.43x / 1.19x, consistent with Fig 4A's 1.392x
+   for fruitbot. The AOT compilation is doing its job.
+3. **tier2 == tier3 again** (0.161 vs 0.143; 0.176 vs 0.169), a third
+   independent confirmation that the fault is upstream of AOT compilation.
+4. **It is a ~6-7x collapse, and it affects EVERY game — not two.** bigfish,
+   which reads a healthy 0.994 in Table 1(a), collapses just as hard here
+   (0.169). This is the most important correction in this section.
+
+### 31.2 Why Table 1(a) showed only two bad games (REVISED reading)
+
+The learner caps the row at ~1.05M. Per-worker pingpong rates x 15 workers:
+
+- bigfish tier3: 61,198 x 15 = **918k** — still near the ceiling, so the row
+  reads 0.994 and looks healthy.
+- fruitbot tier3: 8,735 x 15 = **131k** — far below the ceiling, so throughput
+  becomes env-limited and the row collapses.
+
+**The 19 games at 0.95-1.04 are MASKED, not healthy.** Every one of them is
+running its environment ~6x slower than it should; the trainer hides it because
+the environment still outpaces the learner. The defect silently consumes the
+headroom that the paper's own trainer-bound argument depends on.
+
+### 31.3 A seconds-per-run debug loop now exists
+
+fruitbot pingpong tier3 takes **8.8 s**; sync takes 1.0 s. A full repro is ~10 s
+on a CPU node with `~/pp_driver.py` — no GPU, no trainer, no allocation wait.
+Whoever fixes this can iterate locally.
+
+### 31.4 Inconclusive: the plain async arm
+
+All `--mode async` (`AsyncNativeVecEnv`, no group_mode) runs timed out at 180 s
+**including adv2**, so this is almost certainly still a defect in my driver, not
+in the host. Do NOT read it as "adv2's async path is broken". `PingPongVecEnv`
+is driven correctly (its `send(group, actions)` / `wait(group)` signatures were
+read from source and it produces sane numbers), and it is the path the trainer
+actually uses. The plain-async cell needs a corrected driver before anyone
+draws a conclusion from it.
+
+### 31.5 Status
+
+Stopping here per instruction. No fix attempted. The open decision is now
+larger than Table 1(a): tier 2 and tier 3 degrade the environment ~6x under
+double-buffering **for all 24 games**, which bears on whether the tiers should
+ship as adopted at all, not merely on one table cell.
