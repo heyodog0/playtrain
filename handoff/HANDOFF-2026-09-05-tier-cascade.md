@@ -1476,3 +1476,45 @@ is in §27/§29 and there is a **10-second CPU repro** (`~/pp_driver.py`) for
 whoever takes it. Note the obvious candidate is already excluded: `vec_send`
 bumps `send_gen` and calls `wake_parked` with a correct lock/notify handshake,
 so it is not a plain missed-wakeup.
+
+## 35. Table 1(a) adv2 re-measure — all FOUR rows, one harness
+
+| job | row |
+|---|---|
+| **44670988** | IMPALA + Nature-CNN |
+| **44670899** | IMPALA + IMPALA-CNN |
+| **44670900** | PPO + Nature-CNN |
+| **44670901** | PPO + IMPALA-CNN |
+
+All four are `t1a_adv2.sbatch`, `--array=0-23%1`, one game per Slurm task, fresh
+`mps_up` per task, job-private shadow tree with an md5 gate on adv2
+(`1c5149364c32fb58ce9b81cda49fa763`), `QJS_DIRTY=1`. Same structure as
+44602115-118, which ran 96/96 tasks with zero deadlocks. ~7 h concurrent,
+dominated by the ICNN row.
+
+### 35.1 SUPERSEDED: the earlier IMPALA+Nature adv2 = 994,596
+
+**Do not use 994,596.** It came from job **44515752**, a single job that ran all
+games in-process rather than as array tasks. That job is the one whose ICNN row
+deadlocked on 14 of 18 games, and whose per-game rate was **~2.5x slower** than
+the array form (16:55 vs 4:33-7:30 per game) — its environment was demonstrably
+degraded even on the games that did produce numbers. Its adv2 Nature value is
+therefore not comparable with rows measured by the array harness.
+
+44670988 replaces it so that **all four rows come from one harness**, which is
+the entire point of Table 1(a). If both numbers are found later, the array
+value (44670988) is the one to trust.
+
+## 36. FINAL STATE of the cascade
+
+**Safe to publish now** (sync path, all verified, see §0.3):
+Fig 4A 7-point curves; panels B, C, D; Table 1(b) both swap rows.
+The main-text edit list is §14 + §15.4, with line numbers against Overleaf head
+`9273521`.
+
+**Pending:** Table 1(a), four adv2 rows, ~7 h (§35).
+
+**Blocked on a human decision:** the tier adoption itself (§0.2, §32).
+
+**Not done, deliberately:** no fix to the fork host, and no rebuild of any tier
+binary. Both need Ryan.
