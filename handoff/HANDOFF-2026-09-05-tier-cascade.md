@@ -1296,3 +1296,87 @@ Stopping here per instruction. No fix attempted. The open decision is now
 larger than Table 1(a): tier 2 and tier 3 degrade the environment ~6x under
 double-buffering **for all 24 games**, which bears on whether the tiers should
 ship as adopted at all, not merely on one table cell.
+
+## 32. SHIPPING DEFECT (outranks the table question) — the resolver hands the broken path out by default
+
+**This is independent of the paper and blocks anything further being built on the
+tier adoption.**
+
+All three env constructors in `src/playtrain/runtime/native_vec_env.py` call
+`resolve_lib()` when no explicit `lib_path` is given:
+
+| line | class | default binary |
+|---|---|---|
+| 178 | `NativeVecEnv` (sync) | `resolve_lib(game_path)` -> tier2/tier3 |
+| 372 | `AsyncNativeVecEnv` | `resolve_lib(...)` (tier 1 for a mixed pool) |
+| **483** | **`PingPongVecEnv`** (double-buffer) | **`resolve_lib(game_path)` -> tier2/tier3** |
+
+So **PingPongVecEnv gets the AOT tiers automatically, with no opt-in.**
+Double-buffering is the paper's own recommended training config and is worth
+**+38%** (adv2 617,666 -> 850,212). Anyone who trains with the recommended
+config on the adopted main branch therefore gets an environment **~6x slower on
+every one of the 24 games** (job 44649737, env-only, CPU, no trainer).
+
+It is not gated behind a flag, an env var, or an explicit `lib_path`. The only
+thing that avoids it today is passing `lib_path` by hand or setting
+`PLAYTRAIN_AOT=off`.
+
+**Recommended sequencing is Ryan's call, but the options are: revert the
+adoption, gate `resolve_lib` so the ping-pong/group path falls back to stock,
+or fix the fork host.** Patching a freshly-adopted production path under
+deadline is the option I would trust least.
+
+### 32.1 SCOPE — the tier work is NOT invalid
+
+Sync AOT is genuinely **1.19-1.43x faster** and every sync-path result stands:
+
+| output | path | status |
+|---|---|---|
+| Fig 4A, all 7 points | sync / `NativeVecEnv` | **unaffected** |
+| Panels C/D (single-core hosts) | standalone host | **unaffected** |
+| Panel B backend ladder | standalone host | **unaffected** |
+| Table 1(b), both swap rows | single-buffered | **unaffected** (tier3 1.205 / 1.089) |
+| **Table 1(a), four rows** | **double-buffered** | **affected — the only one** |
+
+## 33. PLAN A submitted — Table 1(a) under adv2
+
+| job | row |
+|---|---|
+| **44670899** | IMPALA + IMPALA-CNN |
+| **44670900** | PPO + Nature-CNN |
+| **44670901** | PPO + IMPALA-CNN |
+
+`t1a_adv2.sbatch`, `--array=0-23%1`, one game per task, fresh `mps_up` per task,
+shadow tree + md5 gate on adv2 (`1c514936`). Same structure as 44602115-118,
+which ran 96/96 tasks with zero deadlocks. ~7 h concurrent.
+
+Plan A is **reversible**: if the fork host is later fixed, re-measure with
+tier 3 and use those numbers instead. Nothing here forecloses that.
+
+**Disclosure this requires (one sentence):** environment-only results use the
+AOT tiers; trainer-attached results use the interpreter build, because the AOT
+host's double-buffered path has an unresolved regression.
+
+### 33.1 OPEN — methodology mismatch on the fourth row
+
+IMPALA+Nature adv2 = **994,596** (24/24) comes from **44515752**, which ran one
+game per process inside a SINGLE job. The three rows above run as ARRAYS (fresh
+Slurm task and fresh MPS per game). 44515752 is the job whose ICNN row
+deadlocked 14/18 and whose per-game rate was ~2.5x slower than the array form,
+so its environment was measurably degraded even where it produced numbers.
+
+Mixing one in-job row with three array rows in a table whose whole point is
+cross-row comparability is a real hazard. **Re-running IMPALA+Nature adv2 as a
+fourth array costs ~2 h concurrent** (it is the cheapest row at 4:25/game) and
+removes the mismatch. Not submitted — the instruction was the three missing
+rows. Recommend adding it.
+
+## 34. NOT DOING — plan B (fork host fix)
+
+Engine work on a freshly-adopted production path with no time estimate. Needs
+Ryan's decision, not mine, especially since the sensible sequencing may be to
+revert or gate the adoption rather than patch under deadline. The localisation
+is in §27/§29 and there is a **10-second CPU repro** (`~/pp_driver.py`) for
+whoever takes it. Note the obvious candidate is already excluded: `vec_send`
+bumps `send_gen` and calls `wake_parked` with a correct lock/notify handshake,
+so it is not a plain missed-wakeup.
