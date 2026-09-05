@@ -847,3 +847,69 @@ The two-mechanism story holds at seven points: ProcGen climbs monotonically
 (EnvPool per-doubling 1.65 -> 1.18), ALE is flat at ~20.6x. Note 80-thread
 ProcGen is **2.57x** on this arm (vs 2.58x from the reused number) and ALE
 **20.59x** (vs 20.98x) — use these, they are same-node with the PlayTrain curve.
+
+## 19. FINAL NUMBERS — cascade complete (49/49 tasks, all rows 24/24)
+
+T=5 fix (44614598) landed: ProcGen 177,338, ALE 22,806. EnvPool 5->10 growth is
+now exactly 2.00x on both suites (was 2.40/2.48), scaling efficiency starts at
+100%. The 7-point grid is clean.
+
+### 19.1 Table 1(a), tier 3, 24/24 every row
+
+| row | published | adv1 | **tier3** | vs published |
+|---|---|---|---|---|
+| IMPALA + Nature-CNN | 0.94M | 997,689 | **937,029** | 1.00x |
+| IMPALA + IMPALA-CNN | 0.35M | (never completed) | **344,803** | 0.99x |
+| PPO + Nature-CNN | 171k | 177,786 | **186,494** | 1.09x |
+| PPO + IMPALA-CNN | 64k | 66,583 | **67,273** | 1.05x |
+| IMPALA+Nature, 16 ProcGen | 0.91M | 985,269 | **895,265** | 0.98x |
+| IMPALA+Nature, 8 ALE | 1.01M | 1,023,001 | **1,026,494** | 1.02x |
+
+**CORRECTION to §16.2.** I attributed 44515752's tier3/adv2 = 0.939 to arm
+ordering (tier3 always ran second). That was WRONG. This array is single-arm,
+so no ordering exists, and it reproduces the same value: **937,029 vs
+44515752's 933,593, a 0.4% match.** Tier 3 really is ~6% slower than adv in the
+IMPALA+Nature row. It is NOT an artifact.
+
+Why it can be real: Table 1(a) is double-buffered at 15 workers x 128 envs;
+the swap rows (where tier3 wins 1.205/1.089) are single-buffered at 12. The
+per-game AOT binaries are much larger than the generic one, and 15 concurrent
+worker processes each mapping a bigger code image is a plausible I-cache/TLB
+cost that only bites at this topology. **Unproven** — a same-job A/B at the
+Table 1(a) topology would settle it, and none was run with correct ordering.
+Report the number; do not claim the mechanism.
+
+**Answer to "do we reach 1M": NO for the headline geomean.** 937,029 geomean
+(mean 972,191). ALE8 alone is 1,026,494. My earlier 1.02-1.10M projection was
+wrong because it assumed tier3 >= adv2 in this row. Do not switch to the mean
+to cross 1M.
+
+### 19.2 Figure 4A, seven points, all same node (holy8a28510)
+
+| threads | 5 | 10 | 20 | 30 | 40 | 60 | 80 |
+|---|---|---|---|---|---|---|---|
+| PT ProcGen16 | 225,875 | 453,744 | 907,954 | 1,363,524 | 1,814,048 | 2,729,986 | **3,636,231** |
+| EP ProcGen16 | 177,338 | 354,686 | 584,458 | 777,384 | 931,467 | 1,197,708 | **1,412,903** |
+| ratio | 1.27x | 1.28x | 1.55x | 1.75x | 1.95x | 2.28x | **2.57x** |
+| PT ALE8 | 458,714 | 917,021 | 1,838,391 | 2,752,241 | 3,657,695 | 5,466,618 | **7,226,918** |
+| EP ALE8 | 22,806 | 45,600 | 89,270 | 134,145 | 177,666 | 265,505 | **350,959** |
+| ratio | 20.11x | 20.11x | 20.59x | 20.52x | 20.59x | 20.59x | **20.59x** |
+
+Scaling efficiency (per-thread, relative to 5 threads):
+PT ProcGen 100/100/100/101/100/101/101; **EP ProcGen 100/100/82/73/66/56/50**.
+PT ALE 100/100/100/100/100/99/98; **EP ALE 100/100/98/98/97/97/96**.
+
+### 19.3 Line 547 needs NO change — verified per game at 80 threads
+
+Slower than EnvPool at eighty threads: **chaser 0.98x, climber 0.69x,
+fruitbot 0.75x, miner 0.79x** — exactly the four the sentence names (chaser and
+climber per-core, fruitbot and miner joining at eighty). Tier 3 did not flip any
+of them.
+
+**Caveat on one EnvPool datum:** BossfightEasy reads 78,149 at 80 threads, 20x
+below every other ProcGen game, giving a 129.75x ratio. It is NOT a fluke of my
+run — the reused documented-best geomean (1,413,748) matches mine (1,412,903) to
+0.06%, so the same value is in the published-era data. It is a reproducible
+EnvPool weakness on Bossfight, but it lifts our ProcGen geomean materially
+(excluding it would drop the 80-thread ratio from ~2.57x toward ~2.1x). Worth a
+footnote before a referee finds it.
