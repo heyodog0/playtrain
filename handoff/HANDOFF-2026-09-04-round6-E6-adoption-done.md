@@ -182,3 +182,59 @@ export PYTHONPATH=$WE/src PLAYTRAIN_AOT_FORK_OUT=$WE/native/aotfork/out PLAYTRAI
 # tests
 uv run --no-project --python /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/.venv/bin/python --with pytest python -m pytest tests/test_aot_cache.py -v
 ```
+
+## 9. What is left on the table (assessment at close, 2026-09-04 late; Ryan called the round here)
+
+Profile after E3 (job 44483163), engine-heavy games: AOT residual 24–31%
+(operand-stack traffic, tag tests, boxing), refcount/free 6–20%, property
+access up to 18.5% (breakout, coinrun), `get_var` of globals 4–6.6%, arith
+slow paths ≤ 7.3%, call machinery ≤ 3.3% (done). Rasterizer 9.5–43% (maze 39,
+miner 27), blit 3–11%, host worker spin 3.5–12%.
+
+Engine levers, ranked by gain per effort, all exact by construction, no
+generator constraint (Ryan ruled out constraining the generated JS dialect):
+
+| lever | cost | projected | note |
+|---|---|---|---|
+| malloc probe (mimalloc via LD_PRELOAD; then per-env arena + huge pages) | afternoon each | 0–5%, unknown | cheapest untried thing |
+| global-site cache for `get_var` | 1–2 d | 1.02–1.05 all-24 | same guard pattern as E3 |
+| E1-lite (f64 / mixed compare+arith fast paths in handler bodies) | 1 d | ~1.01 (breakout, heist) | fold into whichever goes first |
+| worker spin → futex/backoff | afternoon | 0 at the banked topology; matters when oversubscribed | host, not engine |
+| per-site field cache in the emitter (static `{shape, slot}`, no bytecode rewriting) | 1 d probe, kill < +3% on breakout | 1.05–1.10 on the 4 object-heavy games, ~1.02 all-24 | different mechanism from the dead round-4 ICs |
+| E2 stack→locals + E4 refcount elision + escape analysis for per-frame temporaries | 3–5 wk | 1.08–1.15 grid games, 1.06–1.09 all-24 | the last real engine project |
+
+Compounded: ~1.10–1.15× all-24 on top of today's 1.50, 1.2–1.3× on maze /
+heist / miner / coinrun; after that the profile is rasterizer. Not worth it:
+NaN-boxing (weeks, E2 captures most of it), JS→JS inlining (calls < 3.5%),
+lockstep SIMD across envs (control flow diverges), logic/render pipelining
+(no idle time on a saturated node).
+
+Where the big number is: **rasterize at observation resolution** (exact area
+coverage at 64×64) plus **per-tile command-stream hashing** (redraw only tiles
+whose commands changed; the whole-frame version is the adopted dirty-skip).
+Plausible 1.2–1.5× on the grid games; redefines the reference pixels, so it
+is a decision, not a lever. Two unmeasured facts decide it: the per-pixel vs
+per-command split of rasterizer time, and whether games draw at canvas
+resolution then downscale (then the downscale must be per-tile too).
+
+Long shot ("Futamura all the way down"): (a) site-specialized rasterization
+by const-generic monomorphization of the existing Rust kernels, selected by a
+static dataflow over p5's fill/stroke/transform state — medium, single-digit
+gain, not where to start; (b) the tile renderer above — 3–6 wk prototype on
+maze behind a flag, kill < +10% on maze; (c) **speculative typing with
+deopt**: types from the 30 s tier-3 profile, typed body with unboxed locals,
+guards that bail to the generic AOT body. Deopt is tractable here because
+both bodies come from the same bytecode, every pc has a label in the generic
+body and the operand-stack layout at every pc is a static invariant the
+emitter already computes: box locals into var_buf, push the stack values,
+`goto` the generic label for that pc. No OSR framework. Exact (IEEE doubles
+either way, fp flags unchanged). 2–4 months; ~30% risk that the unboxed-number
+vs boxed-object refcount interaction eats half the gain. Endpoint: LLM-written
+JS stepping at hand-written-C-env speed.
+
+What blocks it: headcount and time (each piece is a one-person multi-week
+project with a kill line), exclusive-node scarcity for banks, patch debt on a
+pinned fork, and two one-day measurements nobody has made — the gap to a
+hand-written C env (Procgen C++) on the same node, and the rasterizer
+per-pixel/per-command split. Run those two first; if the gap is already
+closed, the tile work is the whole story.
