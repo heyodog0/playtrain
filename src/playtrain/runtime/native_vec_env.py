@@ -25,6 +25,7 @@ from typing import Sequence
 
 import numpy as np
 
+from playtrain.runtime.aot_cache import resolve_lib
 from playtrain.runtime.action_space import (
     action_names, has_analog, is_default, load_space_spec, packed_analog,
     packed_channels, packed_tables, quantize_box_actions)
@@ -172,7 +173,9 @@ class NativeVecEnv:
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 
-        self._lib = _load_lib(Path(lib_path) if lib_path else _LIB_PATH)
+        # No explicit lib: the engine-tier ladder (aot_cache: stock -> tier 1/2/3 by
+        # what exists for this game; missing tiers build in the background).
+        self._lib = _load_lib(Path(lib_path) if lib_path else resolve_lib(game_path))
         self._h = self._lib.vec_create(
             game_path.encode(), self.num_envs, self.obs_size,
             self.max_steps, int(num_threads), 1 if autoreset else 0)
@@ -364,8 +367,9 @@ class AsyncNativeVecEnv:
         self.obs_size = int(obs_size)
         self._closed = False
 
-        self._lib = _load_lib(Path(lib_path) if lib_path else _LIB_PATH)
         paths = [_resolve(g) for g in self.games]
+        # a mixed pool has no single game unit: resolve_lib(None) -> tier 1
+        self._lib = _load_lib(Path(lib_path) if lib_path else resolve_lib(None if games is not None else paths[0]))
         if games is not None:
             arr = (ctypes.c_char_p * self.num_envs)(*[p.encode() for p in paths])
             self._h = self._lib.vec_create_async_multi(
@@ -476,7 +480,7 @@ class PingPongVecEnv:
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 
-        self._lib = _load_lib(Path(lib_path) if lib_path else _LIB_PATH)
+        self._lib = _load_lib(Path(lib_path) if lib_path else resolve_lib(game_path))
         self._h = self._lib.vec_create_async(
             game_path.encode(), self.num_envs, self.obs_size,
             int(max_steps), int(num_threads), 1)  # autoreset always on
