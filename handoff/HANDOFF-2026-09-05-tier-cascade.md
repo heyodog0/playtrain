@@ -458,3 +458,80 @@ topology; Fig 4A's 21x is env-only against a separately tuned EnvPool.
 `full_action_space: true` -> `num_actions: 18`, the PlayTrain arm
 `num_actions: 8` for pong. A slightly larger policy head on the baseline side.
 Compute-negligible, but it is a real difference in the as-run pair.
+
+## 14. Main-text edits this round forces (`ICLR-PlayTrain-Fast-LLM-VGEs/main.tex`)
+
+Panels B/C/D numbers are already in the text (12.62x, 2.19x, "fourteen of the
+sixteen", "remaining two", 13.4x, 117x, 20.98x, 2.58x). What the Table 1(b) ALE
+result and the 7-point grid change:
+
+| line | now says | should say | status |
+|---|---|---|---|
+| 521 (Table 1b) | `175k & 873k` | `175k & 1{,}018k` | **READY** (44516167) |
+| 520 (Table 1b) | `372k & 618k` | pending | blocked on 44516162 |
+| 539 | "5$\times$ faster than ALE on all eight" | **5.8$\times$** | **READY** |
+| 539 | "15 of 16 ... 1.7$\times$ ... miner 0.81$\times$" | pending | blocked on 44516162 |
+| 540 | "ALE ratio is 5$\times$ here rather than 12.62$\times$" | **5.8$\times$** | **READY** |
+| 542 | "PlayTrain scale linearly while Envpool's ProcGen **and ALE** flatten ... which is remarkable" | **WRONG for ALE — rewrite, see below** | **READY** |
+| 547 | "at eighty threads \texttt{fruitbot} and \texttt{miner} join them" | must be re-derived under tier 3 | blocked on 44545120 |
+| 1542 / 1548 | 4 scaling rows | 7 rows | blocked on 44545120 |
+
+### 14.1 Line 542 is factually wrong for ALE
+
+Measured per-doubling scaling, tuned arms:
+
+| arm | 10->20 | 20->40 | 40->80 |
+|---|---|---|---|
+| PlayTrain tier3 ProcGen | 2.01x | 1.99x | 2.01x |
+| **EnvPool tuned ProcGen** | **1.65x** | **1.59x** | **1.52x** |
+| PlayTrain tier3 ALE | 1.99x | 1.99x | 2.02x |
+| **EnvPool tuned ALE** | **1.96x** | **1.99x** | **1.97x** |
+
+**EnvPool's ALE does not flatten — it scales linearly.** Only ProcGen does.
+(As-shipped ALE does droop at the last doubling, 1.69x, but the as-shipped
+protocol is the thing HANDOFF-2026-09-04 §2 already said must go.)
+
+Consequently the two suites tell *different* stories, and saying "flatten" for
+both is both wrong and a wasted opportunity:
+
+| threads | 10 | 20 | 40 | 80 |
+|---|---|---|---|---|
+| tier3 / tuned, ProcGen | 1.28x | 1.55x | 1.95x | **2.58x** |
+| tier3 / tuned, ALE | 20.11x | 20.47x | 20.49x | **20.98x** |
+
+ProcGen is a **scaling** result (the gap grows because EnvPool flattens); ALE is
+a **constant-factor** result (~20x at every point, both scale linearly).
+Suggested replacement for 542:
+
+> This has two distinct causes. Against ProcGen the advantage grows with scale,
+> from 1.28$\times$ at ten threads to 2.58$\times$ at eighty, because EnvPool's
+> ProcGen flattens (1.65$\times$ to 1.52$\times$ per doubling) while PlayTrain
+> stays linear (2.01$\times$). Against ALE both scale linearly, so the
+> $\approx$20$\times$ advantage is a constant factor rather than a scaling
+> effect.
+
+Drop "which is remarkable" (HANDOFF-2026-09-04 §2).
+
+### 14.2 Line 540's explanation is now demonstrable, and needs a second clause
+
+"restricted by the trainer" is right and the ALE row now proves it internally:
+qbert is the only ALE game still env-bound on the PlayTrain side (623k vs
+1.0-1.17M for the other seven) and it is the only one where tier 3 moves the
+row at all (1.267x vs ~1.0). Worth one clause.
+
+But there is a **second, unstated** reason the two ALE ratios differ, and a
+reviewer will find it: **they are different baselines.** Per-core 12.62x is the
+QuickJS host vs real ALE. Table 1(b)'s 5.8x is the same trainer with
+`vec_backend` swapped at a fixed 12-worker x 5-thread topology — NOT the tuned
+async+NUMA EnvPool of Fig 4A, which is a different process architecture and is
+not selectable inside the trainer. State it; do not let 5.8x, 12.62x and 20.98x
+read as three measurements of one quantity.
+
+### 14.3 Line 547 must be re-derived, and probably changes
+
+"at eighty threads \texttt{fruitbot} and \texttt{miner} join them" was true
+under the old binary. Under tier 3 miner nearly doubles env-only (815,862 ->
+1,638,386, 2.008x) and fruitbot gains 1.392x, so both may now win at eighty
+threads. This needs per-game PlayTrain-vs-EnvPool at 80 threads; job 44545120
+produces exactly that, same node, for all 24 games. Do not edit this line until
+it lands.
