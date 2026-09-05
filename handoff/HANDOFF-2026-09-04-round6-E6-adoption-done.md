@@ -17,7 +17,7 @@ Full tables: `handoff/tuning_notes.md` § E6.2 / § E6.1 (before the round-6 sum
 | 1. E6.2 tier-2 banked arm | **DONE.** futIT2u/adv **1.382** all-24 (1.438 PG16, 1.276 ALE8), panel C 1.501; tier 2 = 0.917 of tier 3; futIT2 reproduces the bank (1.506 vs 1.500). Gate 198/198, checksum 24/24. Jobs 44492183 (build+gate, holy8a24303) / 44492184 (bank, holy8a24307 exclusive). |
 | 2. Holdout, 9 never-profiled games | **DONE.** tier2/adv **1.189**, tier3/adv **1.302**, tier3/tier2 **1.095** (matches the 24's 1.091). 9/9 built both tiers in 56–69 s each; checksum 9/9 exact. Job 44493447. The absolute gain is below the 24-game number — game mix, see §2. |
 | 3. E6.1 compile-at-load | **DONE and rehearsed.** `src/playtrain/runtime/aot_cache.py`, hooked into the three env constructors; 5/5 tests on the cluster; rehearsal on coinrun: tier 2 in 25 s, tier 3 in 105 s, next process picks tier 3. |
-| 4a. adv re-cut (adv2) | **RUNNING** as job 44498267 on holy8a28510 (`native/aotfork/adv_recut.sbatch`): recipe + gate adv vs adv2 vs V8 + checksum ng/adv/adv2 + null A/B 24×3. Log `logs/adv_recut_44498267.out`, results `out/adv2_44498267/`, artifacts `out/{libqjs_vec.adv2.so,qjs_host.adv2,libplaytrain_rasterizer.a.rustpgo_adv2,adv2.profdata}`. |
+| 4a. adv re-cut (adv2) | **DONE.** Job 44498267 (holy8a28510): `out/libqjs_vec.adv2.so` 1c514936, `out/qjs_host.adv2` 5dcce14f (rasterizer md5 unchanged). Gate vs V8: adv2 99/99, adv 96/99 (qbert × 3 seeds diverge). Checksum24: adv2 = stock ng 24/24, adv mismatches on qbert. Null A/B adv2/adv **1.005** all-24 (0.983–1.023). Stock artifacts restored (0eb1b27b). Replace-adv decision is Ryan's; ratios vs adv2 = ratios vs adv / 1.005. |
 | 4b. merge engine-tier → main | **NOT DONE — needs Ryan.** The push was blocked by the session's permission policy. It is a fast-forward: `git push origin engine-tier:main` (then `git branch -f main origin/main` locally). Nothing on main changes behaviour without the toolchain dir (§3). |
 | 4c. measurement cascade on 17402 | not started (Fig 4A absolutes, panel C, ladder, Tables 1(b)/7/8, paper wording). |
 
@@ -164,12 +164,10 @@ aot_cache_test,aot_e2e,adv_recut}_*.out`.
 
 ## 7. Next actions, in order
 
-1. Read `logs/adv_recut_44498267.out`: "restored stock artifacts … 0eb1b27b", gate
-   lines (`  FAIL` only), `CHECKSUM`, the null A/B geomean. Add the result to
-   `tuning_notes.md` (the summary row says "result not yet in these notes").
-2. Ryan: merge (`git push origin engine-tier:main`), decide adv vs adv2.
-3. 17402 confirm + cascade; paper wording (tier sentence from §2; "stock quickjs-ng").
-4. Optional: E0 profile of qbert.v2 / frostbite.jungle to close the holdout gap
+1. Ryan: merge (`git push origin engine-tier:main`), decide adv vs adv2 (§4; the
+   re-cut result is in `tuning_notes.md` § "adv RE-CUT → adv2").
+2. 17402 confirm + cascade; paper wording (tier sentence from §2; "stock quickjs-ng").
+3. Optional: E0 profile of qbert.v2 / frostbite.jungle to close the holdout gap
    explanation; E2 / field-IC per the round-6 plan.
 
 ## 8. Commands

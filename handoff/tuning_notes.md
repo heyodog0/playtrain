@@ -1746,6 +1746,38 @@ script killed it; a training job does not) and the stale lock is detected by
 pid. Cluster cache: `PLAYTRAIN_AOT_CACHE=$BASE/aot-cache`,
 `PLAYTRAIN_AOT_FORK_OUT=$WE/native/aotfork/out`.
 
+### adv RE-CUT → adv2 (job 44498267, holy8a28510 = adv's node, non-exclusive -c 16, 2026-09-04 20:58–21:29)
+
+Provenance check: adv (b3709b39 / host 46ea4999) came from job 43780730 on
+tuning commit 5a42f71, which does NOT contain the style-cache determinism fix
+ef74835 (the comment in adopt_build.sbatch saying otherwise is wrong).
+`native/aotfork/adv_recut.sbatch` runs the adopted recipe (plain-v3 rasterizer
+→ C++ PGO gen → 8 games × 30 s → PGO-use + thin-LTO + hidden vis + Rust-PGO
+with rust2.profdata) on the engine-tier tree = main's native code (ef74835 +
+the OFF-by-default draw counters d336297). Outputs `out/libqjs_vec.adv2.so`
+**1c514936**, `out/qjs_host.adv2` **5dcce14f**; the Rust-PGO rasterizer
+rebuilt to the identical md5 (8ad8e6e9), so adv2 differs from adv on the C++
+side only. The tree's stock artifacts were backed up and restored (0eb1b27b).
+
+Exactness: gate vs V8, 33 paper games × 3 seeds × 3000 — adv2 **99/99**,
+adv 96/99 (**qbert seeds 1, 42, 777 DIVERGE**: the known frame). Checksum24 vs
+stock ng: adv2 **24/24 identical**, adv mismatches on qbert only. So the fix is
+observable in the vec path too, not just in the single-env trace.
+
+    NULL A/B adv vs adv2 (1 worker x 128 x 5, 24 x 3 interleaved, 144/144)
+    bigfish 1.023  bossfight 1.017  caveflyer 0.983  chaser 1.002  climber 0.993
+    coinrun 1.022  dodgeball 1.011  fruitbot 0.999  heist 1.008  jumper 0.990
+    leaper 1.011  maze 0.995  miner 1.000  ninja 0.999  plunder 1.004  starpilot 1.016
+    asteroids 1.012  breakout 1.006  freeway 1.009  frostbite 1.000  pong 1.007
+    qbert 0.998  seaquest 1.006  space_invaders 1.005
+    geomean-PG16 1.004   geomean-ALE8 1.005   geomean-24 1.005
+
+**Read.** Throughput-neutral (1.005, inside the 1–2% per-game noise of a
+non-exclusive node); the draw-counter branch costs nothing measurable. adv2
+is adv with the determinism hole closed. Whether it replaces adv as the paper
+baseline is Ryan's call; every engine-tier ratio vs adv2 = ratio vs adv /
+1.005 (e.g. tier 3 1.500 → 1.493, tier 2 1.382 → 1.375).
+
 ### ROUND 6 summary table (lever × geomean-5 vec × all-24 vec × panel-C PG16 × gate)
 
     lever                                         geo-5 vec   all-24 vec       panel-C PG16   gate
@@ -1761,7 +1793,7 @@ pid. Cluster cache: `PLAYTRAIN_AOT_CACHE=$BASE/aot-cache`,
     E6.2 TIER 2 BANKED (futIT2u/adv)              —           1.382 (bank)     1.501          198/198 (jobs 44492183/44492184; IT2u/IT2 0.917)
     E6.2 HOLDOUT 9 never-profiled (tier2 / tier3) —           1.189 / 1.302 (1 worker, 9 games)  —   checksum 9/9 (job 44493447; tier3/tier2 1.095)
     E6.1 compile-at-load (aot_cache.py)           built, tested 5/5, rehearsed (tier 2 in 25 s, tier 3 in 105 s); stock behaviour unchanged without the toolchain
-    adv re-cut with ef74835 (adv2)                job 44498267 submitted 2026-09-04 ~21:30 on holy8a28510 (gate + checksum + null A/B); result not yet in these notes
+    adv re-cut with ef74835 (adv2)                null A/B adv2/adv 1.005 all-24 (0.983–1.023 per game); gate adv2 99/99 vs adv 96/99 (qbert ×3); checksum adv2 = ng 24/24, adv ≠ on qbert (job 44498267, holy8a28510)
     field IC probe (not a §5 lever)               not run; fields = 28.6% of breakout after E3 — strongest probe case in the round; Ryan's call
 
 Decision list for Ryan (adds to PLAN-engine-tier-round6 §7): (1) adopt the
