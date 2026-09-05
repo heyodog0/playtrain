@@ -978,3 +978,46 @@ step 1 confirms.
   shows a genuine tier-3 build defect on those games, report and stop —
   selectively rebuilding the two games that happen to hurt us is exactly the
   pattern that requires a human signature.
+
+## 21. STEP 1 RESULT (44640608, rep 1 fruitbot) — it is the AOT unit, NOT the PGO step
+
+| arm | fruitbot sps | vs adv2 |
+|---|---|---|
+| adv2 | 851,594 | — |
+| **tier2** (`futIT2u`, PGO engine, UNPROFILED unit) | **262,101** | **0.308** |
+| **tier3** (`futIT2`, fully profiled) | **255,585** | **0.300** |
+
+Three things this settles immediately:
+
+1. **NOT the PGO/profile step.** Tier 2 carries no game-unit profile and
+   collapses just as hard as tier 3 (0.308 vs 0.300). The defect lives in what
+   tier 2 and tier 3 share and adv2 does not: **the AOT-compiled game unit
+   itself**, i.e. compiling the game's JS to C and linking it into the .so.
+   Rebuilding profiles would not have fixed it.
+2. **adv2 is NOT anomalously high — tier2/tier3 are low.** This is the
+   alternative Ryan required be ruled out (§20.2). adv2 reproduces at
+   **851,594 here vs 850,092 in 44515752**, a 0.2% match across two independent
+   jobs on different nodes. Its value is stable and real.
+3. **No dose-response with env speed**, which kills the "faster producer
+   overruns the pipeline" hypothesis. Tier 2 is slower than tier 3 env-only yet
+   regresses identically. A contention story predicts tier 2 in between; it is
+   not.
+
+The same binaries are **1.39x FASTER env-only** (44545120, 16 workers,
+`--no-model`, CPU, no double buffer). So the trigger is something the trainer
+path adds, not the binary in isolation.
+
+### 21.1 Step 2 submitted: 44642543
+
+fruitbot only, adv2 vs tier3, 2 reps, alternating order, across four topologies:
+`vec_double_buffer` on/off x `vec_workers` 15/12. Env-only has no double buffer,
+and 12 workers is the swap-row topology where tier 3 WINS (1.205) — so these are
+the two candidate triggers. ~1.25 h.
+
+### 21.2 NOT rebuilding anything
+
+Per §20.4 this is where I stop and report. The finding is that the AOT game-unit
+path — the mechanism behind every tier-2/tier-3 number in the paper — has a
+trainer-path defect on at least fruitbot and climber. That is a bigger question
+than one table cell and needs a human decision, not a selective rebuild of the
+two games that happen to hurt the geomean.
