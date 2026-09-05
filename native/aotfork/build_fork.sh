@@ -12,7 +12,8 @@
 #
 # Env: FORK_OUT (default ./out), NATIVE (default ..), RA (rasterizer .a),
 #      QJS_ARCH (default -march=x86-64-v3 on x86_64, empty otherwise),
-#      OPT (default -O3), DBG=1 (-g everywhere, codegen unchanged), INTR=1 (E3 p5 intrinsics). Engine objects, F0 and F1 all use the same
+#      OPT (default -O3), DBG=1 (-g everywhere, codegen unchanged), INTR=1 (E3 p5 intrinsics),
+#      UNIT_NOPGO=1 (tier 2: game unit without -fprofile-use; needs TUNE=use). Engine objects, F0 and F1 all use the same
 #      $OPT $QJS_ARCH -ffp-contract=off so F1/F0 isolates AOT only.
 # Never touches native/build/ or native/build/variants/.
 set -euo pipefail
@@ -45,6 +46,15 @@ esac
 # DBG=1: -g on engine objects, AOT unit and host (debug info only; codegen unchanged) for SIGPROF symbolization
 DBGFLAG=""; [ "${DBG:-}" = 1 ] && DBGFLAG="-g"
 CFLAGS="$CFLAGS $TUNEFLAGS $VISFLAG $DBGFLAG"
+# UNIT_NOPGO=1 (E6.2 "tier 2"): the game's AOT unit is compiled WITHOUT -fprofile-use
+# (a never-profiled game), while engine objects and host keep the full PGO+LTO flags.
+# Only the two game_aot.c compiles (vec1, f1) use UNITFLAGS. Requires TUNE=use.
+UNITFLAGS="$CFLAGS"
+if [ "${UNIT_NOPGO:-}" = 1 ]; then
+  [ "$TUNE" = use ] || { echo "UNIT_NOPGO=1 requires TUNE=use" >&2; exit 1; }
+  UNITFLAGS="${CFLAGS//-fprofile-use=$PROFDATA/}"
+  [ "$UNITFLAGS" != "$CFLAGS" ] || { echo "UNIT_NOPGO: profile flag not found in CFLAGS" >&2; exit 1; }
+fi
 # INTR=1 (E3): qjsc -P <intrinsics> -> guarded direct calls to the p5 bindings in the
 # emitted C; the list is derived from aot_intr_list.h (single source), and the
 # emitted C goes to out/aotI_<game>/ so the plain arms' game_aot.c stay untouched.
@@ -142,7 +152,7 @@ vec1() {
   # build the PIC engine archives once (vec0 does it); parallel vec1 calls racing
   # on the same .o/.a files produced corrupt archives (2/24 links failed per job)
   [ -f "$PIC/libqjs_forkaot.a" ] || engine_pic
-  clang $CFLAGS -fPIC -Wno-everything -I "$SRC" -c -o "$tmp/game_aot_pic$TAG.o" "$tmp/game_aot.c"
+  clang $UNITFLAGS -fPIC -Wno-everything -I "$SRC" -c -o "$tmp/game_aot_pic$TAG.o" "$tmp/game_aot.c"
   # build-time identity of the game source, checked by env_init against what Python hands over
   read -r fnv len < <(python3 - "$game" <<'PY'
 import sys; b=open(sys.argv[1],'rb').read(); h=0xcbf29ce484222325
@@ -169,7 +179,7 @@ f1() {
   # one shared compile context, no std helpers (qjsc-hostmode.patch).
   [ -s "$tmp/game_aot.c" ] || ( cd "$tmp" && QJSC_HOST_MODE=1 "$OUT/qjsc" -A -c $QJSC_INTR -o game_aot.c prelude.js game.js )
   # the generated C #includes quickjs.i (the whole interpreter) — same flags as quickjs.o
-  clang $CFLAGS -Wno-everything -I "$SRC" -c -o "$tmp/game_aot$TAG.o" "$tmp/game_aot.c"
+  clang $UNITFLAGS -Wno-everything -I "$SRC" -c -o "$tmp/game_aot$TAG.o" "$tmp/game_aot.c"
   host_common "$OUT/host_f1${TAG}_$g" -DHOST_AOT "$tmp/game_aot$TAG.o" "$OUT/libqjs_forkaot$TAG.a"
   echo "built $OUT/host_f1${TAG}_$g ($(grep -c '^static const uint8_t aot[0-9]*_bytecode' "$tmp/game_aot.c") functions AOT-compiled)"
 }
