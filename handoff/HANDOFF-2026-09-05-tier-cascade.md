@@ -346,3 +346,45 @@ ALE **20.1 / 20.5 / 20.5 / 21.0x**. ProcGen climbs because EnvPool flattens;
 ALE is flat because both scale, PlayTrain just starts 20x up.
 
 `plot_env_efficiency.py`'s panels (b)-(d) are a separate pipeline — see §10.7.
+
+## 12. CORRECTION — the thread grid was too coarse; job 44545120 fixes it
+
+**Ryan caught this.** Job 44515188 measured 10/20/40/80 env threads. The
+PUBLISHED panel A used **seven** points — 5, 10, 20, 30, 40, 60, 80 — for both
+arms and both suites, verified directly from the as-run files:
+
+```
+ProcGen16  pt/ep  job 38145651  threads=[5, 10, 20, 30, 40, 60, 80]
+ALE8       pt/ep  job 39032276  threads=[5, 10, 20, 30, 40, 60, 80]
+```
+
+The 4-point grid entered in the adv-era redesign
+(`handoff/fig_preview_2026-09-03/plot_4a_adv.py` hardcodes `T = [10, 20, 40,
+80]`, and HANDOFF-2026-09-04 §1 lists 4-point curves); this round inherited it
+from the brief. It is a resolution regression against the published figure, and
+5/30/60 are exactly where the crossover and EnvPool's flattening are legible —
+the two things panel A exists to show.
+
+**Job 44545120** (`tier3_fig4a_full.sbatch`) restores the published grid, all
+four arms in ONE job so the whole panel is same-node:
+
+| arm | what |
+|---|---|
+| PlayTrain tier3 | `libqjs_vec.futIT2_<game>.so`, per game, md5-gated per run |
+| PlayTrain adv2 | reference arm |
+| EnvPool tuned | async + NUMA-bound shards (final_any's `async_numa`) |
+| EnvPool as-shipped | single sync pool (final_any's `sync1`) |
+
+Workers 1/2/4/6/8/12/16 x 5 env threads, 128 envs/worker, 2 trials (3 at 80),
+24 games. The EnvPool child scripts are final_any.sbatch's verbatim, with the
+T loop widened to all seven points and **ALE swept too** — final_any swept
+ProcGen only and took ALE at 80 alone, so the ALE EnvPool curve in
+`plot_4a_adv.py` came from the older matrix and was never re-measured
+alongside. Now it is, same node, same job.
+
+Landed on **holy8a28510 — the same node as 44515188**, so the 4-point run is a
+free consistency check on the 7-point one. `-t 10:00`; PlayTrain side ~40 min,
+EnvPool side the bulk.
+
+Until it lands, the §10.1 four-point numbers stand and are correct as far as
+they go — 44545120 adds resolution, it does not revise them.
