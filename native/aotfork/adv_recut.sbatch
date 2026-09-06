@@ -70,6 +70,15 @@ REFDIR=$OUT/gate_ref GAMES_DIR=$GDIR EXTRA_HOSTS="adv=$OUT/qjs_host.adv" bash ga
 echo "== 4b. checksum 2000 x 24: ng (stock, reference) vs adv vs adv2 =="
 QJS_DIRTY=1 WE=$WE GDIR=$GDIR "$PY" aot_obs_checksum.py 2000 "$(echo $PROCGEN $ALE | tr ' ' ',')" \
   ng="$WE/native/build/libqjs_vec.so" adv="$OUT/libqjs_vec.adv.so" adv2="$OUT/libqjs_vec.adv2.so" 2>&1 | tee "$OUTD/checksum.txt" | grep -E "MISMATCH|MISSING|CHECKSUM"
+echo "== 2b. async/group gate (PingPongVecEnv path: vec_create_async + vec_set_group_mode), 300 x 512 x 24 =="
+# The path double-buffered training uses; no other gate runs it (a 6x async-only
+# regression shipped through checksum + gate_fork + holdout unnoticed, see
+# handoff/INVESTIGATE-aot-async-regression.md). Digests must equal the reference
+# lib's SYNC digest; pingpong throughput must clear 0.8x the reference lib and
+# 0.6x the lib's own sync path.
+QJS_DIRTY=1 WE=$WE GDIR=$GDIR "$PY" gate_async.py 300 "$(echo $PROCGEN $ALE | tr ' ' ',')" \
+  ng="$WE/native/build/libqjs_vec.so" adv2="$OUT/libqjs_vec.adv2.so" 2>&1 | tee "$OUTD/async.txt" | grep -E "FAIL|MISSING|ASYNC GATE"
+grep -q "FAIL" "$OUTD/async.txt" && echo "ASYNC_GATE_FAIL (see $OUTD/async.txt)"
 
 bench() {  # game arm libpath rep
   local g=$1 a=$2 lib=$3 r=$4

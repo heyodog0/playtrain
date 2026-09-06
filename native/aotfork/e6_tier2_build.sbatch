@@ -60,4 +60,13 @@ echo "== 2b. vec obs checksum 2000 x 24: ng (reference) vs futIT2u =="
 QJS_DIRTY=1 WE=$WE GDIR=$GDIR "$PY" aot_obs_checksum.py 2000 "$(echo $PROCGEN $ALE | tr ' ' ',')" \
   ng="$NGSO" futIT2u="$OUT/libqjs_vec.futIT2u_{game}.so" 2>&1 | tee "$OUTD/checksumIT2u.txt" | grep -E "MISMATCH|MISSING|CHECKSUM"
 grep -Eq "MISMATCH|MISSING" "$OUTD/checksumIT2u.txt" && { echo CHECKSUM_FAIL; exit 1; }
+echo "== 2c. async/group gate (PingPongVecEnv path: vec_create_async + vec_set_group_mode), 300 x 512 x 24 =="
+# The path double-buffered training uses; no other gate runs it (a 6x async-only
+# regression shipped through checksum + gate_fork + holdout unnoticed, see
+# handoff/INVESTIGATE-aot-async-regression.md). Digests must equal the reference
+# lib's SYNC digest; pingpong throughput must clear 0.8x the reference lib and
+# 0.6x the lib's own sync path.
+QJS_DIRTY=1 WE=$WE GDIR=$GDIR "$PY" gate_async.py 300 "$(echo $PROCGEN $ALE | tr ' ' ',')" \
+  ng="$NGSO" futIT2u="$OUT/libqjs_vec.futIT2u_{game}.so" 2>&1 | tee "$OUTD/asyncIT2u.txt" | grep -E "FAIL|MISSING|ASYNC GATE"
+grep -q "FAIL" "$OUTD/asyncIT2u.txt" && { echo ASYNC_GATE_FAIL; exit 1; }
 echo "== done $(date) =="
