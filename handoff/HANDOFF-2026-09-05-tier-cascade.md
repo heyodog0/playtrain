@@ -1518,3 +1518,39 @@ The main-text edit list is §14 + §15.4, with line numbers against Overleaf hea
 
 **Not done, deliberately:** no fix to the fork host, and no rebuild of any tier
 binary. Both need Ryan.
+
+## FINAL — Table 1(a) complete (2026-09-05, laptop)
+
+ICNN row landed: **347,722** all-24 (24/24, zero failures), ProcGen16
+347,310, ALE8 348,548. Job 44670899. Cluster queue is EMPTY; the cascade
+is finished.
+
+Table 1(a), all four rows, one array harness, **adv2 (interpreter build,
+PLAYTRAIN_AOT=off, md5-gated)** — NOT the AOT tiers, per the Plan-A
+substitution:
+
+| row | adv2 | published |
+|---|---|---|
+| IMPALA + Nature-CNN | **1,005,870** | 0.94M |
+| IMPALA + IMPALA-CNN | **347,722** | 0.35M |
+| PPO + Nature-CNN | **176,081** | 171k |
+| PPO + IMPALA-CNN | **65,978** | 64k |
+
+Per-suite: Nature 996,290 / 1,025,308; ICNN 347,310 / 348,548.
+
+Abstract note: it currently says "over 0.9~M agent-decisions per second on
+a single GPU node". That stays TRUE and is now conservative. Do NOT change
+it to "over 1M" — ProcGen16 is 996,290, i.e. under, so the stronger claim
+is falsifiable from our own table. "Approximately one million" is the most
+that is defensible, and only for the all-24 geomean. Keep "on a single GPU
+node" and the "agent-decisions" unit.
+
+Attribution: published 0.94M -> 1,005,870 is ~+7%, and it comes from the
+ADV TUNING (SIMD blit, PGO), not from the AOT tiers — adv1 -> adv2 alone is
++0.8%. Table 1(a) is the interpreter build, so no sentence should imply the
+compile-at-load path speeds up training; that claim is scoped to
+environment throughput (Fig 4A, 1.5x).
+
+STILL OPEN, unchanged: the shipping defect (§0) — resolve_lib hands the
+broken async/group path to PingPongVecEnv by default at
+native_vec_env.py:483. Revert / gate / fix is Ryan's call.
