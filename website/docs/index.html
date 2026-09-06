@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlayTrain Documentation</title>
+  <meta name="description" content="Install PlayTrain, run JavaScript games as Gymnasium environments, train agents, and generate game variants.">
+  <link rel="icon" href="../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <button class="menu-button" id="menu-button" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+      <a class="brand" href="../"><strong>PlayTrain</strong><span>Docs</span></a>
+      <label class="search">
+        <span class="visually-hidden">Filter documentation sections</span>
+        <input id="docs-search" type="search" placeholder="Filter sections" autocomplete="off">
+        <kbd>/</kbd>
+      </label>
+      <nav class="toplinks" aria-label="External links">
+        <a href="../">Project</a>
+        <a href="https://github.com/heyodog0/playtrain">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar" id="docs-sidebar">
+      <nav aria-label="Documentation navigation">
+        <section class="nav-group">
+          <h2>Introduction</h2>
+          <a class="active" href="#overview" data-nav-label>Overview</a>
+          <a href="#installation" data-nav-label>Installation</a>
+          <a href="#first-environment" data-nav-label>First environment</a>
+        </section>
+
+        <section class="nav-group">
+          <h2>Guides</h2>
+          <a href="#play-games" data-nav-label>Play in the browser</a>
+          <a href="#vectorized" data-nav-label>Train agents</a>
+          <a href="#generate" data-nav-label>Generate variants</a>
+        </section>
+
+        <section class="nav-group">
+          <h2>Concepts</h2>
+          <a href="#backends" data-nav-label>Runtime backends</a>
+          <a href="https://github.com/heyodog0/playtrain/blob/main/GAME_TEMPLATE.md" data-nav-label>Environment contract <span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/heyodog0/playtrain/blob/main/runtime/action_spaces.json" data-nav-label>Action spaces <span aria-hidden="true">↗</span></a>
+        </section>
+
+        <section class="nav-group">
+          <h2>Reference</h2>
+          <a href="#commands" data-nav-label>Common commands</a>
+          <a href="https://github.com/heyodog0/playtrain/blob/main/benchmarks/README.md" data-nav-label>Benchmarks <span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/heyodog0/playtrain/blob/main/docs/REPRO.md" data-nav-label>Reproduction <span aria-hidden="true">↗</span></a>
+        </section>
+        <p class="no-results" id="no-results" hidden>No matching sections.</p>
+      </nav>
+    </aside>
+
+    <main class="docs-content" id="content">
+      <p class="eyebrow">Introduction</p>
+      <h1 id="overview">PlayTrain</h1>
+      <p class="lede">LLM-generated 2D game environments and a headless reinforcement-learning runtime for Gymnasium.</p>
+
+      <p>PlayTrain turns a self-contained JavaScript game into two things at once: a game
+      a person can open in a browser and an environment an agent can train against without
+      a browser. The package includes the runtime, a game catalog, generation tools, and a
+      validation contract.</p>
+
+      <div class="callout">
+        <strong>Core workflow</strong>
+        <p>Install the runtime, open a bundled game, step it through Gymnasium, and move to
+        vectorized environments when you are ready to train.</p>
+      </div>
+
+      <h2 id="highlights">Highlights</h2>
+      <ul>
+        <li>Run p5.js and Matter.js games as Gymnasium environments.</li>
+        <li>Use an embedded QuickJS engine and native rasterizer without a DOM or browser.</li>
+        <li>Step many independent environments through <code>NativeVecEnv</code>.</li>
+        <li>Generate and modify games from natural-language descriptions.</li>
+        <li>Validate observation shape, actions, determinism, throughput, and episode bounds.</li>
+      </ul>
+
+      <h2 id="installation">Installation</h2>
+      <p>PlayTrain requires Python 3.11 or newer, Node.js 18 or newer, a C/C++ toolchain,
+      Rust, <a href="https://docs.astral.sh/uv/">uv</a>, pnpm, and just. The bootstrap script
+      installs uv, pnpm, and just when they are missing.</p>
+
+      <pre><code>git clone https://github.com/heyodog0/playtrain
+cd playtrain
+./bootstrap.sh
+just install
+just test</code></pre>
+
+      <p><code>just install</code> installs the JavaScript and Python dependencies and builds
+      the native QuickJS backend used by the default runtime.</p>
+
+      <h2 id="first-environment">Run your first environment</h2>
+      <p><code>GameEnv</code> is the default single-environment API. It follows the familiar
+      Gymnasium reset and step interface.</p>
+
+      <pre><code>from playtrain.runtime import GameEnv
+
+env = GameEnv(game="flappy_bird")
+obs, info = env.reset(seed=0)
+
+for _ in range(1000):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        obs, info = env.reset()
+
+env.close()</code></pre>
+
+      <p>Observations are <code>(64, 64, 3)</code> RGB arrays. Bundled games use the shared
+      eight-action discrete space.</p>
+
+      <h2 id="play-games">Play in the browser</h2>
+      <p>The same source file can be played directly. Open the project’s browser game picker:</p>
+
+      <pre><code>just play flappy_bird</code></pre>
+
+      <p>You can also use the <a href="../#demo">playable catalog on the project page</a>
+      without installing anything.</p>
+
+      <h2 id="vectorized">Train with vectorized environments</h2>
+      <p>Use <code>NativeVecEnv</code> when a trainer needs many environments. It hosts N
+      QuickJS environments on an in-process C++ thread pool.</p>
+
+      <pre><code>from playtrain.runtime import NativeVecEnv
+
+envs = NativeVecEnv(
+    game="coinrun",
+    num_envs=64,
+    autoreset=True,
+)</code></pre>
+
+      <p>Training implementations and example configurations live in the
+      <a href="https://github.com/heyodog0/playtrain-trainers">playtrain-trainers repository</a>.</p>
+
+      <h2 id="backends">Runtime backends</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>API</th><th>Use</th><th>Execution</th></tr></thead>
+          <tbody>
+            <tr><td><code>GameEnv</code></td><td>Default single environment</td><td>Embedded QuickJS</td></tr>
+            <tr><td><code>NativeVecEnv</code></td><td>High-throughput training</td><td>C++ thread pool</td></tr>
+            <tr><td><code>PlayTrainEnv</code></td><td>Portable fallback</td><td>Node.js worker</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="generate">Generate a variant</h2>
+      <p>Generation needs a Gemini API key. Runtime and training do not.</p>
+
+      <pre><code>export GEMINI_API_KEY=...
+
+uv run playtrain-variant \
+  --parent breakout \
+  --prompt "3 simultaneous balls, lost balls cost a life" \
+  --name breakout.multi
+
+uv run playtrain-validate --game breakout.multi
+just play breakout.multi</code></pre>
+
+      <h2 id="commands">Common commands</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>just validate</code></td><td>Run the five-check suite over bundled games.</td></tr>
+            <tr><td><code>just bench</code></td><td>Measure per-game environment throughput.</td></tr>
+            <tr><td><code>just build-native</code></td><td>Rebuild the native QuickJS backend.</td></tr>
+            <tr><td><code>just play &lt;game&gt;</code></td><td>Open a game in the browser tester.</td></tr>
+            <tr><td><code>just tester</code></td><td>Open the playtest and refinement interface.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="next-steps">Where to go next</h2>
+      <div class="next-links">
+        <a href="https://github.com/heyodog0/playtrain/blob/main/GAME_TEMPLATE.md"><strong>Game contract</strong><span>Implement a compatible environment.</span></a>
+        <a href="https://github.com/heyodog0/playtrain/blob/main/benchmarks/README.md"><strong>Benchmarks</strong><span>Understand and reproduce throughput measurements.</span></a>
+        <a href="https://github.com/heyodog0/playtrain"><strong>Source repository</strong><span>Browse code, examples, tests, and open issues.</span></a>
+      </div>
+
+      <footer>
+        <span>PlayTrain documentation</span>
+        <a href="../">Back to the project page</a>
+      </footer>
+    </main>
+
+    <aside class="page-toc" aria-label="On this page">
+      <nav>
+        <h2>On this page</h2>
+        <a href="#overview">Overview</a>
+        <a href="#highlights">Highlights</a>
+        <a href="#installation">Installation</a>
+        <a href="#first-environment">First environment</a>
+        <a href="#play-games">Play in browser</a>
+        <a href="#vectorized">Vectorized environments</a>
+        <a href="#backends">Backends</a>
+        <a href="#generate">Generate a variant</a>
+        <a href="#commands">Commands</a>
+        <a href="#next-steps">Next steps</a>
+      </nav>
+    </aside>
+  </div>
+</body>
+</html>

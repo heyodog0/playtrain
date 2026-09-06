@@ -56,3 +56,6 @@ website/site/
 # outside any repo); these entries cover the case of copying them in here.
 checkpoints/
 checkpoints_ppo/
+
+# website build output; regenerate with bash website/build.sh
+website/site/

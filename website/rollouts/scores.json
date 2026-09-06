@@ -1,0 +1,586 @@
+{
+ "asteroids": {
+  "human_score": 2160,
+  "impala": {
+   "best_score": 2080.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 1238.33,
+   "net": "impala",
+   "run": "norm_asteroids_s0"
+  },
+  "ppo": {
+   "best_score": 1510.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 780.0,
+   "net": "impala",
+   "run": "p3_icnn_asteroids_s2"
+  }
+ },
+ "bigfish": {
+  "impala": {
+   "best_score": 40.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 23.5,
+   "net": "nature",
+   "run": "impala_34459362"
+  },
+  "ppo": {
+   "best_score": 40.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 34.0,
+   "net": "impala",
+   "run": "p3_icnn_bigfish_s1"
+  }
+ },
+ "bossfight": {
+  "impala": {
+   "best_score": 90.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 78.67,
+   "net": "impala",
+   "run": "impala_34798462"
+  },
+  "ppo": {
+   "best_score": 140.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 99.17,
+   "net": "impala",
+   "run": "p3_icnn_bossfight_s0"
+  }
+ },
+ "breakout": {
+  "human_score": 380,
+  "impala": {
+   "best_score": 310.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 255.0,
+   "net": "nature",
+   "run": "impala_34584429"
+  },
+  "ppo": {
+   "best_score": 330.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 265.0,
+   "net": "impala",
+   "run": "p3_icnn_breakout_s1"
+  }
+ },
+ "breakout.multi": {
+  "impala": {
+   "best_score": 1000.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 673.33,
+   "net": "impala",
+   "run": "impala_35038720"
+  },
+  "ppo": {
+   "best_score": 920.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 816.67,
+   "net": "nature",
+   "run": "pv_p_breakout_multi_s2"
+  }
+ },
+ "caveflyer": {
+  "human_score": 22,
+  "impala": {
+   "best_score": 12.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 5.33,
+   "net": "impala",
+   "run": "impala_34824267"
+  },
+  "ppo": {
+   "best_score": 10.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 3.5,
+   "net": "impala",
+   "run": "p3_icnn_caveflyer_s1"
+  }
+ },
+ "chaser": {
+  "impala": {
+   "best_score": 115.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 77.83,
+   "net": "impala",
+   "run": "impala_34824268"
+  },
+  "ppo": {
+   "best_score": 65.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 32.17,
+   "net": "impala",
+   "run": "p3_icnn_chaser_s2"
+  }
+ },
+ "climber": {
+  "impala": {
+   "best_score": 3.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 1.0,
+   "net": "impala",
+   "run": "impala_34824269"
+  },
+  "ppo": {
+   "best_score": 0.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 0.0,
+   "net": "nature",
+   "run": "p3_nat_climber_s1"
+  }
+ },
+ "coinrun": {
+  "human_score": 251,
+  "impala": {
+   "best_score": 244.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 186.33,
+   "net": "nature",
+   "run": "impala_34783850"
+  },
+  "ppo": {
+   "best_score": 43.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 21.83,
+   "net": "nature",
+   "run": "p3_nat_coinrun_s1"
+  }
+ },
+ "dodgeball": {
+  "impala": {
+   "best_score": 8.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 5.67,
+   "net": "impala",
+   "run": "impala_34798468"
+  },
+  "ppo": {
+   "best_score": 12.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 7.33,
+   "net": "impala",
+   "run": "p3_icnn_dodgeball_s2"
+  }
+ },
+ "downwell_fresh": {
+  "impala": {
+   "best_score": 420.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 395.0,
+   "net": "impala",
+   "run": "impala_35092212"
+  },
+  "ppo": {
+   "best_score": 335.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 303.33,
+   "net": "nature",
+   "run": "pv_p_downwell_fresh_s2"
+  }
+ },
+ "flappy_bird": {
+  "human_score": 28,
+  "impala": {
+   "best_score": 1.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 0.17,
+   "net": "impala",
+   "run": "impala_34979919"
+  },
+  "ppo": {
+   "best_score": 28.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 28.0,
+   "net": "nature",
+   "run": "pv_p_flappy_bird_s2"
+  }
+ },
+ "flappy_bird.dunk2": {
+  "impala": {
+   "best_score": 0.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 0.0,
+   "net": "impala",
+   "run": "impala_34979921"
+  },
+  "ppo": {
+   "best_score": 24.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 18.0,
+   "net": "nature",
+   "run": "pv_p_flappy_bird_dunk2_s2"
+  }
+ },
+ "freeway": {
+  "impala": {
+   "best_score": 0.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 0.0,
+   "net": "impala",
+   "run": "fw2x2_impala_icnn"
+  },
+  "ppo": {
+   "best_score": 14.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 13.67,
+   "net": "impala",
+   "run": "p3_icnn_freeway_s0"
+  }
+ },
+ "frostbite": {
+  "impala": {
+   "best_score": 260.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 258.33,
+   "net": "nature",
+   "run": "impala_34584428"
+  },
+  "ppo": {
+   "best_score": 260.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 258.33,
+   "net": "impala",
+   "run": "p3_icnn_frostbite_s0"
+  }
+ },
+ "frostbite.jungle": {
+  "impala": {
+   "best_score": 260.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 258.33,
+   "net": "impala",
+   "run": "impala_35032866"
+  },
+  "ppo": {
+   "best_score": 220.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 201.67,
+   "net": "nature",
+   "run": "pv_p_frostbite_jungle_s1"
+  }
+ },
+ "fruitbot": {
+  "impala": {
+   "best_score": 13.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 6.17,
+   "net": "impala",
+   "run": "impala_34798469"
+  },
+  "ppo": {
+   "best_score": 23.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 12.5,
+   "net": "impala",
+   "run": "p3_icnn_fruitbot_s2"
+  }
+ },
+ "heist": {
+  "impala": {
+   "best_score": 30.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 17.5,
+   "net": "impala",
+   "run": "impala_34824273"
+  },
+  "ppo": {
+   "best_score": 10.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 6.67,
+   "net": "impala",
+   "run": "p3_icnn_heist_s2"
+  }
+ },
+ "jump_king": {
+  "impala": {
+   "best_score": 365.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 220.9,
+   "net": "impala",
+   "run": "impala_35092039"
+  },
+  "ppo": {
+   "best_score": 640.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 424.89,
+   "net": "nature",
+   "run": "pv_p_jump_king_s2"
+  }
+ },
+ "jumper": {
+  "impala": {
+   "best_score": 4.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 1.17,
+   "net": "impala",
+   "run": "impala_34824292"
+  },
+  "ppo": {
+   "best_score": 2.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 0.83,
+   "net": "impala",
+   "run": "p3_icnn_jumper_s1"
+  }
+ },
+ "leaper": {
+  "impala": {
+   "best_score": 41.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 26.0,
+   "net": "nature",
+   "run": "impala_34652487"
+  },
+  "ppo": {
+   "best_score": 26.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 20.67,
+   "net": "impala",
+   "run": "p3_icnn_leaper_s1"
+  }
+ },
+ "maze": {
+  "impala": {
+   "best_score": 0.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 0.0,
+   "net": "impala",
+   "run": "g999_icnn_maze_s1"
+  },
+  "ppo": {
+   "best_score": 10.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 1.67,
+   "net": "impala",
+   "run": "p3_icnn_maze_s0"
+  }
+ },
+ "miner": {
+  "impala": {
+   "best_score": 14.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 10.67,
+   "net": "impala",
+   "run": "impala_34798480"
+  },
+  "ppo": {
+   "best_score": 24.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 14.0,
+   "net": "impala",
+   "run": "p3_icnn_miner_s1"
+  }
+ },
+ "ninja": {
+  "impala": {
+   "best_score": 12.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 7.33,
+   "net": "impala",
+   "run": "impala_34798481"
+  },
+  "ppo": {
+   "best_score": 12.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 9.0,
+   "net": "nature",
+   "run": "p3_nat_ninja_s1"
+  }
+ },
+ "plunder": {
+  "human_score": 20,
+  "impala": {
+   "best_score": 13.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 4.67,
+   "net": "impala",
+   "run": "norm_plunder_s1"
+  },
+  "ppo": {
+   "best_score": 20.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 9.67,
+   "net": "impala",
+   "run": "p3_icnn_plunder_s2"
+  }
+ },
+ "pong": {
+  "impala": {
+   "best_score": 105.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 105.0,
+   "net": "impala",
+   "run": "norm_pong_s1"
+  },
+  "ppo": {
+   "best_score": 105.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 100.17,
+   "net": "impala",
+   "run": "p3_icnn_pong_s0"
+  }
+ },
+ "qbert": {
+  "impala": {
+   "best_score": 320.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 320.0,
+   "net": "nature",
+   "run": "impala_34783853"
+  },
+  "ppo": {
+   "best_score": 320.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 320.0,
+   "net": "impala",
+   "run": "p3_icnn_qbert_s1"
+  }
+ },
+ "qbert.v2": {
+  "impala": {
+   "best_score": 1650.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 1426.67,
+   "net": "impala",
+   "run": "impala_35019678"
+  },
+  "ppo": {
+   "best_score": 525.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 380.0,
+   "net": "nature",
+   "run": "pv_p_qbert_v2_s1"
+  }
+ },
+ "seaquest": {
+  "human_score": 450,
+  "impala": {
+   "best_score": 1590.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 1401.67,
+   "net": "impala",
+   "run": "norm_seaquest_s0"
+  },
+  "ppo": {
+   "best_score": 1020.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 786.67,
+   "net": "impala",
+   "run": "p3_icnn_seaquest_s0"
+  }
+ },
+ "space_invaders": {
+  "impala": {
+   "best_score": 400.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 400.0,
+   "net": "impala",
+   "run": "norm_space_invaders_s0"
+  },
+  "ppo": {
+   "best_score": 400.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 400.0,
+   "net": "impala",
+   "run": "p3_icnn_space_invaders_s0"
+  }
+ },
+ "starpilot": {
+  "impala": {
+   "best_score": 49.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 42.33,
+   "net": "impala",
+   "run": "impala_34798483"
+  },
+  "ppo": {
+   "best_score": 49.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 42.83,
+   "net": "impala",
+   "run": "p3_icnn_starpilot_s1"
+  }
+ },
+ "vvvvvv": {
+  "human_score": 600,
+  "impala": {
+   "best_score": 450.0,
+   "ckpt_step": -1,
+   "episodes": 6,
+   "greedy_return_mean": 108.33,
+   "net": "impala",
+   "run": "impala_35092041"
+  },
+  "ppo": {
+   "best_score": 250.0,
+   "ckpt_step": 99999744,
+   "episodes": 6,
+   "greedy_return_mean": 91.67,
+   "net": "nature",
+   "run": "pv_p_vvvvvv_s1"
+  }
+ }
+}
