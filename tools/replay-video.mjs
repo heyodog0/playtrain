@@ -76,11 +76,16 @@ if (has('--child')) {
       frames.push({ w: p.width, h: p.height, data: Buffer.from(p.data) });
     };
     grab();
+    // `stride` is how many 60fps game frames to skip between captures. One env.step
+    // already advances frameSkip of them, so an action-repeat episode is captured at
+    // 60/frameSkip fps and must not be decimated a second time -- without this a
+    // frameSkip=4 clip comes out four times too short and plays four times too fast.
+    const stride = Math.max(1, Math.round(job.stride / (ep.frameSkip ?? 1)));
     let i = 0;
     for (const a of ep.actions) {
       const r = env.step(a);
       i++;
-      if (i % job.stride === 0 && frames.length < job.maxFrames) grab();
+      if (i % stride === 0 && frames.length < job.maxFrames) grab();
       if (r.terminated || r.truncated) break;
     }
 
@@ -302,8 +307,15 @@ for (const file of files) {
     if (BEST_ONLY && eps.length) eps = [eps.reduce((a, b) => (b.score > a.score ? b : a))];
     if (!eps.length) continue;
     const list = byGame.get(block.game) || [];
+    // Frame skip belongs to the run that produced the episode, and one session can
+    // mix runs (agent rollouts do: some checkpoints trained with action repeat and
+    // some without). Take the most specific value available; a session-wide default
+    // silently replayed an action-repeat episode at 1 frame per action, which made
+    // the clip four times too short and desynchronised the trajectory.
     list.push(...eps.map(e => ({
-      ...e, frameSkip: session.frameSkip ?? 1, maxSteps: session.maxSteps ?? 2000,
+      ...e,
+      frameSkip: e.frameSkip ?? block.frame_skip ?? session.frameSkip ?? 1,
+      maxSteps: e.maxSteps ?? block.max_steps ?? session.maxSteps ?? 2000,
       renderWidth: RENDER_W,
     })));
     byGame.set(block.game, list);
