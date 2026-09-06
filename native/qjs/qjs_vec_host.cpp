@@ -434,7 +434,24 @@ struct VecHost {
   // a slow env never stalls the batch — the barrier tail latency is gone.
   bool async = false;
   std::vector<int> act;   // per-env pending action
-  MPMC inq;               // env ids to step (main -> workers)
+  // One input queue PER WORKER: env i is owned by worker i % nthreads, for
+  // its whole life (init, every step, autoreset). A single shared work-stealing
+  // queue let any worker step any env, so each frame FREED buffers another
+  // thread had malloc'd (rasterizer path Vecs, engine property arrays) — every
+  // such free/realloc takes the owning glibc arena's mutex, and with 5+ workers
+  // those collide and futex-sleep: measured ~1M voluntary context switches and
+  // 6x lower throughput than the sync path on the same binary (fruitbot,
+  // g256 t5). Pinning keeps each env's malloc traffic on one thread's arena,
+  // exactly as run_shard does for the sync host. The interleaved ownership
+  // (i % T, not contiguous shards) keeps a contiguous ping-pong group spread
+  // evenly across workers.
+  std::unique_ptr<MPMC[]> inq;   // inq[t]: env ids for worker t (main -> worker t)
+  alignas(128) std::atomic<int> async_init_left{0};   // workers still running env_init
+  // vec_async_reset also runs on the owners (token ~i on inq[i % T]), for the
+  // same reason: a reset allocates the episode's whole game state, and doing it
+  // on the caller would put every env's live heap in the caller's arena.
+  alignas(128) std::atomic<int> async_resets_left{0};
+  std::vector<uint32_t> reset_seeds;
   MPMC readyq;            // finished env ids (workers -> main)
 
   // ---- group (ping-pong) mode on the async host ----
@@ -724,14 +741,18 @@ static void dispatch(VecHost* H) {
     while (H->done[t].done.load(std::memory_order_acquire) != g) cpu_relax();
 }
 
-// Async worker: spin-pop an env off the input queue, step it, publish it ready.
-static void worker_async(VecHost* H) {
+// Async worker t: init its own envs (i % T == t), then spin-pop ids off ITS
+// queue, step them, publish them ready. See VecHost::inq for why envs are pinned.
+static void worker_async(VecHost* H, int t) {
+  for (int i = t; i < H->num_envs; i += H->nthreads) env_init(H, H->envs[i], i);
+  H->async_init_left.fetch_sub(1, std::memory_order_acq_rel);
+  MPMC& q = H->inq[t];
   uint64_t seen_send = H->send_gen.load(std::memory_order_acquire);
   for (;;) {
     int env;
     int spins = 0;
     std::chrono::steady_clock::time_point t0{};
-    while (!H->inq.pop(env)) {
+    while (!q.pop(env)) {
       if (H->stop.load(std::memory_order_acquire)) return;
       if (!park_due(spins, t0)) { cpu_relax(); continue; }
       // Park on the send generation: bumped once per vec_send batch, so no
@@ -745,6 +766,12 @@ static void worker_async(VecHost* H) {
         H->park_cv.wait_for(lk, std::chrono::milliseconds(100));
       H->parked.fetch_sub(1, std::memory_order_relaxed);
       seen_send = H->send_gen.load(std::memory_order_acquire);
+    }
+    if (env < 0) {                       // reset token from vec_async_reset
+      int idx = ~env;
+      env_reset(H, H->envs[idx], idx, H->reset_seeds[idx]);
+      H->async_resets_left.fetch_sub(1, std::memory_order_acq_rel);
+      continue;
     }
     env_step(H, H->envs[env], env, H->act[env]);
     if (H->group_mode) {
@@ -1015,14 +1042,17 @@ static void* make_async(std::vector<std::string>&& srcs, int num_envs, int obs_s
   H->envs.resize(num_envs);
   H->act.assign(num_envs, 0);
   size_t cap = next_pow2((size_t)num_envs + 1);  // in-flight ids never exceed num_envs
-  H->inq.init(cap);
+  H->inq.reset(new MPMC[T]);
+  for (int t = 0; t < T; t++) H->inq[t].init(cap);
   H->readyq.init(cap);
 
-  for (int i = 0; i < num_envs; i++) {           // init all envs on the caller thread
-    env_init(H, H->envs[i], i);
+  // Each worker inits ITS envs (owner thread = the thread that will step them,
+  // so their heaps live in that thread's malloc arena); wait for all of them.
+  H->async_init_left.store(T, std::memory_order_release);
+  for (int t = 0; t < T; t++) H->pool.emplace_back(worker_async, H, t);
+  while (H->async_init_left.load(std::memory_order_acquire) > 0) cpu_relax();
+  for (int i = 0; i < num_envs; i++)
     if (!H->envs[i].ok) fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
-  }
-  for (int t = 0; t < T; t++) H->pool.emplace_back(worker_async, H);
   return H;
 }
 
@@ -1052,11 +1082,17 @@ void vec_async_setup(void* h, uint8_t* obs, float* rew, uint8_t* term, uint8_t* 
   H->out_obs = obs; H->out_rew = rew; H->out_term = term; H->out_trunc = trunc;
 }
 
-// Reset all envs on the caller thread (workers idle: nothing is queued yet).
+// Reset all envs, each on its owning worker (see VecHost::inq); blocks until
+// every reset has run. Must not overlap in-flight steps (call before sends).
 void vec_async_reset(void* h, const int32_t* seeds) {
   VecHost* H = (VecHost*)h;
+  H->reset_seeds.assign(seeds, seeds + H->num_envs);
+  H->async_resets_left.store(H->num_envs, std::memory_order_release);
   for (int i = 0; i < H->num_envs; i++)
-    env_reset(H, H->envs[i], i, (uint32_t)seeds[i]);
+    while (!H->inq[i % H->nthreads].push(~i)) cpu_relax();
+  H->send_gen.fetch_add(1, std::memory_order_release);
+  wake_parked(H);
+  while (H->async_resets_left.load(std::memory_order_acquire) > 0) cpu_relax();
 }
 
 // Submit `count` (env_id, action) pairs to be stepped, in any order/subset.
@@ -1066,7 +1102,7 @@ void vec_send(void* h, const int32_t* env_ids, const int32_t* actions, int count
     int id = env_ids[k];
     H->act[id] = actions[k];
     if (H->group_mode) H->busy[id].store(1, std::memory_order_relaxed);
-    while (!H->inq.push(id)) cpu_relax();
+    while (!H->inq[id % H->nthreads].push(id)) cpu_relax();
   }
   H->send_gen.fetch_add(1, std::memory_order_release);
   wake_parked(H);
