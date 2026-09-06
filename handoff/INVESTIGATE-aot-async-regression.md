@@ -1,8 +1,172 @@
 # Investigation brief: the AOT fork host's async/group path is ~6x slower
 
-**Status:** open, unassigned, not started. No fix has been attempted.
-**Written:** 2026-09-05. Assumes you have no context from the session that found it.
+**Status:** RESOLVED 2026-09-05 (same day). Mechanism demonstrated, fix landed in
+both hosts, async gate added and wired into the adoption jobs. See §0.
+**Written:** 2026-09-05. §1-§10 are the original brief, kept verbatim as the record
+of what was known before the investigation; several of its guesses were wrong
+(see §0.5). Assumes you have no context from the session that found it.
 **Repo:** `/Users/heyodogo2/code/lab/playtrain/playtrain`, branch `main`.
+
+---
+
+## 0. Resolution
+
+### 0.1 The mechanism: glibc malloc arena contention from cross-thread frees
+
+The async host let **any worker step any env** (one shared MPMC work queue), while
+the sync host pins each env to the thread that created it (`run_shard`). Every
+frame frees what the previous frame allocated — the rasterizer's per-path
+`Vec<Point>`s (`rs_begin_path` -> `_int_free`, `rs_ellipse_path` ->
+`RawVec::grow_one` -> `realloc`) and the engine's property arrays
+(`resize_properties` -> `realloc`). In async mode the previous frame ran on a
+*different* thread, so the chunk lives in *that* thread's glibc arena, and freeing
+or reallocating it takes that arena's mutex. With 5+ workers all doing this
+thousands of times per frame the mutexes collide and the losers futex-sleep.
+
+Evidence (all env-only, CPU, fruitbot, group 256, 5 threads, `~/pp_diag.py`):
+
+| | adv2 | tier3 (shipped) |
+|---|---|---|
+| pingpong steps/s | 61,629 | 8,788 |
+| voluntary ctx switches during the run | 243 | **2,807,531** |
+| sys time | 0.1 s | **21.2 s** |
+| window spread | 1.13x | 8.46x |
+| output digest | 19bc7ce1b2aa0550 | 19bc7ce1b2aa0550 (identical work) |
+| RSS | 210 MB | 163 MB (less, not more) |
+
+`strace -f -k -e futex` on tier3: >95% of futex calls are
+`__lll_lock_wait_private` / `__lll_unlock_wake_private` under `_int_free` or
+`realloc`, reached from `rs_begin_path` / `rs_ellipse_path` (Rust rasterizer)
+inside `aot16_draw` -> `env_step` -> `worker_async`. gdb thread samples: 16 of 30
+worker samples inside `__lll_lock_wait_private`. Thread sweep: at **1 thread
+tier3 is 1.39x faster than adv2** in pingpong (16,992 vs 12,239); the collapse
+begins at 2 threads and deepens with more (sys time 0.6 -> 6.3 -> 23.5 -> 60.2 s
+for 2/5/12/23 threads). Job logs: `analogen-jaxbench/logs/aot_async_diag_44740058.out`,
+`aot_async_strace_44740974.out`.
+
+Why adv2 (quickjs-ng) escaped: same host code, same rasterizer source, same
+allocation pattern. It sits below the contention threshold — the Bellard-lineage
+fork engine is faster per step and issues more `realloc`s per frame
+(`resize_properties`), which is enough to tip the arena mutexes from mostly
+uncontended into a convoy. That is a threshold effect, not immunity: under
+`strace` adv2 also showed 28k voluntary switches. The stock host had the same
+latent bug and got the same fix.
+
+### 0.2 The fix (both hosts: `native/qjs/qjs_vec_host.cpp`, `native/aotfork/qjs_vec_host_fork.cpp`)
+
+Env `i` is owned by worker `i % T` for its whole life:
+- one input queue per worker (`inq[t]`); `vec_send` routes id -> `inq[id % T]`;
+- `env_init` runs on the owner (workers init their envs at spawn; `make_async`
+  waits on `async_init_left`);
+- `vec_async_reset` runs on the owner too (reset token `~i` on `inq[i % T]`;
+  caller waits on `async_resets_left`) — the reset allocates the episode's whole
+  game state.
+
+There is deliberately **no work stealing**. A variant with owner-first stealing
+was built and measured (job `aot_async_fix4_44744698`, `futIT2fix3_*`): on the
+fork host it brought the contention straight back — fruitbot pingpong t5 26,644
+with 647k context switches vs 74,822 pinned-only — because every stolen step
+plants that frame's persistent objects in the thief's arena, so the env's heap
+smears across arenas over time and the frees never stop crossing. Heap locality
+has to be an invariant, not a preference. Interleaved ownership (`i % T`, not
+contiguous shards) keeps a contiguous ping-pong group spread evenly across
+workers. Public C ABI unchanged.
+
+Measured, same protocol (fruitbot / bigfish, env steps/s, `~/pp_diag.py`, which
+is Python-driver-bound near ~78k so ties at 78k are the driver, not the host):
+
+| arm | fruitbot pp t5 | pp t12 | bigfish pp t5 | ctx switches (fruitbot t5) |
+|---|---|---|---|---|
+| adv2 (shipped stock) | 61,629 | 78,007 | 77,386 | 243 |
+| tier3 (shipped AOT) | 8,788 | 8,317 | 56,697 | 2,807,531 |
+| tier3 pinned, init+reset still on caller | 48,457 | 42,299 | 60,328 | 127,371 |
+| **tier3 pinned, init+reset on owner** | **73,795** | **78,282** | **77,877** | **1** |
+| adv2 pinned (ng host rebuilt) | 63,861 | 77,474 | 77,504 | 0 |
+
+`gate_async.py` (less driver overhead than pp_diag): fruitbot pingpong adv2 60,068
+-> tier3fix 84,508 (**1.41x**); bigfish 248,524 -> 268,066 (**1.08x**). Sync path
+unchanged (tier3 50k vs adv2 44k fruitbot, as before). Output digests identical
+across adv2 / tier3 / fixed, and across sync vs pingpong. Jobs:
+`aot_async_fix_44741849`, `aot_async_fix2_44742646`, `aot_async_fix3_44743754`,
+`aot_async_fix4_44744698` (final code, 24 games, in `analogen-jaxbench/logs/`).
+
+macOS caveat (Apple M-series, 4 threads, group 64): pinning costs 0.58-0.84x of
+the original in pingpong there — macOS malloc has no per-thread arenas so there is
+no upside, and static shards suffer when the OS schedules a worker onto an E-core.
+Digests are identical. Training runs on Linux; on Linux the pinned ng host is at or
+above the original at every measured point (63,861-65,635 vs 61,255-61,629 fruitbot
+t5; ties at the driver ceiling elsewhere). If macOS ping-pong throughput ever
+matters, the fix is a per-runtime allocator (JSMallocFunctions) so ownership can
+move without the heap following, not stealing.
+
+All 24 paper games, `gate_async.py` 300 steps x 512 envs, group 256, 5 threads
+(job `aot_async_fix3_44743754`, CPU node holy8a24307). pp = pingpong env steps/s;
+ratio = pp / adv2's pp. Digests: every arm equal to adv2's sync digest on every game.
+
+| game | adv2 pp | tier3 shipped (ratio) | tier3 fixed (ratio) |
+|---|---|---|---|
+| fruitbot | 61,075 | 8,188 (**0.13**) | 88,022 (1.44) |
+| bigfish | 258,221 | 63,531 (**0.25**) | 534,965 (2.07) |
+| asteroids | 218,106 | 61,123 (**0.28**) | 348,598 (1.60) |
+| frostbite | 233,829 | 84,709 (**0.36**) | 315,518 (1.35) |
+| miner | 48,815 | 27,132 (**0.56**) | 102,541 (2.10) |
+| dodgeball | 94,858 | 56,596 (**0.60**) | 151,197 (1.59) |
+| space_invaders | 193,764 | 155,912 (0.80) | 355,773 (1.84) |
+| qbert | 57,661 | 52,834 (0.92) | 92,796 (1.61) |
+| ninja | 350,215 | 331,791 (0.95) | 553,790 (1.58) |
+| other 15 games | | 1.08 - 2.04 | 1.34 - 2.33 |
+
+Shipped tier3 fails the 0.8 floor on 6 of 24 and is below the fixed build on all 24.
+Fixed tier3 is faster than adv2 in pingpong on every game (min 1.34x, climber).
+Correction to §2 fact 4 below: the regression was not "~6x on all 24 games" —
+its size depends on how allocation-heavy the game's frame is; several games were
+slightly *ahead* of adv2 even when broken. The masking argument still holds for
+the six that regressed.
+
+### 0.3 The gate: `native/aotfork/gate_async.py`
+
+Drives `PingPongVecEnv` (vec_create_async + vec_set_group_mode + worker_async)
+and `NativeVecEnv` with the same seeds and per-env action stream; every
+obs/rew/term/trunc byte is hashed. For each lib: pingpong digest and sync digest
+must equal the reference lib's sync digest; pingpong steps/s must be >= 0.8x the
+reference lib's pingpong rate and >= 0.6x the lib's own sync rate. The shipped
+tier3 reads 0.12 / 0.15 on those ratios and fails; healthy libs read ~1.2-1.4.
+Wired in as step 2c of `e6_tier2_build.sbatch` (hard fail), 3b of
+`e3_tune24.sbatch` and 2b of `adv_recut.sbatch`. Usage:
+
+```
+QJS_DIRTY=1 WE=$WE GDIR=$GDIR python gate_async.py 300 <games csv> ref=/path.so cand=/path_{game}.so
+```
+
+### 0.4 What is left
+
+1. **Rebuild the adopted tier binaries from the fixed host source** (`e3_tune24.sbatch`
+   / `e6_tier2_build.sbatch` produce `out/libqjs_vec.futIT2*_<game>.so`; compile-at-load
+   in `aot_cache.py` builds from the source tree, so it picks the fix up on its own).
+   Round 3 left libs built from exactly the committed code at
+   `out/libqjs_vec.futIT2fix2_<game>.so` for all 24 paper games (tier-3 flags). Ignore
+   `futIT2fix3_*` (the rejected stealing variant, 16 of 24 built). When building a
+   fresh TAG, build one game serially before the `xargs -P` fan-out: parallel `vec1`
+   calls race on the `pic$TAG` engine archive (8/24 failed in round 4 that way).
+2. **Re-measure Table 1(a)** (`analogen-jaxbench/tier3_table1a.sbatch`, kempner_h100)
+   with the fixed tier3 and swap the numbers in `NUMBERS-2026-09-05.md`. Expect the
+   19 "healthy" games to move too — they were masked by the learner cap (§2 fact 4).
+3. Rebuild `native/build/libqjs_vec.so` (stock) from the fixed source; it had the
+   same latent bug.
+
+### 0.5 What the brief got wrong, for calibration
+
+- "Fits scheduling pressure better than memory" — half right: it was lock
+  convoys, not spin-barrier oversubscription and not RSS (tier3 uses *less* memory).
+- "Diff the two hosts' async regions first" — the async regions are byte-identical;
+  every diff hunk is AOT loading and intrinsics. The variable was the engine
+  lineage (quickjs-ng vs Bellard fork) shifting a threshold, not host code.
+- `MALLOC_ARENA_MAX` (job 44645920, result unread at the time) made it *worse*
+  (139k / 166k vs 278k): fewer arenas = more contention. Consistent with §0.1.
+- The `default_threads()` 70x incident was a red herring here.
+- `prof_preload.so` under Python yields 1 sample (the interpreter/ctypes path
+  resets ITIMER_PROF or the handler); `strace -f -k -e futex` and `gdb -p`
+  thread sampling both work on FASRC and were what named the mechanism.
 
 ---
 
