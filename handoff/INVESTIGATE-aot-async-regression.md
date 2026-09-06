@@ -140,6 +140,15 @@ QJS_DIRTY=1 WE=$WE GDIR=$GDIR python gate_async.py 300 <games csv> ref=/path.so 
 
 ### 0.4 What is left
 
+**ALL THREE DONE 2026-09-06.** 1 and 3: job 44749004 (`$WE/native/aotfork/
+e3_recut_fix.sbatch`) rebuilt the stock `.so` and re-cut all 24 `futIT2_*` from
+the fixed sources, reusing `forkI24.profdata`; checksum 24/24 and `gate_async`
+24/24 pass. 2: Table 1(a) re-measured under the fixed tier 3 (jobs 44748571 /
+44748573 / 44748574 / 44748575 plus node re-runs 44784183 / 44786418 / 44784184 /
+44784185) — every row at or above adv2, so the interpreter workaround and its
+disclosure sentence are retired. Numbers and caveats in `NUMBERS-2026-09-05.md`.
+The original list, for the record:
+
 1. **Rebuild the adopted tier binaries from the fixed host source** (`e3_tune24.sbatch`
    / `e6_tier2_build.sbatch` produce `out/libqjs_vec.futIT2*_<game>.so`; compile-at-load
    in `aot_cache.py` builds from the source tree, so it picks the fix up on its own).
