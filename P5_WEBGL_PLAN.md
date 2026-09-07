@@ -140,9 +140,20 @@ geometry under ~half a device pixel (at 64 px over a 400-unit canvas that is
 anything under ~3 units of radius); seaquest.v3's 30 sub-pixel bubbles and
 20 thin seaweeds are ~30% of its geometry for a few specks.
 
+**Why training ran at 18k SPS (job 45209147, `webgl_sweep.sbatch`, pinned
+holygpu8a17303, EPYC 9454 @ 2.75 GHz, 2026-09-07).** Env-only on that node:
+pingpong group 256 at 5 threads 32.6k, at 20 threads 133.6k; sync 512 envs at
+20 threads 114.4k. Training arms (2M steps each, SPS from learner step
+timestamps): 4×5 double-buffered 19.7k; same with OMP/MKL_NUM_THREADS=1
+19.5k; 2×8 21.1k; 6×3 18.6k; 4×5 single-buffered 19.1k. The env ceiling is
+6–7× above every arm and the arms do not move with threads, workers, OpenMP
+or buffering — so the trainer, not the env, caps this run. Prime suspect:
+`batch_size 32` inherited from `impala_quickstart.json` (the 2D paper configs
+use 256 + bf16 + compiled learner); `webgl_sweep2.sbatch` tests 32/128/256
+and bf16. The task-8 curve stands; its SPS is a trainer-config number.
+
 Next: Tier 2 (tasks 9–11), starting with the JS shim forwarders and turning
-the gate SKIP into a 3D golden. For a paper-grade SPS, a pinned 17xxx-node
-sweep of vec_workers × vec_env_threads. Then Tier 2,
+the gate SKIP into a 3D golden. Then Tier 2,
 starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
 `raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
 
