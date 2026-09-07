@@ -328,5 +328,27 @@
     "physics": null,
     "prompt": "can you retain the exact type of visual 3d aesthetic, but convert the game visuals thematically to the sky?",
     "strategy": "patch"
+  },
+  "vvvvvv.v1": {
+    "base_root": "vvvvvv",
+    "created": "2026-09-06T22:02:18",
+    "duration_s": 175.76,
+    "log": "20260906-220218_vvvvvv.v1_variant.json",
+    "model": "pro",
+    "parent": "vvvvvv",
+    "physics": null,
+    "prompt": "can you make this game retain the same visual flair as the reference game VVVVVV, with the same charm and pixelated and complex visualness? and make the avatar a bit bigger and the entities a bit bigger too and the health bar",
+    "strategy": "rewrite"
+  },
+  "vvvvvv.v2": {
+    "base_root": "vvvvvv",
+    "created": "2026-09-06T22:06:00",
+    "duration_s": 134.22,
+    "log": "20260906-220600_vvvvvv.v2_variant.json",
+    "model": "pro",
+    "parent": "vvvvvv",
+    "physics": null,
+    "prompt": "While maintaining the same minimal aesthetic, I want to make the visuals more interesting and stylized to the original VVVVVV, you can do this by adding more pixel art aesthetic, but make sure the underlying game is the same. The only actual game adjustment is making the entities larger, can you do that for me?",
+    "strategy": "rewrite"
   }
 }
