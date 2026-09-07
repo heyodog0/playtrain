@@ -33,6 +33,8 @@ void  freeState(void* s);
 
 // Canvas / frame lifecycle.
 void createCanvas(double w, double h);   // rs_new_canvas at RASTER_RES device size
+void createCanvas(double w, double h, int mode);   // mode == WEBGL flips the state into 3D
+bool isWebgl();
 void setRasterRes(int n);                 // must be called before createCanvas
 int  width();
 int  height();
@@ -91,6 +93,27 @@ void rotate(double a);
 void scale(double sx);
 void scale(double sx, double sy);
 
+// ---- WEBGL mode (P5_WEBGL_PLAN.md; all math lives in the rasterizer, these
+// are forwarders). Valid only after createCanvas(w, h, WEBGL); in 2D mode
+// they are no-ops.
+void translate(double x, double y, double z);
+void rotateX(double a);
+void rotateY(double a);
+void rotateZ(double a);
+void ambientMaterial(Color c);
+void specularMaterial(Color c);
+void shininess(double s);
+void ambientLight(Color c);
+void directionalLight(Color c, double x, double y, double z);
+void pointLight(Color c, double x, double y, double z);
+void box(double w, double h, double d);
+void box(double w, double h);   // d defaults to w (p5)
+void box(double s);
+void sphere(double r);
+void ellipsoid(double rx, double ry, double rz);
+void cylinder(double r, double h);
+void cone(double r, double h);
+
 // Shapes.
 void beginShape();
 void vertex(double x, double y);
@@ -132,6 +155,8 @@ constexpr int TOP = 5;
 constexpr int BOTTOM = 6;
 constexpr int BASELINE = 7;
 constexpr int CLOSE = 1;    // endShape mode
+constexpr int P2D = 1;      // createCanvas renderer selector
+constexpr int WEBGL = 2;
 constexpr double PI = 3.141592653589793;
 constexpr double TWO_PI = 6.283185307179586;
 constexpr double HALF_PI = 1.5707963267948966;

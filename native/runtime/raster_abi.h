@@ -66,6 +66,35 @@ void rs_set_dirty(int on);
 void rs_frame_begin(uint32_t h);
 int  rs_frame_end(void);
 
+// ---- 3D (p5 WEBGL mode; crates/rasterizer/src/three.rs) ----
+// rs_3d_begin switches canvas h (logical lw x lh) into WEBGL mode on the active
+// state: allocates the z-buffer + tessellation caches, disables dirty-rect
+// record/replay. All later calls act on the active state's 3D context. Colours
+// are pre-rounded 0..255 channel values (same pipeline as rs_set_fill).
+void rs_3d_begin(uint32_t h, double lw, double lh);
+void rs_3d_frame_begin(void);   // per draw(): reset model matrix + lights (p5 semantics)
+void rs_3d_frame_end(void);     // reserved hook
+void rs_3d_clear_depth(void);   // background() in WEBGL mode
+void rs_3d_push(void);
+void rs_3d_pop(void);
+void rs_3d_translate(double x, double y, double z);
+void rs_3d_rotate_x(double a);
+void rs_3d_rotate_y(double a);
+void rs_3d_rotate_z(double a);
+void rs_3d_fill(double r, double g, double b);
+void rs_3d_ambient_material(double r, double g, double b);
+void rs_3d_specular_material(double r, double g, double b);
+void rs_3d_shininess(double s);
+void rs_3d_ambient_light(double r, double g, double b);
+void rs_3d_directional_light(double r, double g, double b, double x, double y, double z);
+void rs_3d_point_light(double r, double g, double b, double x, double y, double z);
+void rs_3d_box(double w, double h, double d);
+void rs_3d_sphere(double r);
+void rs_3d_ellipsoid(double rx, double ry, double rz);
+void rs_3d_cylinder(double r, double h);
+void rs_3d_cone(double r, double h);
+int  rs_3d_active(void);
+
 }  // extern "C"
 
 #endif  // PLAYTRAIN_RASTER_ABI_H

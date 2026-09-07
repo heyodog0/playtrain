@@ -60,7 +60,8 @@ static inline p5cb::Buf* cbuf(JSContext* ctx) { return (p5cb::Buf*)JS_GetContext
 
 FN(js_createCanvas) {
   if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
-  p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
+  if (argc >= 3) p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]), (int)argd(ctx, argv[2]));  // WEBGL
+  else p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]));
   JSValue g = JS_GetGlobalObject(ctx);
   JS_SetPropertyStr(ctx, g, "width", JS_NewInt32(ctx, p5::width()));
   JS_SetPropertyStr(ctx, g, "height", JS_NewInt32(ctx, p5::height()));
@@ -118,7 +119,8 @@ FN(js_rectMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::REC
 FN(js_ellipseMode) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ELLIPSEMODE, argd(ctx, argv[0])); } else p5::ellipseMode((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_push) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::PUSH); } else p5::push(); return JS_UNDEFINED; }
 FN(js_pop) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::POP); } else p5::pop(); return JS_UNDEFINED; }
-FN(js_translate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::TRANSLATE, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
+FN(js_translate) { if (argc >= 3 && p5::isWebgl()) { p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1]),argd(ctx,argv[2])); return JS_UNDEFINED; }
+  if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec2(b, p5cb::TRANSLATE, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::translate(argd(ctx,argv[0]),argd(ctx,argv[1])); return JS_UNDEFINED; }
 FN(js_rotate) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::ROTATE, argd(ctx,argv[0])); } else p5::rotate(argd(ctx,argv[0])); return JS_UNDEFINED; }
 FN(js_scale) { p5cb::Buf* b = cbuf(ctx);
   if (argc >= 2) { if (b) { REC(b) p5cb::rec2(b, p5cb::SCALE2, argd(ctx,argv[0]), argd(ctx,argv[1])); } else p5::scale(argd(ctx,argv[0]),argd(ctx,argv[1])); }
@@ -130,6 +132,26 @@ FN(js_endShape) { NODRAW p5cb::Buf* b = cbuf(ctx);
   if (argc >= 1) { if (b) { REC(b) p5cb::rec1(b, p5cb::ENDSHAPE1, argd(ctx, argv[0])); } else p5::endShape((int)argd(ctx, argv[0])); }
   else { if (b) { REC(b) p5cb::rec0(b, p5cb::ENDSHAPE0); } else p5::endShape(); }
   return JS_UNDEFINED; }
+// ---- WEBGL mode (P5_WEBGL_PLAN.md). Direct forwarders; they bypass the
+// command buffer (p5cb has no 3D opcodes) and NODRAW like the 2D primitives.
+FN(js_rotateX) { p5::rotateX(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_rotateY) { p5::rotateY(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_rotateZ) { p5::rotateZ(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_ambientMaterial) { p5::ambientMaterial(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_specularMaterial) { p5::specularMaterial(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_shininess) { p5::shininess(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_ambientLight) { p5::ambientLight(colorFromArgs(ctx, argc, argv)); return JS_UNDEFINED; }
+FN(js_directionalLight) { p5::directionalLight(colorFromArgs(ctx, 3, argv), argd(ctx, argv[3]), argd(ctx, argv[4]), argd(ctx, argv[5])); return JS_UNDEFINED; }
+FN(js_pointLight) { p5::pointLight(colorFromArgs(ctx, 3, argv), argd(ctx, argv[3]), argd(ctx, argv[4]), argd(ctx, argv[5])); return JS_UNDEFINED; }
+FN(js_box) { NODRAW double w = argd(ctx, argv[0]);
+  double h = argc >= 2 ? argd(ctx, argv[1]) : w, d = argc >= 3 ? argd(ctx, argv[2]) : w;
+  p5::box(w, h, d); return JS_UNDEFINED; }
+FN(js_sphere) { NODRAW p5::sphere(argd(ctx, argv[0])); return JS_UNDEFINED; }
+FN(js_ellipsoid) { NODRAW double rx = argd(ctx, argv[0]);
+  double ry = argc >= 2 ? argd(ctx, argv[1]) : rx, rz = argc >= 3 ? argd(ctx, argv[2]) : ry;
+  p5::ellipsoid(rx, ry, rz); return JS_UNDEFINED; }
+FN(js_cylinder) { NODRAW p5::cylinder(argd(ctx, argv[0]), argd(ctx, argv[1])); return JS_UNDEFINED; }
+FN(js_cone) { NODRAW p5::cone(argd(ctx, argv[0]), argd(ctx, argv[1])); return JS_UNDEFINED; }
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 
@@ -153,7 +175,7 @@ FN(js_m_hypot) { return JS_NewFloat64(ctx, js::hypot(argd(ctx, argv[0]), argd(ct
 
 struct Binding { const char* name; JSCFunction* fn; int nargs; };
 static const Binding BINDINGS[] = {
-  {"createCanvas", js_createCanvas, 2}, {"background", js_background, 1},
+  {"createCanvas", js_createCanvas, 3}, {"background", js_background, 1},
   {"fill", js_fill, 4}, {"stroke", js_stroke, 4}, {"color", js_color, 4}, {"lerpColor", js_lerpColor, 3},
   {"noStroke", js_noStroke, 0}, {"noFill", js_noFill, 0}, {"strokeWeight", js_strokeWeight, 1},
   {"rect", js_rect, 5}, {"ellipse", js_ellipse, 4}, {"circle", js_circle, 3}, {"arc", js_arc, 6},
@@ -163,6 +185,13 @@ static const Binding BINDINGS[] = {
   {"rotate", js_rotate, 1}, {"scale", js_scale, 2},
   {"beginShape", js_beginShape, 0}, {"vertex", js_vertex, 2}, {"endShape", js_endShape, 1},
   {"keyIsDown", js_keyIsDown, 1},
+  {"rotateX", js_rotateX, 1}, {"rotateY", js_rotateY, 1}, {"rotateZ", js_rotateZ, 1},
+  {"ambientMaterial", js_ambientMaterial, 3}, {"specularMaterial", js_specularMaterial, 3},
+  {"shininess", js_shininess, 1}, {"ambientLight", js_ambientLight, 3},
+  {"directionalLight", js_directionalLight, 6}, {"pointLight", js_pointLight, 6},
+  {"box", js_box, 3}, {"sphere", js_sphere, 1}, {"ellipsoid", js_ellipsoid, 3},
+  {"cylinder", js_cylinder, 2}, {"cone", js_cone, 2},
+  {"noLights", js_noop, 0}, {"normalMaterial", js_noop, 0}, {"emissiveMaterial", js_noop, 3},
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
@@ -271,6 +300,7 @@ int main(int argc, char** argv) {
   setConst(ctx, g, "RIGHT", p5::RIGHT); setConst(ctx, g, "TOP", p5::TOP);
   setConst(ctx, g, "BOTTOM", p5::BOTTOM); setConst(ctx, g, "BASELINE", p5::BASELINE);
   setConst(ctx, g, "LEFT", p5::LEFT); setConst(ctx, g, "CLOSE", p5::CLOSE);
+  setConst(ctx, g, "WEBGL", p5::WEBGL); setConst(ctx, g, "P2D", p5::P2D);
   setConst(ctx, g, "PI", p5::PI); setConst(ctx, g, "TWO_PI", p5::TWO_PI); setConst(ctx, g, "HALF_PI", p5::HALF_PI);
   setConst(ctx, g, "frameCount", 0);
 

@@ -50,6 +50,8 @@ struct P5State {
   std::vector<std::pair<double, double>> _shapeVerts;
 
   bool _keys[256] = {false};
+
+  bool _webgl = false;   // createCanvas(w, h, WEBGL) — 3D calls forward to rs_3d_*
 };
 
 static thread_local P5State* _cur = nullptr;
@@ -88,6 +90,7 @@ void freeState(void* s) { delete (P5State*)s; }
 #define _styleStack   (_S()._styleStack)
 #define _shapeVerts   (_S()._shapeVerts)
 #define _keys         (_S()._keys)
+#define _webgl        (_S()._webgl)
 
 // ---- color pipeline (colorArgs + parseColor rounding) ----
 static inline double clamp01(double x) { return js::min(1.0, js::max(0.0, x)); }
@@ -156,7 +159,17 @@ void createCanvas(double w, double h) {
   _h = rs_new_canvas(w, h, (double)dw, (double)dh);
   _devSx = (double)dw / w;   // logical->device (for image() blit mapping)
   _devSy = (double)dh / h;
+  _webgl = false;
 }
+void createCanvas(double w, double h, int mode) {
+  createCanvas(w, h);
+  if (mode == WEBGL) {
+    _webgl = true;
+    rs_3d_begin(_h, w, h);
+    rs_3d_frame_begin();
+  }
+}
+bool isWebgl() { return _webgl; }
 
 // ---- offscreen graphics (createGraphics + image); see p5.hpp ----
 int createGraphics(double w, double h) {
@@ -221,8 +234,8 @@ static int blit_rgba_to_rgb_avx2(const uint8_t* px, uint8_t* out, int n) {
 #endif
 
 void setDirty(bool on) { rs_set_dirty(on ? 1 : 0); }
-void frameBegin() { rs_frame_begin(_h); }
-int frameEnd() { return rs_frame_end(); }
+void frameBegin() { if (_webgl) rs_3d_frame_begin(); rs_frame_begin(_h); }
+int frameEnd() { int r = rs_frame_end(); if (_webgl) rs_3d_frame_end(); return r; }
 
 int width() { return _width; }
 int height() { return _height; }
@@ -269,15 +282,18 @@ void background(Color c) {
   rs_fill_rect(_h, 0, 0, _width, _height);
   rs_restore(_h);
   invalidateCache();  // save/restore reset rasterizer state outside our cache
+  if (_webgl) rs_3d_clear_depth();   // p5 WEBGL background() clears the depth buffer too
 }
 void background(double gray) { background(color(gray)); }
 void background(double r, double g, double b) { background(color(r, g, b)); }
 
-void fill(Color c) { _fill = c; }
-void fill(double gray) { _fill = color(gray); }
-void fill(double gray, double a) { _fill = color(gray, a); }
-void fill(double r, double g, double b) { _fill = color(r, g, b); }
-void fill(double r, double g, double b, double a) { _fill = color(r, g, b, a); }
+// In WEBGL mode fill() is the material's diffuse colour and is forwarded at
+// once (no deferred applyFill: the 3D path has no rasterizer style cache).
+void fill(Color c) { _fill = c; if (_webgl) rs_3d_fill(c.r, c.g, c.b); }
+void fill(double gray) { fill(color(gray)); }
+void fill(double gray, double a) { fill(color(gray, a)); }
+void fill(double r, double g, double b) { fill(color(r, g, b)); }
+void fill(double r, double g, double b, double a) { fill(color(r, g, b, a)); }
 
 void stroke(Color c) { _strokeEnabled = true; _stroke = c; }
 void stroke(double gray) { _strokeEnabled = true; _stroke = color(gray); }
@@ -368,11 +384,11 @@ void line(double x1, double y1, double x2, double y2) {
 
 // ---- transform stack ----
 void push() {
-  rs_save(_h);
+  if (_webgl) rs_3d_push(); else rs_save(_h);
   _styleStack.push_back({_fill, _stroke, _strokeEnabled, _strokeW, _rectMode, _ellipseMode});
 }
 void pop() {
-  rs_restore(_h);
+  if (_webgl) rs_3d_pop(); else rs_restore(_h);
   if (!_styleStack.empty()) {
     StyleSnap s = _styleStack.back();
     _styleStack.pop_back();
@@ -381,10 +397,30 @@ void pop() {
   }
   invalidateCache();
 }
-void translate(double x, double y) { rs_translate(_h, x, y); }
-void rotate(double a) { rs_rotate(_h, a); }
+void translate(double x, double y) { if (_webgl) rs_3d_translate(x, y, 0); else rs_translate(_h, x, y); }
+void rotate(double a) { if (_webgl) rs_3d_rotate_z(a); else rs_rotate(_h, a); }   // p5: rotate() == rotateZ() in WEBGL
 void scale(double sx) { rs_scale(_h, sx, sx); }
 void scale(double sx, double sy) { rs_scale(_h, sx, sy); }
+
+// ---- WEBGL mode forwarders (see p5.hpp). In 2D mode they are no-ops, matching
+// the rasterizer (rs_3d_* ignore a state with no 3D context). ----
+void translate(double x, double y, double z) { if (_webgl) rs_3d_translate(x, y, z); else rs_translate(_h, x, y); }
+void rotateX(double a) { rs_3d_rotate_x(a); }
+void rotateY(double a) { rs_3d_rotate_y(a); }
+void rotateZ(double a) { rs_3d_rotate_z(a); }
+void ambientMaterial(Color c) { rs_3d_ambient_material(c.r, c.g, c.b); }
+void specularMaterial(Color c) { rs_3d_specular_material(c.r, c.g, c.b); }
+void shininess(double s) { rs_3d_shininess(s); }
+void ambientLight(Color c) { rs_3d_ambient_light(c.r, c.g, c.b); }
+void directionalLight(Color c, double x, double y, double z) { rs_3d_directional_light(c.r, c.g, c.b, x, y, z); }
+void pointLight(Color c, double x, double y, double z) { rs_3d_point_light(c.r, c.g, c.b, x, y, z); }
+void box(double w, double h, double d) { rs_3d_box(w, h, d); }
+void box(double w, double h) { rs_3d_box(w, h, w); }
+void box(double s) { rs_3d_box(s, s, s); }
+void sphere(double r) { rs_3d_sphere(r); }
+void ellipsoid(double rx, double ry, double rz) { rs_3d_ellipsoid(rx, ry, rz); }
+void cylinder(double r, double h) { rs_3d_cylinder(r, h); }
+void cone(double r, double h) { rs_3d_cone(r, h); }
 
 // ---- shapes ----
 void beginShape() { _shapeVerts.clear(); }
