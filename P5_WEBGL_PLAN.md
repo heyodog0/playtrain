@@ -12,6 +12,78 @@ Unlike the archived three.js/Dawn path, this keeps every 2D pillar:
 cross-engine bit-exactness, envpool-class vectorization, unmodified trainer,
 and human-play pixel identity.
 
+## Status (branch `p5-webgl`, 2026-09-07 — Tier 1 tasks 1–7 done locally)
+
+Everything below was executed on this branch, off `main` 51365ce, on the
+laptop (Apple Silicon; all numbers are laptop numbers, ratios only travel).
+
+| task | state | evidence |
+|---|---|---|
+| 1 branch | done | `p5-webgl`; the unrelated website/ edits ride along uncommitted |
+| 2 baseline | done | `build_qjs.sh`, `build_qjs_vec.sh`, `gate_qjs.sh --all 1000` all pass untouched (33 games × 3 seeds) |
+| 3 rasterizer 3D module | done | `crates/rasterizer/src/three.rs` (~1,200 LoC incl. tests). `cargo test --release`: 6 tests, 3 golden hashes. **native == wasm32 hash-identical** on all 3 scenes (`tests/wasm_three_check.mjs`) |
+| 4 ABI | done | 25 `rs_3d_*` entry points declared in `native/runtime/raster_abi.h`; 2D ABI untouched |
+| 5 p5 layer + four hosts + intrinsics | done | `gate_qjs.sh --all 1000` still bit-exact after the edits; `aot_intr_list.h` +14 appended (53 ≤ 64). Fork hosts patched identically; **F0/F1 builds not verified locally** (cluster toolchain) — run `gate_fork.sh` first thing on FASRC |
+| 6 single-env run | done | `seaquest.v3` runs 2000 steps with no JS error, 244 distinct colours at t=200, random policy scores (returns 10–40). Installed as `examples/games/js/seaquest.v3.js` (not `seaquest.js`); `gate_qjs.sh` SKIPs WEBGL games explicitly until Tier 2 |
+| 7 vec + throughput + async gate | done | table below; `gate_async.py` PASS, pingpong/sync = 1.49, async digest == sync digest |
+| 8 train one agent | **cluster** | a 400k-step PPO smoke ran locally (see below); the 10–25M IMPALA run is FASRC work |
+
+**Throughput (steps/s, laptop, obs 64, default8, random actions):**
+
+| game | 1 env / 1 thread | 8 env / 8 threads | pingpong 256 / 5 threads |
+|---|---|---|---|
+| seaquest.v3 (3D) | 12,222 | 38,605 | 50,283 (gate: 40,877) |
+| seaquest (2D) | 138,647 | 406,892 | 400,861 (gate: 186,175) |
+| bigfish (2D) | 319,926 | 520,224 | 326,557 |
+
+seaquest.v3 is 11× slower than the comparable 2D game single-core (was 17×
+before the lazy-shading / span-raster / tiny-LOD passes), ~7× above the
+archived Dawn path's 1.7k. `QJS_NODRAW=1` (3D primitives skipped, everything
+else runs) gives 43.5k vs 14.2k in `qjs_host bench` → **the 3D pipeline is
+~67% of the frame, game JS ~33%**. Amdahl with the E6 engine-tier gain on the
+JS third: expect tier3/tier1 ≈ 1.1 for this game; nobody should read that as
+a bug. Remaining hot spots (sample profile): `raster_tri` 36%, `draw_mesh`
+vertex transform 28%, QuickJS 15%, `shade` 7%.
+
+**Deviations from the 08-28 spec, all deliberate:**
+- The API table missed three calls seaquest.v3 makes: `ellipsoid(rx,ry,rz)`,
+  `shininess(n)` and 3-arg `translate(x,y,z)`. All three are in the subset now
+  (they'd have been ReferenceErrors otherwise). `rotate()` in WEBGL mode is
+  `rotateZ()` (p5 semantics).
+- Trig is a pure-Rust port of the fdlibm kernels with two-part π/2 reduction
+  (`three.rs::sincos`), not the vendored openlibm: the wasm build has zero
+  imports and must stay that way. Deterministic across targets by
+  construction; game-visible `Math.sin` still routes to `fm_sin`.
+- `pow` for specular is integer repeated-squaring; shininess is rounded to an
+  integer ≥ 1 (p5 clamps to ≥ 1 too).
+- Level of detail by PROJECTED radius (5 tiers, down to a 6-triangle "sphere"
+  under half a device pixel). p5 draws every sphere at 24×16; seaquest.v3
+  draws 30 bubbles of 0.1–0.4 px. Deterministic; browser-p5 pixel parity is
+  a non-goal.
+- `cone()` apex is at −y (screen-up), base at +y — the orientation the game
+  evidently expects (dorsal fin, tail cone). Record it in the Tier-2 template.
+- Lighting: per-vertex (Gouraud), p5 `_light` semantics: diffuse
+  `max(0, −L·N)`, ambient `Σambient × (ambientMaterial or fill)`, Phong
+  specular only after `specularMaterial`; point lights un-attenuated, in
+  world space (p5 does NOT model-transform light positions either).
+  Lights reset per frame, push/pop save lights + materials + matrix.
+- `WEBGL` is the numeric constant 2 (`P2D` = 1) in the hosts; the JS shim
+  must use the same values in Tier 2.
+- `rs_3d_begin` disables the dirty-rect record/replay for that state (3D ops
+  are not recorded); `rs_set_dirty` is a no-op in 3D mode. `p5cb` (cmdbuf,
+  off by default) is bypassed by 3D calls.
+- Zero per-frame allocation is enforced by a test
+  (`frame_repeat_is_stable_and_alloc_free`), not just by convention.
+
+**Local PPO smoke** (train_ppo_clean, native vec backend, 32 envs, CPU,
+400k steps): see `scratchpad/ppo_v3_smoke` in the 2026-09-07 session log;
+purpose was only to prove the trainer runs the game unmodified.
+
+**Next (in order):** on FASRC, `build_fork.sh` F0 + `gate_fork.sh` (no
+"Bytecode mismatch"), then task 8 (10–25M IMPALA, default8). Then Tier 2,
+starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
+`raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
+
 ## 0. Start here (fresh agent, no context)
 
 Read in this order, then come back:
