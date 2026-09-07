@@ -561,9 +561,46 @@ struct View {
 }
 
 impl Three {
+    // Whole-primitive early-out. The unit meshes all lie inside the unit
+    // sphere, so the scaled mesh lies inside a sphere of radius
+    // max(|sx|,|sy|,|sz|) about the model origin. If that sphere's projection,
+    // padded to be conservative (perspective stretches it into an ellipse a
+    // little larger than the disc at centre depth), contains no pixel centre
+    // or misses the canvas, no triangle can touch a pixel and the vertex
+    // transform is skipped. Exact by construction: pixel-neutral.
+    // Anything crossing the near plane is left to the general path.
+    #[inline]
+    fn prim_may_hit(&self, sx: f64, sy: f64, sz: f64) -> bool {
+        let m = &self.cur.m;
+        let r = sx.abs().max(sy.abs()).max(sz.abs());
+        let (cx, cy, cz) = (m[12], m[13], m[14] - self.eye_z);
+        let near_w = -(cz + r);           // smallest clip w over the sphere
+        if near_w <= 0.0 {
+            return true;                  // touches/crosses the near plane
+        }
+        let iw = 1.0 / near_w;            // largest scale the sphere can get
+        let pad = 1.25;
+        let rx = r * self.fx * iw * pad * 0.5 * self.dw as f64;
+        let ry = r * self.fy * iw * pad * 0.5 * self.dh as f64;
+        // centre at its own depth (both signs of w handled by near_w > 0)
+        let icw = 1.0 / (-cz);
+        let px = (self.fx * cx * icw + 1.0) * 0.5 * self.dw as f64;
+        let py = (1.0 - (-self.fy * cy) * icw) * 0.5 * self.dh as f64;
+        let (x0, x1) = (px - rx, px + rx);
+        let (y0, y1) = (py - ry, py + ry);
+        if x1 < 0.0 || y1 < 0.0 || x0 > self.dw as f64 || y0 > self.dh as f64 {
+            return false;                 // off canvas
+        }
+        // a pixel centre k+0.5 lies in [x0,x1] iff ceil(x0-0.5) <= floor(x1-0.5)
+        (x0 - 0.5).ceil() <= (x1 - 0.5).floor() && (y0 - 0.5).ceil() <= (y1 - 0.5).floor()
+    }
+
     // Draw a unit mesh scaled by (sx,sy,sz) under the current model matrix.
     // Zero allocation: xv was reserved for the largest mesh in rs_3d_begin.
     fn draw_mesh(&mut self, which: MeshRef, sx: f64, sy: f64, sz: f64) {
+        if !self.prim_may_hit(sx, sy, sz) {
+            return;
+        }
         let mesh: &Mesh = match which {
             MeshRef::Box => &self.box_m,
             MeshRef::Sphere(i) => &self.spheres[i],
@@ -1306,8 +1343,7 @@ mod tests {
 
     // A seaquest.v3-like frame composed by hand: the game's light rig, floor,
     // surface, seaweed cylinders, a sub (cylinder+sphere+cone+box), bubbles.
-    #[test]
-    fn golden_seaquest_like() {
+    fn seaquest_ops() -> Vec<Op> {
         let mut ops = vec![
             Op::Bg(10.0, 30.0, 60.0),
             Op::Push,
@@ -1366,8 +1402,30 @@ mod tests {
             Op::Pop,
             Op::Pop,
         ]);
+        ops
+    }
+
+    #[test]
+    fn golden_seaquest_like() {
+        let ops = seaquest_ops();
         let hh = scene_hash("seaquest_like", &ops);
         assert_eq!(hh, GOLD_SEA, "seaquest_like hash {}", hh);
+    }
+
+    // Frame micro-benchmark: `cargo test --release bench_frame -- --ignored --nocapture`.
+    // Replays the seaquest-like scene and prints microseconds per frame; the
+    // number to beat is recorded in P5_WEBGL_PLAN.md.
+    #[test]
+    #[ignore]
+    fn bench_frame() {
+        let ops = seaquest_ops();
+        let h = fresh();
+        for _ in 0..200 { rs_3d_frame_begin(); run(h, &ops); }
+        let n = 3000;
+        let t = std::time::Instant::now();
+        for _ in 0..n { rs_3d_frame_begin(); run(h, &ops); }
+        let us = t.elapsed().as_secs_f64() * 1e6 / n as f64;
+        eprintln!("BENCH_FRAME {:.2} us/frame", us);
     }
 
     // Two identical frames must hash identically (state resets are complete),
