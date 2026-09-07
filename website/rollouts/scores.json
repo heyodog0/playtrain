@@ -201,6 +201,22 @@
    "run": "pv_p_downwell_fresh_s2"
   }
  },
+ "downwell_fresh.refined": {
+  "impala": {
+   "best_score": 430.0,
+   "episodes": 6,
+   "greedy_return_mean": 324.17,
+   "net": "impala",
+   "run": "_fig3bnew/i_downwell_fresh_s1"
+  },
+  "ppo": {
+   "best_score": 430.0,
+   "episodes": 6,
+   "greedy_return_mean": 370.0,
+   "net": "impala",
+   "run": "_fig3bnew/p_downwell_fresh_s1"
+  }
+ },
  "flappy_bird": {
   "human_score": 28,
   "impala": {
@@ -581,6 +597,22 @@
    "greedy_return_mean": 91.67,
    "net": "nature",
    "run": "pv_p_vvvvvv_s1"
+  }
+ },
+ "vvvvvv.v2": {
+  "impala": {
+   "best_score": 50.0,
+   "episodes": 6,
+   "greedy_return_mean": 8.33,
+   "net": "impala",
+   "run": "_fig3bnew/i_vvvvvv_v2_s0"
+  },
+  "ppo": {
+   "best_score": 50.0,
+   "episodes": 6,
+   "greedy_return_mean": 16.67,
+   "net": "impala",
+   "run": "_fig3bnew/p_vvvvvv_v2_s1"
   }
  }
 }

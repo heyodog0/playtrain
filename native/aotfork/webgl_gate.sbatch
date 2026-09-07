@@ -76,8 +76,12 @@ done
 [ $v3fail -eq 0 ] && echo "V3 FORK GATE PASS" || echo "V3 FORK GATE FAIL"
 
 echo "== 5. async/group gate: seaquest.v3 + seaquest, stock/vec0/vec1, 2000 x 512 =="
-WE=$WW GDIR=$GDIR "$PY" gate_async.py 2000 seaquest.v3,seaquest \
+# vec1 is the per-game AOT unit for seaquest.v3 (game baked in), so it is only
+# valid for that game; the 2D control gets stock vs vec0 only.
+WE=$WW GDIR=$GDIR "$PY" gate_async.py 2000 seaquest.v3 \
   stock="$NGLIB" vec0="$V0" vec1="$V1" 2>&1 | grep -E "FAIL|MISSING|ASYNC GATE|pp=" | tee "$OUT/v3_async.txt"
+WE=$WW GDIR=$GDIR "$PY" gate_async.py 2000 seaquest \
+  stock="$NGLIB" vec0="$V0" 2>&1 | grep -E "FAIL|MISSING|ASYNC GATE|pp=" | tee "$OUT/v3_async_2d.txt"
 
 echo "== 6. throughput (this node only; ratios travel, absolutes don't) =="
 for rep in 1 2; do

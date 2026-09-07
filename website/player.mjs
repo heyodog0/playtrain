@@ -31,6 +31,34 @@ const nameOut = el('pt-name');
 
 if (view) boot();
 
+// ---- clip playback ---------------------------------------------------------
+// The page carries ~96 short clips. They are marked autoplay so they still run
+// with scripting off, but leaving that many decoders running at once is wasteful
+// and risks hitting a browser's simultaneous-video limit, so play only what is
+// on screen. Chromium already pauses off-screen autoplay video; WebKit does not.
+function gateClips() {
+  const clips = document.querySelectorAll('figure video');
+  if (!clips.length || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      const v = entry.target;
+      if (entry.isIntersecting) {
+        if (v.paused) v.play().catch(() => { /* autoplay refused; leave it */ });
+      } else if (!v.paused) {
+        v.pause();
+      }
+    }
+  }, { rootMargin: '200px 0px' });
+  clips.forEach((v) => io.observe(v));
+}
+
+if (document.readyState === 'loading') {
+  addEventListener('DOMContentLoaded', gateClips, { once: true });
+} else {
+  gateClips();
+}
+
+
 function boot() {
   const vctx = view.getContext('2d');
   const octx = obs.getContext('2d');

@@ -138,7 +138,7 @@ pre code { background: none; padding: 0; font-size: 1em; }
   margin: 0 auto;
 }
 .teaser-strip figure { margin: 0; max-width: none; }
-.teaser-strip img {
+.teaser-strip img, .teaser-strip video {
   display: block;
   width: 100%;
   aspect-ratio: 1;
@@ -179,7 +179,7 @@ pre code { background: none; padding: 0; font-size: 1em; }
 }
 .pair-clips { display: flex; gap: 0.45rem; }
 .pair-clips figure { margin: 0; max-width: none; flex: 1 1 0; min-width: 0; }
-.pair-clips img {
+.pair-clips img, .pair-clips video {
   display: block;
   width: 100%;
   aspect-ratio: 1;
@@ -199,13 +199,19 @@ pre code { background: none; padding: 0; font-size: 1em; }
 
 /* The page's only meaningful colour: who is playing, and which policy won.
    The winner is marked by weight and a filled rule, not by hue alone. */
-.pair-clips .is-human img { border-color: #9a9a9a; }
-.pair-clips .is-agent img { border-color: #c4d4ef; }
-.pair-clips .is-best img { border-color: var(--link); border-width: 2px; }
+.pair-clips .is-human img, .pair-clips .is-human video { border-color: #9a9a9a; }
+.pair-clips .is-agent img, .pair-clips .is-agent video { border-color: #c4d4ef; }
+.pair-clips .is-best img, .pair-clips .is-best video { border-color: var(--link); border-width: 2px; }
 .pair-clips .is-best figcaption { color: var(--link); font-weight: 600; }
 .pair-clips .is-best figcaption small { color: var(--link); }
 
-@media (max-width: 62rem) { .pair-grid.is-wide { grid-template-columns: repeat(2, 1fr); } }
+/* The header set runs four cards across, two rows of four. */
+.pair-grid.is-teaser { grid-template-columns: repeat(4, 1fr); max-width: 60rem; }
+
+@media (max-width: 62rem) {
+  .pair-grid.is-wide { grid-template-columns: repeat(2, 1fr); }
+  .pair-grid.is-teaser { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 46rem) {
   .pair-grid, .pair-grid.is-wide { grid-template-columns: 1fr; }
 }

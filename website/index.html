@@ -48,22 +48,72 @@
          tools/rollout_session.py, then playtrain's tools/replay-video.mjs.
          See website/rollouts/README.md. -->
 <!-- TEASER:START -->
-    <div class="teaser-strip">
-      <figure><img src="rollouts/agent/asteroids__impala.gif" alt="A trained agent playing the asteroids environment." loading="lazy"><figcaption>(a) asteroids</figcaption></figure>
-      <figure><img src="rollouts/agent/breakout__ppo.gif" alt="A trained agent playing the breakout environment." loading="lazy"><figcaption>(b) breakout</figcaption></figure>
-      <figure><img src="rollouts/agent/seaquest__impala.gif" alt="A trained agent playing the seaquest environment." loading="lazy"><figcaption>(c) seaquest</figcaption></figure>
-      <figure><img src="rollouts/agent/qbert.v2__impala.gif" alt="A trained agent playing the qbert.v2 environment." loading="lazy"><figcaption>(d) qbert.v2</figcaption></figure>
-      <figure><img src="rollouts/agent/starpilot__ppo.gif" alt="A trained agent playing the starpilot environment." loading="lazy"><figcaption>(e) starpilot</figcaption></figure>
-      <figure><img src="rollouts/agent/vvvvvv__impala.gif" alt="A trained agent playing the vvvvvv environment." loading="lazy"><figcaption>(f) vvvvvv</figcaption></figure>
-      <figure><img src="rollouts/agent/coinrun__impala.gif" alt="A trained agent playing the coinrun environment." loading="lazy"><figcaption>(g) coinrun</figcaption></figure>
-      <figure><img src="rollouts/agent/downwell_fresh__impala.gif" alt="A trained agent playing the downwell_fresh environment." loading="lazy"><figcaption>(h) downwell_fresh</figcaption></figure>
+    <div class="pair-grid is-wide is-teaser">
+      <div class="pair">
+        <h3>coinrun</h3>
+        <div class="pair-clips">
+          <figure class="is-agent is-best"><video src="rollouts/agent/coinrun__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the coinrun environment."></video><figcaption>impala<small>186</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/coinrun__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the coinrun environment."></video><figcaption>ppo<small>21.83</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>qbert.v2</h3>
+        <div class="pair-clips">
+          <figure class="is-agent is-best"><video src="rollouts/agent/qbert.v2__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the qbert.v2 environment."></video><figcaption>impala<small>1,427</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/qbert.v2__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the qbert.v2 environment."></video><figcaption>ppo<small>380</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>breakout.multi</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/breakout.multi__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the breakout.multi environment."></video><figcaption>impala<small>673</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/breakout.multi__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the breakout.multi environment."></video><figcaption>ppo<small>817</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>frostbite.jungle</h3>
+        <div class="pair-clips">
+          <figure class="is-agent is-best"><video src="rollouts/agent/frostbite.jungle__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the frostbite.jungle environment."></video><figcaption>impala<small>258</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/frostbite.jungle__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the frostbite.jungle environment."></video><figcaption>ppo<small>202</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>downwell_fresh</h3>
+        <div class="pair-clips">
+          <figure class="is-agent is-best"><video src="rollouts/agent/downwell_fresh__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the downwell_fresh environment."></video><figcaption>impala<small>395</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/downwell_fresh__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the downwell_fresh environment."></video><figcaption>ppo<small>303</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>miner</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/miner__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the miner environment."></video><figcaption>impala<small>10.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/miner__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the miner environment."></video><figcaption>ppo<small>14</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>starpilot</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/starpilot__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the starpilot environment."></video><figcaption>impala<small>42.33</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/starpilot__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the starpilot environment."></video><figcaption>ppo<small>42.83</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>bossfight</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/bossfight__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the bossfight environment."></video><figcaption>impala<small>78.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/bossfight__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the bossfight environment."></video><figcaption>ppo<small>99.17</small></figcaption></figure>
+        </div>
+      </div>
     </div>
     <!-- TEASER:END -->
     <h2 class="subtitle">
-      Trained agents playing eight PlayTrain environments, each generated as a single
-      JavaScript file from a prompt. Each clip is the stronger of that game's two policies,
-      argmax, on the human study's seeds, replayed through the headless engine frame for
-      frame.
+      Eight PlayTrain environments, each generated as a single JavaScript file from a
+      prompt. Both trained policies are shown per game, argmax on the human study's seeds,
+      captioned with the mean greedy return over six episodes; the stronger one is outlined.
+      Each clip is one whole episode, replayed through the headless engine frame for frame
+      and ending where the episode did &mdash; often at the study's 2000-step cap rather than
+      at a death.
     </h2>
   </div>
 </section>
@@ -146,65 +196,65 @@
       <div class="pair">
         <h3>asteroids</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/asteroids.gif" alt="A person playing the asteroids environment." loading="lazy"><figcaption>human<small>2,160</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/asteroids__impala.gif" alt="A IMPALA agent playing the asteroids environment." loading="lazy"><figcaption>impala<small>1,238</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/asteroids__ppo.gif" alt="A PPO agent playing the asteroids environment." loading="lazy"><figcaption>ppo<small>780</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/asteroids.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the asteroids environment."></video><figcaption>human<small>2,160</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/asteroids__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the asteroids environment."></video><figcaption>impala<small>1,238</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/asteroids__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the asteroids environment."></video><figcaption>ppo<small>780</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>breakout</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/breakout.gif" alt="A person playing the breakout environment." loading="lazy"><figcaption>human<small>380</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/breakout__impala.gif" alt="A IMPALA agent playing the breakout environment." loading="lazy"><figcaption>impala<small>255</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/breakout__ppo.gif" alt="A PPO agent playing the breakout environment." loading="lazy"><figcaption>ppo<small>265</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/breakout.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the breakout environment."></video><figcaption>human<small>380</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/breakout__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the breakout environment."></video><figcaption>impala<small>255</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/breakout__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the breakout environment."></video><figcaption>ppo<small>265</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>caveflyer</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/caveflyer.gif" alt="A person playing the caveflyer environment." loading="lazy"><figcaption>human<small>22</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/caveflyer__impala.gif" alt="A IMPALA agent playing the caveflyer environment." loading="lazy"><figcaption>impala<small>5.33</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/caveflyer__ppo.gif" alt="A PPO agent playing the caveflyer environment." loading="lazy"><figcaption>ppo<small>3.5</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/caveflyer.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the caveflyer environment."></video><figcaption>human<small>22</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/caveflyer__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the caveflyer environment."></video><figcaption>impala<small>5.33</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/caveflyer__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the caveflyer environment."></video><figcaption>ppo<small>3.5</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>coinrun</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/coinrun.gif" alt="A person playing the coinrun environment." loading="lazy"><figcaption>human<small>251</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/coinrun__impala.gif" alt="A IMPALA agent playing the coinrun environment." loading="lazy"><figcaption>impala<small>186</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/coinrun__ppo.gif" alt="A PPO agent playing the coinrun environment." loading="lazy"><figcaption>ppo<small>21.83</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/coinrun.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the coinrun environment."></video><figcaption>human<small>251</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/coinrun__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the coinrun environment."></video><figcaption>impala<small>186</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/coinrun__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the coinrun environment."></video><figcaption>ppo<small>21.83</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>flappy_bird</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/flappy_bird.gif" alt="A person playing the flappy_bird environment." loading="lazy"><figcaption>human<small>28</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/flappy_bird__impala.gif" alt="A IMPALA agent playing the flappy_bird environment." loading="lazy"><figcaption>impala<small>0.17</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/flappy_bird__ppo.gif" alt="A PPO agent playing the flappy_bird environment." loading="lazy"><figcaption>ppo<small>28</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/flappy_bird.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the flappy_bird environment."></video><figcaption>human<small>28</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/flappy_bird__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the flappy_bird environment."></video><figcaption>impala<small>0.17</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/flappy_bird__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the flappy_bird environment."></video><figcaption>ppo<small>28</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>plunder</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/plunder.gif" alt="A person playing the plunder environment." loading="lazy"><figcaption>human<small>20</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/plunder__impala.gif" alt="A IMPALA agent playing the plunder environment." loading="lazy"><figcaption>impala<small>4.67</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/plunder__ppo.gif" alt="A PPO agent playing the plunder environment." loading="lazy"><figcaption>ppo<small>9.67</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/plunder.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the plunder environment."></video><figcaption>human<small>20</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/plunder__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the plunder environment."></video><figcaption>impala<small>4.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/plunder__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the plunder environment."></video><figcaption>ppo<small>9.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>seaquest</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/seaquest.gif" alt="A person playing the seaquest environment." loading="lazy"><figcaption>human<small>450</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/seaquest__impala.gif" alt="A IMPALA agent playing the seaquest environment." loading="lazy"><figcaption>impala<small>1,402</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/seaquest__ppo.gif" alt="A PPO agent playing the seaquest environment." loading="lazy"><figcaption>ppo<small>787</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/seaquest.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the seaquest environment."></video><figcaption>human<small>450</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/seaquest__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the seaquest environment."></video><figcaption>impala<small>1,402</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/seaquest__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the seaquest environment."></video><figcaption>ppo<small>787</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>vvvvvv</h3>
         <div class="pair-clips">
-          <figure class="is-human"><img src="rollouts/human/vvvvvv.gif" alt="A person playing the vvvvvv environment." loading="lazy"><figcaption>human<small>600</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/vvvvvv__impala.gif" alt="A IMPALA agent playing the vvvvvv environment." loading="lazy"><figcaption>impala<small>108</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/vvvvvv__ppo.gif" alt="A PPO agent playing the vvvvvv environment." loading="lazy"><figcaption>ppo<small>91.67</small></figcaption></figure>
+          <figure class="is-human"><video src="rollouts/human/vvvvvv.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A person playing the vvvvvv environment."></video><figcaption>human<small>600</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/vvvvvv__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the vvvvvv environment."></video><figcaption>impala<small>108</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/vvvvvv__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the vvvvvv environment."></video><figcaption>ppo<small>91.67</small></figcaption></figure>
         </div>
       </div>
     </div>
@@ -219,232 +269,250 @@
     side by side. Clips are each trainer's best of six argmax episodes; captions give the
     mean greedy return over those six, which is the metric the two are ranked on, since
     their training curves come from different behaviour policies and are not comparable.
-    Across the 32 games PPO takes 15, IMPALA 14, and three are exact ties. Games neither trainer solves are left
-    in.</p>
+    Across the 34 games PPO takes 17, IMPALA 14, and three are exact ties. Games neither
+    trainer solves are left in. Two entries are newer arrivals, trained after the rest:
+    <code>downwell_fresh.refined</code> is the reworked version of that game, and
+    <code>vvvvvv.v2</code> a fork whose gravity and entity sizes changed &mdash; on that one
+    neither trainer beats random play, on any of three seeds, even trained directly on it.
+    Both keep their originals above rather than replacing them.</p>
     <!-- GALLERY:START -->
     <div class="pair-grid is-wide">
       <div class="pair">
         <h3>asteroids</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/asteroids__impala.gif" alt="A IMPALA agent playing the asteroids environment." loading="lazy"><figcaption>impala<small>1,238</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/asteroids__ppo.gif" alt="A PPO agent playing the asteroids environment." loading="lazy"><figcaption>ppo<small>780</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/asteroids__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the asteroids environment."></video><figcaption>impala<small>1,238</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/asteroids__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the asteroids environment."></video><figcaption>ppo<small>780</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>bigfish</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/bigfish__impala.gif" alt="A IMPALA agent playing the bigfish environment." loading="lazy"><figcaption>impala<small>23.5</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/bigfish__ppo.gif" alt="A PPO agent playing the bigfish environment." loading="lazy"><figcaption>ppo<small>34</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/bigfish__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the bigfish environment."></video><figcaption>impala<small>23.5</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/bigfish__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the bigfish environment."></video><figcaption>ppo<small>34</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>bossfight</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/bossfight__impala.gif" alt="A IMPALA agent playing the bossfight environment." loading="lazy"><figcaption>impala<small>78.67</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/bossfight__ppo.gif" alt="A PPO agent playing the bossfight environment." loading="lazy"><figcaption>ppo<small>99.17</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/bossfight__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the bossfight environment."></video><figcaption>impala<small>78.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/bossfight__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the bossfight environment."></video><figcaption>ppo<small>99.17</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>breakout</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/breakout__impala.gif" alt="A IMPALA agent playing the breakout environment." loading="lazy"><figcaption>impala<small>255</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/breakout__ppo.gif" alt="A PPO agent playing the breakout environment." loading="lazy"><figcaption>ppo<small>265</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/breakout__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the breakout environment."></video><figcaption>impala<small>255</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/breakout__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the breakout environment."></video><figcaption>ppo<small>265</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>breakout.multi</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/breakout.multi__impala.gif" alt="A IMPALA agent playing the breakout.multi environment." loading="lazy"><figcaption>impala<small>673</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/breakout.multi__ppo.gif" alt="A PPO agent playing the breakout.multi environment." loading="lazy"><figcaption>ppo<small>817</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/breakout.multi__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the breakout.multi environment."></video><figcaption>impala<small>673</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/breakout.multi__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the breakout.multi environment."></video><figcaption>ppo<small>817</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>caveflyer</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/caveflyer__impala.gif" alt="A IMPALA agent playing the caveflyer environment." loading="lazy"><figcaption>impala<small>5.33</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/caveflyer__ppo.gif" alt="A PPO agent playing the caveflyer environment." loading="lazy"><figcaption>ppo<small>3.5</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/caveflyer__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the caveflyer environment."></video><figcaption>impala<small>5.33</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/caveflyer__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the caveflyer environment."></video><figcaption>ppo<small>3.5</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>chaser</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/chaser__impala.gif" alt="A IMPALA agent playing the chaser environment." loading="lazy"><figcaption>impala<small>77.83</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/chaser__ppo.gif" alt="A PPO agent playing the chaser environment." loading="lazy"><figcaption>ppo<small>32.17</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/chaser__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the chaser environment."></video><figcaption>impala<small>77.83</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/chaser__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the chaser environment."></video><figcaption>ppo<small>32.17</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>climber</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/climber__impala.gif" alt="A IMPALA agent playing the climber environment." loading="lazy"><figcaption>impala<small>1</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/climber__ppo.gif" alt="A PPO agent playing the climber environment." loading="lazy"><figcaption>ppo<small>0</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/climber__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the climber environment."></video><figcaption>impala<small>1</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/climber__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the climber environment."></video><figcaption>ppo<small>0</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>coinrun</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/coinrun__impala.gif" alt="A IMPALA agent playing the coinrun environment." loading="lazy"><figcaption>impala<small>186</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/coinrun__ppo.gif" alt="A PPO agent playing the coinrun environment." loading="lazy"><figcaption>ppo<small>21.83</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/coinrun__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the coinrun environment."></video><figcaption>impala<small>186</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/coinrun__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the coinrun environment."></video><figcaption>ppo<small>21.83</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>dodgeball</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/dodgeball__impala.gif" alt="A IMPALA agent playing the dodgeball environment." loading="lazy"><figcaption>impala<small>5.67</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/dodgeball__ppo.gif" alt="A PPO agent playing the dodgeball environment." loading="lazy"><figcaption>ppo<small>7.33</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/dodgeball__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the dodgeball environment."></video><figcaption>impala<small>5.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/dodgeball__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the dodgeball environment."></video><figcaption>ppo<small>7.33</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>downwell_fresh</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/downwell_fresh__impala.gif" alt="A IMPALA agent playing the downwell_fresh environment." loading="lazy"><figcaption>impala<small>395</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/downwell_fresh__ppo.gif" alt="A PPO agent playing the downwell_fresh environment." loading="lazy"><figcaption>ppo<small>303</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/downwell_fresh__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the downwell_fresh environment."></video><figcaption>impala<small>395</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/downwell_fresh__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the downwell_fresh environment."></video><figcaption>ppo<small>303</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>downwell_fresh.refined</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/downwell_fresh.refined__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the downwell_fresh.refined environment."></video><figcaption>impala<small>324</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/downwell_fresh.refined__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the downwell_fresh.refined environment."></video><figcaption>ppo<small>370</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>flappy_bird</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/flappy_bird__impala.gif" alt="A IMPALA agent playing the flappy_bird environment." loading="lazy"><figcaption>impala<small>0.17</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/flappy_bird__ppo.gif" alt="A PPO agent playing the flappy_bird environment." loading="lazy"><figcaption>ppo<small>28</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/flappy_bird__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the flappy_bird environment."></video><figcaption>impala<small>0.17</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/flappy_bird__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the flappy_bird environment."></video><figcaption>ppo<small>28</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>flappy_bird.dunk2</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/flappy_bird.dunk2__impala.gif" alt="A IMPALA agent playing the flappy_bird.dunk2 environment." loading="lazy"><figcaption>impala<small>0</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/flappy_bird.dunk2__ppo.gif" alt="A PPO agent playing the flappy_bird.dunk2 environment." loading="lazy"><figcaption>ppo<small>18</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/flappy_bird.dunk2__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the flappy_bird.dunk2 environment."></video><figcaption>impala<small>0</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/flappy_bird.dunk2__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the flappy_bird.dunk2 environment."></video><figcaption>ppo<small>18</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>freeway</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/freeway__impala.gif" alt="A IMPALA agent playing the freeway environment." loading="lazy"><figcaption>impala<small>0</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/freeway__ppo.gif" alt="A PPO agent playing the freeway environment." loading="lazy"><figcaption>ppo<small>13.67</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/freeway__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the freeway environment."></video><figcaption>impala<small>0</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/freeway__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the freeway environment."></video><figcaption>ppo<small>13.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>frostbite</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/frostbite__impala.gif" alt="A IMPALA agent playing the frostbite environment." loading="lazy"><figcaption>impala<small>258</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/frostbite__ppo.gif" alt="A PPO agent playing the frostbite environment." loading="lazy"><figcaption>ppo<small>258</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/frostbite__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the frostbite environment."></video><figcaption>impala<small>258</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/frostbite__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the frostbite environment."></video><figcaption>ppo<small>258</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>frostbite.jungle</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/frostbite.jungle__impala.gif" alt="A IMPALA agent playing the frostbite.jungle environment." loading="lazy"><figcaption>impala<small>258</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/frostbite.jungle__ppo.gif" alt="A PPO agent playing the frostbite.jungle environment." loading="lazy"><figcaption>ppo<small>202</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/frostbite.jungle__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the frostbite.jungle environment."></video><figcaption>impala<small>258</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/frostbite.jungle__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the frostbite.jungle environment."></video><figcaption>ppo<small>202</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>fruitbot</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/fruitbot__impala.gif" alt="A IMPALA agent playing the fruitbot environment." loading="lazy"><figcaption>impala<small>6.17</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/fruitbot__ppo.gif" alt="A PPO agent playing the fruitbot environment." loading="lazy"><figcaption>ppo<small>12.5</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/fruitbot__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the fruitbot environment."></video><figcaption>impala<small>6.17</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/fruitbot__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the fruitbot environment."></video><figcaption>ppo<small>12.5</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>heist</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/heist__impala.gif" alt="A IMPALA agent playing the heist environment." loading="lazy"><figcaption>impala<small>17.5</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/heist__ppo.gif" alt="A PPO agent playing the heist environment." loading="lazy"><figcaption>ppo<small>6.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/heist__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the heist environment."></video><figcaption>impala<small>17.5</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/heist__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the heist environment."></video><figcaption>ppo<small>6.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>jump_king</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/jump_king__impala.gif" alt="A IMPALA agent playing the jump_king environment." loading="lazy"><figcaption>impala<small>221</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/jump_king__ppo.gif" alt="A PPO agent playing the jump_king environment." loading="lazy"><figcaption>ppo<small>425</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/jump_king__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the jump_king environment."></video><figcaption>impala<small>221</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/jump_king__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the jump_king environment."></video><figcaption>ppo<small>425</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>jumper</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/jumper__impala.gif" alt="A IMPALA agent playing the jumper environment." loading="lazy"><figcaption>impala<small>1.17</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/jumper__ppo.gif" alt="A PPO agent playing the jumper environment." loading="lazy"><figcaption>ppo<small>0.83</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/jumper__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the jumper environment."></video><figcaption>impala<small>1.17</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/jumper__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the jumper environment."></video><figcaption>ppo<small>0.83</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>leaper</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/leaper__impala.gif" alt="A IMPALA agent playing the leaper environment." loading="lazy"><figcaption>impala<small>26</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/leaper__ppo.gif" alt="A PPO agent playing the leaper environment." loading="lazy"><figcaption>ppo<small>20.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/leaper__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the leaper environment."></video><figcaption>impala<small>26</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/leaper__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the leaper environment."></video><figcaption>ppo<small>20.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>maze</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/maze__impala.gif" alt="A IMPALA agent playing the maze environment." loading="lazy"><figcaption>impala<small>0</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/maze__ppo.gif" alt="A PPO agent playing the maze environment." loading="lazy"><figcaption>ppo<small>1.67</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/maze__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the maze environment."></video><figcaption>impala<small>0</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/maze__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the maze environment."></video><figcaption>ppo<small>1.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>miner</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/miner__impala.gif" alt="A IMPALA agent playing the miner environment." loading="lazy"><figcaption>impala<small>10.67</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/miner__ppo.gif" alt="A PPO agent playing the miner environment." loading="lazy"><figcaption>ppo<small>14</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/miner__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the miner environment."></video><figcaption>impala<small>10.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/miner__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the miner environment."></video><figcaption>ppo<small>14</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>ninja</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/ninja__impala.gif" alt="A IMPALA agent playing the ninja environment." loading="lazy"><figcaption>impala<small>7.33</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/ninja__ppo.gif" alt="A PPO agent playing the ninja environment." loading="lazy"><figcaption>ppo<small>9</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/ninja__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the ninja environment."></video><figcaption>impala<small>7.33</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/ninja__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the ninja environment."></video><figcaption>ppo<small>9</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>plunder</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/plunder__impala.gif" alt="A IMPALA agent playing the plunder environment." loading="lazy"><figcaption>impala<small>4.67</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/plunder__ppo.gif" alt="A PPO agent playing the plunder environment." loading="lazy"><figcaption>ppo<small>9.67</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/plunder__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the plunder environment."></video><figcaption>impala<small>4.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/plunder__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the plunder environment."></video><figcaption>ppo<small>9.67</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>pong</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/pong__impala.gif" alt="A IMPALA agent playing the pong environment." loading="lazy"><figcaption>impala<small>105</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/pong__ppo.gif" alt="A PPO agent playing the pong environment." loading="lazy"><figcaption>ppo<small>100</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/pong__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the pong environment."></video><figcaption>impala<small>105</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/pong__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the pong environment."></video><figcaption>ppo<small>100</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>qbert</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/qbert__impala.gif" alt="A IMPALA agent playing the qbert environment." loading="lazy"><figcaption>impala<small>320</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/qbert__ppo.gif" alt="A PPO agent playing the qbert environment." loading="lazy"><figcaption>ppo<small>320</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/qbert__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the qbert environment."></video><figcaption>impala<small>320</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/qbert__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the qbert environment."></video><figcaption>ppo<small>320</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>qbert.v2</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/qbert.v2__impala.gif" alt="A IMPALA agent playing the qbert.v2 environment." loading="lazy"><figcaption>impala<small>1,427</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/qbert.v2__ppo.gif" alt="A PPO agent playing the qbert.v2 environment." loading="lazy"><figcaption>ppo<small>380</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/qbert.v2__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the qbert.v2 environment."></video><figcaption>impala<small>1,427</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/qbert.v2__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the qbert.v2 environment."></video><figcaption>ppo<small>380</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>seaquest</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/seaquest__impala.gif" alt="A IMPALA agent playing the seaquest environment." loading="lazy"><figcaption>impala<small>1,402</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/seaquest__ppo.gif" alt="A PPO agent playing the seaquest environment." loading="lazy"><figcaption>ppo<small>787</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/seaquest__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the seaquest environment."></video><figcaption>impala<small>1,402</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/seaquest__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the seaquest environment."></video><figcaption>ppo<small>787</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>space_invaders</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/space_invaders__impala.gif" alt="A IMPALA agent playing the space_invaders environment." loading="lazy"><figcaption>impala<small>400</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/space_invaders__ppo.gif" alt="A PPO agent playing the space_invaders environment." loading="lazy"><figcaption>ppo<small>400</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/space_invaders__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the space_invaders environment."></video><figcaption>impala<small>400</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/space_invaders__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the space_invaders environment."></video><figcaption>ppo<small>400</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>starpilot</h3>
         <div class="pair-clips">
-          <figure class="is-agent"><img src="rollouts/agent/starpilot__impala.gif" alt="A IMPALA agent playing the starpilot environment." loading="lazy"><figcaption>impala<small>42.33</small></figcaption></figure>
-          <figure class="is-agent is-best"><img src="rollouts/agent/starpilot__ppo.gif" alt="A PPO agent playing the starpilot environment." loading="lazy"><figcaption>ppo<small>42.83</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/starpilot__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the starpilot environment."></video><figcaption>impala<small>42.33</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/starpilot__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the starpilot environment."></video><figcaption>ppo<small>42.83</small></figcaption></figure>
         </div>
       </div>
       <div class="pair">
         <h3>vvvvvv</h3>
         <div class="pair-clips">
-          <figure class="is-agent is-best"><img src="rollouts/agent/vvvvvv__impala.gif" alt="A IMPALA agent playing the vvvvvv environment." loading="lazy"><figcaption>impala<small>108</small></figcaption></figure>
-          <figure class="is-agent"><img src="rollouts/agent/vvvvvv__ppo.gif" alt="A PPO agent playing the vvvvvv environment." loading="lazy"><figcaption>ppo<small>91.67</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/vvvvvv__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the vvvvvv environment."></video><figcaption>impala<small>108</small></figcaption></figure>
+          <figure class="is-agent"><video src="rollouts/agent/vvvvvv__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the vvvvvv environment."></video><figcaption>ppo<small>91.67</small></figcaption></figure>
+        </div>
+      </div>
+      <div class="pair">
+        <h3>vvvvvv.v2</h3>
+        <div class="pair-clips">
+          <figure class="is-agent"><video src="rollouts/agent/vvvvvv.v2__impala.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A IMPALA agent playing the vvvvvv.v2 environment."></video><figcaption>impala<small>8.33</small></figcaption></figure>
+          <figure class="is-agent is-best"><video src="rollouts/agent/vvvvvv.v2__ppo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A PPO agent playing the vvvvvv.v2 environment."></video><figcaption>ppo<small>16.67</small></figcaption></figure>
         </div>
       </div>
     </div>

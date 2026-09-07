@@ -29,17 +29,26 @@ HUMAN = HERE / "rollouts" / "human"
 SCORES = HERE / "rollouts" / "scores.json"
 
 TRAINERS = ("impala", "ppo")
-TEASER_ORDER = ["asteroids", "breakout", "seaquest", "qbert.v2",
-                "starpilot", "vvvvvv", "coinrun", "downwell_fresh"]
+# The header set, chosen by hand. Both trainers are shown per game for now so
+# one can be picked per game later; TEASER_PICK is that choice once made.
+TEASER_ORDER = ["coinrun", "qbert.v2", "breakout.multi", "frostbite.jungle",
+                "downwell_fresh", "miner", "starpilot", "bossfight"]
+TEASER_PICK: dict[str, str] = {}     # e.g. {"coinrun": "impala"}
 
 
 def clips() -> dict[str, dict[str, str]]:
-    """{game: {trainer: filename}} from what is actually on disk."""
+    """{game: {trainer: filename}} from what is on disk.
+
+    Scans mp4 as well as gif: the page prefers mp4, and newer clips ship as mp4
+    only, so globbing gif alone silently dropped them. A gif is recorded only
+    when no mp4 sits beside it.
+    """
     found: dict[str, dict[str, str]] = {}
-    for path in sorted(AGENT.glob("*.gif")):
-        stem = path.stem
-        game, _, trainer = stem.partition("__")
-        found.setdefault(game, {})[trainer or "agent"] = path.name
+    for ext in ("*.mp4", "*.gif"):
+        for path in sorted(AGENT.glob(ext)):
+            game, _, trainer = path.stem.partition("__")
+            slot = found.setdefault(game, {})
+            slot.setdefault(trainer or "agent", path.name)
     return found
 
 
@@ -68,25 +77,57 @@ def better(scores: dict, game: str) -> str | None:
 
 
 def figure(src: str, alt: str, caption: str, cls: str = "") -> str:
+    """One clip. Uses <video> when an mp4 sits beside the gif.
+
+    Safari would not animate the GIFs (the files are valid and Chrome played
+    them), while a muted inline autoplay video is reliable there and, unlike an
+    animated image, its playback is observable from script. The gif stays as the
+    fallback for anything that cannot play h264.
+    """
     cls = f' class="{cls}"' if cls else ""
-    return (f'<figure{cls}><img src="{src}" alt="{html.escape(alt)}" loading="lazy">'
-            f'<figcaption>{caption}</figcaption></figure>')
+    mp4 = re.sub(r"\.gif$", ".mp4", src)
+    if (HERE / mp4).exists():
+        media = (f'<video src="{mp4}" autoplay loop muted playsinline preload="metadata" '
+                 f'aria-label="{html.escape(alt)}"></video>')
+    else:
+        media = f'<img src="{src}" alt="{html.escape(alt)}" loading="lazy">'
+    return f'<figure{cls}>{media}<figcaption>{caption}</figcaption></figure>'
 
 
 def build_teaser(found, scores) -> str:
+    """The header strip.
+
+    While TEASER_PICK is empty every game shows both trainers side by side, with
+    their greedy means, so a choice can be made from the page itself. Naming a
+    trainer for a game in TEASER_PICK collapses it to that one clip.
+    """
     picks = [g for g in TEASER_ORDER if g in found]
-    picks += [g for g in sorted(found) if g not in picks]
-    picks = picks[:8]
-    letters = "abcdefgh"
-    cells = []
-    for i, game in enumerate(picks):
-        trainer = better(scores, game) or next(iter(found[game]))
-        name = found[game].get(trainer) or next(iter(found[game].values()))
-        cells.append("      " + figure(
-            f"rollouts/agent/{name}",
-            f"A trained agent playing the {game} environment.",
-            f"({letters[i]}) {html.escape(game)}"))
-    return '    <div class="teaser-strip">\n' + "\n".join(cells) + "\n    </div>"
+    cards = []
+    for game in picks:
+        side = scores.get(game, {})
+        win = better(scores, game)
+        chosen = TEASER_PICK.get(game)
+        cells = []
+        for trainer in TRAINERS:
+            if chosen and trainer != chosen:
+                continue
+            name = found[game].get(trainer)
+            if not name:
+                continue
+            info = side.get(trainer) or {}
+            mark = " is-best" if trainer == win and not chosen else ""
+            cells.append('          ' + figure(
+                f"rollouts/agent/{name}",
+                f"A {trainer.upper()} agent playing the {game} environment.",
+                f"{trainer}<small>{num(info.get('greedy_return_mean'))}</small>",
+                f"is-agent{mark}"))
+        if not cells:
+            continue
+        cards.append('      <div class="pair">\n'
+                     f'        <h3>{html.escape(game)}</h3>\n'
+                     '        <div class="pair-clips">\n'
+                     + "\n".join(cells) + "\n        </div>\n      </div>")
+    return '    <div class="pair-grid is-wide is-teaser">\n' + "\n".join(cards) + "\n    </div>"
 
 
 def build_compare(found, humans, scores) -> str:

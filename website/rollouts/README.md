@@ -1,5 +1,41 @@
 # Rollout clips
 
+The page uses `<game>.mp4`, rendered straight from the replay at the game's own
+60fps. The `<game>.gif` beside it is the older 14fps encode, kept in the repo for
+slides and the paper but no longer shipped.
+
+Safari would not animate the GIFs, though they are spec-clean (global colour
+table, LZW min code size >= 2, loop block ahead of the first frame) and Chrome
+played them. Video works there, and unlike an animated image its playback is
+observable from script, so a browser check can prove motion instead of inferring
+it from screenshots.
+
+Clips run the WHOLE episode: `--max-frames 2000` matches the 2000-step episode
+cap, so nothing is cut mid-run. They were 600 frames (10s of a 33s episode, about
+half the run on average) until 2026-09-07. Website clips use `--crf 28`; the
+default 18 is near-lossless and right for the paper, but at full length it costs
+~2.9M for a busy game like qbert.v2 against ~0.4M at 28. Note 28 of 64 episodes
+reach the 2000-step cap, so those clips end at truncation, not at a death —
+showing longer needs a fresh rollout with a higher cap.
+
+Render video with `--format mp4`, never by converting a GIF: GIF delays are whole
+centiseconds, so a 14fps clip is really 100/7 = 14.286fps, and re-encoding that
+to 15fps duplicates about every fourteenth frame, which reads as judder. Straight
+from the replay there is no resampling at all, and 60fps is what the games run
+at. Measured 0 dropped frames in WebKit and even currentTime advance in both
+engines. Clip weight: 6.6M for all 72 at 60fps, against 15M for the 14fps gifs.
+
+Two clips are 15fps rather than 60, and correctly so: the IMPALA `flappy_bird`
+and `flappy_bird.dunk2` checkpoints trained with `frame_skip=4`, so the renderer
+only captures on step boundaries and a captured frame is worth four game frames.
+`replay-video.mjs` now derives the mp4 rate from the capture cadence
+(`fps / (stride * frameSkip)`); encoding those at a flat 60fps played them at 4x
+speed. Their durations, 2.47s and 0.93s, are the real length of those episodes:
+both policies die almost immediately.
+
+`website/player.mjs` pauses off-screen clips, since WebKit otherwise runs every
+decoder on the page at once.
+
 Two sets, both rendered by `playtrain/tools/replay-video.mjs`:
 
 * `agent/` — 32 games, one clip each, the best of four argmax episodes from the

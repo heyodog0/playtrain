@@ -101,7 +101,12 @@ if (has('--child')) {
     const out = join(job.outDir, `${stem}.${job.format}`);
     let colours = null, lossless = null;
     if (job.format === 'mp4') {
-      encodeMp4(frames, out, { fps: job.fps, scale: job.scale });
+      // Frames were captured every `stride` env.steps, and one step advances
+      // frameSkip game frames, so a frame is worth stride*frameSkip frames of
+      // game time. Encoding at a fixed 60fps therefore played the action-repeat
+      // clips at 4x speed; derive the rate from the capture cadence instead.
+      const fps = Math.max(1, Math.round(job.fps / (stride * (ep.frameSkip ?? 1))));
+      encodeMp4(frames, out, { fps, scale: job.scale, crf: job.crf });
     } else {
       const q = quantize(frames);
       colours = q.size; lossless = q.lossless;
@@ -225,12 +230,12 @@ function encodeGif(frames, { delay = 5, scale = 1, q = null } = {}) {
   return Buffer.from(bytes);
 }
 
-function encodeMp4(frames, file, { fps = 60, scale = 1 }) {
+function encodeMp4(frames, file, { fps = 60, scale = 1, crf = 18 }) {
   const W = frames[0].w, H = frames[0].h;
   const args = [
     '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-r', String(fps), '-i', '-',
     '-vf', `scale=${W * scale}:${H * scale}:flags=neighbor`,
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', '18',
+    '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf),
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file,
   ];
   const p = spawnSync('ffmpeg', args, { input: Buffer.concat(frames.map(f => f.data)) });
@@ -262,6 +267,9 @@ const BEST_ONLY = has('--best');
 // (delay 5) plays back in real time from every third 60fps frame; 50fps (delay 2) is
 // smoother but bigger. mp4 keeps all 60.
 const GIF_FPS = parseInt(arg('--fps', '20'), 10);
+// mp4 quality. 18 is near-lossless, right for the paper and slides; the website
+// ships full-length clips where the bytes matter, so it asks for a higher number.
+const CRF = parseInt(arg('--crf', '18'), 10);
 
 if (FORMAT === 'mp4') {
   const ok = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0;
@@ -287,7 +295,7 @@ function runChild(game, episodes, pid) {
     p.on('close', c => c === 0 ? res(JSON.parse(out)) : rej(new Error(`${game}: exit ${c}`)));
     p.stdin.end(JSON.stringify({
       episodes, stride, maxFrames: MAX_FRAMES, format: FORMAT,
-      scale: SCALE, delay, fps: 60, outDir: OUT_DIR, pid,
+      scale: SCALE, delay, fps: 60, outDir: OUT_DIR, pid, crf: CRF,
     }));
   });
 }

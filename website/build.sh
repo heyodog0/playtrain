@@ -14,14 +14,22 @@ OUT=website/site
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp website/index.html website/style.css website/favicon.svg "$OUT/"
+# Dev-only browser diagnostic, not linked from the site.
+cp website/check.html website/player-check.mjs "$OUT/"
 # The header clips. Figures are kept in website/figures/ but no longer shipped:
 # the page was cut back to the abstract and the playable demo, so nothing
 # references them. Restore that line if a paper figure goes back on the page.
 # Keep the clip galleries in step with what is actually in rollouts/.
 python3 website/galleries.py
 
-cp -R website/rollouts "$OUT/rollouts"
-rm -f "$OUT/rollouts/README.md"
+# Clips: ship only the mp4s the page references. The gifs stay in the repo as
+# the source the mp4s were derived from and for use in slides or the paper, but
+# every browser that can run the player can decode h264, so shipping 15M of
+# fallback nobody reaches is not worth it.
+mkdir -p "$OUT/rollouts/agent" "$OUT/rollouts/human"
+cp website/rollouts/agent/*.mp4 "$OUT/rollouts/agent/"
+cp website/rollouts/human/*.mp4 "$OUT/rollouts/human/"
+cp website/rollouts/scores.json "$OUT/rollouts/"
 # cp -R website/figures "$OUT/figures"
 cp -R website/docs "$OUT/docs"
 
@@ -40,6 +48,18 @@ if [ -f website/paper.pdf ]; then
 else
   echo "warning: no website/paper.pdf — the Paper link will 404" >&2
 fi
+# Stamp style.css and player.js with a content hash in the page's references.
+# A browser that already has the old file cached will not ask again on a normal
+# reload, which twice made an edited stylesheet look like a broken site; a new
+# query string makes it a different URL, so there is nothing to reuse.
+css_v=$(shasum -a 256 "$OUT/style.css" | cut -c1-10)
+js_v=$(shasum -a 256 "$OUT/player.js" | cut -c1-10)
+/usr/bin/sed -i '' \
+  -e "s|href=\"style.css\"|href=\"style.css?v=$css_v\"|g" \
+  -e "s|src=\"player.js\"|src=\"player.js?v=$js_v\"|g" \
+  "$OUT/index.html"
+echo "cache-bust: style.css?v=$css_v  player.js?v=$js_v"
+
 echo playtrain.org > "$OUT/CNAME"
 echo "built -> $OUT"
 
