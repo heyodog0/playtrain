@@ -785,6 +785,8 @@ fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[
     let w = view.dw;
     let n = maxx - minx;   // k in 0..=n
     let (c0, c1, c2) = (col[0], col[1], col[2]);
+    let flat = c0 == c1 && c1 == c2;
+    let (fr, fg, fb) = (clamp_u8(c0[0]), clamp_u8(c0[1]), clamp_u8(c0[2]));
     for y in miny..=maxy {
         // intersect the three half-line constraints on k
         let mut klo: i64 = 0;
@@ -805,29 +807,58 @@ fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[
             }
         }
         if klo <= khi {
-            let mut o = (y as usize) * w + (minx + klo) as usize;
-            for k in klo..=khi {
-                // weights: w0 from edge 1 (v1->v2), w1 from edge 2, w2 from edge 0
-                // (bias removed again: it only steers the inclusion test)
-                let e0 = row[0] + k * stepx[0] - bias[0];
-                let e1 = row[1] + k * stepx[1] - bias[1];
-                let e2 = row[2] + k * stepx[2] - bias[2];
-                let w0 = e1 as f64 * inv_area;
-                let w1 = e2 as f64 * inv_area;
-                let w2 = e0 as f64 * inv_area;
-                let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
-                if z <= zb[o] {
-                    zb[o] = z;
-                    let r = w0 * c0[0] + w1 * c1[0] + w2 * c2[0];
-                    let g = w0 * c0[1] + w1 * c1[1] + w2 * c2[1];
-                    let b = w0 * c0[2] + w1 * c1[2] + w2 * c2[2];
-                    let q = o * 4;
-                    px[q] = clamp_u8(r);
-                    px[q + 1] = clamp_u8(g);
-                    px[q + 2] = clamp_u8(b);
-                    px[q + 3] = 255;
+            let base = (y as usize) * w + (minx + klo) as usize;
+            let n_px = (khi - klo + 1) as usize;
+            let zrow = &mut zb[base..base + n_px];
+            let prow = &mut px[base * 4..(base + n_px) * 4];
+            // edge values walk incrementally in exact integer arithmetic (the
+            // bias is removed: it only steers the inclusion test)
+            let mut e0 = row[0] + klo * stepx[0] - bias[0];
+            let mut e1 = row[1] + klo * stepx[1] - bias[1];
+            let mut e2 = row[2] + klo * stepx[2] - bias[2];
+            if flat {
+                // Flat-colour fast path: all three vertices carry the same
+                // colour, so interpolation is skipped (a box face under
+                // directional light only; the common case for large quads).
+                for i in 0..n_px {
+                    let w0 = e1 as f64 * inv_area;
+                    let w1 = e2 as f64 * inv_area;
+                    let w2 = e0 as f64 * inv_area;
+                    let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
+                    if z <= zrow[i] {
+                        zrow[i] = z;
+                        let q = i * 4;
+                        prow[q] = fr;
+                        prow[q + 1] = fg;
+                        prow[q + 2] = fb;
+                        prow[q + 3] = 255;
+                    }
+                    e0 += stepx[0];
+                    e1 += stepx[1];
+                    e2 += stepx[2];
                 }
-                o += 1;
+            } else {
+                for i in 0..n_px {
+                    // weights: w0 from edge 1 (v1->v2), w1 from edge 2, w2 from edge 0
+                    let w0 = e1 as f64 * inv_area;
+                    let w1 = e2 as f64 * inv_area;
+                    let w2 = e0 as f64 * inv_area;
+                    let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
+                    if z <= zrow[i] {
+                        zrow[i] = z;
+                        let r = w0 * c0[0] + w1 * c1[0] + w2 * c2[0];
+                        let g = w0 * c0[1] + w1 * c1[1] + w2 * c2[1];
+                        let b = w0 * c0[2] + w1 * c1[2] + w2 * c2[2];
+                        let q = i * 4;
+                        prow[q] = clamp_u8(r);
+                        prow[q + 1] = clamp_u8(g);
+                        prow[q + 2] = clamp_u8(b);
+                        prow[q + 3] = 255;
+                    }
+                    e0 += stepx[0];
+                    e1 += stepx[1];
+                    e2 += stepx[2];
+                }
             }
         }
         row[0] += stepy[0];

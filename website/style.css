@@ -206,7 +206,7 @@ pre code { background: none; padding: 0; font-size: 1em; }
 .pair-clips .is-best figcaption small { color: var(--link); }
 
 /* The header set runs four cards across, two rows of four. */
-.pair-grid.is-teaser { grid-template-columns: repeat(4, 1fr); max-width: 60rem; }
+.pair-grid.is-teaser { grid-template-columns: repeat(2, 1fr); max-width: 56rem; gap: 2rem 2.4rem; }
 
 @media (max-width: 62rem) {
   .pair-grid.is-wide { grid-template-columns: repeat(2, 1fr); }
@@ -392,6 +392,7 @@ pre code { background: none; padding: 0; font-size: 1em; }
 .curve-axis { stroke: #c9c9c9; stroke-width: 1; }
 .curve-tick { font: 9px var(--mono); fill: var(--muted); }
 .curve-tick-end { text-anchor: end; }
+.curve-tick-y { text-anchor: end; }
 
 .curve-table { margin: 1.6rem auto 0; max-width: 44rem; font-size: 0.82rem; }
 .curve-table summary { cursor: pointer; color: var(--muted); }
