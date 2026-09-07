@@ -20,11 +20,9 @@
 
 const KEYS = [32, 37, 38, 39, 40, 65, 66, 68, 83, 87];   // space, arrows, wasd/ab/d
 const FRAME_MS = 1000 / 60;
-const OBS = 64;
 
 const el = (id) => document.getElementById(id);
 const view = el('pt-view');
-const obs = el('pt-obs');
 const overlay = el('pt-overlay');
 const hud = el('pt-hud');
 const nameOut = el('pt-name');
@@ -61,8 +59,6 @@ if (document.readyState === 'loading') {
 
 function boot() {
   const vctx = view.getContext('2d');
-  const octx = obs.getContext('2d');
-  octx.imageSmoothingEnabled = false;
 
   let current = null;      // game name
   let seed = 0;
@@ -138,7 +134,6 @@ function boot() {
   function render() {
     const p = getPixelData();
     vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
-    octx.drawImage(view, 0, 0, OBS, OBS);
     if (typeof globalThis.getGameState === 'function') {
       try {
         const s = globalThis.getGameState();

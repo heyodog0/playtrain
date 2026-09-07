@@ -248,11 +248,11 @@ pre code { background: none; padding: 0; font-size: 1em; }
 }
 .player-bar button:hover { border-color: var(--muted); }
 
-.player-stage { display: flex; gap: 0.8rem; align-items: flex-start; }
+.player-stage { display: flex; justify-content: center; }
 
-/* Cap the view: the games are square, so a full-width pane would push the
-   library below the fold on a laptop. */
-.player-pane { position: relative; flex: 1 1 auto; max-width: 26rem; min-width: 0; }
+/* One canvas, centred. The games are square, so cap it or the picker below
+   drops off the fold on a laptop. */
+.player-pane { position: relative; width: 100%; max-width: 28rem; }
 .player-pane canvas {
   display: block;
   width: 100%;
@@ -281,51 +281,45 @@ pre code { background: none; padding: 0; font-size: 1em; }
 .player-play { font-size: 1.05rem; font-weight: 600; }
 .player-keys { font: 0.72rem var(--mono); color: #d2d2d2; }
 
-.player-obs { flex: 0 0 11rem; display: flex; flex-direction: column; gap: 0.45rem; }
-.player-obs canvas {
-  display: block;
-  width: 11rem;
-  height: 11rem;
-  background: #000;
-  border-radius: 3px;
-  image-rendering: pixelated;
-}
-.player-cap { font: 0.66rem/1.45 var(--mono); color: var(--muted); }
-
-.game-library { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
-.game-library-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.6rem;
-}
-.game-library-head strong { font-size: 0.9rem; display: block; font-weight: 600; }
-.game-library-head small { font-size: 0.78rem; color: var(--muted); }
+.game-library { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.9rem; }
+.game-filter { display: block; text-align: center; }
 .game-filter input {
   font: 0.78rem var(--sans);
   color: var(--ink);
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 0.3rem 0.7rem;
-  width: 9rem;
+  padding: 0.3rem 0.8rem;
+  width: 11rem;
+  text-align: center;
 }
 .game-filter input:focus { outline: none; border-color: var(--link); }
 
-.player-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+/* Names, not buttons: 33 bordered chips read as a wall, a centred index reads
+   as a catalogue. The current game is the only one that carries weight. */
+.player-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.15rem 0.9rem;
+  margin-top: 0.8rem;
+}
 .chip {
-  font: 0.72rem var(--mono);
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0.2rem 0.5rem;
+  font: 0.76rem/1.7 var(--mono);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   cursor: pointer;
 }
 .chip[hidden] { display: none; }
-.chip:hover { border-color: var(--muted); }
-.chip.on { color: var(--paper); background: var(--button); border-color: var(--button); }
+.chip:hover { color: var(--link); }
+.chip.on {
+  color: var(--ink-strong);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--link);
+}
 
 .visually-hidden {
   position: absolute;
@@ -357,7 +351,6 @@ pre code { background: none; padding: 0; font-size: 1em; }
   .publication-title { font-size: 1.6rem; }
   .hero { padding-top: 2.2rem; }
   .player-stage { flex-direction: column; }
-  .player-obs { flex-direction: row; align-items: center; }
   .game-library-head { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .content.has-text-justified p, figcaption { text-align: left; }
 }

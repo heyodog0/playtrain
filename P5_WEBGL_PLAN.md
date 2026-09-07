@@ -149,8 +149,18 @@ timestamps): 4×5 double-buffered 19.7k; same with OMP/MKL_NUM_THREADS=1
 6–7× above every arm and the arms do not move with threads, workers, OpenMP
 or buffering — so the trainer, not the env, caps this run. Prime suspect:
 `batch_size 32` inherited from `impala_quickstart.json` (the 2D paper configs
-use 256 + bf16 + compiled learner); `webgl_sweep2.sbatch` tests 32/128/256
-and bf16. The task-8 curve stands; its SPS is a trainer-config number.
+use 256 + bf16 + compiled learner). **Confirmed by `webgl_sweep2.sbatch`
+(job 45223957, same node, 2M steps each):** batch 32 → 19.6k SPS; 128 →
+30.1k; 256 fp32 → 27.9k; 256 + bf16 learner + bf16 inference → **58.3k**;
+the same with 2×8 workers → 58.3k (worker layout is irrelevant, as before).
+So the 18k in the task-8 run was the fp32 batch-32 learner; with the paper's
+learner settings the 3D game trains at ~58k SPS on one H100 + 23 cores, and
+the env still has 2.3× headroom (134k) that a compiled learner (not tried
+here, the paper configs enable it) would eat into. The task-8 curve stands
+as a learning result; quote 58k, not 18k, as the trainer throughput. (The
+2M-step returns of the large-batch arms are lower — fewer updates in 2M
+steps — which says nothing about throughput; a 20M batch-256 run would be
+needed to compare curves.)
 
 Next: Tier 2 (tasks 9–11), starting with the JS shim forwarders and turning
 the gate SKIP into a 3D golden. Then Tier 2,

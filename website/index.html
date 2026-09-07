@@ -171,19 +171,12 @@
             <span class="player-keys">arrows and space &middot; Esc to release</span>
           </div>
         </div>
-        <div class="player-obs">
-          <canvas id="pt-obs" width="64" height="64"></canvas>
-          <span class="player-cap">what the agent sees<br>64&times;64&times;3</span>
-        </div>
       </div>
       <div class="game-library">
-        <div class="game-library-head">
-          <div><strong><span id="pt-count">33</span> environments</strong><small>Each one runs here unmodified, through the renderer the agent trains on.</small></div>
-          <label class="game-filter">
-            <span class="visually-hidden">Filter games</span>
-            <input id="pt-filter" type="search" placeholder="Filter" autocomplete="off">
-          </label>
-        </div>
+        <label class="game-filter">
+          <span class="visually-hidden">Filter the <span id="pt-count">33</span> games</span>
+          <input id="pt-filter" type="search" placeholder="Filter games" autocomplete="off">
+        </label>
         <div class="player-chips" id="pt-chips"></div>
       </div>
     </div>
