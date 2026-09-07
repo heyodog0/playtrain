@@ -35,7 +35,7 @@ import playtrain.runtime.native_vec_env as m, torch
 print('runtime =', m.__file__)
 print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')
 from playtrain.runtime.native_vec_env import NativeVecEnv
-e = NativeVecEnv('seaquest.v3', num_envs=4, games_dir='$WW/examples/games/js'); e.reset(); o,_,_,_ = e.step([0,1,2,3]); print('probe obs', o.shape, o.dtype, int(o.max())); e.close()
+e = NativeVecEnv('seaquest.v3', num_envs=4, games_dir='$WW/examples/games/js'); e.reset(); o = e.step([0,1,2,3])[0]; print('probe obs', o.shape, o.dtype, int(o.max())); e.close()
 " || exit 1
 cd "$JB"
 # never `uv sync` here (it prunes hand-installed packages from this venv); the
