@@ -81,8 +81,23 @@ env steps and holding ~10.5–11 through 180k (learner-bound at ~750 SPS on
 the laptop CPU, so not a throughput number). Purpose: prove the trainer runs
 the game unmodified and that return moves. The real curve is task 8.
 
-**Next (in order):** on FASRC, `gate_fork.sh` + `gate_async.py` on the
-fork vec libs, then task 8 (10–25M IMPALA, default8). Then Tier 2,
+**FASRC results (job 45184826, `native/aotfork/webgl_gate.sbatch`, genoa
+node holy8a24306, 2026-09-07):** all builds (stock, F0, F1, vec0, vec1) OK;
+`cargo test` 6/6 with the same pinned hashes as the laptop (so native
+aarch64 == native x86 == wasm32); 2D V8 gate PASS on all 34 files (v3
+skipped); fork gate 30/30 on five 2D games, no Bytecode mismatch;
+seaquest.v3 stock == F0 == F1 over 3 seeds × 3000, F1 "aot enabled";
+`gate_async.py` seaquest.v3 PASS with stock / vec0 / vec1 all at digest
+74759e74 — pingpong 13,982 / 13,813 / 14,381 steps/s, sync 10,324 /
+10,355 / 10,543 (5 threads, 512 envs). 2D seaquest on the same node:
+pingpong 131k, sync 31.9k. Single-core `bench 0 20000`: stock 3,436, F0
+3,383, F1 3,694 (F1/stock 1.075) vs 2D seaquest 55.8k — 16× on this slow
+x86 node vs 11× on the laptop. (One line of that job's async step reads
+FAIL: I had fed the seaquest.v3 AOT unit the 2D game; the unit has its
+game baked in. Script fixed in the next commit; the v3 arm was valid.)
+
+**Next (in order):** task 8 = `webgl_train.sbatch` (IMPALA 20M, default8,
+double-buffered native path) — job 45194327 submitted 2026-09-07 evening. Then Tier 2,
 starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
 `raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
 
