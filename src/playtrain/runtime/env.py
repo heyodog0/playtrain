@@ -18,10 +18,10 @@ from gymnasium import spaces
 
 
 # Bundled example games that ship with the repo.
-from playtrain._paths import asset as _asset
+from playtrain._paths import asset as _asset, games_dir as _games_dir
 from playtrain.runtime.action_space import (
     is_default, load_space_spec, quantize_box_actions)
-DEFAULT_GAMES_DIR = _asset("examples/games/js")
+DEFAULT_GAMES_DIR = _games_dir()
 
 # Bundled JS runtime (game-worker.mjs + p5/ shim).
 DEFAULT_RUNTIME_DIR = _asset("runtime")

@@ -49,12 +49,15 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from playtrain._paths import asset as _asset
+
 log = logging.getLogger("playtrain.aot")
 
 _ROOT = Path(__file__).resolve().parents[3]
 _NATIVE = _ROOT / "native"
 _AOTFORK = _NATIVE / "aotfork"
-_STOCK = _NATIVE / "build" / ("libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so")
+_STOCK = _asset("native/build/" + ("libqjs_vec.dylib" if sys.platform == "darwin"
+                                   else "libqjs_vec.so"))
 _STALE_LOCK_S = 3600       # a builder that has held the lock this long is presumed dead
 _RETRY_FAILED_S = 3600     # after a failed build, do not retry more often than this
 _warned: set[str] = set()

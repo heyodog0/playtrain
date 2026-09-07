@@ -41,7 +41,8 @@ if [ ! -f qjs/bld/libqjs.a ]; then
   # beat -march=native (AVX-512 codegen hurt). -ffp-contract=off keeps JS
   # float math FMA-free (bit-exact gate arbitrates). PGO measured -11.5% —
   # don't. Measured 2026-07-20 on cqhex2_teff, gate-passed all 52 games.
-  QJS_ARCH=""; case "$(uname -m)" in x86_64|amd64) QJS_ARCH="-march=x86-64-v3";; esac
+  # PLAYTRAIN_ARCH overrides the default for portable (wheel) builds; see hatch_build.py.
+  QJS_ARCH=""; case "$(uname -m)" in x86_64|amd64) QJS_ARCH="-march=${PLAYTRAIN_ARCH:-x86-64-v3}";; esac
   ( cd qjs/src && clang -c -O3 $QJS_ARCH -ffp-contract=off -DNDEBUG -D_GNU_SOURCE -I. quickjs.c libregexp.c libunicode.c dtoa.c )
   ar rcs qjs/bld/libqjs.a qjs/src/quickjs.o qjs/src/libregexp.o qjs/src/libunicode.o qjs/src/dtoa.o
 fi

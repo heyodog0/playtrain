@@ -10,7 +10,7 @@ RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 if [ ! -f "$RASTER_LIB" ]; then
   # Match the engine's -march=x86-64-v3 (see QJS_ARCH below); integer-only
   # rasterizer, so vectorization cannot change output — the gate still runs.
-  RUST_ARCH=""; case "$(uname -m)" in x86_64|amd64) RUST_ARCH="-C target-cpu=x86-64-v3";; esac
+  RUST_ARCH=""; case "$(uname -m)" in x86_64|amd64) RUST_ARCH="-C target-cpu=${PLAYTRAIN_ARCH:-x86-64-v3}";; esac
   (cd ../crates/rasterizer && RUSTFLAGS="${RUSTFLAGS:-} $RUST_ARCH" cargo rustc --release --lib --crate-type staticlib)
 fi
 [ -f frozenmath/libfrozenmath.a ] || { echo "run build_qjs.sh first (frozenmath missing)"; exit 1; }
@@ -37,7 +37,7 @@ case "$(uname)" in
       # Same engine flags as build_qjs.sh (-O3 + x86-64-v3, no FMA): +6% env
       # throughput, gate-passed. Keep the two builds' flags in lockstep — the
       # gate runs qjs_host but training loads this .so.
-      QJS_ARCH=""; case "$(uname -m)" in x86_64|amd64) QJS_ARCH="-march=x86-64-v3";; esac
+      QJS_ARCH=""; case "$(uname -m)" in x86_64|amd64) QJS_ARCH="-march=${PLAYTRAIN_ARCH:-x86-64-v3}";; esac
       for f in quickjs libregexp libunicode dtoa; do
         clang -c -fPIC -O3 $QJS_ARCH -ffp-contract=off -DNDEBUG -D_GNU_SOURCE -I qjs/src qjs/src/$f.c -o qjs/bld_pic/$f.o
       done

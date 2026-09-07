@@ -365,3 +365,39 @@ pre code { background: none; padding: 0; font-size: 1em; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* ---- learning curves ---- */
+/* Two series, so the legend is always present; the panels also carry an end dot
+   in the series colour, and the table below repeats the numbers. Identity is
+   never carried by colour alone. */
+
+.curve-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 0 0 1rem;
+  font: 0.8rem var(--mono);
+  color: var(--ink);
+}
+.curve-key { display: inline-flex; align-items: center; gap: 0.4rem; }
+.curve-key i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+/* The curve now sits inside its game's card, under the two clips. */
+.pair .curve { margin-top: 0.5rem; }
+.curve-legend { margin-top: 1rem; }
+.curve { display: block; width: 100%; height: auto; overflow: visible; }
+.curve-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.curve-end { stroke: var(--paper); stroke-width: 2; }        /* surface ring */
+.curve-grid { stroke: var(--line); stroke-width: 1; }
+.curve-axis { stroke: #c9c9c9; stroke-width: 1; }
+.curve-tick { font: 9px var(--mono); fill: var(--muted); }
+.curve-tick-end { text-anchor: end; }
+
+.curve-table { margin: 1.6rem auto 0; max-width: 44rem; font-size: 0.82rem; }
+.curve-table summary { cursor: pointer; color: var(--muted); }
+.curve-table table { margin-top: 0.7rem; font-size: 0.8rem; }
+.curve-table td:first-child { font-family: var(--mono); }
+.curve-table td:not(:first-child), .curve-table th:not(:first-child) { text-align: right; }
+
+@media (max-width: 62rem) { .curve-grid-wrap { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 40rem) { .curve-grid-wrap { grid-template-columns: 1fr; } }

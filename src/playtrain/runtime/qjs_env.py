@@ -25,12 +25,12 @@ from gymnasium import spaces
 
 import json
 
-from playtrain._paths import asset as _asset, repo_root as _repo_root
+from playtrain._paths import asset as _asset, games_dir as _games_dir, repo_root as _repo_root
 from playtrain.runtime.action_space import (
     action_names, as_json, is_default, load_space_spec, quantize_box_actions)
 _ROOT = _repo_root() or Path(__file__).resolve().parents[3]
-_QJS_HOST = _ROOT / "native" / "build" / "qjs_host"
-_GAMES_DIR = _asset("examples/games/js")
+_QJS_HOST = _asset("native/build/qjs_host")
+_GAMES_DIR = _games_dir()
 _GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT", "UNKNOWN")
 _HDR = struct.Struct("<d")  # reward; rest read by offset
 

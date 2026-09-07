@@ -25,13 +25,13 @@ from typing import Sequence
 
 import numpy as np
 
+from playtrain._paths import asset as _asset, games_dir as _games_dir
 from playtrain.runtime.aot_cache import resolve_lib
 from playtrain.runtime.action_space import (
     action_names, has_analog, is_default, load_space_spec, packed_analog,
     packed_channels, packed_tables, quantize_box_actions)
 
-_ROOT = Path(__file__).resolve().parents[3]
-_GAMES_DIR = _ROOT / "examples" / "games" / "js"
+_GAMES_DIR = _games_dir()
 
 
 def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
@@ -50,7 +50,7 @@ def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
 
 
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
-_LIB_PATH = _ROOT / "native" / "build" / _LIBNAME
+_LIB_PATH = _asset("native/build/" + _LIBNAME)
 
 
 def _load_lib(path: Path) -> ctypes.CDLL:

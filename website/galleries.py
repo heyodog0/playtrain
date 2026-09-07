@@ -22,6 +22,8 @@ import json
 import pathlib
 import re
 
+import curves
+
 HERE = pathlib.Path(__file__).parent
 INDEX = HERE / "index.html"
 AGENT = HERE / "rollouts" / "agent"
@@ -32,7 +34,7 @@ TRAINERS = ("impala", "ppo")
 # The header set, chosen by hand. Both trainers are shown per game for now so
 # one can be picked per game later; TEASER_PICK is that choice once made.
 TEASER_ORDER = ["coinrun", "qbert.v2", "breakout.multi", "frostbite.jungle",
-                "downwell_fresh", "miner", "starpilot", "bossfight"]
+                "downwell_fresh.refined", "miner", "starpilot", "bossfight"]
 TEASER_PICK: dict[str, str] = {}     # e.g. {"coinrun": "impala"}
 
 
@@ -94,7 +96,7 @@ def figure(src: str, alt: str, caption: str, cls: str = "") -> str:
     return f'<figure{cls}>{media}<figcaption>{caption}</figcaption></figure>'
 
 
-def build_teaser(found, scores) -> str:
+def build_teaser(found, scores, curve_data) -> str:
     """The header strip.
 
     While TEASER_PICK is empty every game shows both trainers side by side, with
@@ -123,11 +125,16 @@ def build_teaser(found, scores) -> str:
                 f"is-agent{mark}"))
         if not cells:
             continue
+        curve = curves.panel_for(game, curve_data)
         cards.append('      <div class="pair">\n'
                      f'        <h3>{html.escape(game)}</h3>\n'
                      '        <div class="pair-clips">\n'
-                     + "\n".join(cells) + "\n        </div>\n      </div>")
-    return '    <div class="pair-grid is-wide is-teaser">\n' + "\n".join(cards) + "\n    </div>"
+                     + "\n".join(cells) + "\n        </div>\n"
+                     + (f'        {curve}\n' if curve else "")
+                     + "      </div>")
+    grid = ('    <div class="pair-grid is-wide is-teaser">\n'
+            + "\n".join(cards) + "\n    </div>")
+    return grid + "\n    " + curves.legend()
 
 
 def build_compare(found, humans, scores) -> str:
@@ -197,7 +204,7 @@ def main() -> None:
     found, humans = clips(), human_clips()
     scores = json.loads(SCORES.read_text()) if SCORES.exists() else {}
     text = INDEX.read_text()
-    text = replace_block(text, "TEASER", build_teaser(found, scores))
+    text = replace_block(text, "TEASER", build_teaser(found, scores, curves.load()))
     text = replace_block(text, "COMPARE", build_compare(found, humans, scores))
     text = replace_block(text, "GALLERY", build_gallery(found, scores))
     INDEX.write_text(text)

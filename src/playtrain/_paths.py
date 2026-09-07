@@ -32,3 +32,15 @@ def asset(rel: str) -> Path:
         return bundled
     # Return the checkout-style path so callers produce a sensible error.
     return (root or _ASSETS) / rel
+
+
+def games_dir() -> Path:
+    """The default game catalog.
+
+    ``examples/games/js`` — the curated set the runtime has always defaulted to.
+    NOT ``games/js``: the two have diverged (9 files differ, e.g. breakout is
+    ALE-aligned here and randomized there), so switching the default silently
+    changes 9 environments. The full tree is bundled too and is reachable via
+    ``$PLAYTRAIN_GAMES_DIR``, the ``games_dir=`` argument, or an explicit path.
+    """
+    return asset("examples/games/js")

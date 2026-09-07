@@ -96,8 +96,22 @@ x86 node vs 11× on the laptop. (One line of that job's async step reads
 FAIL: I had fed the seaquest.v3 AOT unit the 2D game; the unit has its
 game baked in. Script fixed in the next commit; the v3 arm was valid.)
 
-**Next (in order):** task 8 = `webgl_train.sbatch` (IMPALA 20M, default8,
-double-buffered native path) — job 45194327 submitted 2026-09-07 evening. Then Tier 2,
+**Task 8 — Tier 1 exit, DONE (job 45194327, `webgl_train.sbatch`, H100 node
+holygpu8a15301, 17:48 wall, 2026-09-07).** IMPALA, seaquest.v3, default8,
+unmodified trainer, 4 double-buffered vec workers × 5 env threads,
+20.0M steps at 18–20k SPS (trainer-reported). Mean episode return, binned
+by 2M steps: 13.8, 17.5, 16.9, 21.9, 42.2, 44.5, 48.8, 53.8, 58.2, 69.1
+(random play: 0–3). Final 63-episode window: mean 57.5, max 180. TB events:
+`$WW/native/aotfork/out/impala_seaquest_v3_20m/tb`. The SPS is 5–8× below
+2D games on the same config and ~1/3 of the env's own pingpong ceiling on
+that node; not diagnosed (CPU-slow 15xxx node, 20 env threads + 4 workers
++ learner on 23 cores). For a paper number, rerun pinned to a 17xxx node
+with a workers/threads sweep.
+
+**Tier 1 is complete.** Next: Tier 2 (tasks 9–11), starting with the JS shim
+forwarders and turning the gate SKIP into a 3D golden. Throughput levers,
+in payoff order, all pixel-neutral: incremental inner raster loop, cache the
+two static background boxes' transformed vertices, then the pinned sweep. Then Tier 2,
 starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
 `raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
 
