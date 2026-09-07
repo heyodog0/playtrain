@@ -108,10 +108,41 @@ that node; not diagnosed (CPU-slow 15xxx node, 20 env threads + 4 workers
 + learner on 23 cores). For a paper number, rerun pinned to a 17xxx node
 with a workers/threads sweep.
 
-**Tier 1 is complete.** Next: Tier 2 (tasks 9–11), starting with the JS shim
-forwarders and turning the gate SKIP into a 3D golden. Throughput levers,
-in payoff order, all pixel-neutral: incremental inner raster loop, cache the
-two static background boxes' transformed vertices, then the pinned sweep. Then Tier 2,
+**Tier 1 is complete.**
+
+**Optimisation pass (2026-09-07 evening), measured, so nobody repeats it.**
+Per-frame counts for the real game (temporary counters, now removed):
+~100 primitives, ~2,300 vertices, ~2,200 triangles tested, ~750 rasterised,
+~2,300 raster rows, ~1,800 pixels written. The pure-Rust replay of the
+golden seaquest-like scene runs at 13–14 µs/frame
+(`cargo test --release bench_frame -- --ignored --nocapture`), i.e. ~10 ns
+per vertex-or-triangle — scalar f64 is already close to its floor, and the
+pixel work is negligible. Results, laptop `qjs_host bench 0 20000`, median
+of 3, baseline 14.1k steps/s:
+- incremental integer edge walk + flat-colour path: pixel-identical, **0%**
+  (kept; cheaper per pixel, but pixels were never the cost);
+- whole-primitive early-out on the projected bounding sphere (conservative,
+  pixel-identical; also drops off-screen spawns): **+4.5% → 14.7k** (kept);
+- cache the per-vertex projection (two variants, incl. a slimmer vertex
+  record): **−3% to −6%**, both times — the divisions saved cost less than
+  the extra state; reverted, do not retry;
+- direct per-pixel row scan for narrow triangles instead of the span solve:
+  **−4%**, reverted;
+- static-box vertex cache: not built — the two background boxes are 48 of
+  2,300 vertices;
+- skipping depth writes for the background quads: not built — the floor
+  box spans z −70..30 and bubbles live inside that range, so it changes
+  pixels for a negligible gain.
+Conclusion: the renderer is geometry-bound at ~10 ns/element. Meaningful
+further gains are geometric (draw less) or game-side, not micro-tuning.
+**Authoring rule for Tier-2 games (goes in the template):** do not draw
+geometry under ~half a device pixel (at 64 px over a 400-unit canvas that is
+anything under ~3 units of radius); seaquest.v3's 30 sub-pixel bubbles and
+20 thin seaweeds are ~30% of its geometry for a few specks.
+
+Next: Tier 2 (tasks 9–11), starting with the JS shim forwarders and turning
+the gate SKIP into a 3D golden. For a paper-grade SPS, a pinned 17xxx-node
+sweep of vec_workers × vec_env_threads. Then Tier 2,
 starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
 `raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
 
