@@ -336,11 +336,14 @@ fn mesh_cone(dx: usize) -> Mesh {
 // seaquest.v3 draws thirty spheres of 0.1-0.4 device pixels per frame, so we
 // pick the tessellation from the PROJECTED radius. Deterministic (same f64
 // math on every target); pixel parity with browser p5 is a non-goal.
-const SPHERE_LOD: [(usize, usize); 4] = [(24, 16), (12, 8), (8, 4), (4, 2)];
-const RING_LOD: [usize; 4] = [24, 12, 8, 4];
+// The last tier (3-gon rings, 6-triangle "sphere") is for objects under half
+// a device pixel: they can only ever touch one pixel centre, so any closed
+// solid of the right extent is as good as p5's 768-triangle one.
+const SPHERE_LOD: [(usize, usize); 5] = [(24, 16), (12, 8), (8, 4), (4, 2), (3, 2)];
+const RING_LOD: [usize; 5] = [24, 12, 8, 4, 3];
 #[inline]
 fn lod_for(r_dev: f64) -> usize {
-    if r_dev >= 6.0 { 0 } else if r_dev >= 2.5 { 1 } else if r_dev >= 1.0 { 2 } else { 3 }
+    if r_dev >= 6.0 { 0 } else if r_dev >= 2.5 { 1 } else if r_dev >= 1.0 { 2 } else if r_dev >= 0.5 { 3 } else { 4 }
 }
 
 // ----------------------------------------------------------------- state ----
@@ -360,7 +363,7 @@ struct Material {
 struct Lights {
     ambient: [f64; 3],     // summed, 0..1 per channel
     n_dir: usize,
-    dir: [([f64; 3], [f64; 3]); MAX_LIGHTS],   // (colour 0..1, direction — light travel direction, p5 semantics)
+    dir: [([f64; 3], [f64; 3]); MAX_LIGHTS],   // (colour 0..1, UNIT direction the light travels — p5 semantics)
     n_pt: usize,
     pt: [([f64; 3], [f64; 3]); MAX_LIGHTS],    // (colour 0..1, world position)
     on: bool,              // p5 _enableLighting: any light or material call this frame
@@ -373,7 +376,11 @@ struct Frame {
     lights: Lights,
 }
 
-// A vertex after transform + lighting: device x/y (px), NDC z, colour 0..255.
+// A transformed vertex. Clip-space (x,y,cz,w) is filled by draw_mesh for
+// every vertex; device coords (x,y overwritten, z) by project(); the colour is
+// shaded LAZILY — only for vertices of triangles that survive near-clip,
+// back-face culling and the empty-bbox test (most of seaquest.v3's geometry
+// is sub-pixel or back-facing, and shading is the expensive per-vertex op).
 #[derive(Clone, Copy, Default)]
 struct SVert {
     x: f64,
@@ -384,6 +391,22 @@ struct SVert {
     r: f64,
     g: f64,
     b: f64,
+    vx: f64,  // view-space position (lighting)
+    vy: f64,
+    vz: f64,
+    nx: f64,  // OBJECT-space normal (unit-mesh); rotated + renormalised lazily
+    ny: f64,
+    nz: f64,
+    shaded: bool,
+}
+
+// Projected vertex: device px (x,y) + NDC depth. Small, so raster_tri takes
+// it by value without hauling the 120-byte SVert around.
+#[derive(Clone, Copy, Default)]
+struct PVert {
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 pub struct Three {
@@ -491,9 +514,8 @@ fn shade(m: &Material, l: &Lights, eye_z: f64, pv: [f64; 3], n: [f64; 3]) -> [f6
         let mut diff = [0.0f64; 3];
         let mut spec = [0.0f64; 3];
         let view_dir = normalize3([-pv[0], -pv[1], -pv[2]]);
-        let mut apply = |col: [f64; 3], lv: [f64; 3]| {
-            // lv = direction the light travels (p5 _light: diffuse = max(0, dot(-lightDir, normal)))
-            let ld = normalize3(lv);
+        let mut apply = |col: [f64; 3], ld: [f64; 3]| {
+            // ld = UNIT direction the light travels (p5 _light: diffuse = max(0, dot(-lightDir, normal)))
             let ndl = -dot3(ld, n);
             let d = if ndl > 0.0 { ndl } else { 0.0 };
             diff[0] += col[0] * d;
@@ -519,7 +541,7 @@ fn shade(m: &Material, l: &Lights, eye_z: f64, pv: [f64; 3], n: [f64; 3]) -> [f6
             // point light position is world space; view space = world - (0,0,eyeZ)
             let p = l.pt[i].1;
             let lp = [p[0], p[1], p[2] - eye_z];
-            apply(l.pt[i].0, [pv[0] - lp[0], pv[1] - lp[1], pv[2] - lp[2]]);
+            apply(l.pt[i].0, normalize3([pv[0] - lp[0], pv[1] - lp[1], pv[2] - lp[2]]));
         }
         let mut out = [0.0f64; 3];
         for c in 0..3 {
@@ -566,28 +588,88 @@ impl Three {
             let vx = m[0] * qx + m[4] * qy + m[8] * qz + m[12];
             let vy = m[1] * qx + m[5] * qy + m[9] * qz + m[13];
             let vz = m[2] * qx + m[6] * qy + m[10] * qz + m[14] - eye_z;
-            // normal: inverse-transpose of a rigid*scale = rotation * (n / scale)
-            let (nx, ny, nz) = (n[0] * isx, n[1] * isy, n[2] * isz);
-            let nn = normalize3([
-                m[0] * nx + m[4] * ny + m[8] * nz,
-                m[1] * nx + m[5] * ny + m[9] * nz,
-                m[2] * nx + m[6] * ny + m[10] * nz,
-            ]);
-            let col = shade(&cur.mat, &cur.lights, eye_z, [vx, vy, vz], nn);
             // clip space (p5 projection incl. the y flip)
             let cx = fx * vx;
             let cy = -fy * vy;
             let cz = pz_a * vz + pz_b;
             let cw = -vz;
-            xv.push(SVert { x: cx, y: cy, z: 0.0, w: cw, cz, r: col[0], g: col[1], b: col[2] });
+            xv.push(SVert {
+                x: cx, y: cy, z: 0.0, w: cw, cz, r: 0.0, g: 0.0, b: 0.0,
+                vx, vy, vz, nx: n[0], ny: n[1], nz: n[2], shaded: false,
+            });
         }
+        // Lazy per-vertex shading: rotate + renormalise the object normal
+        // (inverse-transpose of rigid*scale = rotation * (n / scale)), light it.
+        let ensure_shaded = |xv: &mut Vec<SVert>, i: usize| {
+            if xv[i].shaded {
+                return;
+            }
+            let v = xv[i];
+            let (nx, ny, nz) = (v.nx * isx, v.ny * isy, v.nz * isz);
+            let nn = normalize3([
+                m[0] * nx + m[4] * ny + m[8] * nz,
+                m[1] * nx + m[5] * ny + m[9] * nz,
+                m[2] * nx + m[6] * ny + m[10] * nz,
+            ]);
+            let col = shade(&cur.mat, &cur.lights, eye_z, [v.vx, v.vy, v.vz], nn);
+            let v = &mut xv[i];
+            v.r = col[0];
+            v.g = col[1];
+            v.b = col[2];
+            v.shaded = true;
+        };
         for t in mesh.idx.iter() {
-            let a = xv[t[0] as usize];
-            let b = xv[t[1] as usize];
-            let c = xv[t[2] as usize];
-            clip_and_raster(view, px, zb, a, b, c);
+            let (ia, ib, ic) = (t[0] as usize, t[1] as usize, t[2] as usize);
+            let inside = |v: &SVert| v.cz + v.w >= 0.0;
+            if inside(&xv[ia]) && inside(&xv[ib]) && inside(&xv[ic]) {
+                // Common case: project, cull, bbox-test BEFORE paying for shading.
+                let pv = [project(view, &xv[ia]), project(view, &xv[ib]), project(view, &xv[ic])];
+                if !tri_visible(view, &pv) {
+                    continue;
+                }
+                ensure_shaded(xv, ia);
+                ensure_shaded(xv, ib);
+                ensure_shaded(xv, ic);
+                let col = |i: usize| [xv[i].r, xv[i].g, xv[i].b];
+                raster_tri(view, px, zb, &pv, &[col(ia), col(ib), col(ic)]);
+            } else {
+                // Rare (near-plane straddle): shade all three, then clip.
+                ensure_shaded(xv, ia);
+                ensure_shaded(xv, ib);
+                ensure_shaded(xv, ic);
+                clip_and_raster(view, px, zb, xv[ia], xv[ib], xv[ic]);
+            }
         }
     }
+}
+
+// Perspective divide + viewport map for one clip-space vertex.
+#[inline]
+fn project(view: View, v: &SVert) -> PVert {
+    let iw = 1.0 / v.w;
+    let nx = v.x * iw;
+    let ny = v.y * iw;
+    PVert { x: (nx + 1.0) * 0.5 * view.dw as f64, y: (1.0 - ny) * 0.5 * view.dh as f64, z: v.cz * iw }
+}
+
+// The same orientation + bbox tests raster_tri applies, without the raster.
+#[inline]
+fn tri_visible(view: View, p: &[PVert; 3]) -> bool {
+    #[inline]
+    fn fx(v: f64) -> i64 {
+        (v * 16.0).round() as i64
+    }
+    let (a, b, c) = (&p[0], &p[1], &p[2]);
+    let (x0, y0, x1, y1, x2, y2) = (fx(a.x), fx(a.y), fx(b.x), fx(b.y), fx(c.x), fx(c.y));
+    let area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    if area <= 0 {
+        return false;
+    }
+    let minx = (x0.min(x1).min(x2) >> 4).max(0);
+    let maxx = ((x0.max(x1).max(x2) + 15) >> 4).min(view.dw as i64 - 1);
+    let miny = (y0.min(y1).min(y2) >> 4).max(0);
+    let maxy = ((y0.max(y1).max(y2) + 15) >> 4).min(view.dh as i64 - 1);
+    minx <= maxx && miny <= maxy
 }
 
 // Near-plane clip (z_clip + w_clip >= 0) in clip space, then perspective
@@ -632,103 +714,125 @@ fn clip_and_raster(view: View, px: &mut [u8], zb: &mut [f32], a: SVert, b: SVert
                         r: l(cur.r, nxt.r),
                         g: l(cur.g, nxt.g),
                         b: l(cur.b, nxt.b),
+                        ..cur
                     };
                     n_out += 1;
                 }
             }
         }
         // perspective divide + viewport
-        let (dw, dh) = (view.dw as f64, view.dh as f64);
-        for v in out[..n_out].iter_mut() {
-            let iw = 1.0 / v.w;
-            let nx = v.x * iw;
-            let ny = v.y * iw;
-            v.z = v.cz * iw;
-            v.x = (nx + 1.0) * 0.5 * dw;
-            v.y = (1.0 - ny) * 0.5 * dh;
+        let mut pv = [PVert::default(); 4];
+        let mut cl = [[0.0f64; 3]; 4];
+        for i in 0..n_out {
+            pv[i] = project(view, &out[i]);
+            cl[i] = [out[i].r, out[i].g, out[i].b];
         }
-        raster_tri(view, px, zb, out[0], out[1], out[2]);
+        raster_tri(view, px, zb, &[pv[0], pv[1], pv[2]], &[cl[0], cl[1], cl[2]]);
         if n_out == 4 {
-            raster_tri(view, px, zb, out[0], out[2], out[3]);
+            raster_tri(view, px, zb, &[pv[0], pv[2], pv[3]], &[cl[0], cl[2], cl[3]]);
         }
     }
 }
 
 // Fixed-point (28.4) edge-function rasterizer with the top-left fill rule,
 // back-face culling, LEQUAL depth test (p5's depthFunc), Gouraud colour.
-fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], v0: SVert, v1: SVert, v2: SVert) {
-    {
-        #[inline]
-        fn fx(v: f64) -> i64 {
-            (v * 16.0).round() as i64
-        }
-        let (x0, y0) = (fx(v0.x), fx(v0.y));
-        let (x1, y1) = (fx(v1.x), fx(v1.y));
-        let (x2, y2) = (fx(v2.x), fx(v2.y));
-        let area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
-        // Outward CCW faces come out with POSITIVE area in device space: p5's
-        // y flip in the projection and the viewport's y-down mapping cancel,
-        // so device y grows with world y. Cull back faces and degenerates.
-        if area <= 0 {
-            return;
-        }
-        let dw = view.dw as i64;
-        let dh = view.dh as i64;
-        let minx = (x0.min(x1).min(x2) >> 4).max(0);
-        let maxx = ((x0.max(x1).max(x2) + 15) >> 4).min(dw - 1);
-        let miny = (y0.min(y1).min(y2) >> 4).max(0);
-        let maxy = ((y0.max(y1).max(y2) + 15) >> 4).min(dh - 1);
-        if minx > maxx || miny > maxy {
-            return;
-        }
-        // edge i: from v_i to v_{i+1}; E(p) = dx*(py-ay) - dy*(px-ax)
-        let ex = [x1 - x0, x2 - x1, x0 - x2];
-        let ey = [y1 - y0, y2 - y1, y0 - y2];
-        let ax = [x0, x1, x2];
-        let ay = [y0, y1, y2];
-        let bias = |i: usize| -> i64 { if ey[i] < 0 || (ey[i] == 0 && ex[i] > 0) { 0 } else { -1 } };
-        let bias = [bias(0), bias(1), bias(2)];
-        let px0 = (minx << 4) + 8;
-        let py0 = (miny << 4) + 8;
-        let mut row = [0i64; 3];
+// Each row visits ONLY the pixels inside all three edges: the inside set
+// {k : E_i(k) + bias_i >= 0} is an integer interval per edge (E is affine in
+// k), so the row's span is their intersection — exact integer arithmetic, the
+// identical pixel set the per-pixel test would select, no wasted work on the
+// bbox of a thin or slanted triangle.
+fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[[f64; 3]; 3]) {
+    #[inline]
+    fn fx(v: f64) -> i64 {
+        (v * 16.0).round() as i64
+    }
+    let (v0, v1, v2) = (&p[0], &p[1], &p[2]);
+    let (x0, y0) = (fx(v0.x), fx(v0.y));
+    let (x1, y1) = (fx(v1.x), fx(v1.y));
+    let (x2, y2) = (fx(v2.x), fx(v2.y));
+    let area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    // Outward CCW faces come out with POSITIVE area in device space: p5's
+    // y flip in the projection and the viewport's y-down mapping cancel,
+    // so device y grows with world y. Cull back faces and degenerates.
+    if area <= 0 {
+        return;
+    }
+    let dw = view.dw as i64;
+    let dh = view.dh as i64;
+    let minx = (x0.min(x1).min(x2) >> 4).max(0);
+    let maxx = ((x0.max(x1).max(x2) + 15) >> 4).min(dw - 1);
+    let miny = (y0.min(y1).min(y2) >> 4).max(0);
+    let maxy = ((y0.max(y1).max(y2) + 15) >> 4).min(dh - 1);
+    if minx > maxx || miny > maxy {
+        return;
+    }
+    // edge i: from v_i to v_{i+1}; E(p) = dx*(py-ay) - dy*(px-ax)
+    let ex = [x1 - x0, x2 - x1, x0 - x2];
+    let ey = [y1 - y0, y2 - y1, y0 - y2];
+    let ax = [x0, x1, x2];
+    let ay = [y0, y1, y2];
+    let bias = |i: usize| -> i64 { if ey[i] < 0 || (ey[i] == 0 && ex[i] > 0) { 0 } else { -1 } };
+    let bias = [bias(0), bias(1), bias(2)];
+    let px0 = (minx << 4) + 8;
+    let py0 = (miny << 4) + 8;
+    let mut row = [0i64; 3];
+    for i in 0..3 {
+        row[i] = ex[i] * (py0 - ay[i]) - ey[i] * (px0 - ax[i]) + bias[i];
+    }
+    let stepx = [-ey[0] * 16, -ey[1] * 16, -ey[2] * 16];
+    let stepy = [ex[0] * 16, ex[1] * 16, ex[2] * 16];
+    let inv_area = 1.0 / area as f64;
+    let w = view.dw;
+    let n = maxx - minx;   // k in 0..=n
+    let (c0, c1, c2) = (col[0], col[1], col[2]);
+    for y in miny..=maxy {
+        // intersect the three half-line constraints on k
+        let mut klo: i64 = 0;
+        let mut khi: i64 = n;
         for i in 0..3 {
-            row[i] = ex[i] * (py0 - ay[i]) - ey[i] * (px0 - ax[i]);
+            let r = row[i];
+            let st = stepx[i];
+            if st == 0 {
+                if r < 0 { khi = -1; break; }
+            } else if st > 0 {
+                // r + k*st >= 0  =>  k >= ceil(-r / st)
+                let k = -((r).div_euclid(st));
+                if k > klo { klo = k; }
+            } else {
+                // r + k*st >= 0  =>  k <= floor(r / -st)
+                let k = r.div_euclid(-st);
+                if k < khi { khi = k; }
+            }
         }
-        let stepx = [-ey[0] * 16, -ey[1] * 16, -ey[2] * 16];
-        let stepy = [ex[0] * 16, ex[1] * 16, ex[2] * 16];
-        let inv_area = 1.0 / area as f64;
-        let w = view.dw;
-        for y in miny..=maxy {
-            let mut e = row;
-            let mut o = (y as usize) * w + minx as usize;
-            for _x in minx..=maxx {
-                if e[0] + bias[0] >= 0 && e[1] + bias[1] >= 0 && e[2] + bias[2] >= 0 {
-                    // weights: w0 from edge 1 (v1->v2), w1 from edge 2, w2 from edge 0
-                    let w0 = e[1] as f64 * inv_area;
-                    let w1 = e[2] as f64 * inv_area;
-                    let w2 = e[0] as f64 * inv_area;
-                    let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
-                    if z <= zb[o] {
-                        zb[o] = z;
-                        let r = w0 * v0.r + w1 * v1.r + w2 * v2.r;
-                        let g = w0 * v0.g + w1 * v1.g + w2 * v2.g;
-                        let b = w0 * v0.b + w1 * v1.b + w2 * v2.b;
-                        let q = o * 4;
-                        px[q] = clamp_u8(r);
-                        px[q + 1] = clamp_u8(g);
-                        px[q + 2] = clamp_u8(b);
-                        px[q + 3] = 255;
-                    }
+        if klo <= khi {
+            let mut o = (y as usize) * w + (minx + klo) as usize;
+            for k in klo..=khi {
+                // weights: w0 from edge 1 (v1->v2), w1 from edge 2, w2 from edge 0
+                // (bias removed again: it only steers the inclusion test)
+                let e0 = row[0] + k * stepx[0] - bias[0];
+                let e1 = row[1] + k * stepx[1] - bias[1];
+                let e2 = row[2] + k * stepx[2] - bias[2];
+                let w0 = e1 as f64 * inv_area;
+                let w1 = e2 as f64 * inv_area;
+                let w2 = e0 as f64 * inv_area;
+                let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
+                if z <= zb[o] {
+                    zb[o] = z;
+                    let r = w0 * c0[0] + w1 * c1[0] + w2 * c2[0];
+                    let g = w0 * c0[1] + w1 * c1[1] + w2 * c2[1];
+                    let b = w0 * c0[2] + w1 * c1[2] + w2 * c2[2];
+                    let q = o * 4;
+                    px[q] = clamp_u8(r);
+                    px[q + 1] = clamp_u8(g);
+                    px[q + 2] = clamp_u8(b);
+                    px[q + 3] = 255;
                 }
-                e[0] += stepx[0];
-                e[1] += stepx[1];
-                e[2] += stepx[2];
                 o += 1;
             }
-            row[0] += stepy[0];
-            row[1] += stepy[1];
-            row[2] += stepy[2];
         }
+        row[0] += stepy[0];
+        row[1] += stepy[1];
+        row[2] += stepy[2];
     }
 }
 
@@ -880,7 +984,8 @@ pub extern "C" fn rs_3d_directional_light(r: f64, g: f64, b: f64, x: f64, y: f64
         let l = &mut t.cur.lights;
         l.on = true;
         if l.n_dir < MAX_LIGHTS {
-            l.dir[l.n_dir] = ([c01(r), c01(g), c01(b)], [x, y, z]);
+            // normalised once here; shade() would otherwise redo it per vertex
+            l.dir[l.n_dir] = ([c01(r), c01(g), c01(b)], normalize3([x, y, z]));
             l.n_dir += 1;
         }
     }
@@ -1267,5 +1372,5 @@ mod tests {
 
     const GOLD_BOX: u64 = 15669850146622006379;
     const GOLD_ROT: u64 = 6833457957690475568;
-    const GOLD_SEA: u64 = 11019373600542213557;
+    const GOLD_SEA: u64 = 9653048113042733574;
 }
