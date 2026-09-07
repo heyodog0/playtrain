@@ -14,6 +14,10 @@
 
 #![allow(static_mut_refs)]
 
+// 3D pipeline for p5 WEBGL-mode games (rs_3d_* ABI). See three.rs.
+pub mod three;
+pub use three::*;
+
 struct SubPath {
     pts: Vec<(f64, f64)>,
     closed: bool,
@@ -61,7 +65,7 @@ fn pcos(x: f64) -> f64 {
 }
 
 #[inline]
-fn clamp_u8(x: f64) -> u8 {
+pub(crate) fn clamp_u8(x: f64) -> u8 {
     if x <= 0.0 {
         return 0;
     }
@@ -82,12 +86,12 @@ fn clamp_u8(x: f64) -> u8 {
     r as u8
 }
 
-struct Canvas {
-    dw: usize,
-    dh: usize,
+pub(crate) struct Canvas {
+    pub(crate) dw: usize,
+    pub(crate) dh: usize,
     sx: f64, // logical->device scale (base transform)
     sy: f64,
-    px: Vec<u8>,   // RGBA straight-alpha, dw*dh*4
+    pub(crate) px: Vec<u8>,   // RGBA straight-alpha, dw*dh*4
     out: Vec<u8>,  // BGRA premultiplied scratch for toBuffer
     t: [f64; 6],   // device = (a*x+c*y+e, b*x+d*y+f) = t[0..6]
     base: [f64; 6],
@@ -108,7 +112,7 @@ struct Canvas {
 // Single-threaded callers (trace/bench/serve) never touch that API: the first
 // `rs()` on a thread lazily leaks one default RState, reproducing the old
 // single-global behavior exactly (bit-exact, verified).
-struct RState {
+pub(crate) struct RState {
     canvases: Vec<Canvas>,
     // ---- dirty-rectangle: whole-frame skip via command record/replay ----
     // When `dirty` is on, a frame's draw ops are RECORDED (not executed) between
@@ -134,6 +138,9 @@ struct RState {
     // the ~17 Horner evals it was saving. APPENDED here (codegen hygiene:
     // round-4 A/B #8 regressed untouched span games when fields shifted).
     ell_cache: Vec<EllEntry>,
+    // WEBGL-mode state (None for 2D games). APPENDED last, same codegen-
+    // hygiene reason as ell_cache. Boxed so 2D RState layout barely moves.
+    pub(crate) three: Option<Box<three::Three>>,
 }
 
 impl RState {
@@ -149,6 +156,7 @@ impl RState {
             frame_opaque: true,
             forceskip: false,
             ell_cache: Vec::new(),
+            three: None,
         }
     }
 }
@@ -162,7 +170,7 @@ thread_local! {
 }
 
 #[inline]
-fn rs() -> &'static mut RState {
+pub(crate) fn rs() -> &'static mut RState {
     RS_CUR.with(|p| {
         let mut ptr = p.get();
         if ptr.is_null() {
@@ -196,7 +204,7 @@ pub extern "C" fn rs_state_free(p: *mut core::ffi::c_void) {
 }
 
 #[inline]
-fn cv(h: u32) -> &'static mut Canvas {
+pub(crate) fn cv(h: u32) -> &'static mut Canvas {
     &mut rs().canvases[h as usize]
 }
 
@@ -221,6 +229,7 @@ fn rec(tag: u8, a: [f64; 6]) -> bool {
 #[no_mangle]
 pub extern "C" fn rs_set_dirty(on: i32) {
     let s = rs();
+    if s.three.is_some() { return; }   // 3D ops are not recorded; see rs_3d_begin
     s.dirty = on != 0;
     s.has_last = false;                                 // reset cache when toggled
     s.forceskip = std::env::var("RS_FORCESKIP").is_ok();
