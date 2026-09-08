@@ -322,7 +322,15 @@ def main():
         print("Error: Set GEMINI_API_KEY environment variable")
         raise SystemExit(1)
 
-    client = genai.Client(api_key=api_key)
+    # google-genai prefers GOOGLE_API_KEY when both are set and warns about it, so a
+    # stale GOOGLE_API_KEY would silently bill the wrong account. Hide it for the call
+    # and put it back, the same way refine.py does.
+    _google = os.environ.pop("GOOGLE_API_KEY", None)
+    try:
+        client = genai.Client(api_key=api_key)
+    finally:
+        if _google is not None:
+            os.environ["GOOGLE_API_KEY"] = _google
     model = MODELS[args.model]
     template = TEMPLATE_PATH.read_text()
 
