@@ -126,7 +126,7 @@ void endShape(int mode);  // CLOSE
 // global rect/fill/etc draw into the offscreen; image() blits an offscreen into
 // the current target, logical coords mapped through the base device scale
 // (nearest-neighbor downsample in rs_draw_image). NOTE: this is the "layer-cache"
-// experiment path (see native/HANDOFF-coinrun-perf.md) — pre-rasterize-then-
+// experiment path — pre-rasterize-then-
 // rescale, which is NOT bit-exact to direct rendering on scaled-camera games.
 int  createGraphics(double w, double h);
 void setTarget(int handle);

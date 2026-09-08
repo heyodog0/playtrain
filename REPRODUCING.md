@@ -14,10 +14,10 @@ visible rather than silent. Output goes to `reproduction/out/`.
 
 | artifact | generator | data | verified |
 |---|---|---|---|
-| Figure 4, environment efficiency | `tools/plot_env_efficiency_bestonly.py` | `figures/scaling/` | 2.18x ProcGen, 12.62x ALE, panel A at 3.64M / 7.36M |
-| Learning-curve composite | `tools/plot_main_composite.py` | release asset | all panels, both trainers |
-| Per-game suite grids | `tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
-| Environment cost | `tools/plot_env_cost.py` | release asset | both panels match |
+| Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/scaling/` | 2.18x ProcGen, 12.62x ALE, panel A at 3.64M / 7.36M |
+| Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset | all panels, both trainers |
+| Per-game suite grids | `reproduction/figures/tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
+| Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games, in the script |
 | Architecture schematic | `figures/fig_schematic.py` | none | redraws, in the script |
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows |
@@ -39,7 +39,7 @@ $ cd reproduction/figures
 # Figure 4. The job id selects the build: 44515188 is tier 3, and the older
 # 38145651 / 39032276 draw a valid figure at roughly half the throughput.
 $ uv run --no-project --with matplotlib --with numpy --with pillow \
-     python tools/plot_env_efficiency_bestonly.py \
+     python reproduction/figures/tools/plot_env_efficiency_bestonly.py \
      --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out .
 
 # Table 1(a). The t3fix row is the published one. The adv2 row printed beside it

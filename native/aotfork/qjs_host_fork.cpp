@@ -155,7 +155,7 @@ FN(js_cone) { NODRAW p5::cone(argd(ctx, argv[0]), argd(ctx, argv[1])); return JS
 FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))); }
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 
-// Offscreen graphics (layer-cache experiment; see native/HANDOFF-coinrun-perf.md).
+// Offscreen graphics (layer-cache experiment).
 FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }

@@ -45,8 +45,6 @@ outputs/
 .vercel/
 .vercel
 
-# Project page build output (website/build.sh)
-website/site/
 
 # Trained-policy checkpoints pulled from FASRC to render the header rollouts.
 # The working copies live one level up (../checkpoints, ../checkpoints_ppo, both
@@ -54,8 +52,6 @@ website/site/
 checkpoints/
 checkpoints_ppo/
 
-# website build output; regenerate with bash website/build.sh
-website/site/
 reproduction/data/generation-logs/*.json
 
 # Fetched by reproduction/figures/fetch_data.sh, never committed.

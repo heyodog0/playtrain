@@ -30,10 +30,8 @@ if [ ! -f frozenmath/libfrozenmath.a ] || ! nm frozenmath/libfrozenmath.a 2>/dev
 fi
 FROZEN="frozenmath/libfrozenmath.a"
 
-# QuickJS static lib — STOCK quickjs-ng (the custom tracing JIT was archived to
-# native/archive/jit/ on 2026-07-11: off-by-default and a net slowdown on the
-# render-bound games; see native/HANDOFF-coinrun-perf.md. To restore, see
-# native/archive/jit/README.md).
+# QuickJS static lib — STOCK quickjs-ng. A custom tracing JIT was tried and dropped on
+# 2026-07-11: off by default, and a net slowdown on the render-bound games.
 if [ ! -f qjs/bld/libqjs.a ]; then
   [ -d qjs/src ] || git clone --depth 1 https://github.com/quickjs-ng/quickjs.git qjs/src
   mkdir -p qjs/bld

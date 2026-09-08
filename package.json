@@ -41,9 +41,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "node tools/build-site.mjs",
-    "build:study": "node tools/build-study.mjs",
-    "verify:study": "node tools/verify-replay.mjs",
+    "build:study": "node study/build-study.mjs",
+    "verify:study": "node study/verify-replay.mjs",
     "build:pages": "node tools/build-pages.mjs"
   },
   "packageManager": "pnpm@9.15.0",

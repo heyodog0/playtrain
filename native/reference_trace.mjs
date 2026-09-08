@@ -1,6 +1,6 @@
 // reference_trace.mjs — the V8 side of the differential bit-exact gate.
 // Runs the REAL PlayTrain JS env (wasm rasterizer, same as production) on the
-// same seed + same deterministic action formula as native/runtime/main.cpp, and
+// same seed + same deterministic action formula as the native hosts, and
 // emits an identically-formatted trace. Compare with `native/build/<game> trace`.
 //
 //   node reference_trace.mjs <game_basename> <seed> <nsteps>
