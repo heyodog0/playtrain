@@ -66,3 +66,4 @@ reproduction/data/generation-logs/*.json
 reproduction/figures/playtrain-figure-data.tar.gz
 reproduction/figures/outputs/
 reproduction/out/
+reproduction/figures/_*_curves.json
