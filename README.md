@@ -86,7 +86,12 @@ $ git clone https://github.com/heyodog0/playtrain && cd playtrain
 $ python3 -m venv .venv && .venv/bin/pip install -e .
 ```
 
-Or with [uv](https://docs.astral.sh/uv/), `uv venv && uv pip install -e .`.
+Or with [uv](https://docs.astral.sh/uv/):
+
+```console
+$ git clone https://github.com/heyodog0/playtrain && cd playtrain
+$ uv venv && uv pip install -e .
+```
 
 Either way this builds the native backend as part of the install, which takes about a
 minute the first time. The backend is the default runtime engine, not an optional
