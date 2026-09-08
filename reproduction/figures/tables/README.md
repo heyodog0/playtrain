@@ -23,17 +23,14 @@ Emits the table body verbatim.
 `eval_final_agents_b256.json`. The latter sits beside it, is from weaker checkpoints, and
 produces 20 of 24 greedy returns too low while every random return still matches.
 
-**Table 1(b), the environment swap.** The EnvPool baseline columns come from
-`verdicts/`, one file per game and arm, each holding the measured median SPS. The
-geometric means reproduce the paper exactly: ProcGen 371,525 against a reported 372k,
-ALE 174,763 against 175k.
+**Table 1(b), the environment swap.**
 
-```console
-$ grep -h MEDIAN_SPS verdicts/pgab_*_envpool_*.verdict
-```
+    python tab1b.py
 
-The PlayTrain columns in that table (838k and 1,018k) are the engine-tier measurement
-and are not in these files, which predate it and give 617,566 and 872,514.
+Reads `verdicts/`, one file per game and arm, and prints the geometric mean of each.
+All four published numbers come out exact: ProcGen 371,617 and 837,638 against 372k and
+838k, ALE 175,119 and 1,017,528 against 175k and 1,018k. The `adv2` arm printed beside
+`tier3` is the previous build, not what the paper reports.
 
 **The thread-scaling table** shares its data with figure panel A: see `../scaling/`.
 

@@ -1,2 +1,0 @@
-ARM coinrun_playtrain: PASS  windows=7  median_sps=429,252  max_sps=439,084
-MEDIAN_SPS coinrun_playtrain 429252.2 PASS

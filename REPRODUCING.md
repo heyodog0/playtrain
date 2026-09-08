@@ -21,6 +21,7 @@ visible rather than silent. Output goes to `reproduction/out/`.
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games |
 | Architecture schematic | `figures/fig_schematic.py` | none | generator committed |
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows |
+| Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical |
 | Thread-scaling table | shares Figure 4's data | `figures/scaling/` | 2.58x at 80 threads |
 | Appendix eval table | `results/eval_iddp_suite.json` | committed | 24 of 24 games |

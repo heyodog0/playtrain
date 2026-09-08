@@ -1,0 +1,2 @@
+ARM asteroids_envpool: PASS  windows=9  median_sps=183,497
+MEDIAN_SPS asteroids_envpool 183497.3 PASS

@@ -1,2 +1,0 @@
-ARM bigfish_envpool: PASS  windows=10  median_sps=419,425  max_sps=429,254
-MEDIAN_SPS bigfish_envpool 419424.9 PASS

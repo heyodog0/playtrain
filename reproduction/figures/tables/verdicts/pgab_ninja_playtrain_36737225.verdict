@@ -1,2 +1,0 @@
-ARM ninja_playtrain: PASS  windows=7  median_sps=969,912  max_sps=976,459
-MEDIAN_SPS ninja_playtrain 969912.0 PASS

@@ -36,6 +36,9 @@ step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
     impala_nature=44748571+44784183 impala_icnn=44748573 \
     ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
 
+step "Table 1(b), environment swap  (paper: 372k -> 838k, 175k -> 1,018k)"
+( cd figures/tables && uv run --no-project python tab1b.py ) ; done_ $?
+
 step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
 ( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
 

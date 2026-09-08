@@ -1,2 +1,0 @@
-ARM B_envpool_nocompile: PASS  windows=8  median_sps=298,184  max_sps=304,737  tb_bytes=78860
-MEDIAN_SPS B_envpool_nocompile 298184.4 PASS

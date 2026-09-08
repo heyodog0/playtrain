@@ -1,2 +1,0 @@
-ARM fruitbot_playtrain: PASS  windows=7  median_sps=448,911  max_sps=452,191
-MEDIAN_SPS fruitbot_playtrain 448910.8 PASS

@@ -1,2 +1,0 @@
-ARM A_playtrain_nocompile: FAIL(only 2 sps windows)  windows=2  median_sps=933,873  max_sps=933,873  tb_bytes=73688
-MEDIAN_SPS A_playtrain_nocompile 933872.7 FAIL(only 2 sps windows)

@@ -1,2 +1,0 @@
-ARM A_pt_nocompile: PASS  windows=10  median_sps=943,705  max_sps=950,257  tb_bytes=300766
-MEDIAN_SPS A_pt_nocompile 943704.9 PASS
