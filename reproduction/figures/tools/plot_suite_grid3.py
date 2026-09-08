@@ -3,7 +3,7 @@ IMPALA x {IMPALA-CNN, Nature-CNN} plus PPO + Nature-CNN.
 
 Successor to plot_suite_grid.py, which drew the single-seed 150M DDP2 run. This
 reads the 100M suite (24 games x {Nature-CNN, IMPALA-CNN} x 3 seeds) from the
-JSON that tools/extract_s3.py dumps on the cluster, so it needs no TB tree here.
+JSON dumped on the cluster, so it needs no TB tree here.
 
 Bands are min/max over the three seeds, matching the main figure's convention;
 the line is the seed mean. Type sizes and panel geometry are inherited from

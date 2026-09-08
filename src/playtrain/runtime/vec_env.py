@@ -12,8 +12,7 @@ three Gymnasium 1.0 autoreset modes (``NEXT_STEP``, ``SAME_STEP``,
 recent ``gymnasium.utils``) and SB3-style trainers (which expect
 ``SAME_STEP`` semantics).
 
-Throughput for this backend is measured by ``benchmarks/raw_vec_bench.py``; see
-``benchmarks/README.md`` for the harness and its ground rules. (Original design
+Throughput for this backend is measured by ``benchmarks/bench_native_vec.py``. (Original design
 notes and the FASRC receipts for jobs 12972050 / 12978195 are kept in the
 internal repo, not here.)
 """

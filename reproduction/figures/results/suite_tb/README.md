@@ -4,7 +4,7 @@ TensorBoard event files and run configs for all 24 replica games, recovered from
 cluster (`outputs/impala_<job>/`) and committed here so the
 appendix figure is reproducible from this repo. 480 KB total.
 
-`tools/plot_suite_grid.py` reads this directory and writes `fig_suite_grid.{png,pdf}`.
+`reproduction/figures/tools/plot_suite_grid.py` reads this directory and writes `fig_suite_grid.{png,pdf}`.
 
 ## What these runs are
 

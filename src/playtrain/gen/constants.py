@@ -22,7 +22,7 @@ def variant_names() -> set[str]:
 
     Variants are ordinary game files but are excluded from bulk ``--all`` runs so
     that experiments don't sweep half-baked prototypes. Promoting a variant drops
-    it from the registry, making it first-class again. See tools/variant.py.
+    it from the registry, making it first-class again. See playtrain.gen.variant.
     """
     if VARIANTS_REGISTRY.exists():
         try:

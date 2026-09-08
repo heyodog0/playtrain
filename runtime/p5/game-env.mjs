@@ -43,7 +43,7 @@ const ORIGINAL_MATH_RANDOM = Math.random;
 
 // Discrete action spaces live in runtime/action_spaces.json — one declarative
 // spec shared with the native hosts (native/qjs/action_table.hpp) and the
-// human-study harness (tools/study-templates.mjs). The default is default8
+// human-study harness (study/study-templates.mjs). The default is default8
 // (GAME_TEMPLATE.md: 0=NOOP, 1=LEFT, 2=RIGHT, 3=UP, 4=DOWN, 5=D(SPACE),
 // 6=LEFT+D, 7=RIGHT+D), whose indices are frozen — recorded trajectories and
 // the native gate's golden traces depend on the exact mapping.

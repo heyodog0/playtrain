@@ -1,4 +1,4 @@
-"""Human-study figures, statistics mirrored from tools/study-stats.mjs.
+"""Human-study figures.
 
 usage: python plot_human.py <study-data-dir> <out-dir>
 """

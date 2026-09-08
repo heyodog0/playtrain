@@ -1,6 +1,6 @@
 """Greedy-eval suite checkpoints on the HUMAN seed pool, capped like humans.
 
-Differs from tools/eval_final_agents.py in ways that matter for comparing to
+Differs from the suite evaluator in ways that matter for comparing to
 human play:
   * seeds are 90000+i, the pool the study served, not the trainer's 9_000_000+i
   * --max-steps defaults to 2000, the study's episode truncation, so agent and

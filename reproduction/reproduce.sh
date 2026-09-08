@@ -74,5 +74,4 @@ fi
 
 printf '\n%s\n' "----"
 echo "$ok ok, $fail failed. Outputs in reproduction/out/"
-echo "Not covered here: tab:llm-cost needs GEMINI_API_KEY (playtrain.gen.count_tokens),"
-echo "and the human wallclock figure has its own README in figures/human/."
+echo "Not covered here: tab:llm-cost, which needs GEMINI_API_KEY (playtrain.gen.count_tokens)."

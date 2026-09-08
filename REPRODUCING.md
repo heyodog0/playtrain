@@ -52,6 +52,13 @@ $ cd tables && uv run --no-project python t1a_agg.py \
 The token cost table is the one thing the script does not run. It needs
 `GEMINI_API_KEY`, since it re-counts tokens through the API.
 
+`figures/as_run/` holds the sweep scripts and Slurm submissions exactly as they were
+submitted to the cluster. They are a record of what produced the committed data, not an
+entry point, and the paths inside them refer to the tree as it stood at run time. Read
+them, do not run them. The two data directories under `figures/results/` each carry a
+manifest naming every committed measurement file, the hardware it was taken on, and the
+caveats that came with it.
+
 ## Four ways to reproduce the wrong thing
 
 Each of these produced a plausible figure from the wrong input, with no error.

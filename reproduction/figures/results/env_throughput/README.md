@@ -27,8 +27,7 @@ Hardware: one FASRC Sapphire Rapids node (Xeon Platinum 8480+), **one core** per
 measurement, `frame_skip=1`, 64×64 RGB. ProcGen sweep on `holy8a32607`, Atari on
 `holy8a32603` — and in each sweep **both arms ran inside the same Slurm job at the
 same core budget**, so no bar is compared against a number from different silicon.
-The as-run submissions are committed in
-[`playtrain/benchmarks/as_run/`](https://github.com/heyodog0/playtrain/tree/main/benchmarks/as_run).
+The as-run submissions are committed in `reproduction/figures/as_run/`.
 
 ## Two geomeans, both correct
 
@@ -41,7 +40,7 @@ disk but left out of its printed line. Recomputed from this data: 6 games → 6.
 
 ## Verified against the figure
 
-`tools/plot_throughput_geo.py` currently holds these values as inline constants.
+`reproduction/figures/tools/throughput_panels.py` holds these values as inline constants.
 They were checked against this data — recompute the QuickJS per-game mean and
 sample SD from the raw trial lines, read ProcGen/ALE mean and SD from the JSONs:
 
@@ -61,6 +60,6 @@ Measured rather than assumed — same machine, same games, same engine, only the
 driver changed: bigfish 207,757 (C loop) vs 176,233 (in-process Python) = −15%;
 coinrun 25,558 vs 28,645 = **+12%**. About ±15% with **no consistent direction**, so
 the published numbers are not systematically inflated and a caption clause covers
-it. Full detail in `playtrain/benchmarks/as_run/README.md`, including why this must
-*not* be "fixed" by re-measuring through PlayTrain's pipe-based single-env API
-(4× slower than the engine, and not the path the trainer uses either).
+it. This must *not* be "fixed" by re-measuring through PlayTrain's pipe-based
+single-env API, which is 4x slower than the engine and not the path the trainer
+uses either.
