@@ -8,12 +8,13 @@ Building a new video-game environment has meant writing it by hand. So has chang
 existing one. PlayTrain replaces that with a JavaScript file an LLM writes from a short
 prompt, plus a runtime that steps it as an ordinary Gymnasium environment. The runtime
 is fast enough to train pixel-based agents end to end at over 1M agent-decisions per
-second on a single GPU node.
+second on a single GPU node, using the IMPALA and PPO trainers in
+[playtrain-trainers](https://github.com/heyodog0/playtrain-trainers).
 
 PlayTrain is the artifact behind *An Efficient Reinforcement Learning Framework for
 LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 
-## Two halves
+## Three parts
 
 - **`playtrain.runtime`** runs p5.js and Matter.js games as Gymnasium environments with
   no browser. The default backend embeds QuickJS and a native rasterizer, and
@@ -21,6 +22,10 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
   the fallback for machines without the native build.
 - **`playtrain.gen`** writes and modifies those games through an LLM, with a five-check
   validation harness that gates which generated games enter the catalog.
+- **[playtrain-trainers](https://github.com/heyodog0/playtrain-trainers)** trains agents
+  on them. IMPALA with V-trace and PPO, both configured by a JSON file. It is a separate
+  package that depends on this one, and it produced every training number in the paper.
+  See [Training](#training).
 
 The catalog has 35 games. Some are clones of Atari and ProcGen games, some are original,
 and several ship as deliberate variants of a base game. The project page is at
