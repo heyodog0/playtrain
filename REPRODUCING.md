@@ -18,8 +18,8 @@ visible rather than silent. Output goes to `reproduction/out/`.
 | Learning-curve composite | `tools/plot_main_composite.py` | release asset | all panels, both trainers |
 | Per-game suite grids | `tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
 | Environment cost | `tools/plot_env_cost.py` | release asset | both panels match |
-| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games |
-| Architecture schematic | `figures/fig_schematic.py` | none | generator committed |
+| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games, in the script |
+| Architecture schematic | `figures/fig_schematic.py` | none | redraws, in the script |
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical |
@@ -49,8 +49,8 @@ $ cd tables && uv run --no-project python t1a_agg.py \
      ppo_nature=44748574+44784184 ppo_impala=44748575+44784185
 ```
 
-The token cost table needs `GEMINI_API_KEY`, since it re-counts tokens through the API.
-The human figure needs the sessions decompressed first, see `figures/human/README.md`.
+The token cost table is the one thing the script does not run. It needs
+`GEMINI_API_KEY`, since it re-counts tokens through the API.
 
 ## Four ways to reproduce the wrong thing
 

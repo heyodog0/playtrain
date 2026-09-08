@@ -42,6 +42,18 @@ step "Table 1(b), environment swap  (paper: 372k -> 838k, 175k -> 1,018k)"
 step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
 ( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
 
+step "Human wall-clock figure"
+TMPS=$(mktemp -d)
+python3 -c "
+import gzip, glob, os, shutil, sys
+for f in glob.glob('data/study/*.json.gz'):
+    with gzip.open(f, 'rb') as i, open(os.path.join(sys.argv[1], os.path.basename(f)[:-3]), 'wb') as o:
+        shutil.copyfileobj(i, o)" "$TMPS"
+( cd figures/human && $PY python plot_wallclock5.py rerun_curves.json "$TMPS" "$OUT" ) ; done_ $?
+
+step "Architecture schematic"
+( cd figures && $PY python fig_schematic.py ) ; done_ $?
+
 step "Appendix eval table  (paper: 24 games, e.g. seaquest 102.5 / 732.5)"
 python3 - <<'PYEOF'
 import json
