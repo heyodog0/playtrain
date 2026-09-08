@@ -11,7 +11,6 @@ auditable even though its input never ships.
                                                 --out reproduction/data/study
 
 What is removed
-  participantId        Prolific ID; stable across studies, re-identifiable by Prolific
   userAgent            browser + OS fingerprint
   source.study/session Prolific study and session ids
   completionCode       Prolific completion code
@@ -20,8 +19,9 @@ What is removed
   consent.doNotRecontact  operational, not scientific
 
 What is transformed
-  filename, participantId -> p01..pNN, assigned by session start order
-  timestamps              -> durations in seconds, relative to session start
+  filename, participantId value -> p01..pNN, assigned by session start order
+  startedAt, finishedAt   -> truncated to the minute (the study filter needs them)
+  consent.at, feedback.at -> durations in seconds, relative to session start
   demographics.age        -> a 10-year band
 
 What is kept, verbatim
@@ -40,7 +40,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-DROP_TOP = ("participantId", "userAgent", "completionCode", "startedAt", "finishedAt", "source")
+DROP_TOP = ("userAgent", "completionCode", "source")
 
 
 def _ts(value: str | None) -> datetime | None:
@@ -64,7 +64,15 @@ def anonymize(raw: dict, pid: str) -> dict:
         return None if (t is None or start is None) else round((t - start).total_seconds(), 3)
 
     out = {k: v for k, v in raw.items() if k not in DROP_TOP}
-    out["participant"] = pid
+    # startedAt is load-bearing: the study's own analysis filters on it to drop the
+    # pilot sessions, so it cannot be removed. Truncate to the minute, which keeps
+    # that boundary exact and drops the sub-minute precision.
+    for k in ("startedAt", "finishedAt"):
+        if isinstance(out.get(k), str) and len(out[k]) >= 16:
+            out[k] = out[k][:17] + "00.000Z"
+    # Keep the field NAME: the downstream study tooling reads participantId, and
+    # only the value was ever identifying.
+    out["participantId"] = pid
     out["sessionSeconds"] = offset(raw.get("finishedAt"))
 
     if isinstance(out.get("consent"), dict):
@@ -85,7 +93,7 @@ def anonymize(raw: dict, pid: str) -> dict:
             demo["ageBand"] = band
         out["demographics"] = demo
 
-    return {"participant": pid, **{k: v for k, v in out.items() if k != "participant"}}
+    return {"participantId": pid, **{k: v for k, v in out.items() if k != "participantId"}}
 
 
 def main() -> int:
