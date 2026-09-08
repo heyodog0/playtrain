@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45027640",
+  "games": "space_invaders",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "space_invaders",
+          "sps": 1013410.2,
+          "windows": [
+            995970.5,
+            1013410.2,
+            1005901.1,
+            1015761.4
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 1013410
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "space_invaders",
+          "sps": 829009.7,
+          "windows": [
+            809350.1,
+            829009.9,
+            829009.7,
+            819062.3
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 829010
+    }
+  },
+  "a4_over_a3_geomean": 1.222,
+  "a4_over_a3_per_game": {
+    "space_invaders": 1.222
+  }
+}

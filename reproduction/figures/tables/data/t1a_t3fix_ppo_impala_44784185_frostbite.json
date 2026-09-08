@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "frostbite",
+      "sps": 69302,
+      "windows": [
+        69113,
+        69304,
+        69302
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69302,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44784185.json",
+  "nproc": 4
+}

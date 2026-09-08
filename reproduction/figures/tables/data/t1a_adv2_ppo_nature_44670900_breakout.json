@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "breakout",
+      "sps": 188708,
+      "windows": [
+        187124,
+        188708,
+        188886
+      ],
+      "minutes": 1.0
+    }
+  ],
+  "geomean_sps": 188708,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_nature_44670900.json",
+  "nproc": 4
+}

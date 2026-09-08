@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "ninja",
+      "sps": 347335,
+      "windows": [
+        347334,
+        353888,
+        347334,
+        347335
+      ],
+      "minutes": 6.3
+    }
+  ],
+  "mean_sps": 347335,
+  "geomean_sps": 347335,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

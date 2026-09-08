@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "leaper",
+      "sps": 64154,
+      "windows": [
+        64137,
+        64669,
+        64154
+      ],
+      "minutes": 2.4
+    }
+  ],
+  "geomean_sps": 64154,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

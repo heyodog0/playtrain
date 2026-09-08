@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "frostbite",
+      "sps": 1078048,
+      "windows": [
+        1064941,
+        1078048,
+        1091144,
+        1074769
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1078048,
+  "geomean_sps": 1078048,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

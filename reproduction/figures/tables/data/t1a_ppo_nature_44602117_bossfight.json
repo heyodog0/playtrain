@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "bossfight",
+      "sps": 207357,
+      "windows": [
+        206075,
+        207357,
+        207645
+      ],
+      "minutes": 0.9
+    }
+  ],
+  "geomean_sps": 207357,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}

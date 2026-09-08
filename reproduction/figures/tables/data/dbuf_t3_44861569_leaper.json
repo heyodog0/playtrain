@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45010187",
+  "games": "leaper",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "leaper",
+          "sps": 937026.7,
+          "windows": [
+            933760.0,
+            944825.6,
+            937026.7,
+            910933.2
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 937027
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "leaper",
+          "sps": 488229.8,
+          "windows": [
+            386652.7,
+            491506.3,
+            475120.4,
+            488229.8
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 488230
+    }
+  },
+  "a4_over_a3_geomean": 1.919,
+  "a4_over_a3_per_game": {
+    "leaper": 1.919
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "fruitbot",
+      "sps": 1034553,
+      "windows": [
+        1090964,
+        969761,
+        1034553,
+        1064940
+      ],
+      "minutes": 4.5
+    }
+  ],
+  "mean_sps": 1034553,
+  "geomean_sps": 1034553,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44784183.json"
+}

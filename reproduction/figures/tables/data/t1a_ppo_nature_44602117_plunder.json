@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "plunder",
+      "sps": 205953,
+      "windows": [
+        204788,
+        205953,
+        206251
+      ],
+      "minutes": 0.9
+    }
+  ],
+  "geomean_sps": 205953,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}

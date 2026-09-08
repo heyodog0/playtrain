@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "freeway",
+      "sps": 204475,
+      "windows": [
+        204758,
+        204027,
+        204475
+      ],
+      "minutes": 0.9
+    }
+  ],
+  "geomean_sps": 204475,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "bossfight",
+      "sps": 1077729,
+      "windows": [
+        1074771,
+        1064941,
+        1077729,
+        1078045
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1077729,
+  "geomean_sps": 1077729,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_nature_44602115.json"
+}

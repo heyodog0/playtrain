@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "ninja",
+      "sps": 70112,
+      "windows": [
+        70003,
+        70112,
+        70301
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 70112,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

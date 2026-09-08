@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "jumper",
+      "sps": 64853,
+      "windows": [
+        64716,
+        64853,
+        65198
+      ],
+      "minutes": 2.4
+    }
+  ],
+  "geomean_sps": 64853,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

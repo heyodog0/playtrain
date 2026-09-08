@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45018819",
+  "games": "fruitbot",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "fruitbot",
+          "sps": 796214.3,
+          "windows": [
+            792852.6,
+            796214.3,
+            779860.7,
+            801211.2
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 796214
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "fruitbot",
+          "sps": 435804.1,
+          "windows": [
+            403036.0,
+            419419.4,
+            435804.1,
+            439036.2
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 435804
+    }
+  },
+  "a4_over_a3_geomean": 1.827,
+  "a4_over_a3_per_game": {
+    "fruitbot": 1.827
+  }
+}

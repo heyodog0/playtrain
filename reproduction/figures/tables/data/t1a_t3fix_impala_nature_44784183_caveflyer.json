@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "caveflyer",
+      "sps": 1071479,
+      "windows": [
+        1068211,
+        1071384,
+        1071479,
+        1081323
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1071479,
+  "geomean_sps": 1071479,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44784183.json"
+}

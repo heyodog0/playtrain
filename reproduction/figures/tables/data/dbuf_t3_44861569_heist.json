@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45007871",
+  "games": "heist",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "heist",
+          "sps": 878128.8,
+          "windows": [
+            920644.2,
+            868281.3,
+            884638.3,
+            878128.8
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 878129
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "heist",
+          "sps": 747026.5,
+          "windows": [
+            710954.6,
+            747026.5,
+            750365.1,
+            740535.2
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 747026
+    }
+  },
+  "a4_over_a3_geomean": 1.175,
+  "a4_over_a3_per_game": {
+    "heist": 1.175
+  }
+}

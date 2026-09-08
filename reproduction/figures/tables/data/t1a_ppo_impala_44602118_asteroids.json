@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "asteroids",
+      "sps": 69064,
+      "windows": [
+        69078,
+        69064,
+        69002
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69064,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45023019",
+  "games": "pong",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "pong",
+          "sps": 901041.1,
+          "windows": [
+            903685.1,
+            901041.1,
+            900952.8,
+            904300.1
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 901041
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "pong",
+          "sps": 979736.8,
+          "windows": [
+            963351.9,
+            979586.7,
+            979736.8,
+            989569.9
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 979737
+    }
+  },
+  "a4_over_a3_geomean": 0.92,
+  "a4_over_a3_per_game": {
+    "pong": 0.92
+  }
+}

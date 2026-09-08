@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "ninja",
+      "sps": 1064944,
+      "windows": [
+        1081324,
+        1071492,
+        1064938,
+        1064944
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1064944,
+  "geomean_sps": 1064944,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

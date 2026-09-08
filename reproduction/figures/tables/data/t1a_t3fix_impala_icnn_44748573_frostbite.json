@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "frostbite",
+      "sps": 327672,
+      "windows": [
+        321118,
+        321120,
+        327672,
+        334227
+      ],
+      "minutes": 4.5
+    }
+  ],
+  "mean_sps": 327672,
+  "geomean_sps": 327672,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

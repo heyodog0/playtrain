@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "qbert",
+      "sps": 746961,
+      "windows": [
+        756796,
+        733574,
+        746969,
+        746961
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 746961,
+  "geomean_sps": 746961,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

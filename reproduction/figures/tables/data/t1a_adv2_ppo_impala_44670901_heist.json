@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "heist",
+      "sps": 66354,
+      "windows": [
+        66187,
+        66410,
+        66354
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 66354,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

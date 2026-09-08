@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "maze",
+      "sps": 350559,
+      "windows": [
+        347334,
+        350559,
+        347336,
+        353888
+      ],
+      "minutes": 6.3
+    }
+  ],
+  "mean_sps": 350559,
+  "geomean_sps": 350559,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

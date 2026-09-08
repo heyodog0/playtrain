@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "jumper",
+      "sps": 166573,
+      "windows": [
+        164065,
+        166616,
+        166573
+      ],
+      "minutes": 1.1
+    }
+  ],
+  "geomean_sps": 166573,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_nature_44670900.json",
+  "nproc": 4
+}

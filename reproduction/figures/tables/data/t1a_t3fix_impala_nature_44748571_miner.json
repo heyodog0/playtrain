@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "miner",
+      "sps": 1051687,
+      "windows": [
+        1051258,
+        1061553,
+        1051687,
+        1041838
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1051687,
+  "geomean_sps": 1051687,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44748571.json"
+}

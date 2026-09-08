@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "jumper",
+      "sps": 353889,
+      "windows": [
+        360442,
+        353888,
+        360442,
+        353889
+      ],
+      "minutes": 7.3
+    }
+  ],
+  "mean_sps": 353889,
+  "geomean_sps": 353889,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

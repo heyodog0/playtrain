@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "caveflyer",
+      "sps": 334226,
+      "windows": [
+        327650,
+        334227,
+        334226,
+        327664
+      ],
+      "minutes": 5.5
+    }
+  ],
+  "mean_sps": 334226,
+  "geomean_sps": 334226,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

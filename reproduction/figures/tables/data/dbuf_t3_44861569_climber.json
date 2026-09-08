@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45019763",
+  "games": "climber",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "climber",
+          "sps": 655243.5,
+          "windows": [
+            760081.1,
+            720752.8,
+            645031.3,
+            655243.5
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 655244
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "climber",
+          "sps": 415608.9,
+          "windows": [
+            416142.2,
+            409589.2,
+            416117.4,
+            415608.9
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 415609
+    }
+  },
+  "a4_over_a3_geomean": 1.577,
+  "a4_over_a3_per_game": {
+    "climber": 1.577
+  }
+}

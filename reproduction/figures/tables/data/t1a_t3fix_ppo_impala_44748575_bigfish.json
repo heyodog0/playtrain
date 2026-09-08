@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "bigfish",
+      "sps": 69441,
+      "windows": [
+        69441,
+        69396,
+        69504
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69441,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

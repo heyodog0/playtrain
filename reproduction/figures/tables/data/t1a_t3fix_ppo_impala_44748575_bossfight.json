@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "bossfight",
+      "sps": 69214,
+      "windows": [
+        69350,
+        69214,
+        69168
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69214,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

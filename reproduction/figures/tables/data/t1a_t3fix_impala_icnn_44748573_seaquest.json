@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "seaquest",
+      "sps": 314565,
+      "windows": [
+        307938,
+        308012,
+        314565,
+        321118
+      ],
+      "minutes": 4.5
+    }
+  ],
+  "mean_sps": 314565,
+  "geomean_sps": 314565,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

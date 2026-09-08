@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "starpilot",
+      "sps": 1074768,
+      "windows": [
+        1084462,
+        1081267,
+        1074768,
+        1068216
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1074768,
+  "geomean_sps": 1074768,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44784183.json"
+}

@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45030779",
+  "games": "frostbite",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "frostbite",
+          "sps": 887972.3,
+          "windows": [
+            874877.0,
+            891259.1,
+            887972.3,
+            887878.3
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 887972
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "frostbite",
+          "sps": 769963.3,
+          "windows": [
+            740534.5,
+            773256.2,
+            769963.3,
+            763364.8
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 769963
+    }
+  },
+  "a4_over_a3_geomean": 1.153,
+  "a4_over_a3_per_game": {
+    "frostbite": 1.153
+  }
+}

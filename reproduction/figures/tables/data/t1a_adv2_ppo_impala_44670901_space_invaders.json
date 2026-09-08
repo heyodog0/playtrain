@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "space_invaders",
+      "sps": 68551,
+      "windows": [
+        68551,
+        68535,
+        68633
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 68551,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

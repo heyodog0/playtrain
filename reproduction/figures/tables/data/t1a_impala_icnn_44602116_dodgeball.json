@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "dodgeball",
+      "sps": 360441,
+      "windows": [
+        360441,
+        360441,
+        360442,
+        347335
+      ],
+      "minutes": 6.3
+    }
+  ],
+  "mean_sps": 360441,
+  "geomean_sps": 360441,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

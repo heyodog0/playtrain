@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "coinrun",
+      "sps": 65179,
+      "windows": [
+        64946,
+        65179,
+        65284
+      ],
+      "minutes": 2.4
+    }
+  ],
+  "geomean_sps": 65179,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

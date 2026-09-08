@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45015942",
+  "games": "caveflyer",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "caveflyer",
+          "sps": 878025.5,
+          "windows": [
+            900970.5,
+            864986.3,
+            878025.5,
+            907522.1
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 878026
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "caveflyer",
+          "sps": 596358.5,
+          "windows": [
+            576697.8,
+            593080.5,
+            596358.5,
+            599641.8
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 596359
+    }
+  },
+  "a4_over_a3_geomean": 1.472,
+  "a4_over_a3_per_game": {
+    "caveflyer": 1.472
+  }
+}

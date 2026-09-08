@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "asteroids",
+      "sps": 353888,
+      "windows": [
+        366996,
+        353888,
+        353889,
+        347335
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 353888,
+  "geomean_sps": 353888,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

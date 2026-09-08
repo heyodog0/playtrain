@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "pong",
+      "sps": 129351,
+      "windows": [
+        129351,
+        130820,
+        129096
+      ],
+      "minutes": 1.4
+    }
+  ],
+  "geomean_sps": 129351,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

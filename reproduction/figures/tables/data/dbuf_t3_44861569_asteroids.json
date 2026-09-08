@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45029545",
+  "games": "asteroids",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "asteroids",
+          "sps": 904235.2,
+          "windows": [
+            917318.3,
+            933744.2,
+            891145.9,
+            904235.2
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 904235
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "asteroids",
+          "sps": 799515.9,
+          "windows": [
+            773206.9,
+            799515.9,
+            809347.7,
+            798589.7
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 799516
+    }
+  },
+  "a4_over_a3_geomean": 1.131,
+  "a4_over_a3_per_game": {
+    "asteroids": 1.131
+  }
+}

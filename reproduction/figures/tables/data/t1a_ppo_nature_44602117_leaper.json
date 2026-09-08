@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "leaper",
+      "sps": 155301,
+      "windows": [
+        152922,
+        155301,
+        158235
+      ],
+      "minutes": 1.1
+    }
+  ],
+  "geomean_sps": 155301,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}
