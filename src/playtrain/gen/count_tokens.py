@@ -11,7 +11,7 @@ is why the table had no provenance.
 
 usage:
   GEMINI_API_KEY=... uv run --with google-genai python -m playtrain.gen.count_tokens
-  ... --out results/llm_cost.json
+  ... --out reproduction/data/llm_cost.json
 """
 import argparse
 import glob
@@ -24,7 +24,11 @@ from google import genai
 # Gemini 3.1 Pro list price, USD per 1M tokens.
 RATE_IN, RATE_OUT = 2.0, 12.0
 
-BASE = str(pathlib.Path(__file__).resolve().parents[3] / 'games' / 'logs') + '/'
+# The generation logs moved under reproduction/ for the release; they are paper
+# data, not runtime. Override with $PLAYTRAIN_GEN_LOGS.
+BASE = os.environ.get('PLAYTRAIN_GEN_LOGS') or str(
+    pathlib.Path(__file__).resolve().parents[3] / 'reproduction' / 'data' / 'generation-logs')
+BASE = BASE.rstrip('/') + '/'
 
 # qbert.v2 took two calls under two names: the variant that produced v1 and the
 # one that produced v2 from it.
@@ -66,8 +70,8 @@ def ntok(client, model, text):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument('--out', default='results/llm_cost.json')
-    ap.add_argument('--tex', default='results/tab_llm_cost.tex')
+    ap.add_argument('--out', default='reproduction/data/llm_cost.json')
+    ap.add_argument('--tex', default='reproduction/data/tab_llm_cost.tex')
     args = ap.parse_args()
 
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
