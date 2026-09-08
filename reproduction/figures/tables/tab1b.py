@@ -24,10 +24,10 @@ for suite, pat, published in (("ProcGen", "pgt3_*_44516162.verdict", (372, 838))
         if not m:
             continue
         name = os.path.basename(f)
-        arm = "envpool" if "envpool" in name else ("tier3" if "tier3" in name else "adv2")
+        arm = "envpool" if "envpool" in name else "tier3"
         arms.setdefault(arm, []).append(float(m.group(2)))
     print(f"{suite}:")
-    for arm in ("envpool", "adv2", "tier3"):
+    for arm in ("envpool", "tier3"):
         if arm in arms:
             print(f"  {arm:8s} {geo(arms[arm]):>10,.0f}  (n={len(arms[arm])})")
     print(f"  paper     {published[0]:>7}k -> {published[1]:,}k   (envpool -> tier3)")

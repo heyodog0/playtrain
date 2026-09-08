@@ -29,8 +29,7 @@ produces 20 of 24 greedy returns too low while every random return still matches
 
 Reads `verdicts/`, one file per game and arm, and prints the geometric mean of each.
 All four published numbers come out exact: ProcGen 371,617 and 837,638 against 372k and
-838k, ALE 175,119 and 1,017,528 against 175k and 1,018k. The `adv2` arm printed beside
-`tier3` is the previous build, not what the paper reports.
+838k, ALE 175,119 and 1,017,528 against 175k and 1,018k.
 
 **The thread-scaling table** shares its data with figure panel A: see `../scaling/`.
 
