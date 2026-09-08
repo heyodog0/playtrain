@@ -52,7 +52,7 @@ for f in glob.glob('data/study/*.json.gz'):
 ( cd figures/human && $PY python plot_wallclock5.py rerun_curves.json "$TMPS" "$OUT" ) ; done_ $?
 
 step "Architecture schematic"
-( cd figures && $PY python fig_schematic.py ) ; done_ $?
+( cd figures && $PY python fig_schematic.py "$OUT" ) ; done_ $?
 
 step "Appendix eval table  (paper: 24 games, e.g. seaquest 102.5 / 732.5)"
 python3 - <<'PYEOF'
@@ -69,7 +69,8 @@ if [ "${1:-}" = "--all" ]; then
   ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
   step "Per-game suite grids"
   ( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null
-    $PYTB python tools/plot_suite_grid.py && $PYTB python tools/plot_suite_grid3.py ) ; done_ $?
+    $PYTB python tools/plot_suite_grid.py --out "$OUT" \
+    && $PYTB python tools/plot_suite_grid3.py --out "$OUT" ) ; done_ $?
 fi
 
 printf '\n%s\n' "----"
