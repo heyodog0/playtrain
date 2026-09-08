@@ -18,11 +18,12 @@ Working doc for the public release. **Delete this file before publishing.**
       create the fresh public `playtrain`. — A1 is in git history, so deleting it in a new
       commit does not remove it. Rename the private repo to `playtrain-dev`, create a
       fresh public `playtrain` at the same URL (keeps every link already written).
-- [ ] **A3. ProcGen attribution** `[me]` — `games/procgen_src/` is 17 verbatim OpenAI
+- [x] **A3. ProcGen attribution** — DONE: `games/procgen_src/{LICENSE,README.md}`,
+      OpenAI's notice verbatim. Also found a second gap: the wheel statically links
+      quickjs-ng + openlibm, so `THIRD_PARTY_LICENSES.md` now ships with it. ~~`[me]`~~ — `games/procgen_src/` is 17 verbatim OpenAI
       files with no license header. MIT requires the notice. Add `LICENSE` + provenance
       README, or drop the directory.
-- [ ] **A4. Hardcoded password** `[me]` — `middleware.js:24`. Deleting the file
-      (see B3) resolves it.
+- [x] **A4. Hardcoded password** — DONE via B3 (`middleware.js` deleted).
 - [x] **A5. Catalog divergence** — RESOLVED: `examples/games/js` is canonical.
       Evidence: all 87 paper configs set `native_games_dir` to it, `study-audit.mjs`
       defaults to it, the runtime defaults to it, and the `PLAYTRAIN_GAMES_DIR` export
@@ -65,7 +66,8 @@ Working doc for the public release. **Delete this file before publishing.**
       claimed by the first real upload.
 - [ ] **C4. AVX2 decision** `[you]` — wheels default to `x86-64-v2`; `v3` is ~6% faster
       but SIGILLs on pre-Haswell. Confirm or override.
-- [ ] **C5. Trainers standalone** `[me]` — verify `pip install playtrain-trainers`
+- [x] **C5. Trainers standalone** — DONE: declares `playtrain>=0.1`, no direct URL,
+      installs with `--no-sources` and no sibling checkout. ~~`[me]`~~ — verify `pip install playtrain-trainers`
       resolves from PyPI with no sibling checkout.
 - [~] **C6. Tag `v0.1.0`, publish** `[you]` — trusted-publishing job added to
       `wheels.yml` (tags only, gated on the smoke test). Needs: a GitHub environment
@@ -73,20 +75,18 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## D. Docs
 
-- [x] **D1. README** — rewritten, 96 lines, minimal style. Placeholders remain:
-      paper title, arXiv link, bibtex.
+- [x] **D1. README** — rewritten, minimal style; real title, authors and bibtex from
+      `main.tex`. Only the arXiv id remains a placeholder (it does not exist yet).
 - [~] **D2. `REPRO.md` → `REPRODUCING.md`** `[me]` — moved to root. Still **stale**:
       last touched Aug 10, predates the EnvPool reframing, adv2, and the engine tier.
       Needs a rewrite once the numbers freeze.
 - [ ] **D3. `benchmarks/README.md` staleness** `[me]` — refers to "Figure 2(a)/(b)"
       and quotes bigfish 207,757 f/s. Same freeze dependency as D2.
-- [ ] **D4. `CONTRIBUTING.md`** `[me]` — the justfile, native build, tests, adding a game.
-- [ ] **D5. `AGENTS.md`** `[me]` — orientation for agent readers: API surface, catalog,
-      and the pitfalls found today (`reset(seeds)` positional; don't name a checkout
-      `playtrain`; engine tier degrades silently without clang).
-- [ ] **D6. `CHANGELOG.md`** `[me]` — with a separate **Environment changes** section,
-      so future papers can cite a tag and say what moved.
-- [ ] **D7. `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue templates** `[me]`.
+- [x] **D4. `CONTRIBUTING.md`** — DONE. ~~`[me]`~~
+- [x] **D5. `AGENTS.md`** — DONE, 80 lines: full API, six pitfalls, layout, and
+      determinism as the invariant. ~~`[me]`~~
+- [x] **D6. `CHANGELOG.md`** — DONE, with the **Environment changes** heading. ~~`[me]`~~
+- [x] **D7. `SECURITY.md` + issue templates** — DONE. `CODE_OF_CONDUCT.md` still open.
 
 ## E. Notebook
 
