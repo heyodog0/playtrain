@@ -1,0 +1,66 @@
+[
+  {
+    "name": "bigfish",
+    "source_path": "games/procgen_src/bigfish.cpp"
+  },
+  {
+    "name": "bossfight",
+    "source_path": "games/procgen_src/bossfight.cpp"
+  },
+  {
+    "name": "caveflyer",
+    "source_path": "games/procgen_src/caveflyer.cpp"
+  },
+  {
+    "name": "chaser",
+    "source_path": "games/procgen_src/chaser.cpp"
+  },
+  {
+    "name": "climber",
+    "source_path": "games/procgen_src/climber.cpp"
+  },
+  {
+    "name": "coinrun",
+    "source_path": "games/procgen_src/coinrun.cpp"
+  },
+  {
+    "name": "dodgeball",
+    "source_path": "games/procgen_src/dodgeball.cpp"
+  },
+  {
+    "name": "fruitbot",
+    "source_path": "games/procgen_src/fruitbot.cpp"
+  },
+  {
+    "name": "heist",
+    "source_path": "games/procgen_src/heist.cpp"
+  },
+  {
+    "name": "jumper",
+    "source_path": "games/procgen_src/jumper.cpp"
+  },
+  {
+    "name": "leaper",
+    "source_path": "games/procgen_src/leaper.cpp"
+  },
+  {
+    "name": "maze",
+    "source_path": "games/procgen_src/maze.cpp"
+  },
+  {
+    "name": "miner",
+    "source_path": "games/procgen_src/miner.cpp"
+  },
+  {
+    "name": "ninja",
+    "source_path": "games/procgen_src/ninja.cpp"
+  },
+  {
+    "name": "plunder",
+    "source_path": "games/procgen_src/plunder.cpp"
+  },
+  {
+    "name": "starpilot",
+    "source_path": "games/procgen_src/starpilot.cpp"
+  }
+]

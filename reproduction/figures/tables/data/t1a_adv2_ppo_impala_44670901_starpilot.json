@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "starpilot",
+      "sps": 68021,
+      "windows": [
+        68021,
+        67830,
+        68065
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 68021,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "breakout",
+      "sps": 68474,
+      "windows": [
+        68592,
+        68160,
+        68474
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 68474,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

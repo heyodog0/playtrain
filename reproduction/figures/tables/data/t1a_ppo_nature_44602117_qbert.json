@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "qbert",
+      "sps": 165354,
+      "windows": [
+        167388,
+        164119,
+        165354
+      ],
+      "minutes": 1.1
+    }
+  ],
+  "geomean_sps": 165354,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}

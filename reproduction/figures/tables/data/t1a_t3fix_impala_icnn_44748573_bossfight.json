@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "bossfight",
+      "sps": 357166,
+      "windows": [
+        347334,
+        353836,
+        360442,
+        357166
+      ],
+      "minutes": 6.1
+    }
+  ],
+  "mean_sps": 357166,
+  "geomean_sps": 357166,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "maze",
+      "sps": 1078045,
+      "windows": [
+        1058386,
+        1078045,
+        1081262,
+        1064774
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1078045,
+  "geomean_sps": 1078045,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_nature_44602115.json"
+}

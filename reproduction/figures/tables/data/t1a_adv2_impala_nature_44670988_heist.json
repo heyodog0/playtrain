@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "heist",
+      "sps": 1061630,
+      "windows": [
+        1048434,
+        1061630,
+        1081153,
+        1051750
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1061630,
+  "geomean_sps": 1061630,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

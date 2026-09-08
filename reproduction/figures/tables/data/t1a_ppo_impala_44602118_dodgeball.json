@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "dodgeball",
+      "sps": 66596,
+      "windows": [
+        66752,
+        66322,
+        66596
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 66596,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

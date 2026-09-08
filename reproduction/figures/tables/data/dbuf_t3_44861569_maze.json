@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45011336",
+  "games": "maze",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "maze",
+          "sps": 973116.6,
+          "windows": [
+            986121.2,
+            973116.6,
+            976319.0,
+            950154.6
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 973117
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "maze",
+          "sps": 658622.2,
+          "windows": [
+            629044.6,
+            665172.3,
+            648782.0,
+            658622.2
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 658622
+    }
+  },
+  "a4_over_a3_geomean": 1.478,
+  "a4_over_a3_per_game": {
+    "maze": 1.478
+  }
+}

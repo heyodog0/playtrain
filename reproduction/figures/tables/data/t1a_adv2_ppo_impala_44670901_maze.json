@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "maze",
+      "sps": 63865,
+      "windows": [
+        63865,
+        63853,
+        64049
+      ],
+      "minutes": 2.4
+    }
+  ],
+  "geomean_sps": 63865,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

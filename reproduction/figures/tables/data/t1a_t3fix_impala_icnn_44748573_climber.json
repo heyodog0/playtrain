@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "climber",
+      "sps": 321105,
+      "windows": [
+        308012,
+        314564,
+        327672,
+        321105
+      ],
+      "minutes": 6.4
+    }
+  ],
+  "mean_sps": 321105,
+  "geomean_sps": 321105,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

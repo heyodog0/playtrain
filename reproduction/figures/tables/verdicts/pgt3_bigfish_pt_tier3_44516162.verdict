@@ -1,0 +1,2 @@
+ARM bigfish_pt_tier3: PASS  windows=5  median_sps=1,130,476
+MEDIAN_SPS bigfish_pt_tier3 1130476.4 PASS

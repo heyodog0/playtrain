@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "seaquest",
+      "sps": 1071375,
+      "windows": [
+        1078040,
+        1071375,
+        1063618,
+        1091105
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1071375,
+  "geomean_sps": 1071375,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_nature_44602115.json"
+}

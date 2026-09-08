@@ -1,0 +1,78 @@
+[
+  {
+    "name": "jump_king",
+    "mechanic": "vertical precision platformer; hold D to charge a jump and release to launch in a fixed arc (LEFT/RIGHT held while charging sets direction), no air control once airborne; walls bounce the jumper; a missed landing falls back down multiple screens, losing progress; score = highest platform height reached this episode",
+    "ref": "https://en.wikipedia.org/wiki/Jump_King",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "D",
+      "LEFT+D",
+      "RIGHT+D"
+    ]
+  },
+  {
+    "name": "hoplite",
+    "mechanic": "turn-based tactics roguelike on a hex grid; one action per turn, then all demons move; the six hex directions map to LEFT/RIGHT/UP/DOWN/LEFT+D/RIGHT+D and D alone waits; moving past or next to a demon stabs it; reach the stairs to descend to the next procedurally generated depth; lava tiles kill; score = demons killed + 10 per depth descended",
+    "ref": "https://www.magmafortress.com/p/hoplite.html",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "UP",
+      "DOWN",
+      "D",
+      "LEFT+D",
+      "RIGHT+D"
+    ]
+  },
+  {
+    "name": "hyper_light_drifter",
+    "mechanic": "top-down action; arrows move the drifter through procedurally arranged enemy rooms, D dashes a fixed distance in the held direction (i-frames while dashing), sword slash triggers automatically on enemies in melee range; enemies telegraph then shoot projectiles; clearing a room opens the next; score = kills + 5 per room cleared",
+    "ref": "https://en.wikipedia.org/wiki/Hyper_Light_Drifter",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "UP",
+      "DOWN",
+      "D",
+      "LEFT+D",
+      "RIGHT+D"
+    ]
+  },
+  {
+    "name": "cave_story",
+    "mechanic": "side-scrolling platform shooter; LEFT/RIGHT run, D jumps, gun auto-fires in the facing direction, UP aims upward; kills drop weapon energy that levels the gun up (more damage), taking a hit drops one weapon level and costs health; reach the door at the end of the cave to advance; score = kills + weapon energy collected + 20 per cave cleared",
+    "ref": "https://en.wikipedia.org/wiki/Cave_Story",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "UP",
+      "DOWN",
+      "D",
+      "LEFT+D",
+      "RIGHT+D"
+    ]
+  },
+  {
+    "name": "downwell_fresh",
+    "ref": "https://store.steampowered.com/app/360740/Downwell/",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "D"
+    ],
+    "mechanic": "vertical descent shooter"
+  },
+  {
+    "name": "zelda",
+    "mechanic": "top-down dungeon crawler; arrows move through a procedurally connected grid of rooms, D swings the sword in the facing direction; enemies roam rooms and deal contact damage, hearts restore health; collect keys to open locked doors and rupees for score; find and defeat the boss to clear the dungeon; score = kills + rupees + 5 per key used + 50 for the boss",
+    "ref": "https://en.wikipedia.org/wiki/The_Legend_of_Zelda_(video_game)",
+    "actions_used": [
+      "LEFT",
+      "RIGHT",
+      "UP",
+      "DOWN",
+      "D"
+    ]
+  }
+]

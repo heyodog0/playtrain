@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "bigfish",
+      "sps": 202535,
+      "windows": [
+        201923,
+        202535,
+        203392
+      ],
+      "minutes": 0.9
+    }
+  ],
+  "geomean_sps": 202535,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

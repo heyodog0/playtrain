@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "freeway",
+      "sps": 69333,
+      "windows": [
+        69091,
+        69333,
+        69450
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69333,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_ppo_impala_44670901.json",
+  "nproc": 4
+}

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "seaquest",
+      "sps": 70245,
+      "windows": [
+        70280,
+        70245,
+        70156
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 70245,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_impala_44748575.json",
+  "nproc": 4
+}

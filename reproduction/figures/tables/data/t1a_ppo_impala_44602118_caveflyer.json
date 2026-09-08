@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "caveflyer",
+      "sps": 66141,
+      "windows": [
+        66628,
+        66003,
+        66141
+      ],
+      "minutes": 2.3
+    }
+  ],
+  "geomean_sps": 66141,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

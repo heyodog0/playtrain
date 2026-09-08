@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45005193",
+  "games": "starpilot",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "starpilot",
+          "sps": 904258.8,
+          "windows": [
+            894416.4,
+            904258.8,
+            914068.0,
+            901087.5
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 904259
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "starpilot",
+          "sps": 815816.4,
+          "windows": [
+            779751.0,
+            825740.5,
+            796121.8,
+            815816.4
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 815816
+    }
+  },
+  "a4_over_a3_geomean": 1.108,
+  "a4_over_a3_per_game": {
+    "starpilot": 1.108
+  }
+}

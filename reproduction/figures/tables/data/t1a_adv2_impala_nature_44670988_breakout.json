@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "breakout",
+      "sps": 1067866,
+      "windows": [
+        1078046,
+        1067866,
+        1058271,
+        1074772
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1067866,
+  "geomean_sps": 1067866,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "plunder",
+      "sps": 1078047,
+      "windows": [
+        1061504,
+        1078047,
+        1074770,
+        1087878
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1078047,
+  "geomean_sps": 1078047,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44748571.json"
+}

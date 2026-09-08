@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "jumper",
+      "sps": 1110640,
+      "windows": [
+        1061507,
+        1071324,
+        1113904,
+        1110640
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1110640,
+  "geomean_sps": 1110640,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44748571.json"
+}

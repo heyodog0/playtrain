@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45012520",
+  "games": "dodgeball",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "dodgeball",
+          "sps": 897818.7,
+          "windows": [
+            914022.4,
+            871484.6,
+            897818.7,
+            900384.3
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 897819
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "dodgeball",
+          "sps": 586465.6,
+          "windows": [
+            563553.1,
+            570071.2,
+            586465.6,
+            589729.2
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 586466
+    }
+  },
+  "a4_over_a3_geomean": 1.531,
+  "a4_over_a3_per_game": {
+    "dodgeball": 1.531
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "chaser",
+      "sps": 1045127,
+      "windows": [
+        1070663,
+        1085854,
+        1026474,
+        1045127
+      ],
+      "minutes": 4.5
+    }
+  ],
+  "mean_sps": 1045127,
+  "geomean_sps": 1045127,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44748571.json"
+}

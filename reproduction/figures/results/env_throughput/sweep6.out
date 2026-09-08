@@ -1,0 +1,19 @@
+NODE: holy8a32603.rc.fas.harvard.edu
+done qjs qbert
+done qjs seaquest
+done qjs pong
+done qjs breakout
+done qjs space_invaders
+done qjs frostbite
+done qjs freeway
+done qjs asteroids
+game                  QuickJS mean±std          ALE mean±std   ratio
+qbert                   11366 ±    21         5484 ±    13   2.1x
+seaquest                65867 ±   799         8846 ±    93   7.4x
+pong                   167833 ±  2684        11166 ±    37  15.0x
+breakout                32206 ±    96         3741 ±    23   8.6x
+space_invaders          50758 ±   350         9109 ±    48   5.6x
+frostbite               39610 ±   250         4977 ±    22   8.0x
+--------------------------------------------------------------------
+GEOMEAN                 44847                6717        6.7x
+SWEEP6_DONE

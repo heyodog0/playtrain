@@ -1,0 +1,103 @@
+# Build the distributable wheels. The runtime is a compiled QuickJS + rasterizer
+# backend, so each wheel is platform-specific (py3-none-<platform>): clang and
+# cargo are CI's problem, never the user's.
+name: wheels
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    # manylinux_2_28 keeps the wheel installable on RHEL 8 / Ubuntu 20.04 and newer.
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          yum install -y clang >/dev/null
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Build
+        # x86-64-v2 keeps the wheel off AVX2, which would SIGILL on pre-Haswell
+        # CPUs. Building from a checkout still defaults to v3 (~6% faster).
+        env:
+          PLAYTRAIN_WHEEL_ARCH: x86-64-v2
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          uv build --wheel -o dist_raw
+      - name: Repair to manylinux
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          auditwheel repair dist_raw/*.whl -w dist --plat manylinux_2_28_x86_64 || cp dist_raw/*.whl dist/
+      - uses: actions/upload-artifact@v4
+        with: { name: wheels-linux, path: dist/*.whl }
+
+  macos:
+    strategy:
+      matrix:
+        include:
+          - { os: macos-14, arch: arm64 }
+          - { os: macos-13, arch: x86_64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        env:
+          PLAYTRAIN_WHEEL_ARCH: x86-64-v2
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          uv build --wheel -o dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.arch }}
+          path: dist/*.whl
+
+  smoke:
+    # A wheel that imports but cannot step an env is worse than no wheel.
+    needs: [linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: wheels-linux, path: dist }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: |
+          pip install dist/*.whl
+          cd /tmp && python -c "
+          import numpy as np
+          from playtrain.runtime import GameEnv, NativeVecEnv, list_available_games
+          assert len(list_available_games()) > 0
+          e = GameEnv(game='breakout', obs_size=64); e.reset(seed=0)
+          for _ in range(60): e.step(e.action_space.sample())
+          v = NativeVecEnv(game='breakout', num_envs=8, num_threads=2, obs_size=64)
+          v.reset(0); v.step(np.zeros(8, dtype=np.int64)); v.close()
+          print('wheel smoke test OK')
+          "
+
+  publish:
+    # Trusted Publishing: PyPI verifies this workflow's OIDC identity, so no API
+    # token exists anywhere. Configure the matching publisher at
+    # pypi.org/manage/account/publishing (owner heyodog0, repo playtrain,
+    # workflow wheels.yml, environment pypi).
+    #
+    # Tags only, and gated on the smoke test - a version number on PyPI can never
+    # be reused, so nothing uploads until an installed wheel has stepped an env.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, smoke]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: wheels-*
+          merge-multiple: true
+      - run: ls -la dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

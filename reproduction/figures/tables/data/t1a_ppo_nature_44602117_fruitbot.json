@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "fruitbot",
+      "sps": 157902,
+      "windows": [
+        154652,
+        157902,
+        160438
+      ],
+      "minutes": 1.1
+    }
+  ],
+  "geomean_sps": 157902,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}

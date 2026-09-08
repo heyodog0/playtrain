@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45016905",
+  "games": "coinrun",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "coinrun",
+          "sps": 959907.6,
+          "windows": [
+            933720.1,
+            941575.7,
+            959907.6,
+            969759.4
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 959908
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "coinrun",
+          "sps": 501291.6,
+          "windows": [
+            481676.1,
+            501291.6,
+            494713.8,
+            507892.1
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 501292
+    }
+  },
+  "a4_over_a3_geomean": 1.915,
+  "a4_over_a3_per_game": {
+    "coinrun": 1.915
+  }
+}

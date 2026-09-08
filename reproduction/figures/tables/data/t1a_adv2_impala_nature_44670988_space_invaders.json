@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "space_invaders",
+      "sps": 1064737,
+      "windows": [
+        1064939,
+        1054958,
+        1064737,
+        1084498
+      ],
+      "minutes": 4.5
+    }
+  ],
+  "mean_sps": 1064737,
+  "geomean_sps": 1064737,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

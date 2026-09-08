@@ -1,0 +1,343 @@
+diff --git a/qjsc.c b/qjsc.c
+index d7f2fbf..72fac98 100644
+--- a/qjsc.c
++++ b/qjsc.c
+@@ -479,6 +479,7 @@ void help(void)
+            "-s            strip all the debug info\n"
+            "-A          enable AOT compilation of bytecode functions to C code\n"
+            "-B          enable AOT compilation w/o entry point analysis\n"
++           "-P file     AOT: guarded direct calls for the host intrinsics listed in file (name min_argc per line)\n"
+            "--keep-source keep the source code\n",
+            JS_DEFAULT_STACK_SIZE);
+ #ifdef CONFIG_LTO
+@@ -789,6 +790,11 @@ int main(int argc, char **argv)
+                 enable_aot = opt;
+                 continue;
+             }
++            if (opt == 'P') {
++                optarg = get_short_optarg(&optind, opt, arg, argc, argv);
++                if (aot_load_intrinsics(optarg) < 0) { fprintf(stderr, "qjsc: cannot read intrinsics file %s\n", optarg); exit(1); }
++                break;
++            }
+             if (!strcmp(longopt, "keep-source")) {
+                 strip_flags = 0;
+                 continue;
+@@ -847,6 +853,7 @@ int main(int argc, char **argv)
+     if (enable_aot) {
+         fprintf(fo, "#include \"quickjs.i\"\n");
+         fprintf(fo, "#define NULL ((void*)0)\n\n");
++        aot_emit_intrinsic_prologue(fo);
+     } else if (output_type != OUTPUT_C) {
+         fprintf(fo, "#include \"quickjs-libc.h\"\n"
+                 "\n"
+diff --git a/quickjs.c b/quickjs.c
+index 92e91b8..8d66bdd 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -513,6 +513,7 @@ struct JSContext {
+                              const char *filename, int flags, int scope_idx);
+     void *user_opaque;
+     int aot_last_id;
++    const void **aot_intr;   /* PlayTrain E3: per-context table of intrinsic callee objects (qjsc -P), NULL = off */
+ };
+ 
+ typedef union JSFloat64Union {
+@@ -2251,6 +2252,11 @@ void JS_SetContextOpaque(JSContext *ctx, void *opaque)
+     ctx->user_opaque = opaque;
+ }
+ 
++void JS_SetAOTIntrinsics(JSContext *ctx, const void **table)
++{
++    ctx->aot_intr = table;
++}
++
+ /* set the new value and free the old value after (freeing the value
+    can reallocate the object data) */
+ static inline void set_value(JSContext *ctx, JSValue *pval, JSValue new_val)
+@@ -59795,9 +59801,216 @@ static void aot_print_func_name(JSContext *ctx, JSFunctionBytecode *b, FILE *fo)
+     for (int i = 0; i < p->len; i++) fputc(string_get(p, i), fo);
+ }
+ 
++/* ---- PlayTrain E3 (PLAN-engine-tier-round6.md): p5 intrinsics ----------------
++   `qjsc -P <file>` loads "name min_argc" lines. At every `get_var <name>` ...
++   `call<N>` site whose argument window is straight-line code with a statically
++   known stack effect, the emitter adds a guarded fast path in front of the
++   verbatim call body: if the callee object is the one the host captured for
++   <name> in this context (ctx->aot_intr[k], a strong reference held by the
++   host, so the pointer can never be reused), call the binding's own C function
++   directly through the host-provided wrapper aot_intr_<name>(), skipping
++   JS_CallInternal + js_call_c_function (dispatch, stack check, frame push,
++   argument padding). Same function, same arguments, same this (undefined):
++   exact by construction. min_argc = the number of arguments the binding reads
++   unconditionally; below that the generic path's padding is observable, so the
++   fast path is not emitted. */
++typedef struct { char name[48]; char obj[32]; int min_argc; } AOTIntr;   /* obj[0] != 0: method <obj>.<name> (call_method sites) */
++static AOTIntr aot_intr_tab[128];
++static int aot_intr_n = 0;
++
++int aot_load_intrinsics(const char *path) {
++    FILE *f = fopen(path, "r");
++    char nm[48]; int mn;
++    if (!f) return -1;
++    while (aot_intr_n < 128 && fscanf(f, "%47s %d", nm, &mn) == 2) {
++        AOTIntr *e = &aot_intr_tab[aot_intr_n];
++        char *dot = strchr(nm, '.');
++        e->obj[0] = 0;
++        if (dot) { *dot = 0; snprintf(e->obj, sizeof(e->obj), "%s", nm); snprintf(e->name, sizeof(e->name), "%s", dot + 1); }
++        else snprintf(e->name, sizeof(e->name), "%s", nm);
++        e->min_argc = mn;
++        aot_intr_n++;
++    }
++    fclose(f);
++    return aot_intr_n;
++}
++
++void aot_emit_intrinsic_prologue(FILE *fo) {
++    for (int k = 0; k < aot_intr_n; k++)
++        fprintf(fo, "JSValue aot_intr_%s%s%s(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);\n",
++                aot_intr_tab[k].obj, aot_intr_tab[k].obj[0] ? "_" : "", aot_intr_tab[k].name);
++    if (aot_intr_n) fprintf(fo, "\n");
++}
++
++static const char *aot_atom_str(JSContext *ctx, JSAtom atom, char *buf, int size) {
++    if (!aot_intr_n || __JS_AtomIsTaggedInt(atom)) return NULL;
++    return JS_AtomGetStr(ctx, buf, size, atom);
++}
++/* global function <name> -> table index */
++static int aot_intr_lookup(JSContext *ctx, JSAtom atom) {
++    char buf[64]; const char *s = aot_atom_str(ctx, atom, buf, sizeof(buf));
++    if (!s) return -1;
++    for (int k = 0; k < aot_intr_n; k++)
++        if (!aot_intr_tab[k].obj[0] && !strcmp(s, aot_intr_tab[k].name)) return k;
++    return -1;
++}
++/* is <name> the object of some method entry? -> index of the first such entry (any), -1 otherwise */
++static int aot_intr_lookup_obj(JSContext *ctx, JSAtom atom) {
++    char buf[64]; const char *s = aot_atom_str(ctx, atom, buf, sizeof(buf));
++    if (!s) return -1;
++    for (int k = 0; k < aot_intr_n; k++)
++        if (aot_intr_tab[k].obj[0] && !strcmp(s, aot_intr_tab[k].obj)) return k;
++    return -1;
++}
++/* method <obj of entry kobj>.<name> -> table index */
++static int aot_intr_lookup_method(JSContext *ctx, int kobj, JSAtom atom) {
++    char buf[64]; const char *s = aot_atom_str(ctx, atom, buf, sizeof(buf));
++    if (!s) return -1;
++    for (int k = 0; k < aot_intr_n; k++)
++        if (aot_intr_tab[k].obj[0] && !strcmp(aot_intr_tab[k].obj, aot_intr_tab[kobj].obj) && !strcmp(s, aot_intr_tab[k].name)) return k;
++    return -1;
++}
++
++/* Pre-pass: intr_at[pc] = intrinsic index for call sites, -1 otherwise.
++   Forward dataflow over the bytecode: per pc, the stack depth (a bytecode
++   invariant: identical on every path) and the list of candidate callee slots
++   (depth of a `get_var <intrinsic>` push still on the stack). States are
++   joined at merge points by intersection (same slot, same intrinsic); a
++   disagreement on depth, an unknown stack effect, or an opcode the analysis
++   does not model empties the candidate list (conservative: a missed site
++   just keeps the generic body). */
++#define AOT_NCAND 8
++typedef struct { int16_t depth; int8_t n; int8_t k[AOT_NCAND]; int16_t d[AOT_NCAND]; int8_t m[AOT_NCAND]; uint8_t valid, dead; } AOTIntrState;
++
++static void aot_state_join(AOTIntrState *dst, const AOTIntrState *src) {
++    if (!dst->valid) { *dst = *src; dst->valid = 1; return; }
++    if (dst->depth != src->depth) { dst->dead = 1; dst->n = 0; return; }
++    int n = 0;
++    for (int i = 0; i < dst->n; i++)
++        for (int j = 0; j < src->n; j++)
++            if (dst->k[i] == src->k[j] && dst->d[i] == src->d[j] && dst->m[i] == src->m[j]) { dst->k[n] = dst->k[i]; dst->d[n] = dst->d[i]; dst->m[n] = dst->m[i]; n++; break; }
++    dst->n = n;
++}
++
++static void aot_intr_prepass(JSContext *ctx, JSFunctionBytecode *b, const char *jump_target, int8_t *intr_at) {
++    int len = b->byte_code_len;
++    AOTIntrState *st = js_mallocz(ctx, sizeof(AOTIntrState) * (len + 1));
++    uint8_t *in_q = js_mallocz(ctx, len + 1);
++    int *queue = js_malloc(ctx, sizeof(int) * (len + 1));
++    int qh = 0, qt = 0, iter = 0;
++    if (!st || !in_q || !queue) goto done;
++    for (int pc = 0; pc < len; pc++) intr_at[pc] = -1;
++    st[0].valid = 1; queue[qt++] = 0; in_q[0] = 1;
++    while (qh != qt && iter++ < 64 * (len + 1)) {
++        int pc = queue[qh++]; in_q[pc] = 0;
++        if (pc >= len) continue;
++        AOTIntrState cur = st[pc];
++        int op = b->byte_code_buf[pc];
++        const JSOpCode *oi = &short_opcode_info(op);
++        int pc_next = pc + oi->size, argc = 0, net, is_call = 0, target = -1, falls = 1;
++        if (cur.dead) { cur.n = 0; }
++        switch (oi->fmt) {
++        case OP_FMT_npopx:
++            argc = op - OP_call0; net = -argc; is_call = 1; break;
++        case OP_FMT_npop:
++            argc = get_u16(b->byte_code_buf + pc + 1);
++            if (op == OP_call) { net = -argc; is_call = 1; }
++            else if (op == OP_call_method) { net = -(argc + 1); is_call = 2; }
++            else if (op == OP_call_constructor) net = -(argc + 1);
++            else if (op == OP_array_from) net = 1 - argc;
++            else goto unknown;
++            break;
++        case OP_FMT_label8:
++            target = pc + 1 + (int8_t)b->byte_code_buf[pc + 1];
++            net = oi->n_push - oi->n_pop;
++            if (op == OP_goto8) falls = 0;
++            break;
++        case OP_FMT_label16:
++            target = pc + 1 + (int16_t)get_u16(b->byte_code_buf + pc + 1);
++            net = oi->n_push - oi->n_pop;
++            if (op == OP_goto16) falls = 0;
++            break;
++        case OP_FMT_label:
++            if (op == OP_catch || op == OP_gosub || op == OP_for_of_next || op == OP_for_in_next || op == OP_for_await_of_next ||
++                op == OP_iterator_next || op == OP_iterator_call) goto unknown;
++            target = pc + 1 + (int32_t)get_u32(b->byte_code_buf + pc + 1);
++            net = oi->n_push - oi->n_pop;
++            if (op == OP_goto) falls = 0;
++            break;
++        case OP_FMT_npop_u16: case OP_FMT_atom_label_u8: case OP_FMT_atom_label_u16: case OP_FMT_label_u16:
++            goto unknown;
++        default:
++            if (op == OP_return || op == OP_return_undef || op == OP_return_async || op == OP_throw || op == OP_ret ||
++                op == OP_tail_call || op == OP_tail_call_method) { continue; }   /* no successors */
++            if (op == OP_with_get_var || op == OP_with_put_var || op == OP_with_delete_var || op == OP_with_make_ref ||
++                op == OP_with_get_ref || op == OP_await || op == OP_yield || op == OP_yield_star || op == OP_async_yield_star ||
++                op == OP_initial_yield || op == OP_nop)
++                goto unknown;
++            net = oi->n_push - oi->n_pop;
++            break;
++        }
++        if (is_call) {
++            /* call: callee slot = depth-argc-1 (m==0). call_method: this slot = depth-argc-2, func above it (m==2) */
++            int slot = cur.depth - argc - (is_call == 2 ? 2 : 1);
++            if (slot < 0) goto unknown;
++            /* candidates at or above the consumed region go; the one AT the slot with the right kind is the site */
++            { int n = 0;
++              for (int i = 0; i < cur.n; i++) {
++                  if (cur.d[i] == slot && cur.m[i] == (is_call == 2 ? 2 : 0)) { if (argc >= aot_intr_tab[cur.k[i]].min_argc) intr_at[pc] = cur.k[i]; }
++                  else if (cur.d[i] < slot) { cur.k[n] = cur.k[i]; cur.d[n] = cur.d[i]; cur.m[n] = cur.m[i]; n++; }
++              }
++              cur.n = n; }
++        } else if (op == OP_get_field2 && cur.n && cur.m[cur.n - 1] == 1 && cur.d[cur.n - 1] == cur.depth - 1) {
++            /* <obj> on top of the stack becomes <obj>, <obj>.<name>: resolve the method candidate */
++            int k = aot_intr_lookup_method(ctx, cur.k[cur.n - 1], get_u32(b->byte_code_buf + pc + 1));
++            if (k >= 0) { cur.k[cur.n - 1] = k; cur.m[cur.n - 1] = 2; } else cur.n--;
++        } else if (net < 0) {
++            int n = 0, floor_ = cur.depth + net;
++            for (int i = 0; i < cur.n; i++) if (cur.d[i] < floor_) { cur.k[n] = cur.k[i]; cur.d[n] = cur.d[i]; cur.m[n] = cur.m[i]; n++; }
++            cur.n = n;
++        }
++        if (op != OP_get_field2) {   /* any other op touching an unresolved object candidate on top invalidates it */
++            int n = 0;
++            for (int i = 0; i < cur.n; i++) if (!(cur.m[i] == 1 && cur.d[i] == cur.depth - 1 && net != 0)) { cur.k[n] = cur.k[i]; cur.d[n] = cur.d[i]; cur.m[n] = cur.m[i]; n++; }
++            cur.n = n;
++        }
++        if (op == OP_get_var && cur.n < AOT_NCAND) {   /* operand = closure-var index (var_ref format in this fork) */
++            int idx = get_u16(b->byte_code_buf + pc + 1);
++            JSAtom nm = (idx < b->closure_var_count) ? b->closure_var[idx].var_name : JS_ATOM_NULL;
++            int k = aot_intr_lookup(ctx, nm), ko = aot_intr_lookup_obj(ctx, nm);
++            if (k >= 0) { cur.k[cur.n] = k; cur.d[cur.n] = cur.depth; cur.m[cur.n] = 0; cur.n++; }
++            else if (ko >= 0) { cur.k[cur.n] = ko; cur.d[cur.n] = cur.depth; cur.m[cur.n] = 1; cur.n++; }
++        }
++        cur.depth += net;
++        if (cur.depth < 0) goto unknown;
++        goto propagate;
++    unknown:
++        cur.n = 0; cur.dead = 1;   /* depth unknown from here: never match again on this path */
++    propagate:
++        cur.valid = 1;
++        if (falls && pc_next <= len) {
++            AOTIntrState before = st[pc_next];
++            aot_state_join(&st[pc_next], &cur);
++            if (memcmp(&before, &st[pc_next], sizeof(before)) && !in_q[pc_next]) { queue[qt++] = pc_next; in_q[pc_next] = 1; }
++        }
++        if (target >= 0 && target < len) {
++            AOTIntrState before = st[target], t = cur;
++            /* if_true/if_false pop the condition on both edges (n_pop accounted in net); goto pushes nothing */
++            aot_state_join(&st[target], &t);
++            if (memcmp(&before, &st[target], sizeof(before)) && !in_q[target]) { queue[qt++] = target; in_q[target] = 1; }
++        }
++        if (qt >= len + 1) { /* queue full: ring */ if (qh == 0) break; memmove(queue, queue + qh, sizeof(int) * (qt - qh)); qt -= qh; qh = 0; }
++    }
++done:
++    if (st) js_free(ctx, st);
++    if (in_q) js_free(ctx, in_q);
++    if (queue) js_free(ctx, queue);
++}
++
+ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_points) {
+     JSFunctionBytecode *b = JS_VALUE_GET_PTR(func_obj);
+     char *jump_target = NULL;
++    int8_t *intr_at = NULL;
+     int need_pc_table = 1;
+ 
+     if (JS_VALUE_GET_TAG(func_obj) == JS_TAG_MODULE) return;  /* TODO: handle modules */
+@@ -59862,6 +60075,11 @@ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_p
+         }
+     }
+ 
++    if (analyze_entry_points && aot_intr_n) {
++        intr_at = js_malloc(ctx, b->byte_code_len + 1);
++        aot_intr_prepass(ctx, b, jump_target, intr_at);
++    }
++
+     /* static const bytecode array required for constant folding */
+     fprintf(fo, "static const uint8_t aot%d_bytecode[%d] = {", b->aot_id, b->byte_code_len);
+     for (int i = 0; i < b->byte_code_len; i++)
+@@ -59897,9 +60115,27 @@ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_p
+             fprintf(fo, "  /*pc%d:*/ /*%s*/ {\n", pc, aot_opcode_names[opcode]);
+         else
+             fprintf(fo, "  pc%d: /*%s*/ {\n", pc, aot_opcode_names[opcode]);
++        int intr_k = (intr_at && intr_at[pc] >= 0) ? intr_at[pc] : -1;
+         pc++;
+         if (aot_ops[opcode].needs_pc)
+             fprintf(fo, "    const uint8_t *pc = aot%d_bytecode + %d;\n", b->aot_id, pc);
++        if (intr_k >= 0) {
++            int meth = (opcode == OP_call_method);
++            int argc = (opcode == OP_call || meth) ? get_u16(b->byte_code_buf + pc) : (opcode - OP_call0);
++            int below = meth ? 2 : 1;   /* slots under the arguments: [this,] func */
++            const AOTIntr *e = &aot_intr_tab[intr_k];
++            fprintf(fo, "    int __intr = 0;\n");
++            fprintf(fo, "    { JSValue *__argv = sp - %d; JSValue __f = __argv[-1];\n", argc);
++            fprintf(fo, "      if (__builtin_expect((int32_t)__f.tag == JS_TAG_OBJECT && ctx->aot_intr != NULL && __f.u.ptr == ctx->aot_intr[%d], 1)) { /* intrinsic %s%s%s */\n", intr_k, e->obj, e->obj[0] ? "." : "", e->name);
++            fprintf(fo, "        JSValue __r; int __i;\n");
++            fprintf(fo, "        sf->cur_pc = pc%s;\n", (opcode == OP_call || meth) ? " + 2" : "");
++            fprintf(fo, "        __r = aot_intr_%s%s%s(ctx, %s, %d, __argv);\n", e->obj, e->obj[0] ? "_" : "", e->name,
++                    meth ? "__argv[-2]" : "(JSValue){ (JSValueUnion){ .int32 = 0 }, JS_TAG_UNDEFINED }", argc);
++            fprintf(fo, "        if (__builtin_expect((int32_t)__r.tag == JS_TAG_EXCEPTION, 0)) { sf->ret_val = __r; __attribute__((musttail)) return JS_CallInternal_exception(pc%s, sp, b, ctx, var_buf, arg_buf, var_refs, sf); }\n", (opcode == OP_call || meth) ? " + 2" : "");
++            fprintf(fo, "        for (__i = -%d; __i < %d; __i++) JS_FreeValue(ctx, __argv[__i]);\n", below, argc);
++            fprintf(fo, "        sp -= %d; *sp++ = __r; __intr = 1;\n", argc + below);
++            fprintf(fo, "      }\n    }\n    if (!__intr) {\n");
++        }
+         fprintf(fo, "    ");
+         for (const char *s = aot_ops[opcode].body; *s; s++) {
+             if (memcmp(s, "pcN_", 4) == 0) {
+@@ -59923,6 +60159,7 @@ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_p
+             }
+         }
+         fprintf(fo, "\n");
++        if (intr_k >= 0) fprintf(fo, "    }\n");
+         if (opcode == OP_goto8) {
+             fprintf(fo, "    goto pc%d;\n", pc + (int8_t)b->byte_code_buf[pc]);
+         } else if (opcode == OP_goto16) {
+@@ -59941,6 +60178,7 @@ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_p
+     fprintf(fo, "\n\n");
+ 
+     if (jump_target) js_free(ctx, jump_target);
++    if (intr_at) js_free(ctx, intr_at);
+ }
+ 
+ void aot_emit_table(JSContext *ctx, FILE *fo) {
+diff --git a/quickjs.h b/quickjs.h
+index 9160be5..af49618 100644
+--- a/quickjs.h
++++ b/quickjs.h
+@@ -1165,6 +1165,9 @@ void JS_PrintValue(JSContext *ctx, JSPrintValueWrite *write_func, void *write_op
+ #undef js_force_inline
+ 
+ void aot_compile(JSContext *ctx, FILE *fo, JSValue func_obj, int analyze_entry_points);
++int aot_load_intrinsics(const char *path);           /* PlayTrain E3: qjsc -P */
++void aot_emit_intrinsic_prologue(FILE *fo);
++void JS_SetAOTIntrinsics(JSContext *ctx, const void **table);
+ void aot_emit_table(JSContext *ctx, FILE *fo);
+ 
+ extern const uint8_t* aot_bytecodes[];

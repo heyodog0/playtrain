@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "climber",
+      "sps": 507777,
+      "windows": [
+        583224,
+        550397,
+        500951,
+        507777
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 507777,
+  "geomean_sps": 507777,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_nature_44602115.json"
+}

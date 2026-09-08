@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "chaser",
+      "sps": 353887,
+      "windows": [
+        353887,
+        353887,
+        360440,
+        353887
+      ],
+      "minutes": 6.3
+    }
+  ],
+  "mean_sps": 353887,
+  "geomean_sps": 353887,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

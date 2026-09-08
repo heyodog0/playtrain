@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "45024263",
+  "games": "freeway",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "freeway",
+          "sps": 1037247.7,
+          "windows": [
+            1041885.4,
+            1064112.4,
+            995863.6,
+            1037247.7
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 1037248
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "freeway",
+          "sps": 904373.1,
+          "windows": [
+            878064.2,
+            917333.8,
+            904373.1,
+            900965.8
+          ],
+          "minutes": 4.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 904373
+    }
+  },
+  "a4_over_a3_geomean": 1.147,
+  "a4_over_a3_per_game": {
+    "freeway": 1.147
+  }
+}

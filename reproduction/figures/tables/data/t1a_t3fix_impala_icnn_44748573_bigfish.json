@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "bigfish",
+      "sps": 314565,
+      "windows": [
+        308011,
+        314565,
+        314565,
+        308012
+      ],
+      "minutes": 6.4
+    }
+  ],
+  "mean_sps": 314565,
+  "geomean_sps": 314565,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

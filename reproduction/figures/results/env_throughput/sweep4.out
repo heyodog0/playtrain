@@ -1,0 +1,39 @@
+NODE: holy8a32607.rc.fas.harvard.edu
+done qjs bigfish
+done qjs bossfight
+done qjs caveflyer
+done qjs chaser
+done qjs climber
+done qjs coinrun
+done qjs dodgeball
+done qjs fruitbot
+done qjs heist
+done qjs jumper
+done qjs leaper
+done qjs maze
+done qjs miner
+done qjs ninja
+done qjs plunder
+done qjs starpilot
+game             QuickJS mean±std      ProcGen mean±std   ratio
+plunder            95442 ±   591        36840 ±   482  2.59±0.04
+bigfish            74326 ±   463        38698 ±   920  1.92±0.05
+bossfight          69191 ±   289        14575 ±  1083  4.75±0.35
+ninja              64690 ±   156        18028 ±   603  3.59±0.12
+starpilot          52337 ±   239        34201 ±   292  1.53±0.01
+leaper             33411 ±   163        24579 ±  3533  1.36±0.20
+heist              22012 ±    68        24675 ±  1232  0.89±0.04
+dodgeball          17708 ±    60        24395 ±  1161  0.73±0.03
+jumper             15278 ±   344        15971 ±   718  0.96±0.05
+maze               15225 ±    41        11918 ±   341  1.28±0.04
+caveflyer          14985 ±    34        15993 ±   277  0.94±0.02
+chaser             14489 ±    43        25781 ±   132  0.56±0.00
+climber            12065 ±    25        23276 ±   970  0.52±0.02
+fruitbot           10814 ±    38        14249 ±    87  0.76±0.01
+coinrun             9655 ±    14        21476 ±  1791  0.45±0.04
+miner               6366 ±     9        14331 ±   215  0.44±0.01
+---------------------------------------------------------------
+MEAN               33000 ±    22        22437 ±   113  1.47±0.01
+  (measurement error on the mean is tiny; cross-game spread of QJS game-means = ±28439, i.e. real per-game heterogeneity)
+  per-game QJS trial CV: min=0.14%  max=2.25%
+SWEEP4_DONE

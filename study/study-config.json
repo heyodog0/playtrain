@@ -1,0 +1,81 @@
+{
+  "_comment": "Human baseline study. Eight scored games covering all three catalogs the suite is drawn from: three Atari replicas (breakout, seaquest, asteroids -- games/catalogs/atari_games.json), three Procgen replicas (plunder, caveflyer, coinrun -- procgen_games.json), and two from the mobile/indie catalog (flappy_bird, vvvvvv -- mobile_games.json). flappy_bird doubles as the base of a variant pair. maze and freeway are deliberately excluded as too hard to be informative in 100 seconds.",
+  "_categoryCaveat": "An earlier version of this comment called vvvvvv a 'brand-new game'. It is not: mobile_games.json lists it alongside downwell and jump_king, so it is a replica of a real indie title like everything else here. The distinction that actually holds is OUTSIDE THE EVALUATED SUITE (atari8 + procgen16) rather than novel-by-design, and flappy_bird and vvvvvv are the two such games in the study. If a claim in the paper depends on out-of-suite games being human-playable, its evidence here is n=2 -- adding downwell (also mobile catalog, and already trained) would be the cheapest way to make it n=3.",
+  "blockSeconds": 100,
+  "frameSkip": 1,
+  "maxSteps": 2000,
+  "_actionModeComment": "'quantized' restricts the human to the agent's exact Discrete(8) via a held-key recency stack: the most recently pressed key still held wins, and SPACE merges only where legal (-> LEFT_D / RIGHT_D). Frames whose held keys cannot be expressed in Discrete(8) are counted as illegalFrames but still produce an action. 'unconstrained' passes raw keys to the game (human gets simultaneity the agent lacks) and is NOT the matched condition -- it exists only to quantify the action-space cost on seaquest/asteroids/caveflyer.",
+  "actionMode": "quantized",
+  "_controlsComment": "Shown to the participant before each block. breakout/plunder/flappy_bird never read UP/DOWN; coinrun and vvvvvv alias jump/flip onto SPACE, so movement+action is legal. seaquest, asteroids and caveflyer are the three games where Discrete(8) cannot express the natural combination -- state the limit as a game rule so quantization does not read as a broken harness.",
+  "games": [
+    {
+      "name": "breakout",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to move the paddle. SPACE to launch."
+    },
+    {
+      "name": "plunder",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to move. SPACE to fire. You can fire while moving."
+    },
+    {
+      "name": "seaquest",
+      "category": "suite",
+      "controls": "ARROW KEYS to swim, SPACE to fire. One direction at a time — no diagonals — and you cannot fire while swimming up or down."
+    },
+    {
+      "name": "caveflyer",
+      "category": "suite",
+      "controls": "LEFT / RIGHT rotate the ship, UP thrusts forward, DOWN reverses, SPACE fires. The ship can rotate or thrust, not both at once — aim first, then thrust."
+    },
+    {
+      "name": "asteroids",
+      "category": "suite",
+      "controls": "LEFT / RIGHT rotate, UP thrusts, SPACE fires. The ship can rotate or thrust, not both at once — aim first, then thrust."
+    },
+    {
+      "name": "coinrun",
+      "category": "suite",
+      "controls": "LEFT / RIGHT to run, SPACE (or UP) to jump. You can jump while running."
+    },
+    {
+      "name": "flappy_bird",
+      "category": "variant-base",
+      "controls": "SPACE to flap. That is the only control."
+    },
+    {
+      "name": "vvvvvv",
+      "category": "new",
+      "controls": "LEFT / RIGHT to run, SPACE to flip gravity. You can flip while running."
+    }
+  ],
+  "_seedComment": "Fixed pool shared by every participant: episode i of every game uses seedBase + (i % seedCount). Everyone meets the same levels in the same order, and the agent can be evaluated on exactly seedBase..seedBase+seedCount-1. The modulo bounds a fast-dying player, who can otherwise burn through far more episodes than the pool holds.",
+  "seedBase": 90000,
+  "_obsComment": "EMPTY ON PURPOSE. Games listed here get a SECOND block rendered at the agent's 64x64 observation resolution (setRasterRes before setup, so the human sees pixel-for-pixel what the policy sees). caveflyer was listed as a perceptual diagnostic -- its greedy checkpoint scores below random, and such a block would separate 'the agent is bad' from '64x64 destroys the information caveflyer needs'. Removed by decision on 2026-08-05: the study does not need that question answered, and the implementation carried a real cost -- the obs block sat inside the per-participant shuffle, so for about half of participants it landed BEFORE native caveflyer and contaminated one of the eight primary measurements with prior exposure to the same game. Every participant now plays each game exactly once. The capability is still supported by the builder; if it is ever re-added, pin it last rather than shuffling it, or the confound comes back with it.",
+  "obsResBlocks": [],
+  "_studyComment": "Institution-specific fields for the consent form. They are BLANK ON PURPOSE. The consent text in study-screens.mjs is a template, not an approved protocol: fill these in from your own ethics approval before collecting data from anyone. build-study.mjs refuses to build with --upload while any of them is empty, so a study cannot be deployed with placeholder ethics text, and prints a warning when building without one.",
+  "study": {
+    "estimatedMinutes": 22,
+    "compensationRate": "",
+    "contactName": "",
+    "contactEmail": "",
+    "piName": "",
+    "piEmail": "",
+    "irbName": "",
+    "irbPhone": "",
+    "irbEmail": ""
+  },
+  "_hudLivesComment": "Games whose remaining lives the HARNESS shows in the HUD, because the game itself never draws them. Only these two qualify: seaquest (3 lives, draws an oxygen bar but no life count) and caveflyer (3 lives, draws nothing). The other seven are excluded on purpose -- breakout, asteroids, coinrun and vvvvvv all render a lives row on the canvas, plunder and flappy_bird are single-life, and pong's `lives` field is the ALE points-to-21 counter rather than lives at all, so a readout there would be actively wrong. Note the asymmetry this creates: for these two games the human can see a quantity absent from the agent's 64x64 observation. It is the lesser evil -- the alternative is a participant losing three times without ever learning the game had lives, on two games where every other game in the set does show them -- and every block records livesShown so it stays auditable.",
+  "hudLives": ["seaquest", "caveflyer"],
+  "_showRoundTimerComment": "false | true | 'practice'. Off. A per-round countdown would expose maxSteps truncation, which is a harness artifact rather than a rule of the game, and nothing in the agent's observation encodes remaining steps -- so a visible countdown lets the human spend the final second of every round on risk the policy cannot know to take, inflating the very score being compared. The instructions already state that rounds end after about 33 seconds, which prevents confusion without making the artifact exploitable. Set to 'practice' to show it only in the unscored warm-up, where teaching the round structure is the point.",
+  "showRoundTimer": false,
+  "canvasSize": 520,
+  "_canvasComment": "On-screen size of the game in CSS pixels. Fixed rather than viewport-filling so every participant sees the same visual angle. Display only -- the rasterizer still renders at the game's logical 400x400. Lowered from 600 to 520 after the pilot: 600 needs innerHeight >= 696, which a windowed browser on a 768-tall screen cannot give (Chrome takes ~90px of chrome), and pilot participant 6977b5ef played at 561px while the other got 600 -- exactly the between-subject difference in visual angle this setting exists to prevent. 520 needs 616, which every screen the pre-flight admits can reach, and the pre-flight now refuses to start until the window can actually deliver it. canvasPx is still recorded per block, so any shortfall stays measurable.",
+  "practice": {
+    "game": "pong",
+    "seconds": 25,
+    "controls": "UP / DOWN to move your paddle. SPACE to serve the ball."
+  },
+  "_practiceComment": "Warm-up game. Deliberately NOT one of the eight scored games: practising a scored game would give it an advantage the other seven do not get. pong is in the 24-game suite, is universally familiar, and reads only UP/DOWN/SPACE so the quantizer is effectively a no-op while the participant learns the harness (timer, rounds, auto-restart, round summary).",
+  "seedCount": 100
+}

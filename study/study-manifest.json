@@ -1,0 +1,26 @@
+{
+  "_comment": "The game sources the paper's 20 collected sessions were played on. Reconstructed by replay verification, not captured at deploy time: the deployed build manifest was written to dist/, which is not tracked. All 1382 episodes across the 20 sessions reproduce headlessly against exactly these hashes and not against any other combination, which is what establishes them. study-audit.mjs uses this as its reference when no local build manifest exists, so a later edit to a study game is reported rather than silently changing what the numbers mean.",
+  "builtAt": null,
+  "verifiedBy": "node study/verify-replay.mjs on 20 sessions, 1382/1382 episodes, 2026-09-08",
+  "gamesDir": "examples/games/js",
+  "config": {
+    "blockSeconds": 100,
+    "frameSkip": 1,
+    "maxSteps": 2000,
+    "seedBase": 90000,
+    "seedCount": 100,
+    "actionMode": "quantized",
+    "canvasSize": 520
+  },
+  "games": {
+    "pong": "57a72997dfc916ef",
+    "breakout": "608b1519363b0d4f",
+    "plunder": "f11c48cc8dac5867",
+    "seaquest": "ae96ba1cc8d37c72",
+    "caveflyer": "887710e1e58d2869",
+    "asteroids": "40f47bc586c7e86f",
+    "coinrun": "d6e2d12c952ecffa",
+    "flappy_bird": "69371176e8603dbf",
+    "vvvvvv": "9ea945af56f17928"
+  }
+}

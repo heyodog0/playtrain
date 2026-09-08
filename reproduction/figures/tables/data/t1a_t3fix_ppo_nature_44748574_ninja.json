@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "ninja",
+      "sps": 199947,
+      "windows": [
+        197566,
+        199947,
+        200155
+      ],
+      "minutes": 0.9
+    }
+  ],
+  "geomean_sps": 199947,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

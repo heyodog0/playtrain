@@ -1,0 +1,16 @@
+[package]
+name = "playtrain-rasterizer"
+version = "0.1.0"
+edition = "2021"
+description = "Tiny 2D rasterizer for the PlayTrain p5 shim primitive surface. Compiles to wasm32 (in-process, no system deps) and native. Port of runtime/p5/raster.mjs; differential-tested against it."
+
+[lib]
+# cdylib -> wasm32 (in-process rasterizer for the JS runtime)
+# staticlib -> native .a linked into the AOT-compiled C++ game twins (see native/)
+crate-type = ["cdylib", "staticlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
+codegen-units = 1

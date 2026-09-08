@@ -1,0 +1,67 @@
+diff --git a/qjsc.c b/qjsc.c
+index 9eee69b..d7f2fbf 100644
+--- a/qjsc.c
++++ b/qjsc.c
+@@ -62,6 +62,9 @@ static BOOL byte_swap;
+ static BOOL dynamic_export;
+ static const char *c_ident_prefix = "qjsc_";
+ static int enable_aot = 0;
++static int aot_host_mode = 0;      /* QJSC_HOST_MODE=1: shared ctx2, no std helpers */
++static JSRuntime *aot_rt2 = NULL;
++static JSContext *aot_ctx2 = NULL;
+ 
+ #define FE_ALL (-1)
+ 
+@@ -374,6 +377,31 @@ static void compile_file(JSContext *ctx, FILE *fo,
+         size_t out_buf_len;
+         uint8_t *out_buf = JS_WriteObject(ctx, &out_buf_len, obj, JS_WRITE_OBJ_BYTECODE);
+         assert(out_buf);
++        /* PlayTrain host mode (QJSC_HOST_MODE=1): ONE shared ctx2 across all
++           input files, created exactly like an embedding host does
++           (JS_NewRuntime + JS_NewContext, no std helpers), so that the atom
++           indices baked into the AOT bytecode match a host that JS_ReadObject()s
++           the blobs in the same order right after JS_NewContext(). The table is
++           emitted once, after the last file (see main). */
++        if (aot_host_mode) {
++            if (!aot_rt2) {
++                aot_rt2 = JS_NewRuntime();
++                assert(aot_rt2);
++                aot_ctx2 = JS_NewContext(aot_rt2);
++                assert(aot_ctx2);
++            }
++            JSValue obj2 = JS_ReadObject(aot_ctx2, out_buf, out_buf_len, JS_READ_OBJ_BYTECODE);
++            js_free(ctx, out_buf);
++            assert(!JS_IsException(obj2));
++            aot_compile(aot_ctx2, fo, obj2, enable_aot == 'A');
++            output_object_code(aot_ctx2, fo, obj2, c_name, CNAME_TYPE_SCRIPT);
++            JS_FreeValue(ctx, obj);
++            /* obj2 is deliberately KEPT alive: freeing it would drop atoms only
++               it references, and their freed slots would be reused by the next
++               file's new atoms -- while the host holds every blob until it has
++               read them all, so its indices would differ ("Bytecode mismatch"). */
++            return;
++        }
+         JSRuntime *rt2 = JS_NewRuntime();
+         assert(rt2);
+         js_std_init_handlers(rt2);
+@@ -803,6 +831,7 @@ int main(int argc, char **argv)
+     }
+     outfile = fo;
+ 
++    aot_host_mode = getenv("QJSC_HOST_MODE") != NULL;
+     rt = JS_NewRuntime();
+     ctx = JS_NewContext(rt);
+ 
+@@ -833,6 +862,12 @@ int main(int argc, char **argv)
+         compile_file(ctx, fo, filename, cname, module);
+         cname = NULL;
+     }
++    if (enable_aot && aot_host_mode) {
++        aot_emit_table(aot_ctx2, fo);
++        JS_FreeContext(aot_ctx2);
++        JS_FreeRuntime(aot_rt2);
++        aot_ctx2 = NULL; aot_rt2 = NULL;
++    }
+ 
+     for(i = 0; i < dynamic_module_list.count; i++) {
+         if (!jsc_module_loader(ctx, dynamic_module_list.array[i].name, NULL, JS_UNDEFINED)) {

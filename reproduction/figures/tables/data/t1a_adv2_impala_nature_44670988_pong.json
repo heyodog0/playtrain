@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "pong",
+      "sps": 1074604,
+      "windows": [
+        1061661,
+        1084433,
+        1068057,
+        1074604
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1074604,
+  "geomean_sps": 1074604,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

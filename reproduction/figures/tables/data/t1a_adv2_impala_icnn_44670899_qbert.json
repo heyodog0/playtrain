@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "qbert",
+      "sps": 344058,
+      "windows": [
+        347335,
+        344058,
+        340781,
+        347287
+      ],
+      "minutes": 4.3
+    }
+  ],
+  "mean_sps": 344058,
+  "geomean_sps": 344058,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

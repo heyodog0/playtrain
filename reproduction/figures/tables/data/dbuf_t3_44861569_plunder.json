@@ -1,0 +1,49 @@
+{
+  "node": "holygpu8a15203.rc.fas.harvard.edu",
+  "job_id": "44989151",
+  "games": "plunder",
+  "template": "configs/pt_throughput/pt_bigfish_nature_fullnode.json",
+  "statistic": "median of 60s sps windows, first discarded",
+  "arms": {
+    "a4": {
+      "rows": [
+        {
+          "arm": "a4",
+          "game": "plunder",
+          "sps": 884698.0,
+          "windows": [
+            904375.1,
+            884698.0,
+            894501.8,
+            871455.0
+          ],
+          "minutes": 5.7
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 884698
+    },
+    "a3": {
+      "rows": [
+        {
+          "arm": "a3",
+          "game": "plunder",
+          "sps": 907653.0,
+          "windows": [
+            858476.7,
+            897746.6,
+            907653.0,
+            917480.1
+          ],
+          "minutes": 4.6
+        }
+      ],
+      "probe": [],
+      "geomean_sps": 907653
+    }
+  },
+  "a4_over_a3_geomean": 0.975,
+  "a4_over_a3_per_game": {
+    "plunder": 0.975
+  }
+}

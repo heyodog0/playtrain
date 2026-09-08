@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "fruitbot",
+      "sps": 63376,
+      "windows": [
+        63162,
+        63376,
+        63502
+      ],
+      "minutes": 2.4
+    }
+  ],
+  "geomean_sps": 63376,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

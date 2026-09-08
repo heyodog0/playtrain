@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "chaser",
+      "sps": 173939,
+      "windows": [
+        173939,
+        173929,
+        174928
+      ],
+      "minutes": 1.0
+    }
+  ],
+  "geomean_sps": 173939,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

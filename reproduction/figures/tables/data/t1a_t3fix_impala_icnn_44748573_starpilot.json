@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "starpilot",
+      "sps": 353858,
+      "windows": [
+        350611,
+        353858,
+        350612,
+        353888
+      ],
+      "minutes": 4.3
+    }
+  ],
+  "mean_sps": 353858,
+  "geomean_sps": 353858,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "name": "block_blast",
+    "ref": "https://apps.apple.com/us/app/block-blast/id1617391485",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "block puzzle, clear rows/columns"
+  },
+  {
+    "name": "angry_birds",
+    "ref": "https://en.wikipedia.org/wiki/Angry_Birds_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "physics slingshot, destroy structures",
+    "physics": "matter.js"
+  },
+  {
+    "name": "suika",
+    "ref": "https://en.wikipedia.org/wiki/Suika_Game",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "drop + merge fruits, physics stacking",
+    "physics": "matter.js"
+  },
+  {
+    "name": "vvvvvv",
+    "ref": "https://store.steampowered.com/app/70300/VVVVVV/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "gravity-flip platformer"
+  },
+  {
+    "name": "doodle_jump",
+    "ref": "https://apps.apple.com/us/app/doodle-jump/id307727765",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "vertical auto-bounce platformer"
+  },
+  {
+    "name": "downwell",
+    "ref": "https://store.steampowered.com/app/360740/Downwell/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "vertical descent shooter"
+  },
+  {
+    "name": "jetpack_joyride",
+    "ref": "https://apps.apple.com/us/app/jetpack-joyride/id457446957",
+    "actions_used": ["D"],
+    "mechanic": "horizontal scroller, hold to rise"
+  },
+  {
+    "name": "mini_golf",
+    "ref": "https://apps.apple.com/us/app/mini-golf-games/id1660962856",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "aim angle + power + shoot",
+    "physics": "matter.js"
+  },
+  {
+    "name": "crossy_road",
+    "ref": "https://apps.apple.com/us/app/crossy-road/id924373886",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "grid-based lane crossing"
+  },
+  {
+    "name": "flappy_bird",
+    "ref": "https://en.wikipedia.org/wiki/Flappy_Bird",
+    "actions_used": ["D"],
+    "mechanic": "tap to flap through pipe gaps"
+  },
+  {
+    "name": "cave_story",
+    "ref": "https://en.wikipedia.org/wiki/Cave_Story",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "action platformer, shoot + jump + explore"
+  },
+  {
+    "name": "sonic",
+    "ref": "https://en.wikipedia.org/wiki/Sonic_the_Hedgehog_(1991_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "fast side-scrolling platformer, roll + jump + collect rings"
+  },
+  {
+    "name": "2048",
+    "ref": "https://en.wikipedia.org/wiki/2048_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "slide tiles to merge matching numbers"
+  },
+  {
+    "name": "geometry_dash",
+    "ref": "https://en.wikipedia.org/wiki/Geometry_Dash",
+    "actions_used": ["D"],
+    "mechanic": "rhythm platformer, tap to jump over obstacles"
+  },
+  {
+    "name": "slayin",
+    "ref": "https://apps.apple.com/us/app/slayin/id548580856",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "auto-attack runner, move left/right to slash enemies"
+  },
+  {
+    "name": "snake",
+    "ref": "https://en.wikipedia.org/wiki/Snake_(video_game_genre)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "eat food to grow, avoid hitting yourself"
+  },
+  {
+    "name": "terraria",
+    "ref": "https://en.wikipedia.org/wiki/Terraria",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "2D dig + fight platformer, break blocks + avoid enemies"
+  },
+  {
+    "name": "celeste",
+    "ref": "https://en.wikipedia.org/wiki/Celeste_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "precision platformer, jump + dash"
+  },
+  {
+    "name": "jump_king",
+    "ref": "https://en.wikipedia.org/wiki/Jump_King",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "precision platformer, charge jump height + aim angle"
+  },
+  {
+    "name": "canabalt",
+    "ref": "https://en.wikipedia.org/wiki/Canabalt",
+    "actions_used": ["D"],
+    "mechanic": "one-button auto-runner, tap to jump rooftops"
+  },
+  {
+    "name": "super_hexagon",
+    "ref": "https://en.wikipedia.org/wiki/Super_Hexagon",
+    "actions_used": ["LEFT", "RIGHT"],
+    "mechanic": "rotate to avoid walls closing in on hexagon"
+  },
+  {
+    "name": "limbo",
+    "ref": "https://en.wikipedia.org/wiki/Limbo_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "dark puzzle platformer, jump + push objects"
+  },
+  {
+    "name": "badland",
+    "ref": "https://en.wikipedia.org/wiki/Badland_(video_game)",
+    "actions_used": ["D"],
+    "mechanic": "tap to fly through physics obstacles",
+    "physics": "matter.js"
+  },
+  {
+    "name": "super_meat_boy",
+    "ref": "https://en.wikipedia.org/wiki/Super_Meat_Boy",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "precision platformer, wall jump + sprint"
+  },
+  {
+    "name": "tiny_wings",
+    "ref": "https://en.wikipedia.org/wiki/Tiny_Wings",
+    "actions_used": ["D"],
+    "mechanic": "hold to dive on hills, release to launch into air"
+  }
+]

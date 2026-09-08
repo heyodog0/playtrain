@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "fruitbot",
+      "sps": 216242,
+      "windows": [
+        91746,
+        216242,
+        209712,
+        222818
+      ],
+      "minutes": 6.3
+    }
+  ],
+  "mean_sps": 216242,
+  "geomean_sps": 216242,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

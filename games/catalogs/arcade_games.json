@@ -1,0 +1,152 @@
+[
+  {
+    "name": "donkey_kong",
+    "ref": "https://ale.farama.org/environments/donkey_kong/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "climb ladders + jump barrels to rescue"
+  },
+  {
+    "name": "dig_dug",
+    "ref": "https://en.wikipedia.org/wiki/Dig_Dug",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "dig tunnels, inflate enemies to pop them"
+  },
+  {
+    "name": "burger_time",
+    "ref": "https://en.wikipedia.org/wiki/BurgerTime",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "walk over burger parts to drop them, avoid enemies"
+  },
+  {
+    "name": "centipede",
+    "ref": "https://ale.farama.org/environments/centipede/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "shoot descending centipede segments + mushrooms"
+  },
+  {
+    "name": "defender",
+    "ref": "https://ale.farama.org/environments/defender/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "horizontal scrolling shooter, rescue humans"
+  },
+  {
+    "name": "qbert",
+    "ref": "https://ale.farama.org/environments/qbert/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "hop on pyramid cubes to change colors, avoid enemies"
+  },
+  {
+    "name": "missile_command",
+    "ref": "https://en.wikipedia.org/wiki/Missile_Command",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "aim crosshair + fire to intercept incoming missiles"
+  },
+  {
+    "name": "frogger",
+    "ref": "https://ale.farama.org/environments/frogger/",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "cross roads and rivers, avoid traffic + water"
+  },
+  {
+    "name": "galaxian",
+    "ref": "https://ale.farama.org/environments/galaxian/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "fixed shooter, enemies dive individually"
+  },
+  {
+    "name": "joust",
+    "ref": "https://en.wikipedia.org/wiki/Joust_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "flap to fly, lance enemies from above"
+  },
+  {
+    "name": "tempest",
+    "ref": "https://en.wikipedia.org/wiki/Tempest_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "tube shooter, rotate around rim + fire inward"
+  },
+  {
+    "name": "robotron_2084",
+    "ref": "https://en.wikipedia.org/wiki/Robotron:_2084",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "arena shooter, rescue humans from robots"
+  },
+  {
+    "name": "gauntlet",
+    "ref": "https://en.wikipedia.org/wiki/Gauntlet_(1985_video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "top-down dungeon crawler, shoot + collect"
+  },
+  {
+    "name": "marble_madness",
+    "ref": "https://en.wikipedia.org/wiki/Marble_Madness",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "guide marble through isometric maze"
+  },
+  {
+    "name": "paperboy",
+    "ref": "https://en.wikipedia.org/wiki/Paperboy_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "deliver newspapers, avoid obstacles on street"
+  },
+  {
+    "name": "rampage",
+    "ref": "https://en.wikipedia.org/wiki/Rampage_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "climb + destroy buildings as monster"
+  },
+  {
+    "name": "tron",
+    "ref": "https://en.wikipedia.org/wiki/Tron_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN"],
+    "mechanic": "light cycle trail game, cut off opponents"
+  },
+  {
+    "name": "moon_patrol",
+    "ref": "https://en.wikipedia.org/wiki/Moon_Patrol",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "side-scrolling vehicle, jump craters + shoot"
+  },
+  {
+    "name": "pengo",
+    "ref": "https://en.wikipedia.org/wiki/Pengo_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "push ice blocks to crush enemies"
+  },
+  {
+    "name": "zaxxon",
+    "ref": "https://en.wikipedia.org/wiki/Zaxxon",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "isometric scrolling shooter, manage altitude"
+  },
+  {
+    "name": "elevator_action",
+    "ref": "https://en.wikipedia.org/wiki/Elevator_Action",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "ride elevators, shoot spies, collect documents"
+  },
+  {
+    "name": "jungle_hunt",
+    "ref": "https://en.wikipedia.org/wiki/Jungle_Hunt",
+    "actions_used": ["LEFT", "RIGHT", "D", "LEFT+D", "RIGHT+D"],
+    "mechanic": "swing vines + swim river + dodge boulders"
+  },
+  {
+    "name": "phoenix",
+    "ref": "https://en.wikipedia.org/wiki/Phoenix_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "fixed shooter with shield, destroy mothership"
+  },
+  {
+    "name": "track_and_field",
+    "ref": "https://en.wikipedia.org/wiki/Track_%26_Field_(video_game)",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "button-mash sprinting + timed jumps/throws"
+  },
+  {
+    "name": "rally_x",
+    "ref": "https://en.wikipedia.org/wiki/Rally-X",
+    "actions_used": ["LEFT", "RIGHT", "UP", "DOWN", "D"],
+    "mechanic": "maze driving, collect flags, drop smokescreen"
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "dodgeball",
+      "sps": 182175,
+      "windows": [
+        181839,
+        182175,
+        184856
+      ],
+      "minutes": 1.0
+    }
+  ],
+  "geomean_sps": 182175,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_nature_44602117.json",
+  "nproc": 4
+}

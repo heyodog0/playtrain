@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "maze",
+      "sps": 181388,
+      "windows": [
+        177583,
+        181704,
+        181388
+      ],
+      "minutes": 1.0
+    }
+  ],
+  "geomean_sps": 181388,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_ppo_nature_44748574.json",
+  "nproc": 4
+}

@@ -1,0 +1,2 @@
+ARM maze_envpool: PASS  windows=10  median_sps=393,209
+MEDIAN_SPS maze_envpool 393208.8 PASS

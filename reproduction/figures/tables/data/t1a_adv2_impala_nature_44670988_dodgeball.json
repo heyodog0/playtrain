@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "dodgeball",
+      "sps": 1054951,
+      "windows": [
+        1038690,
+        1073741,
+        1054945,
+        1054951
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1054951,
+  "geomean_sps": 1054951,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

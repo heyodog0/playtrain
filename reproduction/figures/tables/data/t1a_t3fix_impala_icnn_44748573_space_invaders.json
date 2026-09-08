@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "space_invaders",
+      "sps": 353888,
+      "windows": [
+        353859,
+        360442,
+        353887,
+        353888
+      ],
+      "minutes": 4.3
+    }
+  ],
+  "mean_sps": 353888,
+  "geomean_sps": 353888,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

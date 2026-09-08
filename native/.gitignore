@@ -1,0 +1,18 @@
+# build artifacts (produced by build_qjs.sh / build_qjs_vec.sh — see justfile
+# `build-native`). Nothing here is checked in; the QuickJS source tree and the
+# frozen-math objects are fetched and built locally.
+build/
+*.o
+*.err
+*.cerr
+qjs/src/
+qjs/bld/
+qjs/bld_pic/
+*.wasm
+*.cjs
+frozenmath/src/
+frozenmath/*.o
+frozenmath/*.a
+frozenmath/*.bak
+bld/
+bld_pic/

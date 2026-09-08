@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "coinrun",
+      "sps": 353889,
+      "windows": [
+        347335,
+        353889,
+        360442,
+        353837
+      ],
+      "minutes": 4.3
+    }
+  ],
+  "mean_sps": 353889,
+  "geomean_sps": 353889,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "game": "pong",
+      "sps": 69664,
+      "windows": [
+        69517,
+        69664,
+        69772
+      ],
+      "minutes": 2.2
+    }
+  ],
+  "geomean_sps": 69664,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_tpl_ppo_impala_44602118.json",
+  "nproc": 4
+}

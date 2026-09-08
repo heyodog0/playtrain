@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "asteroids",
+      "sps": 1084601,
+      "windows": [
+        1076873,
+        1087871,
+        1084601,
+        1066474
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1084601,
+  "geomean_sps": 1084601,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_adv2_tpl_nature_44670988.json"
+}

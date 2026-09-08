@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "freeway",
+      "sps": 1084492,
+      "windows": [
+        1074758,
+        1064927,
+        1084492,
+        1087880
+      ],
+      "minutes": 4.4
+    }
+  ],
+  "mean_sps": 1084492,
+  "geomean_sps": 1084492,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "outputs/t1a_t3fix_tpl_nature_44748571.json"
+}

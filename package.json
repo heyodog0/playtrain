@@ -1,0 +1,59 @@
+{
+  "name": "playtrain",
+  "version": "0.1.0",
+  "description": "PlayTrain headless JS game runtime: run p5.js / Matter.js / Three.js games as RL environments without a browser.",
+  "type": "module",
+  "main": "runtime/p5/game-env.mjs",
+  "exports": {
+    ".": "./runtime/p5/game-env.mjs",
+    "./p5": "./runtime/p5/game-env.mjs",
+    "./p5-worker": "./runtime/p5/game-worker.mjs",
+    "./p5-shim": "./runtime/p5/p5-shim.mjs",
+    "./p5-obs": "./runtime/p5/obs.mjs"
+  },
+  "files": [
+    "runtime",
+    "examples/games",
+    "README.md",
+    "docs",
+    "LICENSE"
+  ],
+  "keywords": [
+    "reinforcement-learning",
+    "gymnasium",
+    "rl",
+    "headless",
+    "p5",
+    "matter-js",
+    "game",
+    "benchmark"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heyodog0/playtrain.git"
+  },
+  "homepage": "https://github.com/heyodog0/playtrain",
+  "bugs": {
+    "url": "https://github.com/heyodog0/playtrain/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build:study": "node study/build-study.mjs",
+    "verify:study": "node study/verify-replay.mjs",
+    "build:pages": "node tools/build-pages.mjs"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "firebase-admin": "^13.0.0"
+  },
+  "optionalDependencies": {
+    "matter-js": "^0.20.0"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.59"
+  }
+}
