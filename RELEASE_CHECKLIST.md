@@ -29,15 +29,19 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## B. Cuts — ~675 files / 33 MB → ~300 files / ~3 MB
 
-- [ ] **B1. Delete** `[me]` — `handoff/` (58), `docs/` except `REPRO.md` (5),
+- [x] **B1. Delete** — DONE: `handoff/`, 5 `docs/` files, 4 root plans,
+      `tools/HANDOFF.md`, `raw_vec_bench.py`, `plot_compare.py`, `website/`, raw `dist/`.
+      ~~`[me]`~~ — `handoff/` (58), `docs/` except `REPRO.md` (5),
       the 4 root `*_PLAN.md`, `tools/HANDOFF.md`, `benchmarks/raw_vec_bench.py`,
       `benchmarks/plot_compare.py`.
 - [x] **B2. Move `website/` out** — DONE: `heyodog0/playtrain-website` (private),
       252 files, built `site/` excluded. Delete `website/` from this repo in B1.
       ~~`[you]`~~ — 92 files, 18.2 MB, 55% of the repo.
       Own repo or `gh-pages` branch.
-- [ ] **B3. Delete deployment glue** `[me]` — `middleware.js`, `vercel.json`.
-- [ ] **B4. Relocate to reproduction** `[me]` — `games/logs/` (167 files, 3.7 MB),
+- [x] **B3. Delete deployment glue** — DONE: `middleware.js`, `vercel.json`. ~~`[me]`~~ — `middleware.js`, `vercel.json`.
+- [x] **B4. Relocate to reproduction** — DONE: `generation-logs/` (167),
+      `llm_cost.json` + `.tex`, study harness (18 files incl. `session.js`),
+      `fig_schematic.py`. `count_tokens.py` and `.gitignore` repointed. ~~`[me]`~~ — `games/logs/` (167 files, 3.7 MB),
       `results/` (2), study harness (`tools/study-*`, `STUDY.md`, `build-study.mjs`,
       `verify-replay.mjs`, `replay-video.mjs`, `api/session.js`).
 - [ ] **B5. Trim the justfile** `[me]` — split `install` from `install-web`, drop
@@ -61,7 +65,7 @@ Working doc for the public release. **Delete this file before publishing.**
 
 - [x] **D1. README** — rewritten, 96 lines, minimal style. Placeholders remain:
       paper title, arXiv link, bibtex.
-- [ ] **D2. `REPRO.md` → `REPRODUCING.md`** `[me]` — promote to root. **Stale**:
+- [~] **D2. `REPRO.md` → `REPRODUCING.md`** `[me]` — moved to root. Still **stale**:
       last touched Aug 10, predates the EnvPool reframing, adv2, and the engine tier.
       Needs a rewrite once the numbers freeze.
 - [ ] **D3. `benchmarks/README.md` staleness** `[me]` — refers to "Figure 2(a)/(b)"
@@ -109,3 +113,14 @@ Working doc for the public release. **Delete this file before publishing.**
       in the contract; widening it skips the rasterizer (9.5-43% of the profile).
       The LLM that writes the game can write its state schema.
 - [ ] **G6. `playtrain train`** — one command that trains an agent, no config file.
+
+---
+
+## Open, needs you
+
+- `tools/build-embed.mjs` and `tools/build-site.mjs` build the project site, which now
+  lives in `playtrain-website`. `git rm` refused (you have local edits to
+  `build-embed.mjs`); current copies are in `playtrain-website/tools/`, uncommitted there.
+- `justfile` has your uncommitted edits, so B5 (the trim) is not started.
+- `reproduction/data/generation-logs/` is 3.7 MB of LLM prompts + raw output across
+  167 files. Gzipping would take it to roughly 0.5 MB, as the study data went 6.2 -> 0.4.
