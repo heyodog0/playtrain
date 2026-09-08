@@ -1,8 +1,15 @@
 # Reproducing every figure and table in the ICLR paper
 
-> **Start here.** The figure code and its data are in
-> [`reproduction/figures/`](reproduction/figures/). Two figures are verified to
-> reproduce exactly; the commands are below.
+> **Start here.**
+>
+> ```
+> bash reproduction/reproduce.sh          # everything that needs no download
+> bash reproduction/reproduce.sh --all    # also the learning-curve composite (277 MB)
+> ```
+>
+> It redraws each measured figure and table and prints the paper's number beside the
+> one it just computed. Output goes to `reproduction/out/`. The individual commands are
+> below if you want to run one on its own.
 >
 > **`fig_env_efficiency.pdf`** (Figure 4 in the paper) needs no download:
 >

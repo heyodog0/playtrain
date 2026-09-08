@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Redraw every measured figure and table in the paper.
+#
+#   bash reproduction/reproduce.sh          # everything that needs no download
+#   bash reproduction/reproduce.sh --all    # also the learning-curve composite
+#
+# Outputs land in reproduction/out/. Each step prints the number the paper
+# reports beside the one it just computed.
+set -uo pipefail
+cd "$(dirname "$0")"
+OUT="$PWD/out"; mkdir -p "$OUT"
+PY="uv run --no-project --with matplotlib --with numpy --with pillow"
+PYTB="$PY --with tensorboard"
+ok=0; fail=0
+step() { printf '\n=== %s\n' "$1"; }
+done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail+1)); echo "    FAILED"; fi; }
+
+step "Figure 4, environment efficiency  (paper: 2.19x ProcGen, 12.62x ALE)"
+( cd figures && $PY python tools/plot_env_efficiency_bestonly.py \
+    --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out "$OUT" ) ; done_ $?
+
+step "Environment cost breakdown"
+( cd figures && $PY python tools/plot_env_cost.py \
+    ../out/_percmd.json ../out/_logic.json ../out/_grid.json "$OUT/fig_env_cost" ) 2>/dev/null
+if [ ! -f "$OUT/fig_env_cost.pdf" ]; then echo "    skipped (needs fetch_data.sh)"; else done_ 0; fi
+
+step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
+( cd figures/tables && uv run --no-project python t1a_agg.py \
+    impala_nature=44748571+44784183 impala_icnn=44748573 \
+    ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
+
+step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
+( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
+
+step "Appendix eval table  (paper: 24 games, e.g. seaquest 102.5 / 732.5)"
+python3 - <<'PYEOF'
+import json
+d = json.load(open("figures/results/eval_iddp_suite.json"))
+for g in ("seaquest", "bigfish", "pong"):
+    print(f"    {g:10s} random {d[g]['random_return']:7.1f}  greedy {d[g]['greedy_return']:7.1f}")
+print(f"    {len(d)} games total")
+PYEOF
+done_ $?
+
+if [ "${1:-}" = "--all" ]; then
+  step "Learning-curve composite (downloads 277 MB the first time)"
+  bash figures/fetch_data.sh && ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
+  step "Per-game suite grids"
+  ( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null; $PYTB python tools/plot_suite_grid.py ) ; done_ $?
+fi
+
+printf '\n%s\n' "----"
+echo "$ok ok, $fail failed. Outputs in reproduction/out/"
+echo "Not covered here: tab:llm-cost needs GEMINI_API_KEY (playtrain.gen.count_tokens),"
+echo "and the human wallclock figure has its own README in figures/human/."
