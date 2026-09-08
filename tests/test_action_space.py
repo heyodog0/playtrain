@@ -11,11 +11,17 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pathlib import Path
+
 from playtrain.runtime.action_space import (
     action_names, is_default, load_action_space, load_space_spec,
     packed_tables, quantize, quantize_box_actions)
 from playtrain.runtime.native_vec_env import _LIB_PATH, NativeVecEnv
 from playtrain.runtime.qjs_env import QuickJSEnv, _QJS_HOST
+
+# The pointer-tier reference game. It is not in the shipped catalog (that is the
+# paper's set), so these tests address it by path.
+_AIM = str(Path(__file__).parent / "games" / "aim_trainer.js")
 
 _native = pytest.mark.skipif(
     not _LIB_PATH.exists() or not _QJS_HOST.exists(),
@@ -142,8 +148,8 @@ def test_box_bit_exact_vec_vs_single():
     from playtrain.runtime.action_space import quantize_box_actions as _q  # noqa: F401
     N, STEPS = 2, 120
     seeds = np.array([7, 42], dtype=np.int32)
-    vec = NativeVecEnv("aim_trainer", num_envs=N, action_space="mouse2d", autoreset=False)
-    singles = [QuickJSEnv("aim_trainer", action_space="mouse2d") for _ in range(N)]
+    vec = NativeVecEnv(_AIM, num_envs=N, action_space="mouse2d", autoreset=False)
+    singles = [QuickJSEnv(_AIM, action_space="mouse2d") for _ in range(N)]
     try:
         vobs = vec.reset(seeds=seeds).copy()
         for i in range(N):
@@ -169,7 +175,7 @@ def test_box_bit_exact_vec_vs_single():
 @_native
 def test_pointer_game_scores_with_pointer_input():
     """Clicking on the target through the box path scores; keyboard can't."""
-    env = QuickJSEnv("aim_trainer", action_space="mouse2d")
+    env = QuickJSEnv(_AIM, action_space="mouse2d")
     try:
         env.reset(seed=42)
         hit = False

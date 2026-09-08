@@ -21,7 +21,7 @@ A game may additionally read the pointer through standard p5 globals — `mouseX
 
 All analog values are **quantized to uint16 at the producer** (`q = floor(clamp(v01)·65535 + 0.5)`, dequantized `q/65535` identically in every engine) — continuous from the policy's view, bit-exact for replay and the cross-engine gate. A human playing in the browser tester goes through the same quantized channel.
 
-Pointer games must still boot and terminate under keyboard-only random play (the validation suite runs `default8`), and should not depend on inherited stroke/fill state (`examples/games/js/aim_trainer.js` is the reference).
+Pointer games must still boot and terminate under keyboard-only random play (the validation suite runs `default8`), and should not depend on inherited stroke/fill state (`tests/games/aim_trainer.js` is the reference).
 
 | Index | Name | Keys Held | Key Pressed |
 |-------|------|-----------|-------------|
