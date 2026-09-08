@@ -69,7 +69,7 @@ if [ "$fails" -eq 0 ]; then
   echo "parity holds: the participant's pixels and dynamics match the training backend."
   echo "NOTE: this proves V8 == QuickJS. It says nothing about Safari's JavaScriptCore or"
   echo "      Firefox's SpiderMonkey, where a last-bit Math difference could diverge a"
-  echo "      trajectory -- see STUDY.md. verify-replay is the per-session backstop."
+  echo "      trajectory. verify-replay is the per-session backstop."
 else
   echo "$fails parity failure(s) -- the human is NOT playing the agent's environment."
   exit 1
