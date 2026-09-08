@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["playtrain>=0.1"]
+# dependencies = ["playtrain @ git+https://github.com/heyodog0/playtrain"]
 # ///
 """PlayTrain in one command — no clone, no install, no toolchain:
 

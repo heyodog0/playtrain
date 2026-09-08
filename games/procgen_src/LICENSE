@@ -1,6 +1,10 @@
 The C++ sources in this directory are from OpenAI's ProcGen Benchmark
 (https://github.com/openai/procgen), redistributed unmodified under its MIT
-license. They are reference material, not part of the PlayTrain runtime.
+license. They are reference material, not part of the PlayTrain runtime: nothing here is
+compiled or executed, and these files do not build in place (they include headers from
+the ProcGen tree that are not vendored). The PlayTrain clones are original JavaScript in
+examples/games/js/, written against these mechanics rather than translated from this
+code.
 
 MIT License
 

@@ -24,7 +24,10 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, '..');
+// Two levels up: this file lives in reproduction/study-harness/, so a single
+// '..' resolved to reproduction/ and every derived path missed (the runtime
+// imports below and the examples/games/js default).
+const REPO_ROOT = resolve(__dirname, '..', '..');
 const SELF = fileURLToPath(import.meta.url);
 
 function arg(flag, def) {
@@ -45,7 +48,7 @@ if (process.argv.includes('--child')) {
   for await (const c of process.stdin) chunks.push(c);
   const episodes = JSON.parse(Buffer.concat(chunks).toString('utf8'));
 
-  const { GameEnv } = await import('../runtime/p5/game-env.mjs');
+  const { GameEnv } = await import('../../runtime/p5/game-env.mjs');
   const results = [];
 
   for (const ep of episodes) {

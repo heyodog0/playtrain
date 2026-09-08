@@ -1,9 +1,5 @@
 # PlayTrain
 
-[![PyPI](https://img.shields.io/pypi/v/playtrain.svg)](https://pypi.org/project/playtrain/)
-[![Python](https://img.shields.io/pypi/pyversions/playtrain.svg)](https://pypi.org/project/playtrain/)
-[![License](https://img.shields.io/pypi/l/playtrain.svg)](https://github.com/heyodog0/playtrain/blob/main/LICENSE)
-
 An RL framework for video-game environments that are generated and modified by a
 language model. Every environment is a single JavaScript file: a person can play it,
 and an agent can train on the same game.
@@ -32,13 +28,16 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 
 ## Getting started
 
-Run it without installing anything:
+The [Colab notebook][colab] is the quickest look: it installs PlayTrain, steps an
+environment, edits a game's source, measures throughput, and trains an agent, all in the
+browser with nothing to set up.
+
+Locally, `examples/quickstart.py` runs in one command and installs nothing system-wide
+(it builds the native backend, so clang and cargo need to be on PATH):
 
 ```console
 $ uv run https://raw.githubusercontent.com/heyodog0/playtrain/main/examples/quickstart.py
 ```
-
-Or open the [Colab notebook][colab], which trains an agent end to end in the browser.
 
 ```python
 from playtrain.runtime import GameEnv
@@ -54,11 +53,32 @@ obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 ## Installation
 
 ```console
-$ uv add playtrain          # or: pip install playtrain
+$ git clone https://github.com/heyodog0/playtrain && cd playtrain
+$ just install
 ```
 
-Wheels bundle the native runtime, so no compiler is needed. Add the trainers with
-`uv add playtrain-trainers`, or the LLM generation pipeline with `playtrain[gen]`.
+`just install` syncs the Python environment and builds the native backend, which is the
+default runtime engine rather than an optional add-on. It needs clang and cargo; see
+[CONTRIBUTING.md](CONTRIBUTING.md). Training additionally needs
+[playtrain-trainers](https://github.com/heyodog0/playtrain-trainers); the LLM generation
+pipeline is the `gen` extra.
+
+## Layout
+
+| directory | what is in it |
+|---|---|
+| `examples/games/js/` | The catalog. One JavaScript file per environment; this is what `GameEnv("breakout")` loads. |
+| `examples/colab/` | The quickstart notebook. |
+| `src/playtrain/runtime/` | The environments: the Gymnasium classes and the vectorized backends. |
+| `src/playtrain/gen/` | Generation, variants, and refinement through an LLM, with the validation suite that gates what ships. |
+| `native/` | The QuickJS host, the build scripts, and the determinism gates. |
+| `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
+| `runtime/` | The p5-compatible JavaScript shim the games are written against. |
+| `games/` | The generation workspace and reference material, not the shipped catalog. |
+| `benchmarks/` | Throughput measurement. [BENCHMARKS.md](BENCHMARKS.md) states the methodology. |
+| `reproduction/` | Paper data, figure code, and the human-study harness. |
+| `tools/` | Development scripts: the playtest UI, validation, profiling. |
+| `tests/` | The test suite. |
 
 ## Reproducing the paper
 

@@ -27,7 +27,10 @@ import { fileURLToPath } from 'url';
 import { spawn, spawnSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, '..');
+// Two levels up: this file lives in reproduction/study-harness/, so a single
+// '..' resolved to reproduction/ and every derived path missed (the runtime
+// imports below and the examples/games/js default).
+const REPO_ROOT = resolve(__dirname, '..', '..');
 const SELF = fileURLToPath(import.meta.url);
 
 function arg(flag, def) {
@@ -54,8 +57,8 @@ if (has('--child')) {
   // Render at logical resolution rather than the agent's 64x64: game-env calls
   // setRasterRes(obsWidth) before loading the game, and PLAYTRAIN_RASTER_RES (set by the
   // parent) takes precedence, making that call a no-op -- p5-shim.mjs `_RASTER_RES_FROM_ENV`.
-  const shim = await import('../runtime/p5/p5-shim.mjs');
-  const { GameEnv } = await import('../runtime/p5/game-env.mjs');
+  const shim = await import('../../runtime/p5/p5-shim.mjs');
+  const { GameEnv } = await import('../../runtime/p5/game-env.mjs');
 
   const report = [];
   for (const ep of job.episodes) {
