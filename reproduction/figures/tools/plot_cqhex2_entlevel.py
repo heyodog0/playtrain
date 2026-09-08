@@ -1,0 +1,75 @@
+"""cqhex2 N=1 entropy-LEVEL sweep (4 seeds each): does lower CONSTANT entropy
+give cleaner late consolidation, or is the 2-seed 0.99-lock just noise? Arms:
+0.004 baseline (reused cqhex2_nohd_150M N001), const 0.002, const 0.001.
+Panel 1: win-rate curves (mean +- seed range). Panel 2: consolidation metrics
+(final = last-10% mean, max drawdown, %held>0.7). Saves outputs/figs/cqhex2_entlevel.png."""
+import numpy as np
+import matplotlib.pyplot as plt
+import wandb
+
+try:
+    plt.style.use("seaborn-v0_8-darkgrid")
+except OSError:
+    plt.style.use("seaborn-darkgrid")
+
+ENT = "truongtruong-harvard-university/analogen"
+STEPS_M, GRID, KEY = 150, 1000, "charts/ep_win_rate"
+# (group, name-filter, label, color)
+ARMS = [
+    ("cqhex2_nohd_150M", "_N001_",   "const 0.004 (baseline)", "#7f8c8d"),
+    ("cqhex2_entlevel",  "_e002_",   "const 0.002",            "#2980b9"),
+    ("cqhex2_entlevel",  "_e001_",   "const 0.001",            "#8e44ad"),
+]
+api = wandb.Api(timeout=60)
+
+def ema(y, a=0.06):
+    o = np.empty_like(y, float); acc = y[0]
+    for i, v in enumerate(y): acc = a*v+(1-a)*acc; o[i] = acc
+    return o
+
+def pull(group, filt):
+    xg = np.linspace(0, STEPS_M, GRID); curves=[]; fin=[]; dd=[]; held=[]
+    for r in api.runs(ENT, filters={"group": group, "state": "finished"}):
+        if filt not in r.name: continue
+        h = r.history(keys=[KEY], samples=4000)
+        if KEY not in h.columns: continue
+        h = h.dropna(subset=[KEY])
+        if len(h) < 20: continue
+        x = (h["_step"] / h["_step"].max() * STEPS_M).to_numpy()
+        y = h[KEY].to_numpy()
+        curves.append(np.interp(xg, x, ema(y)))
+        fin.append(float(y[int(len(y)*0.9):].mean()))
+        if (y >= 0.7).any():
+            cr = int(np.argmax(y >= 0.7)); post = y[cr:]; peak = np.maximum.accumulate(post)
+            dd.append(float((peak-post).max())); held.append(float((post>=0.7).mean()))
+    return xg, curves, fin, dd, held
+
+fig, ax = plt.subplots(1, 2, figsize=(15, 5.4), gridspec_kw={"width_ratios": [1.6, 1]})
+summ=[]
+for group, filt, label, color in ARMS:
+    xg, curves, fin, dd, held = pull(group, filt)
+    if not curves: continue
+    arr=np.vstack(curves)
+    ax[0].plot(xg, arr.mean(0), lw=2.0, color=color, label=f"{label} ({len(curves)})")
+    ax[0].fill_between(xg, arr.min(0), arr.max(0), color=color, alpha=0.10)
+    summ.append((label.split(" (")[0], color, np.mean(fin), np.mean(dd) if dd else np.nan, np.mean(held) if held else np.nan))
+ax[0].axhline(1.0, ls="--", lw=1, color="0.6"); ax[0].set_ylim(-0.02, 1.05)
+ax[0].set_title("win-rate (mean +- seed range)"); ax[0].set_xlabel("env steps (M)")
+ax[0].set_ylabel("win rate"); ax[0].legend(fontsize=9, loc="lower right")
+
+labels=[s[0] for s in summ]; colors=[s[1] for s in summ]
+fv=[s[2] for s in summ]; ddv=[s[3] for s in summ]; hv=[s[4] for s in summ]
+x=np.arange(len(labels)); w=0.26
+ax[1].bar(x-w, fv, w, color=colors, alpha=1.0, label="final (last 10%)")
+ax[1].bar(x,   ddv, w, color=colors, alpha=0.55, label="max drawdown")
+ax[1].bar(x+w, hv, w, color=colors, alpha=0.30, label="%held>0.7")
+ax[1].set_xticks(x); ax[1].set_xticklabels(labels, rotation=15, ha="right", fontsize=8)
+ax[1].set_ylim(0,1.05); ax[1].set_title("final / drawdown / held"); ax[1].legend(fontsize=8)
+for xi,(f,d,hh) in enumerate(zip(fv,ddv,hv)):
+    ax[1].text(xi-w, f+0.01, f"{f:.2f}", ha="center", fontsize=7)
+    if not np.isnan(d): ax[1].text(xi, d+0.01, f"{d:.2f}", ha="center", fontsize=7)
+    if not np.isnan(hh): ax[1].text(xi+w, hh+0.01, f"{hh:.2f}", ha="center", fontsize=7)
+fig.suptitle("cqhex2 N=1 entropy-level sweep (4 seeds): does lower constant entropy consolidate cleaner?", fontsize=13)
+fig.tight_layout(rect=[0,0,1,0.95])
+out="outputs/figs/cqhex2_entlevel.png"
+fig.savefig(out, dpi=140); print("saved", out)
