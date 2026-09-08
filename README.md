@@ -78,12 +78,16 @@ ships, and `just play <game>` opens any game to play yourself.
 
 ```console
 $ git clone https://github.com/heyodog0/playtrain && cd playtrain
-$ just install
+$ uv venv && uv pip install -e .
 ```
 
-`just install` syncs the Python environment and builds the native backend. The native
-backend is the default runtime engine, not an optional add-on. It needs clang and cargo.
-`just --list` shows the other recipes: tests, validation, benchmarks.
+That builds the native backend as part of the install. The backend is the default
+runtime engine, not an optional add-on, so the install needs clang and cargo on PATH.
+It takes about a minute the first time.
+
+Contributors can use [`just`](https://just.systems) instead. `just install` does the
+same thing, and `just --list` shows the rest: tests, validation, benchmarks, and the
+generation recipes below.
 
 Training also needs
 [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
