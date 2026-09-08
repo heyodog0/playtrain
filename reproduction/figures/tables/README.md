@@ -23,6 +23,18 @@ Emits the table body verbatim.
 `eval_final_agents_b256.json`. The latter sits beside it, is from weaker checkpoints, and
 produces 20 of 24 greedy returns too low while every random return still matches.
 
+**Table 1(b), the environment swap.** The EnvPool baseline columns come from
+`verdicts/`, one file per game and arm, each holding the measured median SPS. The
+geometric means reproduce the paper exactly: ProcGen 371,525 against a reported 372k,
+ALE 174,763 against 175k.
+
+```console
+$ grep -h MEDIAN_SPS verdicts/pgab_*_envpool_*.verdict
+```
+
+The PlayTrain columns in that table (838k and 1,018k) are the engine-tier measurement
+and are not in these files, which predate it and give 617,566 and 872,514.
+
 **The thread-scaling table** shares its data with figure panel A: see `../scaling/`.
 
 The remaining tables in the paper are descriptive, not measured: engine and backend

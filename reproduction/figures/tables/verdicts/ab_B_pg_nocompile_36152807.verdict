@@ -1,0 +1,2 @@
+ARM B_pg_nocompile: PASS  windows=6  median_sps=425,978  max_sps=429,255  tb_bytes=78860
+MEDIAN_SPS B_pg_nocompile 425977.9 PASS

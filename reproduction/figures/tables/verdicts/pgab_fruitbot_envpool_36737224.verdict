@@ -1,0 +1,2 @@
+ARM fruitbot_envpool: PASS  windows=10  median_sps=370,273  max_sps=380,102
+MEDIAN_SPS fruitbot_envpool 370272.8 PASS

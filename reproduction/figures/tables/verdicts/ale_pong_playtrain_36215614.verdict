@@ -1,0 +1,2 @@
+ARM pong_playtrain: PASS  windows=5  median_sps=1,153,411
+MEDIAN_SPS pong_playtrain 1153411.1 PASS

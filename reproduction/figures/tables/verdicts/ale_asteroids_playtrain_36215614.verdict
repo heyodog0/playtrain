@@ -1,0 +1,2 @@
+ARM asteroids_playtrain: PASS  windows=5  median_sps=927,318
+MEDIAN_SPS asteroids_playtrain 927318.4 PASS

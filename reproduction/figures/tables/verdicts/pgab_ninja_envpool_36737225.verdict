@@ -1,0 +1,2 @@
+ARM ninja_envpool: PASS  windows=10  median_sps=393,210  max_sps=399,762
+MEDIAN_SPS ninja_envpool 393209.8 PASS

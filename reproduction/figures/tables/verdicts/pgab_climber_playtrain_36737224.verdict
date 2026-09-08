@@ -1,0 +1,2 @@
+ARM climber_playtrain: PASS  windows=7  median_sps=471,852  max_sps=478,404
+MEDIAN_SPS climber_playtrain 471851.6 PASS

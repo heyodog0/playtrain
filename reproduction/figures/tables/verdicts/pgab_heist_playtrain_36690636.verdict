@@ -1,0 +1,2 @@
+ARM heist_playtrain: PASS  windows=7  median_sps=655,343  max_sps=668,451
+MEDIAN_SPS heist_playtrain 655343.0 PASS

@@ -1,0 +1,2 @@
+ARM A_pt_compiled: PASS  windows=11  median_sps=996,122  max_sps=1,002,685  tb_bytes=301628
+MEDIAN_SPS A_pt_compiled 996121.6 PASS

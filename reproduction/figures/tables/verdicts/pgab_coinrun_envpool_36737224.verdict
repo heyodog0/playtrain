@@ -1,0 +1,2 @@
+ARM coinrun_envpool: PASS  windows=10  median_sps=366,995  max_sps=376,825
+MEDIAN_SPS coinrun_envpool 366994.9 PASS

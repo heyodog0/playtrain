@@ -1,0 +1,2 @@
+ARM bigfish_playtrain: PASS  windows=7  median_sps=966,624  max_sps=973,190
+MEDIAN_SPS bigfish_playtrain 966624.0 PASS

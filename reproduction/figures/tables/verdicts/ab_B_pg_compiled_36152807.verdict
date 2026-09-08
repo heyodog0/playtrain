@@ -1,0 +1,2 @@
+ARM B_pg_compiled: PASS  windows=6  median_sps=429,253  max_sps=455,468  tb_bytes=77136
+MEDIAN_SPS B_pg_compiled 429253.2 PASS

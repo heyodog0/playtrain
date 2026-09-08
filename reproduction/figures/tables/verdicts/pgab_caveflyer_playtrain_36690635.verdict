@@ -1,0 +1,2 @@
+ARM caveflyer_playtrain: PASS  windows=7  median_sps=504,619  max_sps=511,173
+MEDIAN_SPS caveflyer_playtrain 504619.1 PASS
