@@ -65,10 +65,3 @@ Each of these produced a plausible figure from the wrong input, with no error.
 - **`throughput_panels.py` verifies the committed data against the published values and
   refuses to draw when they disagree.** That is deliberate. If it fires, the data and the
   paper have diverged.
-
-## The rule this file exists to enforce
-
-Every artifact that reaches the paper needs its generator *and* its input data
-committed, in the same repo, on a pushed branch. Several times the generator was
-committed and the data was not, and once the reverse. The failure is quiet: the figure
-is already in the PDF and looks fine.
