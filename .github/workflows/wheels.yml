@@ -78,3 +78,26 @@ jobs:
           v.reset(0); v.step(np.zeros(8, dtype=np.int64)); v.close()
           print('wheel smoke test OK')
           "
+
+  publish:
+    # Trusted Publishing: PyPI verifies this workflow's OIDC identity, so no API
+    # token exists anywhere. Configure the matching publisher at
+    # pypi.org/manage/account/publishing (owner heyodog0, repo playtrain,
+    # workflow wheels.yml, environment pypi).
+    #
+    # Tags only, and gated on the smoke test - a version number on PyPI can never
+    # be reused, so nothing uploads until an installed wheel has stepped an env.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, smoke]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: wheels-*
+          merge-multiple: true
+      - run: ls -la dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
