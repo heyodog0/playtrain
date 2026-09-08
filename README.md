@@ -221,12 +221,13 @@ listed in the release notes.
 ## Citation
 
 ```bibtex
-@inproceedings{truong2027playtrain,
-  title     = {PlayTrain: An Efficient Reinforcement Learning Framework for
-               LLM-Generated Adaptable JavaScript Games},
-  author    = {Truong, Ryan and Ying, Lance and Gershman, Samuel J. and Irie, Kazuki},
-  booktitle = {International Conference on Learning Representations},
-  year      = {2027},
+@article{truong2026playtrain,
+  title  = {PlayTrain: An Efficient Reinforcement Learning Framework for
+            LLM-Generated Adaptable JavaScript Games},
+  author = {Truong, Ryan and Ying, Lance and Gershman, Samuel J.
+            and Irie, Kazuki},
+  year   = {2026},
+  url    = {https://playtrain.org}
 }
 ```
 
