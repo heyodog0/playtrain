@@ -72,6 +72,8 @@ path = "hatch_build.py"
 "runtime" = "playtrain/_assets/runtime"
 "examples/games" = "playtrain/_assets/examples/games"
 "GAME_TEMPLATE.md" = "playtrain/_assets/GAME_TEMPLATE.md"
+# Notices for the components statically linked into the bundled native backend.
+"THIRD_PARTY_LICENSES.md" = "playtrain/_assets/THIRD_PARTY_LICENSES.md"
 
 [tool.hatch.build.targets.sdist]
 include = [
