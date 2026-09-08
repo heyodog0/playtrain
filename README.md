@@ -55,8 +55,9 @@ obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 
 ## Making a game
 
-Games are written and modified by a language model. Set `GEMINI_API_KEY` and install the
-extra with `uv sync --extra gen`. The runtime and the trainers never need a key.
+Games are written and modified by a language model. Install the extra with
+`pip install -e ".[gen]"` and set `GEMINI_API_KEY`. The runtime and the trainers never
+need a key.
 
 Fork an existing game with a prompt:
 
@@ -137,9 +138,9 @@ questions.
 
 ## Contributing
 
-Run `just install` for the development setup and `just test` for the test suite. New
-games go in `examples/games/js/`. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a
-new game has to satisfy. Validate one with `just validate-one <game>`.
+Install as above, then run the test suite with `pytest tests/`. New games go in
+`examples/games/js/`. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a new game has
+to satisfy. Validate one with `playtrain-validate --game <name>`.
 
 ## Version policy
 
