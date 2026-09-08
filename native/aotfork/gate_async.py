@@ -19,8 +19,8 @@ import time
 
 import numpy as np
 
-WE = os.environ.get("WE", "/n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-engine")
-GDIR = os.environ.get("GDIR", "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js")
+WE = os.environ["WE"]
+GDIR = os.environ["GDIR"]
 sys.path.insert(0, WE + "/src")
 from playtrain.runtime.native_vec_env import NativeVecEnv, PingPongVecEnv  # noqa: E402
 
