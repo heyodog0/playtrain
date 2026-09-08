@@ -5,8 +5,8 @@ Orientation for a coding agent working in this repo. Read this before searching.
 ## What this is
 
 A catalog of 2D game environments plus a runtime that steps them fast. A game is a
-single ~200-line p5-style JavaScript file. The runtime embeds QuickJS and a Rust
-rasterizer and exposes Gymnasium environments.
+single p5-style JavaScript file of about 200 lines. The runtime embeds QuickJS and a
+Rust rasterizer. It exposes Gymnasium environments.
 
 ## The API, in full
 
@@ -25,28 +25,28 @@ obs, rew, term, trunc = venv.step(actions)           # actions: (num_envs,) int6
 venv.close()
 ```
 
-`NativeVectorEnv` wraps `NativeVecEnv` in the Gymnasium `VectorEnv` API if you need to
-plug into an existing trainer. `AsyncNativeVecEnv` / `PingPongVecEnv` are the
+`NativeVectorEnv` wraps `NativeVecEnv` in the Gymnasium `VectorEnv` API. Use it to plug
+into an existing trainer. `AsyncNativeVecEnv` and `PingPongVecEnv` are the
 double-buffered path.
 
 ## Pitfalls that have actually cost time
 
 - **`NativeVecEnv.reset()` takes `seeds` positionally**, not `seed=`. `reset(0)` seeds
-  every env with 0; `reset([0,1,2,...])` seeds them individually. `GameEnv.reset()` does
-  take `seed=`, matching Gymnasium. They differ.
+  every env with 0. `reset([0,1,2,...])` seeds them individually. `GameEnv.reset()` does
+  take `seed=`, matching Gymnasium. The two differ.
 - **Never name a directory `playtrain` next to your working directory.** It shadows the
   installed package and you get `ImportError: cannot import name 'GameEnv' from
   'playtrain.runtime' (unknown location)`, which looks like a broken install.
 - **`examples/games/js/` is the catalog. `games/js/` is not.** Nine games differ between
   them, `breakout` included. `GameEnv("breakout")` loads the former.
-- **The engine tier degrades silently.** Without clang or the AOT toolchain, `resolve_lib`
-  falls back to the stock `.so` and everything still works, just slower. If a throughput
-  number looks low, check that first.
-- **Three access paths cost very different amounts per step** — the C loop, the
-  in-process threadpool, and the subprocess pipe (~4× slower). `benchmarks/README.md`
-  says which is which. Do not compare numbers across them.
-- **`getGameState()` returns `{score, lives, gameState}`** — reward bookkeeping, not an
-  observation. Observations are rendered pixels.
+- **The engine tier degrades silently.** Without clang or the AOT toolchain,
+  `resolve_lib` falls back to the stock `.so`. Everything still works, only slower. If a
+  throughput number looks low, check that first.
+- **Three access paths cost very different amounts per step.** They are the C loop, the
+  in-process threadpool, and the subprocess pipe, which is about 4x slower.
+  `BENCHMARKS.md` says which is which. Do not compare numbers across them.
+- **`getGameState()` returns `{score, lives, gameState}`.** That is reward bookkeeping,
+  not an observation. Observations are rendered pixels.
 
 ## Layout
 
@@ -58,7 +58,7 @@ double-buffered path.
 | `games/js/` | generation workspace, not shipped |
 | `native/` | QuickJS host, build scripts, determinism gates |
 | `crates/rasterizer/` | the Rust rasterizer |
-| `benchmarks/` | throughput measurement + the methodology doc |
+| `benchmarks/` | throughput measurement. `BENCHMARKS.md` has the methodology |
 | `reproduction/` | paper data, figures, the human-study harness |
 | `tests/` | pytest suite |
 
@@ -74,7 +74,7 @@ uvx playtrain bench       # throughput, no install
 
 ## Determinism is the invariant
 
-A game's dynamics must be identical across engine paths, machines and releases — agent
-and human results are only comparable because of it. `native/gate_qjs.sh` and
-`native/aotfork/gate_async.py` check it. If you change a game's behavior, that is a
-versioned decision: see CONTRIBUTING.md.
+A game's dynamics must be identical across engine paths, machines, and releases. Agent
+and human results are only comparable because of that. `native/gate_qjs.sh` and
+`native/aotfork/gate_async.py` check it. Changing a game's behavior is a versioned
+decision. See CONTRIBUTING.md.

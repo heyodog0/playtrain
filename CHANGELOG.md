@@ -2,9 +2,9 @@
 
 Versions are `0.x`: the Python API may change between minor releases.
 
-**Environment changes are tracked separately in each release.** A game's behavior is
-fixed within a minor release, so a result cites a version and stays comparable. Anything
-that alters dynamics — not rendering, not performance — appears under that heading and
+Environment changes are tracked separately in each release. A game's behavior is fixed
+within a minor release, so a result cites a version and stays comparable. Anything that
+alters dynamics, as opposed to rendering or performance, appears under that heading and
 forces a minor bump.
 
 ## Unreleased
@@ -16,11 +16,11 @@ forces a minor bump.
 - `playtrain[gen]` extra for the LLM generation pipeline.
 
 ### Changed
-- `google-genai` and `httpx` moved out of the base dependencies into `[gen]`; stepping
+- `google-genai` and `httpx` moved out of the base dependencies into `[gen]`. Stepping
   an environment no longer pulls a model SDK.
-- The native backend in wheels is built for `x86-64-v2` rather than `x86-64-v3`: ~6%
-  slower, but it does not fault on pre-Haswell CPUs. Building from a checkout still
-  defaults to `v3`.
+- The native backend in wheels is built for `x86-64-v2` rather than `x86-64-v3`. That is
+  about 6% slower, but it does not fault on pre-Haswell CPUs. Building from a checkout
+  still defaults to `v3`.
 
 ### Fixed
 - The tester server bound to all interfaces while printing `localhost`, exposing
