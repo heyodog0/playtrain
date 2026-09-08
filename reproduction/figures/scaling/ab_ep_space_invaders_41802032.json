@@ -1,8 +1,0 @@
-[
-  {
-    "workers": 16,
-    "envs": 2048,
-    "threads": 80,
-    "decisions_per_s": 265350
-  }
-]

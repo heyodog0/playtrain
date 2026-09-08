@@ -37,6 +37,10 @@
 >
 > Runs are selected **by config content, never by directory prefix**. Prefix globbing has
 > twice dropped a whole arm of the comparison with no error.
+>
+> **The rest of this file is the per-artifact index, and it is stale.** It was written
+> 2026-08-10, before the EnvPool re-framing, the adv2 adoption and the engine tier. The
+> scripts it names are right. Its numbers, and some of its paths, are not.
 
 One row per artifact: what draws it, what it reads, and whether a clone is
 enough. Written 2026-08-10 after auditing all 15.
