@@ -104,12 +104,17 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## F. Reproduction folder
 
-- [ ] **F1. Skeleton** `[me]` — `reproduction/{README,data,figures,measure}`, split
+- [x] **F1/F3. Figure reproduction** — DONE: `reproduction/figures/` holds the 150
+      cluster tool scripts + `results/`, and `fetch_data.sh` pulls the 277 MB of run data
+      from a release asset (sha256 verified). Verified end to end from a clean copy:
+      fetch, unpack, redraw Figure 4 with all four panels and both trainers.
+      Superseded: **F1. Skeleton** `[me]` — `reproduction/{README,data,figures,measure}`, split
       tier 1 (redraw from committed data, laptop, minutes) from tier 2 (re-measure,
       cluster hardware).
 - [ ] **F2. Fold in `playtrain-paper`** `[you]` — ~19 MB, 16 MB of which is three
       learning-curve JSONs. One fewer repo to discover.
-- [ ] **F3. Cull its `tools/`** `[me]` — ~30 scripts; keep only those drawing a paper artifact.
+- [ ] **F3b. Cull `reproduction/figures/tools/`** `[me]` — 150 scripts, many one-off
+      analogen experiments. Keep only those drawing a paper artifact.
 - [ ] **F4. `analogen` dependency** `[you]` — `REPRO.md` cites `heyodog0/analogen`
       branch `handoff-2026-08-09` for the JAX baseline. Publish it or give that figure
       another reproduction path.

@@ -1,5 +1,16 @@
 # Reproducing every figure and table in the ICLR paper
 
+> **Start here.** The figure code and the data it reads are in
+> [`reproduction/figures/`](reproduction/figures/). Run
+> `bash reproduction/figures/fetch_data.sh` once to download the run data (277 MB,
+> published as a release asset rather than committed), then follow
+> [`reproduction/figures/README.md`](reproduction/figures/README.md).
+>
+> The rest of this file is the per-artifact index. **It was written 2026-08-10 and is
+> stale**: it predates the EnvPool re-framing, the adv2 adoption and the engine tier, so
+> its numbers and some of its paths no longer match the paper. The scripts it names are
+> right; the values are not.
+
 One row per artifact: what draws it, what it reads, and whether a clone is
 enough. Written 2026-08-10 after auditing all 15.
 
