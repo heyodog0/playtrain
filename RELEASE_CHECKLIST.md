@@ -44,7 +44,10 @@ Working doc for the public release. **Delete this file before publishing.**
       `fig_schematic.py`. `count_tokens.py` and `.gitignore` repointed. ~~`[me]`~~ — `games/logs/` (167 files, 3.7 MB),
       `results/` (2), study harness (`tools/study-*`, `STUDY.md`, `build-study.mjs`,
       `verify-replay.mjs`, `replay-video.mjs`, `api/session.js`).
-- [ ] **B5. Trim the justfile** `[me]` — split `install` from `install-web`, drop
+- [x] **B5. Trim the justfile** — DONE: 232 -> 169 lines, 33 recipes; `install`
+      no longer needs pnpm (`install-web` does), dropped `share`/`sync-analogen`/
+      16 study recipes/`site`+`site-serve`, added `wheel`. Your WIP is in
+      `git stash@{0}`. ~~`[me]`~~ — split `install` from `install-web`, drop
       `sync-analogen` (names a private repo) and `share` (deploys to your Vercel),
       move the `study-*` block with B4, add `just wheel`.
 
@@ -54,12 +57,16 @@ Working doc for the public release. **Delete this file before publishing.**
       path fixes, `PLAYTRAIN_ARCH`, CI workflow with smoke test. Verified in a clean venv.
 - [x] **C2. uv-native** — PEP 723 `examples/quickstart.py`, `uvx playtrain`,
       `playtrain[gen]` extra, git-URL dependency replaced.
-- [ ] **C3. Claim PyPI names** `[you]` — `playtrain` and `playtrain-trainers` are both free.
+- [~] **C3. Claim PyPI names** `[you]` — account created; pending publishers being
+      configured. NOTE: a pending publisher does NOT reserve the name — it is only
+      claimed by the first real upload.
 - [ ] **C4. AVX2 decision** `[you]` — wheels default to `x86-64-v2`; `v3` is ~6% faster
       but SIGILLs on pre-Haswell. Confirm or override.
 - [ ] **C5. Trainers standalone** `[me]` — verify `pip install playtrain-trainers`
       resolves from PyPI with no sibling checkout.
-- [ ] **C6. Tag `v0.1.0`, publish** `[you]` — CI builds wheels; upload to PyPI.
+- [~] **C6. Tag `v0.1.0`, publish** `[you]` — trusted-publishing job added to
+      `wheels.yml` (tags only, gated on the smoke test). Needs: a GitHub environment
+      named `pypi` in the repo, the public repo to exist, and A5 settled first.
 
 ## D. Docs
 
@@ -118,9 +125,4 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## Open, needs you
 
-- `tools/build-embed.mjs` and `tools/build-site.mjs` build the project site, which now
-  lives in `playtrain-website`. `git rm` refused (you have local edits to
-  `build-embed.mjs`); current copies are in `playtrain-website/tools/`, uncommitted there.
-- `justfile` has your uncommitted edits, so B5 (the trim) is not started.
-- `reproduction/data/generation-logs/` is 3.7 MB of LLM prompts + raw output across
-  167 files. Gzipping would take it to roughly 0.5 MB, as the study data went 6.2 -> 0.4.
+- A5 (which `breakout.js` is canonical) still blocks the notebook and the first PyPI upload.
