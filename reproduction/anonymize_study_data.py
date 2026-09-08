@@ -17,6 +17,7 @@ What is removed
   consent.at,          absolute timestamps; cross-referenceable against Prolific
   startedAt, finishedAt, feedback.at
   consent.doNotRecontact  operational, not scientific
+  feedback free text   technicalIssues, confusingParts, suggestions
 
 What is transformed
   filename, participantId value -> p01..pNN, assigned by session start order
@@ -26,11 +27,14 @@ What is transformed
 
 What is kept, verbatim
   order, blocks (every episode: game, seed, frames, score, return, terminal
-  flags, the full action and key traces), quiz, preflight, screen, feedback
-  free text, gender / gaming experience / gaming frequency, partial.
+  flags, the full action and key traces), quiz, preflight, screen,
+  feedback.technicalIssueLevel, gender / gaming experience / gaming frequency,
+  partial.
 
-The free-text responses were read in full before release and contain no
-identifying information; they are published unedited.
+The free-text answers were read in full and contain no identifying information,
+but nothing in the analysis reads them, so they are dropped rather than
+published. The categorical technicalIssueLevel is kept, since it is the field
+that says whether a session hit problems.
 """
 from __future__ import annotations
 
@@ -84,6 +88,10 @@ def anonymize(raw: dict, pid: str) -> dict:
     if isinstance(out.get("feedback"), dict):
         feedback = dict(out["feedback"])
         feedback["atSeconds"] = offset(feedback.pop("at", None))
+        # Free text is dropped. It carries no identifiers and no analysis reads it,
+        # so publishing it is risk without purpose.
+        for key in ("technicalIssues", "confusingParts", "suggestions"):
+            feedback.pop(key, None)
         out["feedback"] = feedback
 
     if isinstance(out.get("demographics"), dict):
