@@ -276,12 +276,6 @@ Open an [issue](https://github.com/heyodog0/playtrain/issues) for bugs and featu
 requests, or a [discussion](https://github.com/heyodog0/playtrain/discussions) for
 questions.
 
-## Contributing
-
-Install as above, then run the test suite with `pytest tests/`. New games go in
-`examples/games/js/`. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a new game has
-to satisfy. Validate one with `playtrain-validate --game <name>`.
-
 ## Version policy
 
 PlayTrain is versioned `0.x`. The Python API may change between minor releases.
