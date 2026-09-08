@@ -101,7 +101,7 @@ pipeline is the `gen` extra.
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | The generation workspace and reference material, not the shipped catalog. |
-| `benchmarks/` | Throughput measurement. One script per claim in the paper; each states in its docstring what it measures and which access path. |
+| `benchmarks/` | Throughput measurement. One script per claim in the paper. Each states in its docstring what it measures and which access path. |
 | `reproduction/` | Figure code, paper data, the human-study harness, and the sweeps that produced the published figures. |
 | `tools/` | Development scripts: the playtest UI, validation, profiling. |
 | `tests/` | The test suite. |
