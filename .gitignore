@@ -61,3 +61,8 @@ checkpoints_ppo/
 # website build output; regenerate with bash website/build.sh
 website/site/
 reproduction/data/generation-logs/*.json
+
+# Fetched by reproduction/figures/fetch_data.sh, never committed.
+reproduction/figures/playtrain-figure-data.tar.gz
+reproduction/figures/outputs/
+reproduction/out/

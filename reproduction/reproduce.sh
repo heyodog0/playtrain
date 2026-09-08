@@ -12,6 +12,9 @@ OUT="$PWD/out"; mkdir -p "$OUT"
 PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
+if [ "${1:-}" = "--all" ] && [ ! -f figures/outputs/percmd.json ]; then
+  echo "fetching run data (277 MB, once)"; bash figures/fetch_data.sh || exit 1
+fi
 step() { printf '\n=== %s\n' "$1"; }
 done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail+1)); echo "    FAILED"; fi; }
 
@@ -20,9 +23,13 @@ step "Figure 4, environment efficiency  (paper: 2.19x ProcGen, 12.62x ALE)"
     --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out "$OUT" ) ; done_ $?
 
 step "Environment cost breakdown"
-( cd figures && $PY python tools/plot_env_cost.py \
-    ../out/_percmd.json ../out/_logic.json ../out/_grid.json "$OUT/fig_env_cost" ) 2>/dev/null
-if [ ! -f "$OUT/fig_env_cost.pdf" ]; then echo "    skipped (needs fetch_data.sh)"; else done_ 0; fi
+if [ -f figures/outputs/percmd.json ]; then
+  ( cd figures && $PY python tools/plot_env_cost.py \
+      outputs/percmd.json outputs/logic_probes.json outputs/grid.json "$OUT/fig_env_cost" )
+  done_ $?
+else
+  echo "    skipped: run 'bash reproduction/figures/fetch_data.sh' first"
+fi
 
 step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
 ( cd figures/tables && uv run --no-project python t1a_agg.py \
@@ -43,10 +50,11 @@ PYEOF
 done_ $?
 
 if [ "${1:-}" = "--all" ]; then
-  step "Learning-curve composite (downloads 277 MB the first time)"
-  bash figures/fetch_data.sh && ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
+  step "Learning-curve composite"
+  ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
   step "Per-game suite grids"
-  ( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null; $PYTB python tools/plot_suite_grid.py ) ; done_ $?
+  ( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null
+    $PYTB python tools/plot_suite_grid.py && $PYTB python tools/plot_suite_grid3.py ) ; done_ $?
 fi
 
 printf '\n%s\n' "----"
