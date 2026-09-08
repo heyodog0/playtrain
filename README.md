@@ -15,13 +15,12 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 
 ## Two halves
 
-**`playtrain.runtime`** runs p5.js and Matter.js games as Gymnasium environments with no
-browser. The default backend embeds QuickJS and a native rasterizer, and
-`NativeVecEnv` is the vectorized backend used for training. A portable Node backend
-exists as a fallback for machines without the native build.
-
-**`playtrain.gen`** writes and modifies those games through an LLM, with a five-check
-validation harness that gates which generated games enter the catalog.
+- **`playtrain.runtime`** runs p5.js and Matter.js games as Gymnasium environments with
+  no browser. The default backend embeds QuickJS and a native rasterizer, and
+  `NativeVecEnv` is the vectorized backend used for training. A portable Node backend is
+  the fallback for machines without the native build.
+- **`playtrain.gen`** writes and modifies those games through an LLM, with a five-check
+  validation harness that gates which generated games enter the catalog.
 
 The catalog has 34 games. Some are clones of Atari and ProcGen games, some are original,
 and several ship as deliberate variants of a base game. The project page is at
@@ -145,35 +144,32 @@ just variants                                            # list variants
 
 ## Design
 
-**Action space.** Action spaces are data, not code. They live in
-`runtime/action_spaces.json` and are chosen per environment, so adding one means editing
-a JSON file rather than touching the runtime:
+- **Action space.** Action spaces are data, not code. They live in
+  `runtime/action_spaces.json` and are chosen per environment, so adding one means
+  editing a JSON file rather than touching the runtime:
 
-```python
-GameEnv(game="caveflyer", action_space="thrust10")
-```
+  ```python
+  GameEnv(game="caveflyer", action_space="thrust10")
+  ```
 
-Five ship today. `default8` is the abstract directional and button set every game in the
-catalog is authored against, which is what lets one policy head train across the whole
-catalog. `thrust10` adds rotate-and-thrust, which `default8` cannot express.
-`aimgrid18` is a coarse aiming grid. `mouse2d` and `gamepad2s` are continuous box spaces
-over pointer and axis channels.
+  Five ship today. **`default8`** is the abstract directional and button set every game
+  in the catalog is authored against, which is what lets one policy head train across
+  the whole catalog. **`thrust10`** adds rotate-and-thrust, which `default8` cannot
+  express. **`aimgrid18`** is a coarse aiming grid. **`mouse2d`** and **`gamepad2s`**
+  are continuous box spaces over pointer and axis channels.
 
-A discrete action is a set of held key codes for the frame, optionally with a press key
-that also fires a `keyPressed()` event, and optionally with analog pointer or axis
-values. Analog values are quantized to uint16 at the wire, so replay and the
-cross-engine determinism gate stay bit-exact even under continuous control.
-
-**Observations.** 64x64x3 RGB, matching ProcGen conventions. One step is one rendered
-frame, with no frame skip and no frame stacking.
-
-**Determinism.** The same seed and the same actions produce the same trajectory, across
-engine paths and machines. This is what makes human and agent results comparable, and
-`native/gate_qjs.sh` checks it.
-
-**Validation.** A generated game enters the catalog only after passing five checks on
-shape, action space, determinism, throughput and episode bounds.
-[GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract it is written against.
+  A discrete action is a set of held key codes for the frame, optionally with a press
+  key that also fires a `keyPressed()` event, and optionally with analog pointer or axis
+  values. Analog values are quantized to uint16 at the wire, so replay and the
+  cross-engine determinism gate stay bit-exact even under continuous control.
+- **Observations.** 64x64x3 RGB, matching ProcGen conventions. One step is one rendered
+  frame, with no frame skip and no frame stacking.
+- **Determinism.** The same seed and the same actions produce the same trajectory,
+  across engine paths and machines. This is what makes human and agent results
+  comparable, and `native/gate_qjs.sh` checks it.
+- **Validation.** A generated game enters the catalog only after passing five checks on
+  shape, action space, determinism, throughput and episode bounds.
+  [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract it is written against.
 
 ## Layout
 
