@@ -59,24 +59,28 @@ Games are written and modified by a language model. Install the extra with
 `pip install -e ".[gen]"` and set `GEMINI_API_KEY`. The runtime and the trainers never
 need a key.
 
-Fork an existing game with a prompt:
+Fork an existing game with a prompt, play and refine it in the browser, then promote it
+into the catalog:
+
+```console
+$ just variant breakout "three balls at once, losing one costs a life" breakout.multi
+$ just tester
+$ just promote breakout.multi
+```
+
+`just tester` serves a UI on localhost where you play the game, read its source, and send
+refinement prompts. `just gen-game` writes a new game from a catalog entry instead of
+forking one, and `just validate-one <game>` runs the five checks that gate what ships.
+
+Every recipe is a one-line wrapper, so [`just`](https://just.systems) is optional. The
+same three steps without it:
 
 ```console
 $ playtrain-variant --parent breakout --name breakout.multi \
     --prompt "three balls at once, losing one costs a life"
-```
-
-Play it and refine it in the browser, then promote it into the catalog:
-
-```console
 $ python tools/tester.py
 $ playtrain-variant --promote breakout.multi
 ```
-
-`tools/tester.py` serves a UI on localhost where you play the game, read its source, and
-send refinement prompts. `playtrain-generate` writes a new game from a catalog entry
-instead of forking one. `playtrain-validate --game <name>` runs the five checks that gate
-what ships. These are all installed by the install above, so no extra tooling is needed.
 
 ## Installation
 
