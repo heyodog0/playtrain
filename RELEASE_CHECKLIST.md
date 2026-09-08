@@ -23,9 +23,12 @@ Working doc for the public release. **Delete this file before publishing.**
       README, or drop the directory.
 - [ ] **A4. Hardcoded password** `[me]` — `middleware.js:24`. Deleting the file
       (see B3) resolves it.
-- [ ] **A5. Catalog divergence** `[you]` — 9 games differ between `examples/games/js`
-      (34, default) and `games/js` (73), including `breakout`. Pick one canonical tree.
-      Blocks the notebook, which reads one and runs the other.
+- [x] **A5. Catalog divergence** — RESOLVED: `examples/games/js` is canonical.
+      Evidence: all 87 paper configs set `native_games_dir` to it, `study-audit.mjs`
+      defaults to it, the runtime defaults to it, and the `PLAYTRAIN_GAMES_DIR` export
+      in the Slurm launchers is dead (points at a path that does not exist, and the
+      explicit arg wins anyway). `games/js` is the generation workspace: no longer
+      bundled in the wheel, now carries a README saying so.
 
 ## B. Cuts — ~675 files / 33 MB → ~300 files / ~3 MB
 
@@ -87,11 +90,14 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## E. Notebook
 
-- [ ] **E1. Cut the scaling cell** `[me]` — Colab is 1 physical core + HT; it measured
+- [x] **E1. Cut the scaling cell** — DONE: replaced with `lscpu` + a single-thread
+      number, so the hardware explains itself. ~~`[me]`~~ — Colab is 1 physical core + HT; it measured
       44% efficiency, which reads as a refutation of the paper's 99-100%.
-- [ ] **E2. Reframe the training cell** `[me]` — 1.79M steps produced no learning
+- [x] **E2. Reframe the training cell** — DONE: 300k steps, framed as throughput +
+      loop-wiring, with the 1.79M-step flat-return result stated. ~~`[me]`~~ — 1.79M steps produced no learning
       (return flat 87.5 → 95.5 vs random ~79). Make it a throughput/smoke run.
-- [ ] **E3. Fix the source/env mismatch** `[me]` — depends on A5.
+- [x] **E3. Fix the source/env mismatch** — DONE: reads `examples/games/js`, and the
+      clone now lands in `/content/src` so it cannot shadow the package. ~~`[me]`~~
 - [ ] **E4. Host the checkpoint** `[you]` — step 5 downloads from a release asset URL
       that does not exist yet.
 - [ ] **E5. Real Colab run** `[me]` — re-run end to end once the repos are public.
@@ -125,4 +131,3 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## Open, needs you
 
-- A5 (which `breakout.js` is canonical) still blocks the notebook and the first PyPI upload.
