@@ -22,7 +22,7 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 - **`playtrain.gen`** writes and modifies those games through an LLM, with a five-check
   validation harness that gates which generated games enter the catalog.
 
-The catalog has 34 games. Some are clones of Atari and ProcGen games, some are original,
+The catalog has 35 games. Some are clones of Atari and ProcGen games, some are original,
 and several ship as deliberate variants of a base game. The project page is at
 [playtrain.org](https://playtrain.org).
 
@@ -62,9 +62,9 @@ Either way this builds the native backend as part of the install, which takes ab
 minute the first time. The backend is the default runtime engine, not an optional
 add-on, which is why clang and cargo are needed.
 
-Training also needs
-[playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
-pipeline is the `gen` extra, `pip install -e ".[gen]"`.
+The LLM generation pipeline is the `gen` extra, `pip install -e ".[gen]"`. Training is a
+separate package, [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers),
+covered below.
 
 ## Quickstart
 
@@ -91,6 +91,39 @@ venv = NativeVecEnv(game="flappy_bird", num_envs=64, num_threads=8)
 venv.reset(0)                      # seeds, positional
 obs, reward, terminated, truncated = venv.step(actions)
 ```
+
+## Training
+
+The trainers are a separate package,
+[playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). It depends on
+`playtrain` and reaches environments only through `playtrain.runtime`, so the split is
+that this repo owns the games and that one owns the algorithms. Installing it pulls this
+package in.
+
+```console
+$ git clone https://github.com/heyodog0/playtrain-trainers && cd playtrain-trainers
+$ uv venv && uv pip install -e .
+$ python -m playtrain_trainers.train_impala --config configs/impala_quickstart.json
+```
+
+Two are provided: IMPALA with V-trace, whose math is bit-exact against FAIR's torchbeast,
+and PPO. Both are configured by a JSON file and both write TensorBoard scalars, where
+`charts/mean_episode_return` is the number to watch.
+
+A run names a game from this catalog:
+
+```json
+{ "game": "breakout", "env_backend": "playtrain", "inference_mode": "vec" }
+```
+
+`env_backend` has to be `"playtrain"`, since it defaults to `"minigrid"`. A game you
+generated yourself is trained by naming it and pointing at its directory:
+
+```json
+{ "game": "my_game", "vec_games_dir": "games/js" }
+```
+
+That repo's README has the full config schemas for both trainers.
 
 ## Making a game
 
