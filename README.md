@@ -51,6 +51,29 @@ obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 `NativeVecEnv` is the vectorized backend used for training. See the
 [documentation][docs] for it, the catalog, and writing your own game.
 
+## Making a game
+
+Games are written and modified by a language model. Set `GEMINI_API_KEY` and install the
+extra with `uv sync --extra gen`. The runtime and the trainers never need a key.
+
+Fork an existing game with a prompt:
+
+```console
+$ just variant breakout "three balls at once, losing one costs a life" breakout.multi
+```
+
+Refine one against feedback, then promote it into the catalog:
+
+```console
+$ just tester
+$ just promote breakout.multi
+```
+
+`just tester` serves a browser UI on localhost where you play the game, see the source,
+and send refinement prompts. `just gen-game` writes a new game from a catalog entry
+instead of forking. `just validate-one <game>` runs the five checks that gate what
+ships, and `just play <game>` opens any game to play yourself.
+
 ## Installation
 
 ```console
@@ -100,9 +123,6 @@ questions.
 Run `just install` for the development setup and `just test` for the test suite. New
 games go in `examples/games/js/`. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a
 new game has to satisfy. Validate one with `just validate-one <game>`.
-
-A game's behavior is fixed within a minor release so published results stay comparable.
-A change that alters dynamics needs a version bump and a note in the release notes.
 
 ## Version policy
 
