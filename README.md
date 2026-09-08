@@ -123,7 +123,8 @@ $ playtrain-validate --game breakout
 $ python tools/tester.py
 ```
 
-The game is written to `games/js/`, the workspace. `playtrain-validate` runs the five
+The game is written to `games/js/`, the workspace, not to the catalog. Promote it with
+`playtrain-variant --promote <name>` once it passes. `playtrain-validate` runs the five
 checks that gate the catalog, and the tester lets you play it and send refinements.
 Drop `--name` to generate every entry in the catalog. `just gen-game <catalog> <name>`
 is the shorthand.
@@ -214,7 +215,7 @@ just variants                                            # list variants
 | `native/` | The QuickJS host, the build scripts, and the determinism gates. `experiments/` holds the tuning-round job scripts and is not needed to build. |
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
-| `games/` | The generation workspace and reference material, not the shipped catalog. |
+| `games/` | Not the catalog and not games. Inputs and workspace for the generation pipeline: `catalogs/` to write from, `procgen_src/` as C reference, and an empty `js/` where `playtrain-generate` writes. |
 | `benchmarks/` | Throughput measurement. One script per claim in the paper. Each states in its docstring what it measures and which access path. |
 | `reproduction/` | Figure code, paper data, the human-study harness, and the sweeps that produced the published figures. |
 | `tools/` | Development scripts: the playtest UI, validation, profiling. |
