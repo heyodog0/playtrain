@@ -60,3 +60,4 @@ checkpoints_ppo/
 
 # website build output; regenerate with bash website/build.sh
 website/site/
+reproduction/data/generation-logs/*.json
