@@ -476,14 +476,14 @@ struct VecHost {
   // autoreset: an episode ending mid-skip leaves a stale canvas, but
   // SAME_STEP autoreset overwrites the obs with the fully-rendered reset
   // frame before anything is surfaced. Enforced by the Python wrapper.
-  // Exception class (none in the analogen catalog): games accumulating into
+  // Exception class (none in the consumer catalog): games accumulating into
   // createGraphics layers across frames.
   int render_skip = 0;
   // Autoreset seeding policy (SAME_STEP autoreset + vec_reset fallbacks):
   //   mode 0 = legacy formula idx*100003+steps+1 (default, original behavior)
-  //   mode 1 = fixed_seed on every autoreset (analogen fixed_env_seed)
+  //   mode 1 = fixed_seed on every autoreset (a consumer's fixed_env_seed)
   //   mode 2 = sample uniformly from seed_pool via per-env splitmix64
-  //            (analogen train_pool / SeedSetWrapper)
+  //            (a consumer's train_pool / SeedSetWrapper)
   int seed_mode = 0;
   uint32_t fixed_seed = 0;
   std::vector<int32_t> seed_pool;

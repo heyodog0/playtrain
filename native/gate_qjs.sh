@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # gate_qjs.sh — differential bit-exact gate for the QuickJS backend.
-# Runs the JS (V8, wasm rasterizer — the production path analogen models were
+# Runs the JS (V8, wasm rasterizer — the production path models were
 # trained on) reference and qjs_host on matched seeds+actions and asserts
 # byte-identical trajectories (reward/term/score/lives/state + obs frame hash).
 #   ./gate_qjs.sh <game> [nsteps] [seed1 seed2 ...]
 #   ./gate_qjs.sh --all [nsteps]            # every game in the games dir
 #
 # Games resolve against $PLAYTRAIN_GAMES_DIR, falling back to the bundled
-# examples/games/js — matching the Python runtime's precedence. The analogen
+# examples/games/js — matching the Python runtime's precedence. The consumer
 # games live in their own repo, so gate them by pointing the var at it:
-#   PLAYTRAIN_GAMES_DIR=../../analogen/games/js ./gate_qjs.sh --all
+#   PLAYTRAIN_GAMES_DIR=../../a consumer repo/games/js ./gate_qjs.sh --all
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -35,7 +35,7 @@ gate_one() {
   return $fail
 }
 
-if [ "${1:-}" = "--all" ] || [ "${1:-}" = "--all-analogen" ]; then
+if [ "${1:-}" = "--all" ] || [ "${1:-}" = "--all-a consumer repo" ]; then
   NSTEPS="${2:-$N}"
   overall=0
   n=0

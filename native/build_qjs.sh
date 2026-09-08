@@ -9,7 +9,7 @@ RASTER_LIB="../crates/rasterizer/target/release/libplaytrain_rasterizer.a"
 
 # frozen transcendentals (vendored fdlibm/openlibm) — same source native + wasm so
 # pow/atan2/sin/cos are bit-identical across platforms/engines. Exposed as fm_*.
-# sin/cos were added when analogen_asteroids exposed that the psin/pcos
+# sin/cos were added when a generated asteroids clone exposed that the psin/pcos
 # polynomial in jsmath.h diverges from V8's fdlibm sine once game logic calls
 # Math.sin (the poly is only for rasterizer-internal geometry). fm_sin/fm_cos
 # are fdlibm with full Payne-Hanek reduction — the same lineage V8 ships.

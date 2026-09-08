@@ -266,10 +266,10 @@ class NativeVecEnv:
         """Configure how SAME_STEP autoreset picks each new episode's seed.
 
         mode="formula": legacy per-env formula (default host behavior).
-        mode="fixed":   every autoreset uses ``fixed_seed`` (analogen's
+        mode="fixed":   every autoreset uses ``fixed_seed`` (a consumer repo's
                         fixed_env_seed — memorize one instance).
         mode="pool":    uniform sample from ``pool`` via deterministic per-env
-                        splitmix64 streams derived from ``rng_seed`` (analogen's
+                        splitmix64 streams derived from ``rng_seed`` (a consumer repo's
                         train_pool / SeedSetWrapper — finite binding pool).
         """
         if mode == "formula":

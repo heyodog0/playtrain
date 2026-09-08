@@ -8,7 +8,7 @@
 //
 // Usage:
 //   node tools/build-pages.mjs                                     # examples/games/js -> dist/pages
-//   node tools/build-pages.mjs --games games/js --out dist/share --title "analogen games"
+//   node tools/build-pages.mjs --games games/js --out dist/share --title "a consumer repo games"
 //
 // Uses the same HTML templates as tools/play.mjs, so local `just play` and the
 // deployed site render identically.
@@ -29,7 +29,7 @@ function arg(flag, def) {
 const GAMES_DIR = resolve(arg('--games', join(REPO_ROOT, 'examples', 'games', 'js')));
 const OUT_DIR = resolve(arg('--out', join(REPO_ROOT, 'dist', 'pages')));
 // Default title = the project name: walk up from the games dir past container dirs.
-// …/analogen/games/js -> "analogen"; …/playtrain/examples/games/js -> "playtrain".
+// …/a consumer repo/games/js -> "a consumer repo"; …/playtrain/examples/games/js -> "playtrain".
 function projectName(dir) {
   const skip = new Set(['js', 'games', 'examples', 'src', 'catalogs']);
   const parts = dir.split(sep).filter(Boolean);

@@ -158,7 +158,7 @@ def test_vectorenv_same_step_final_observation():
 
 
 # ---------------------------------------------------------------------------
-# frame_skip + autoreset seed policy (added for the analogen IMPALA vec path)
+# frame_skip + autoreset seed policy (added for the a consumer repo IMPALA vec path)
 # ---------------------------------------------------------------------------
 
 def test_frame_skip_equals_k_single_steps():
@@ -200,8 +200,8 @@ def test_frame_skip_equals_k_single_steps():
     # into. This case was previously uncovered: the check only ever ran on pong,
     # which never calls createGraphics.
     #
-    # The game's canonical home is the sibling analogen repo; it is present here
-    # only when synced in (`just sync-analogen`), hence the skip rather than a
+    # The game's canonical home is the sibling a consumer repo repo; it is present here
+    # only when synced in from a consumer repo, hence the skip rather than a
     # hard dependency. native/gate_qjs.sh covers the same game for the OTHER
     # backend pair (node/V8 vs qjs_host) and can reach it in place via
     # PLAYTRAIN_GAMES_DIR.
@@ -209,14 +209,14 @@ def test_frame_skip_equals_k_single_steps():
 ])
 def test_frame_skip_matches_v8_production_path(game, frame_skip):
     """Cross-engine: NativeVecEnv(frame_skip=K) must match PlayTrainEnv
-    (node/V8 + wasm rasterizer, the path analogen models trained on) —
+    (node/V8 + wasm rasterizer, the path a consumer repo models trained on) —
     same obs bytes, reward, and flags per decision."""
     from playtrain.runtime.env import PlayTrainEnv
     from playtrain.runtime.native_vec_env import _resolve_games_dir
     K, STEPS = frame_skip, 60
     seed = 42
     if not (_resolve_games_dir(None) / f"{game}.js").exists():
-        pytest.skip(f"{game}.js not present (sync it in with `just sync-analogen`)")
+        pytest.skip(f"{game}.js not present (sync it in with `just sync-a consumer repo`)")
     vec = NativeVecEnv(game, num_envs=1, frame_skip=K,
                        max_steps=2000)
     try:

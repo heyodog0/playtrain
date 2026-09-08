@@ -1,7 +1,7 @@
 // raster.mjs — a tiny pure-JS 2D rasterizer, drop-in for the subset of node-canvas
 // that p5-shim.mjs uses. Zero native deps (no Cairo), deterministic across platforms.
 //
-// WHY: profiling the floor games (miner/chaser/analogen_nomemory_v1) showed 57-73% of
+// WHY: profiling the floor games (miner/chaser and similar) showed 57-73% of
 // every frame is rasterization through node-canvas/Cairo — dominated by rect/ellipse/line.
 // The shim enumerates only ~10 primitives, so Cairo's general path machinery is overkill.
 // This owns exactly that surface. Enable with PLAYTRAIN_RASTERIZER=js.

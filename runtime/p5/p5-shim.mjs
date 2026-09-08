@@ -162,7 +162,7 @@ function _rgb255(args) {
 // Mirrors native/runtime/p5.cpp so the Node/browser shim and the QuickJS host
 // expose the SAME capability — a game that caches static content in a layer must
 // not simply fail to load on the portable backend (it did: all four validate
-// checks failed on analogen_platformer_easy).
+// checks failed on a generated platformer).
 //
 // Layers are allocated at the MAIN canvas's DEVICE scale, not 1:1 logical. Both
 // backends rasterize directly at _RASTER_RES (the obs size) rather than at the

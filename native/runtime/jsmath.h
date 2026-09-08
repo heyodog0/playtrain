@@ -59,7 +59,7 @@ inline double atan2(double y, double x) { return fm_atan2(y, x); }
 inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  // deterministic (games use small coords)
 
 // GAME-VISIBLE sin/cos must be fdlibm (what V8 gives Math.sin), NOT the
-// psin/pcos polynomial: analogen_asteroids diverged from the V8 reference the
+// psin/pcos polynomial: a generated asteroids clone diverged from the V8 reference the
 // moment accumulated ship angles hit the poly's error. psin/pcos remain the
 // rasterizer's INTERNAL geometry (crates/rasterizer lib.rs, p5 shim _rsin/
 // _rcos) — that pair is bit-identical across engines because both rasterizer

@@ -8,7 +8,7 @@
 // A bare <game_basename> resolves against $PLAYTRAIN_GAMES_DIR, falling back to
 // the bundled examples/games/js — the same precedence the Python runtime uses
 // (_resolve_games_dir in src/playtrain/runtime/native_vec_env.py). That lets the
-// gate cover consumer-repo games (e.g. ../analogen/games/js) without symlinking
+// gate cover consumer-repo games (e.g. ../a consumer repo/games/js) without symlinking
 // them in. An argument ending in .js is used as a path verbatim.
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
