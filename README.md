@@ -145,12 +145,24 @@ just variants                                            # list variants
 
 ## Design
 
-**Action space.** `Discrete(8)` by default, an abstract directional and button set that
-is identical across every game, so one policy head trains on the whole catalog. Other
-spaces are declared in `runtime/action_spaces.json` and selected per environment with
-`action_space=`, including continuous box spaces over pointer and axis channels. Analog
-values are quantized to uint16 at the wire, so replay and the cross-engine determinism
-gate stay bit-exact even under continuous control.
+**Action space.** Action spaces are data, not code. They live in
+`runtime/action_spaces.json` and are chosen per environment, so adding one means editing
+a JSON file rather than touching the runtime:
+
+```python
+GameEnv(game="caveflyer", action_space="thrust10")
+```
+
+Five ship today. `default8` is the abstract directional and button set every game in the
+catalog is authored against, which is what lets one policy head train across the whole
+catalog. `thrust10` adds rotate-and-thrust, which `default8` cannot express.
+`aimgrid18` is a coarse aiming grid. `mouse2d` and `gamepad2s` are continuous box spaces
+over pointer and axis channels.
+
+A discrete action is a set of held key codes for the frame, optionally with a press key
+that also fires a `keyPressed()` event, and optionally with analog pointer or axis
+values. Analog values are quantized to uint16 at the wire, so replay and the
+cross-engine determinism gate stay bit-exact even under continuous control.
 
 **Observations.** 64x64x3 RGB, matching ProcGen conventions. One step is one rendered
 frame, with no frame skip and no frame stacking.
