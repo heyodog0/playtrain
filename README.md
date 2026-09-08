@@ -34,7 +34,9 @@ environment, edits a game's source, measures throughput, and trains an agent. No
 set up.
 
 To run locally, `examples/quickstart.py` takes one command and installs nothing
-system-wide. It builds the native backend, so clang and cargo need to be on PATH.
+system-wide. It needs [uv](https://docs.astral.sh/uv/), which reads the dependency
+header in the script, and it builds the native backend, so clang and cargo need to be
+on PATH.
 
 ```console
 $ uv run https://raw.githubusercontent.com/heyodog0/playtrain/main/examples/quickstart.py
@@ -78,10 +80,12 @@ ships, and `just play <game>` opens any game to play yourself.
 
 ```console
 $ git clone https://github.com/heyodog0/playtrain && cd playtrain
-$ uv venv && uv pip install -e .
+$ python3 -m venv .venv && .venv/bin/pip install -e .
 ```
 
-That builds the native backend as part of the install. The backend is the default
+Or with [uv](https://docs.astral.sh/uv/), `uv venv && uv pip install -e .`.
+
+Either way this builds the native backend as part of the install. The backend is the default
 runtime engine, not an optional add-on, so the install needs clang and cargo on PATH.
 It takes about a minute the first time.
 
