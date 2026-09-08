@@ -1,6 +1,6 @@
 # Human baseline study — anonymized sessions
 
-30 participants, one file each (`p01.json` … `p30.json`), recruited via Prolific
+30 participants, one gzipped file each (`p01.json.gz` … `p30.json.gz`), recruited via Prolific
 on 2026-08-05. Produced from the raw sessions by
 [`reproduction/anonymize_study_data.py`](../../anonymize_study_data.py); the raw
 files are not published.
@@ -22,3 +22,13 @@ participants and agents played identical tasks.
 
 The free-text responses were read in full before release and contain no
 identifying information. They are published unedited.
+
+Reading one:
+
+```python
+import gzip, json
+session = json.load(gzip.open("reproduction/data/study/p01.json.gz"))
+```
+
+Gzipped because the action traces make the set 6.2 MB uncompressed and 0.3 MB
+compressed.

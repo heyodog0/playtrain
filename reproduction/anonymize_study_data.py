@@ -35,6 +35,7 @@ identifying information; they are published unedited.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 from datetime import datetime
 from pathlib import Path
@@ -104,7 +105,11 @@ def main() -> int:
     args.dst.mkdir(parents=True, exist_ok=True)
     for i, (raw, path) in enumerate(loaded, start=1):
         pid = f"p{i:02d}"
-        (args.dst / f"{pid}.json").write_text(json.dumps(anonymize(raw, pid), indent=1))
+        # gzip: the action traces are 2000 ints per episode, so the set is 6.2 MB
+        # of JSON and 0.3 MB compressed. Nobody reads these by eye.
+        blob = json.dumps(anonymize(raw, pid), separators=(",", ":")).encode()
+        with gzip.open(args.dst / f"{pid}.json.gz", "wb", compresslevel=9) as fh:
+            fh.write(blob)
 
     print(f"wrote {len(loaded)} anonymized sessions to {args.dst}")
     return 0
