@@ -3,8 +3,19 @@
 > **Start here.** The figure code and the data it reads are in
 > [`reproduction/figures/`](reproduction/figures/). Run
 > `bash reproduction/figures/fetch_data.sh` once to download the run data (277 MB,
-> published as a release asset rather than committed), then follow
-> [`reproduction/figures/README.md`](reproduction/figures/README.md).
+> published as a release asset rather than committed), then run a plotter from
+> `reproduction/figures/tools/`, for example:
+>
+> ```
+> cd reproduction/figures
+> uv run --no-project --with matplotlib --with numpy --with pillow --with tensorboard \
+>    python tools/plot_main_composite.py outputs/figs/fig_main.png
+> ```
+>
+> Two cautions. `throughput_panels.py` refuses to draw when the committed data disagrees
+> with the values printed in the paper, which is deliberate. And runs are selected by
+> config content, never by directory prefix: prefix globbing has twice dropped a whole
+> arm of the comparison with no error.
 >
 > The rest of this file is the per-artifact index. **It was written 2026-08-10 and is
 > stale**: it predates the EnvPool re-framing, the adv2 adoption and the engine tier, so

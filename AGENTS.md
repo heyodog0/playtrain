@@ -44,7 +44,8 @@ double-buffered path.
   throughput number looks low, check that first.
 - **Three access paths cost very different amounts per step.** They are the C loop, the
   in-process threadpool, and the subprocess pipe, which is about 4x slower.
-  `BENCHMARKS.md` says which is which. Do not compare numbers across them.
+  Each script in `benchmarks/` names its path in its docstring. Do not compare
+  numbers across them.
 - **`getGameState()` returns `{score, lives, gameState}`.** That is reward bookkeeping,
   not an observation. Observations are rendered pixels.
 
@@ -58,7 +59,7 @@ double-buffered path.
 | `games/js/` | generation workspace, not shipped |
 | `native/` | QuickJS host, build scripts, determinism gates |
 | `crates/rasterizer/` | the Rust rasterizer |
-| `benchmarks/` | throughput measurement. `BENCHMARKS.md` has the methodology |
+| `benchmarks/` | throughput measurement, one script per paper claim |
 | `reproduction/` | paper data, figures, the human-study harness |
 | `tests/` | pytest suite |
 
@@ -77,4 +78,4 @@ uvx playtrain bench       # throughput, no install
 A game's dynamics must be identical across engine paths, machines, and releases. Agent
 and human results are only comparable because of that. `native/gate_qjs.sh` and
 `native/aotfork/gate_async.py` check it. Changing a game's behavior is a versioned
-decision. See CONTRIBUTING.md.
+decision: it needs a version bump and a release note.

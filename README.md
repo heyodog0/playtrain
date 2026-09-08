@@ -60,7 +60,7 @@ $ just install
 
 `just install` syncs the Python environment and builds the native backend. The native
 backend is the default runtime engine, not an optional add-on. It needs clang and cargo.
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+`just --list` shows the other recipes: tests, validation, benchmarks.
 
 Training also needs
 [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
@@ -78,7 +78,7 @@ pipeline is the `gen` extra.
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | The generation workspace and reference material, not the shipped catalog. |
-| `benchmarks/` | Throughput measurement, nine scripts. [BENCHMARKS.md](BENCHMARKS.md) states the methodology. |
+| `benchmarks/` | Throughput measurement. One script per claim in the paper; each states in its docstring what it measures and which access path. |
 | `reproduction/` | Figure code, paper data, the human-study harness, and the sweeps that produced the published figures. |
 | `tools/` | Development scripts: the playtest UI, validation, profiling. |
 | `tests/` | The test suite. |
@@ -97,9 +97,12 @@ questions.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the test suite, and
-how to add a game. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a new game has
-to satisfy.
+Run `just install` for the development setup and `just test` for the test suite. New
+games go in `examples/games/js/`. [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract a
+new game has to satisfy. Validate one with `just validate-one <game>`.
+
+A game's behavior is fixed within a minor release so published results stay comparable.
+A change that alters dynamics needs a version bump and a note in the release notes.
 
 ## Version policy
 
