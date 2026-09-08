@@ -212,7 +212,7 @@ just variants                                            # list variants
 | `examples/colab/` | The quickstart notebook. |
 | `src/playtrain/runtime/` | The environments: the Gymnasium classes and the vectorized backends. |
 | `src/playtrain/gen/` | Generation, variants, and refinement through an LLM. Includes the validation suite that gates what ships. |
-| `native/` | The QuickJS host, the build scripts, and the determinism gates. `experiments/` holds the tuning-round job scripts and is not needed to build. |
+| `native/` | The QuickJS host, the build scripts, and the determinism gates. |
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | Not the catalog and not games. Inputs and workspace for the generation pipeline: `catalogs/` to write from, `procgen_src/` as C reference, and an empty `js/` where `playtrain-generate` writes. |
