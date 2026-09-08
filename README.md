@@ -13,19 +13,19 @@ second on a single GPU node.
 PlayTrain is the artifact behind *An Efficient Reinforcement Learning Framework for
 LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 
-## Highlights
+## Two halves
 
-- Every environment is source you can read. It is a p5-style JavaScript file of about
-  200 lines, not a compiled binary.
-- You can modify a game in natural language. Fork `breakout` into "three balls at once"
-  and train on it. New test sets, procedural generation, and changed dynamics are all
-  edits to one file.
-- The same file is playable in a browser and trainable headless. Human and agent
-  performance are measured on identical tasks.
-- The API is ordinary Gymnasium. It has `reset`, `step`, and `Box` observations, so it
-  works with the trainer you already use.
-- The catalog has 34 games. Some are clones of Atari and ProcGen games. Others are
-  original.
+**`playtrain.runtime`** runs p5.js and Matter.js games as Gymnasium environments with no
+browser. The default backend embeds QuickJS and a native rasterizer, and
+`NativeVecEnv` is the vectorized backend used for training. A portable Node backend
+exists as a fallback for machines without the native build.
+
+**`playtrain.gen`** writes and modifies those games through an LLM, with a five-check
+validation harness that gates which generated games enter the catalog.
+
+The catalog has 34 games. Some are clones of Atari and ProcGen games, some are original,
+and several ship as deliberate variants of a base game. The project page is at
+[playtrain.org](https://playtrain.org).
 
 ## Getting started
 
@@ -40,47 +40,6 @@ on PATH.
 
 ```console
 $ uv run https://raw.githubusercontent.com/heyodog0/playtrain/main/examples/quickstart.py
-```
-
-```python
-from playtrain.runtime import GameEnv
-
-env = GameEnv(game="breakout")
-obs, info = env.reset(seed=0)
-obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-```
-
-`NativeVecEnv` is the vectorized backend used for training. See the
-[documentation][docs] for it, the catalog, and writing your own game.
-
-## Making a game
-
-Games are written and modified by a language model. Install the extra with
-`pip install -e ".[gen]"` and set `GEMINI_API_KEY`. The runtime and the trainers never
-need a key.
-
-Fork an existing game with a prompt, play and refine it in the browser, then promote it
-into the catalog:
-
-```console
-$ just variant breakout "three balls at once, losing one costs a life" breakout.multi
-$ just tester
-$ just promote breakout.multi
-```
-
-`just tester` serves a UI on localhost where you play the game, read its source, and send
-refinement prompts. `just gen-game` writes a new game from a catalog entry instead of
-forking one, and `just validate-one <game>` runs the five checks that gate what ships.
-
-[`just`](https://just.systems) installs into the same venv with `pip install rust-just`,
-or from brew, cargo or apt. Every recipe is a one-line wrapper, so it stays optional. The
-same three steps without it:
-
-```console
-$ playtrain-variant --parent breakout --name breakout.multi \
-    --prompt "three balls at once, losing one costs a life"
-$ python tools/tester.py
-$ playtrain-variant --promote breakout.multi
 ```
 
 ## Installation
@@ -104,14 +63,105 @@ Either way this builds the native backend as part of the install, which takes ab
 minute the first time. The backend is the default runtime engine, not an optional
 add-on, which is why clang and cargo are needed.
 
-[`just`](https://just.systems) is a convenience, never a requirement. `pip install
-rust-just` puts it in the same venv, `just install` does the same as the commands above,
-and `just --list` shows shorthands for the tests, validation, benchmarks and generation
-commands.
-
 Training also needs
 [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
-pipeline is the `gen` extra.
+pipeline is the `gen` extra, `pip install -e ".[gen]"`.
+
+## Quickstart
+
+```python
+from playtrain.runtime import GameEnv
+
+env = GameEnv(game="flappy_bird")
+obs, info = env.reset(seed=0)
+for _ in range(1000):
+    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+    if terminated or truncated:
+        obs, info = env.reset()
+env.close()
+```
+
+`obs` is a `(64, 64, 3)` uint8 array and the action is an integer in `[0, 8)`. For
+training, use the vectorized backend, which runs N environments on an in-process C++
+threadpool in a single process:
+
+```python
+from playtrain.runtime import NativeVecEnv
+
+venv = NativeVecEnv(game="flappy_bird", num_envs=64, num_threads=8)
+venv.reset(0)                      # seeds, positional
+obs, reward, terminated, truncated = venv.step(actions)
+```
+
+## Making a game
+
+Games are written and modified by a language model. Install the extra with
+`pip install -e ".[gen]"` and set `GEMINI_API_KEY`. The runtime and the trainers never
+need a key.
+
+Fork an existing game with a prompt, play and refine it in the browser, then promote it
+into the catalog:
+
+```console
+$ just variant breakout "three balls at once, losing one costs a life" breakout.multi
+$ just tester
+$ just promote breakout.multi
+```
+
+`just tester` serves a UI on localhost where you play the game, read its source, and send
+refinement prompts.
+
+Authoring is cheap. The six artifacts reported in the paper averaged under twenty cents
+and under six minutes of model time each.
+
+[`just`](https://just.systems) installs into the same venv with `pip install rust-just`,
+or from brew, cargo or apt. Every recipe is a one-line wrapper, so it stays optional. The
+same three steps without it:
+
+```console
+$ playtrain-variant --parent breakout --name breakout.multi \
+    --prompt "three balls at once, losing one costs a life"
+$ python tools/tester.py
+$ playtrain-variant --promote breakout.multi
+```
+
+## Common tasks
+
+```console
+# runtime
+just test                  # the pytest suite
+just validate              # the five checks over the catalog
+just bench                 # per-game throughput
+just play flappy_bird      # play a game yourself
+just build-native          # rebuild the native backend
+
+# generation
+just gen-game games/catalogs/atari_games.json breakout   # write a new game
+just gen-validate                                        # validate the generated catalog
+just variants                                            # list variants
+```
+
+`just --list` shows the rest.
+
+## Design
+
+**Action space.** `Discrete(8)` by default, an abstract directional and button set that
+is identical across every game, so one policy head trains on the whole catalog. Other
+spaces are declared in `runtime/action_spaces.json` and selected per environment with
+`action_space=`, including continuous box spaces over pointer and axis channels. Analog
+values are quantized to uint16 at the wire, so replay and the cross-engine determinism
+gate stay bit-exact even under continuous control.
+
+**Observations.** 64x64x3 RGB, matching ProcGen conventions. One step is one rendered
+frame, with no frame skip and no frame stacking.
+
+**Determinism.** The same seed and the same actions produce the same trajectory, across
+engine paths and machines. This is what makes human and agent results comparable, and
+`native/gate_qjs.sh` checks it.
+
+**Validation.** A generated game enters the catalog only after passing five checks on
+shape, action space, determinism, throughput and episode bounds.
+[GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract it is written against.
 
 ## Layout
 
@@ -132,9 +182,13 @@ pipeline is the `gen` extra.
 
 ## Reproducing the paper
 
-Every figure and table redraws from committed data on a laptop. See
-[REPRODUCING.md](REPRODUCING.md). Re-running the measurements needs the hardware they
-were measured on. That document says which hardware.
+```console
+$ bash reproduction/reproduce.sh
+```
+
+This redraws every measured figure and table and prints the paper's number beside the
+one it computed. Add `--all` to include the learning curves, which download 277 MB of
+run data first. See [REPRODUCING.md](REPRODUCING.md).
 
 ## Getting help
 
@@ -177,4 +231,3 @@ The native backend statically links quickjs-ng and openlibm. Their notices are i
 
 [paper]: https://arxiv.org/abs/XXXX.XXXXX
 [colab]: https://colab.research.google.com/github/heyodog0/playtrain/blob/main/examples/colab/playtrain_quickstart.ipynb
-[docs]: https://playtrain.org
