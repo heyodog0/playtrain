@@ -198,11 +198,6 @@ function updateLogic() {
 
   // Check Win Condition
   if (rectIntersect(player, goal)) {
-    // Terminal bonus. Without it reaching the goal pays nothing and truncates the
-    // episode, so a return-maximizing policy is actively discouraged from
-    // finishing: loitering among coins scores strictly better. 500 exceeds a
-    // perfect coin sweep (~9 chunks x 50) so finishing dominates farming.
-    score += 500;
     gameState = 'WIN';
   }
 }

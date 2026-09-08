@@ -18,7 +18,7 @@
 // GameEnv loads one game per process (game-env.mjs `gameLoaded`), so the parent groups
 // episodes by game and spawns one child per game.
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { dirname, resolve, join } from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -36,6 +36,19 @@ function arg(flag, def) {
 const GAMES_DIR = resolve(arg('--games',
   process.env.PLAYTRAIN_GAMES_DIR || join(REPO_ROOT, 'examples', 'games', 'js')));
 
+// A session can only be replayed against the revision of the game it was played on, and a
+// game that has been improved since is no longer that revision. study/games-at-study-time/
+// pins the sources the paper's sessions were collected on, for the games where the shipped
+// catalog has moved on; anything not pinned there comes from GAMES_DIR as normal. Pass
+// --no-pins to replay against the shipped catalog instead, which is the right thing when
+// you are asking how the CURRENT game scores rather than checking the recorded data.
+const PINS_DIR = join(__dirname, 'games-at-study-time');
+const USE_PINS = !process.argv.includes('--no-pins');
+function gamePath(game) {
+  const pinned = join(PINS_DIR, `${game}.js`);
+  return (USE_PINS && existsSync(pinned)) ? pinned : join(GAMES_DIR, `${game}.js`);
+}
+
 // ---------------------------------------------------------------------------
 // Child: verify every episode of a single game in a fresh process.
 // ---------------------------------------------------------------------------
@@ -50,7 +63,7 @@ if (process.argv.includes('--child')) {
 
   for (const ep of episodes) {
     const env = new GameEnv({
-      gamePath: join(GAMES_DIR, `${game}.js`),
+      gamePath: gamePath(game),
       frameSkip: ep.frameSkip ?? 1,
       maxSteps: ep.maxSteps ?? 2000,
     });
@@ -88,13 +101,25 @@ if (!files.length) {
 
 function runChild(game, episodes) {
   return new Promise((res, rej) => {
-    const p = spawn(process.execPath, [SELF, '--child', game, '--games', GAMES_DIR],
+    const argv = [SELF, '--child', game, '--games', GAMES_DIR];
+    if (!USE_PINS) argv.push('--no-pins');
+    const p = spawn(process.execPath, argv,
       { stdio: ['pipe', 'pipe', 'inherit'] });
     let out = '';
     p.stdout.on('data', d => { out += d; });
     p.on('close', code => code === 0 ? res(JSON.parse(out)) : rej(new Error(`${game}: exit ${code}`)));
     p.stdin.end(JSON.stringify(episodes));
   });
+}
+
+// Say which games are pinned. A replay that silently used a different source than the
+// one named on the command line is exactly the failure this whole file exists to catch.
+const pins = (USE_PINS && existsSync(PINS_DIR))
+  ? readdirSync(PINS_DIR).filter(f => f.endsWith('.js')).map(f => f.slice(0, -3))
+  : [];
+if (pins.length) {
+  console.log(`games from ${GAMES_DIR}`);
+  console.log(`  pinned to study/games-at-study-time/: ${pins.join(', ')} (--no-pins to override)`);
 }
 
 let totalEp = 0, totalBad = 0;

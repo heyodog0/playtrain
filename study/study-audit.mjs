@@ -18,7 +18,7 @@
 //
 // Exits non-zero on any mismatch or missing game, so it can gate a launch.
 
-import { readFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, existsSync, statSync, readdirSync } from 'fs';
 import { createHash } from 'crypto';
 import { spawnSync } from 'child_process';
 import { dirname, join, resolve } from 'path';
@@ -123,7 +123,17 @@ else if (positional[0]) {
 console.log(`reference: ${refLabel}`);
 console.log(`candidate: ${candLabel}\n`);
 
-let bad = 0, missing = 0;
+// Games whose study-time source is pinned in study/games-at-study-time/. A difference on
+// one of these is expected and handled, rather than an error.
+const PINS_DIR = join(__dirname, 'games-at-study-time');
+const pinned = {};
+if (existsSync(PINS_DIR)) {
+  for (const f of readdirSync(PINS_DIR)) {
+    if (f.endsWith('.js')) pinned[f.slice(0, -3)] = sha16(readFileSync(join(PINS_DIR, f)));
+  }
+}
+
+let bad = 0, missing = 0, pinnedDrift = 0;
 for (const g of GAMES) {
   const want = manifest.games[g];
   const got = candidate[g];
@@ -134,6 +144,14 @@ for (const g of GAMES) {
   }
   if (got.hash === want) {
     console.log(`  ok        ${g.padEnd(14)} ${want}${got.mtime ? '  ' + got.mtime : ''}`);
+  } else if (pinned[g] === want) {
+    // The candidate has moved on from the study, and study/games-at-study-time/ holds the
+    // revision the sessions were played on, so replay still checks the right file. Worth
+    // saying out loud every time -- an unpinned drift is a silent error, and a pinned one
+    // means the shipped game no longer scores the way the published numbers do.
+    console.log(`  pinned    ${g.padEnd(14)} study ${want}  !=  shipped ${got.hash}` +
+                `${got.mtime ? '  (' + got.mtime + ')' : ''}`);
+    pinnedDrift++;
   } else {
     console.log(`  MISMATCH  ${g.padEnd(14)} study ${want}  !=  candidate ${got.hash}` +
                 `${got.mtime ? '  (' + got.mtime + ')' : ''}`);
@@ -153,7 +171,12 @@ if (manifest.builtAt && !ref && !hashFile) {
 
 console.log();
 if (!bad && !missing) {
-  console.log(`PASS: all ${GAMES.length} games identical to what the study shipped.`);
+  console.log(`PASS: all ${GAMES.length} games match what the study shipped` +
+              (pinnedDrift ? `, ${pinnedDrift} of them through study/games-at-study-time/.` : '.'));
+  if (pinnedDrift) {
+    console.log('A pinned game scores differently in the shipped catalog than it did for the');
+    console.log('participants, so retraining it will not reproduce the published return.');
+  }
 } else {
   console.log(`FAIL: ${bad} mismatched, ${missing} missing.`);
   console.log('The humans and the agents did not play the same game. Nothing downstream detects');

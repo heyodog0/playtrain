@@ -105,10 +105,20 @@ is what `study-audit.mjs` compares to when there is no local build.
 
 This has already caught one drift. `vvvvvv` gained a terminal bonus of 500 points on
 2026-09-07, after the sessions were collected, which made 45 of the 1382 episodes stop
-reproducing while changing nothing else that was visible. The bonus is reverted here, so
-the shipped catalog is again the one the humans and the agents both played. Nothing but
-the audit detects an error of that shape: replay verification passes on either revision as
-long as both sides use the same one.
+reproducing while changing nothing else that was visible. The bonus is a deliberate
+improvement and the shipped catalog keeps it, so the study-time source is pinned in
+`study/games-at-study-time/` instead. `verify-replay.mjs` uses a pinned source in place of
+the shipped one and says so on every run, and the audit reports the game as `pinned`
+rather than as a mismatch. Pass `--no-pins` to replay against the shipped catalog, which
+is the right thing when you are asking how the current game scores rather than checking
+the recorded data.
+
+The consequence is worth stating plainly: `vvvvvv` in this repo no longer scores the way
+it did for the participants, so a `vvvvvv` agent retrained from the shipped catalog will
+not reproduce the published return. Every other game is unchanged.
+
+Nothing but the audit detects an error of this shape. Replay verification passes on either
+revision as long as both sides use the same one.
 
 ## Data
 
