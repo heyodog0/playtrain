@@ -18,15 +18,24 @@ if (_IS_NODE) { _IS_LE = (await import('os')).endianness() === 'LE'; }
 // node-canvas at all (a step toward dropping that dependency).
 let _RASTERIZER = _env('PLAYTRAIN_RASTERIZER') || (_IS_NODE ? 'wasm' : 'js');
 let createNodeCanvas;
+// Canvas factory for p5 WEBGL mode. Only the wasm rasterizer carries the 3D pipeline
+// (crates/rasterizer/src/three.rs); the pure-JS raster.mjs does not. In Node this is the
+// wasm backend itself; in the browser the bundler (tools/play-templates.mjs) inlines the
+// wasm for WEBGL games and hands us the instantiated exports as globalThis.__PT_WASM_EXPORTS,
+// while 2D games keep the pure-JS backend exactly as before.
+let createWebglCanvas = null;
 if (_RASTERIZER === 'cairo') {
   createNodeCanvas = (await import('canvas')).createCanvas;
 } else if (_RASTERIZER === 'wasm') {
   const m = await import('./raster-wasm.mjs');
-  if (m.wasmAvailable) { createNodeCanvas = m.createCanvas; }
+  if (m.wasmAvailable) { createNodeCanvas = m.createCanvas; createWebglCanvas = m.createCanvas; }
   else { _RASTERIZER = 'js'; createNodeCanvas = createJsCanvas; }
 } else {
   _RASTERIZER = 'js';
   createNodeCanvas = createJsCanvas;
+}
+if (!_IS_NODE && typeof globalThis.__PT_WASM_EXPORTS !== 'undefined' && typeof makeWasmBackend === 'function') {
+  createWebglCanvas = makeWasmBackend(globalThis.__PT_WASM_EXPORTS).createCanvas;   // bundler-provided
 }
 const _OWN_RASTER = _RASTERIZER === 'js' || _RASTERIZER === 'wasm';
 
@@ -48,6 +57,7 @@ function setRasterRes(n) {
 
 let _canvas = null;
 let _ctx = null;
+let _webgl = false;   // createCanvas(w, h, WEBGL): 3D calls forward to the rasterizer's rs_3d_*
 let _width = 0;
 let _height = 0;
 let _obsCanvas = null;
@@ -116,17 +126,36 @@ function colorArgs(args) {
 }
 
 // ---- Canvas creation ----
-function createCanvas(w, h) {
+function createCanvas(w, h, mode) {
   _width = w;
   _height = h;
+  _webgl = (mode === WEBGL);
+  let factory = createNodeCanvas;
+  if (_webgl) {
+    if (!createWebglCanvas) {
+      throw new Error('createCanvas(WEBGL): p5 WEBGL mode needs the wasm rasterizer (PLAYTRAIN_RASTERIZER=wasm, '
+        + 'or the inlined wasm in the browser bundle); the pure-JS/cairo backends have no 3D pipeline');
+    }
+    factory = createWebglCanvas;
+  }
   _canvas = _RASTER_RES
-    ? createNodeCanvas(w, h, _RASTER_RES, _RASTER_RES)
-    : createNodeCanvas(w, h);
+    ? factory(w, h, _RASTER_RES, _RASTER_RES)
+    : factory(w, h);
   _ctx = _canvas.getContext('2d');
   // logical -> device, for sizing offscreen layers and mapping image() blits
   _devSx = _canvas.width / w;
   _devSy = _canvas.height / h;
+  if (_webgl) _ctx.begin3d(w, h);   // mirrors p5::createCanvas(w, h, WEBGL)
   return { parent() {} };
+}
+
+// Channel values the way native/runtime/p5.cpp's color() rounds them (Math.round per
+// channel; gray expands to rgb; arrays unwrap). The 3D material/light calls take these,
+// never the rgba string the 2D path carries.
+function _rgb255(args) {
+  if (args.length === 1 && Array.isArray(args[0])) args = args[0];
+  if (args.length <= 2) { const v = Math.round(args[0]); return [v, v, v]; }
+  return [Math.round(args[0]), Math.round(args[1]), Math.round(args[2])];
 }
 
 // ---- offscreen graphics: createGraphics + setTarget/clearTarget + image ----
@@ -190,11 +219,40 @@ function background(...args) {
   _ctx.fillRect(0, 0, _width, _height);
   _ctx.restore();
   _invalidateStyleCache(); // save/restore reset context state outside our cache
+  if (_webgl) _ctx.clearDepth3d();   // p5 WEBGL background() clears the depth buffer too
 }
 
 function fill(...args) {
   _fillStyle = colorArgs(args);
+  if (_webgl) { const c = _rgb255(args); _ctx.fill3d(c[0], c[1], c[2]); }
 }
+
+// ---- p5 WEBGL mode: thin forwarders (all 3D math lives in the rasterizer) ----
+function rotateX(a) { if (_webgl) _ctx.rotateX3d(a); }
+function rotateY(a) { if (_webgl) _ctx.rotateY3d(a); }
+function rotateZ(a) { if (_webgl) _ctx.rotateZ3d(a); }
+function ambientMaterial(...args) { if (_webgl) { const c = _rgb255(args); _ctx.ambientMaterial3d(c[0], c[1], c[2]); } }
+function specularMaterial(...args) { if (_webgl) { const c = _rgb255(args); _ctx.specularMaterial3d(c[0], c[1], c[2]); } }
+function shininess(s) { if (_webgl) _ctx.shininess3d(s); }
+function ambientLight(...args) { if (_webgl) { const c = _rgb255(args); _ctx.ambientLight3d(c[0], c[1], c[2]); } }
+function directionalLight(r, g, b, x, y, z) {
+  if (_webgl) { const c = _rgb255([r, g, b]); _ctx.directionalLight3d(c[0], c[1], c[2], x, y, z); }
+}
+function pointLight(r, g, b, x, y, z) {
+  if (_webgl) { const c = _rgb255([r, g, b]); _ctx.pointLight3d(c[0], c[1], c[2], x, y, z); }
+}
+function box(w, h, d) { if (_webgl) _ctx.box3d(w, h === undefined ? w : h, d === undefined ? w : d); }
+function sphere(r) { if (_webgl) _ctx.sphere3d(r); }
+function ellipsoid(rx, ry, rz) {
+  if (ry === undefined) ry = rx;
+  if (rz === undefined) rz = ry;
+  if (_webgl) _ctx.ellipsoid3d(rx, ry, rz);
+}
+function cylinder(r, h) { if (_webgl) _ctx.cylinder3d(r, h); }
+function cone(r, h) { if (_webgl) _ctx.cone3d(r, h); }
+function noLights() {}          // not in the declared subset: accepted, no effect
+function normalMaterial() {}
+function emissiveMaterial() {}
 
 // p5's noFill(): draw subsequent shapes with no fill. Implemented as a fully
 // transparent fill so no draw-primitive call sites need guarding (stroke is
@@ -353,7 +411,7 @@ function text(str, x, y) {
 
 // ---- Transform stack ----
 function push() {
-  _ctx.save();
+  if (_webgl) _ctx.push3d(); else _ctx.save();
   _styleStack.push({
     fill: _fillStyle, strokeEnabled: _strokeEnabled, strokeStyle: _strokeStyle,
     strokeW: _strokeW, textSz: _textSz, textAlignH: _textAlignH,
@@ -361,7 +419,7 @@ function push() {
   });
 }
 function pop() {
-  _ctx.restore();
+  if (_webgl) _ctx.pop3d(); else _ctx.restore();
   const s = _styleStack.pop();
   if (s) {
     _fillStyle = s.fill; _strokeEnabled = s.strokeEnabled; _strokeStyle = s.strokeStyle;
@@ -370,9 +428,9 @@ function pop() {
   }
   _invalidateStyleCache(); // force next draw to re-apply restored fill/stroke to Cairo
 }
-function translate(x, y) { _ctx.translate(x, y); }
-function rotate(a) { _ctx.rotate(a); }
-function scale(sx, sy) { if (sy === undefined) sy = sx; _ctx.scale(sx, sy); }
+function translate(x, y, z) { if (_webgl) _ctx.translate3d(x, y, z === undefined ? 0 : z); else _ctx.translate(x, y); }
+function rotate(a) { if (_webgl) _ctx.rotateZ3d(a); else _ctx.rotate(a); }   // p5: rotate() == rotateZ() in WEBGL
+function scale(sx, sy) { if (_webgl) return; if (sy === undefined) sy = sx; _ctx.scale(sx, sy); }   // scale() not in the 3D subset
 
 // ---- Shape mode ----
 let _shapeVerts = [];
@@ -499,7 +557,9 @@ function getObsBuffer(obsW, obsH) {
 function tick() {
   if (!_looping) return false;
   _frameCount++;
+  if (_webgl) _ctx.frame3dBegin();   // per draw(): reset model matrix + lights (as p5 does)
   if (typeof globalThis.draw === 'function') globalThis.draw();
+  if (_webgl) _ctx.frame3dEnd();
   return _looping;
 }
 
@@ -533,6 +593,8 @@ const PI = Math.PI;
 const TWO_PI = Math.PI * 2;
 const HALF_PI = Math.PI / 2;
 const CLOSE = 'close';
+const P2D = 1;      // createCanvas renderer selector; same numeric values as the native hosts
+const WEBGL = 2;
 
 // ---- Install globals ----
 function installGlobals() {
@@ -546,8 +608,11 @@ function installGlobals() {
     map, constrain, lerp, dist,
     abs, floor, ceil, round, sqrt, pow, sin, cos, atan2, random, min, max,
     keyIsDown, loop, noLoop, tint, millis, arc,
+    rotateX, rotateY, rotateZ, ambientMaterial, specularMaterial, shininess,
+    ambientLight, directionalLight, pointLight, box, sphere, ellipsoid, cylinder, cone,
+    noLights, normalMaterial, emissiveMaterial,
     LEFT_ARROW, UP_ARROW, RIGHT_ARROW, DOWN_ARROW, ENTER,
-    CENTER, CORNER, LEFT, RIGHT, TOP, BOTTOM, BASELINE, PI, TWO_PI, HALF_PI, CLOSE,
+    CENTER, CORNER, LEFT, RIGHT, TOP, BOTTOM, BASELINE, PI, TWO_PI, HALF_PI, CLOSE, P2D, WEBGL,
     get width() { return _width; },
     get height() { return _height; },
     get frameCount() { return _frameCount; },

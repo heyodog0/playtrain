@@ -46,6 +46,9 @@ function parseColor(s) {
 }
 
 class Context2D {
+  // No 3D pipeline here: p5 WEBGL mode lives in the Rust rasterizer (wasm). The shim
+  // routes WEBGL canvases to the wasm backend and throws before reaching this.
+  begin3d() { throw new Error('raster.mjs (pure-JS backend) has no p5 WEBGL pipeline; use the wasm rasterizer'); }
   constructor(canvas) {
     this.canvas = canvas;
     this.w = canvas.width;   // device resolution (may be < logical, e.g. 64 vs 400)

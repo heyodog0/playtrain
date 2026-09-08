@@ -41,17 +41,43 @@ const playStyle = `${baseStyle}
 // createCanvas (raster's backend factory vs the shim's p5 API), resolved by renaming raster's
 // to createRasterCanvas. The shim's node-only dynamic imports are guarded by _IS_NODE and never
 // run in-browser, so nothing else needs stripping.
+//
+// p5 WEBGL games (P5_WEBGL_PLAN.md): the 3D pipeline lives only in the Rust rasterizer, so
+// with `wasm: true` the bundle also inlines rasterizer.wasm (base64) plus raster-wasm.mjs's
+// backend factory, instantiates the module (top-level await; a <script type="module"> allows
+// it) and hands the exports to the shim as globalThis.__PT_WASM_EXPORTS. The shim uses them
+// ONLY for createCanvas(w, h, WEBGL); 2D games keep the pure-JS backend, pixel for pixel as
+// before. Per-game play pages pass wasm only when the source mentions WEBGL (~120 KB);
+// the shared player.js / study bundles always carry it.
 const _p5dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'runtime', 'p5');
-let _bundle = null;
-export function browserShimBundle() {
-  if (_bundle) return _bundle;
+const _bundles = new Map();
+export function browserShimBundle({ wasm = true } = {}) {
+  const key = wasm ? 'wasm' : 'js';
+  if (_bundles.has(key)) return _bundles.get(key);
   const raster = readFileSync(join(_p5dir, 'raster.mjs'), 'utf8')
     .replace('export function createCanvas(', 'function createRasterCanvas(');
   const shim = readFileSync(join(_p5dir, 'p5-shim.mjs'), 'utf8')
     .replace("import { createCanvas as createJsCanvas } from './raster.mjs'; // pure JS, browser-safe",
       'const createJsCanvas = createRasterCanvas;');
-  _bundle = raster + '\n' + shim;
-  return _bundle;
+  let pre = '';
+  if (wasm) {
+    const glue = readFileSync(join(_p5dir, 'raster-wasm.mjs'), 'utf8')
+      .replace(/\/\/ @node-only-begin[\s\S]*?\/\/ @node-only-end\n?/, '')
+      .replace('export function makeWasmBackend(', 'function makeWasmBackend(');
+    const b64 = readFileSync(join(_p5dir, 'rasterizer.wasm')).toString('base64');
+    pre = `${glue}
+// rasterizer.wasm, inlined (crates/rasterizer; the same module Node loads from disk)
+{
+  const __b = atob(${JSON.stringify(b64)});
+  const __bytes = new Uint8Array(__b.length);
+  for (let i = 0; i < __b.length; i++) __bytes[i] = __b.charCodeAt(i);
+  globalThis.__PT_WASM_EXPORTS = (await WebAssembly.instantiate(__bytes, {})).instance.exports;
+}
+`;
+  }
+  const bundle = pre + raster + '\n' + shim;
+  _bundles.set(key, bundle);
+  return bundle;
 }
 
 // --- vendored matter.js (inlined only into Matter.js game pages) ----------------------
@@ -122,7 +148,7 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = 
 <script type="text/plain" id="game-src">${source}</script>
 
 ${matterScript}<script type="module">
-${browserShimBundle()}
+${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
 
 // ---- boot (IIFE so its locals can't collide with shim top-level names, e.g. loop()) ----
 // install OUR p5 globals (backed by raster.mjs), run the game, blit pixels.

@@ -21,13 +21,6 @@ gate_one() {
   local GAME="$1" NSTEPS="$2"; shift 2
   local SEEDS=("$@")
   local fail=0
-  # WEBGL-mode games (P5_WEBGL_PLAN.md) have no V8 reference yet: the JS shim
-  # grows 3D forwarders in Tier 2, and this gate grows 3D goldens with it.
-  # Until then skip them explicitly rather than fail on a missing oracle.
-  if grep -q "createCanvas([^)]*WEBGL" "${GAMES_DIR}/${GAME}.js"; then
-    echo "  SKIP ${GAME}: WEBGL game (no V8 reference until Tier 2; see P5_WEBGL_PLAN.md)"
-    return 0
-  fi
   for S in "${SEEDS[@]}"; do
     node reference_trace.mjs "$GAME" "$S" "$NSTEPS" > "/tmp/gateq_js_${GAME}_${S}.txt" 2>/dev/null
     ./build/qjs_host "${GAMES_DIR}/${GAME}.js" trace "$S" "$NSTEPS" > "/tmp/gateq_qjs_${GAME}_${S}.txt" 2>/dev/null

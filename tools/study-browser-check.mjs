@@ -184,7 +184,10 @@ process.stdout.write(JSON.stringify(rows));
 
 function nodeTrace(game) {
   const r = spawnSync(process.execPath, [WORKER, join(GAMES_DIR, `${game}.js`), String(SEED), String(STEPS), String(OBS_RES)],
-    { env: { ...process.env, PLAYTRAIN_RASTERIZER: 'js' }, maxBuffer: 1 << 28, encoding: 'utf8' });
+    // js so the rasterizer matches the browser's; WEBGL games have no pure-JS path and use
+    // the same wasm the browser bundle inlines (bit-identical to js by gate_qjs.sh).
+    { env: { ...process.env, PLAYTRAIN_RASTERIZER: /\bWEBGL\b/.test(readFileSync(join(GAMES_DIR, `${game}.js`), 'utf8')) ? 'wasm' : 'js' },
+      maxBuffer: 1 << 28, encoding: 'utf8' });
   if (r.status !== 0) {
     console.error(`node reference trace failed for ${game}:\n${(r.stderr || '').split('\n').slice(0, 6).join('\n')}`);
     process.exit(1);

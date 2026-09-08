@@ -162,8 +162,40 @@ as a learning result; quote 58k, not 18k, as the trainer throughput. (The
 steps — which says nothing about throughput; a 20M batch-256 run would be
 needed to compare curves.)
 
-Next: Tier 2 (tasks 9–11), starting with the JS shim forwarders and turning
-the gate SKIP into a 3D golden. Then Tier 2,
+**Tier 2 tasks 9 + 10 — DONE 2026-09-07 evening (cross-engine parity for 3D).**
+- `runtime/p5/raster-wasm.mjs` restructured: `makeWasmBackend(exports)` builds
+  the canvas factory from an instantiated module (isomorphic); the Node-only
+  self-init is a delimited block the bundler strips. Context2D grew the *3d
+  forwarders (one per `rs_3d_*`).
+- `runtime/p5/p5-shim.mjs`: `createCanvas(w,h,WEBGL)` routes to the wasm
+  factory (throws a clear error on the pure-JS/cairo backends, which have no
+  3D path); `fill/push/pop/translate/rotate/background/tick` forward in WEBGL
+  mode exactly as `p5.cpp` does; new globals rotateX/Y/Z, ambientMaterial,
+  specularMaterial, shininess, ambientLight, directionalLight, pointLight,
+  box, sphere, ellipsoid, cylinder, cone, noLights/normalMaterial/
+  emissiveMaterial (no-ops), `WEBGL`=2, `P2D`=1 (same values as the hosts).
+- `runtime/p5/rasterizer.wasm` rebuilt (92 KB, was 48 KB) — the committed
+  artifact every Node/browser path loads.
+- `native/gate_qjs.sh`: the WEBGL SKIP is gone. **seaquest.v3 is bit-exact
+  V8+wasm vs QuickJS-native over 3 seeds × 3000 steps on the first run** (no
+  one-ulp hunt was needed: one Rust source, two targets). `--all 1000`: 34/34.
+- Browser: `tools/play-templates.mjs` `browserShimBundle({wasm})` inlines
+  rasterizer.wasm (base64) + the factory and instantiates it with a
+  top-level await, exposing `globalThis.__PT_WASM_EXPORTS`; the shim uses it
+  ONLY for WEBGL canvases, so 2D games in the browser keep the pure-JS
+  backend pixel for pixel. Per-game play pages inline it only when the game
+  source mentions WEBGL (185 KB vs 52 KB); the shared player.js / study
+  bundles always carry it. Verified without a browser by running the bundle
+  in Node with `process` shadowed (forces the browser code path): 600 frames
+  of seaquest.v3 hash-identical to the real Node shim. `study-browser-check`
+  now runs WEBGL games' node arm on wasm. Real-browser confirmation
+  (playwright, not installed here) is still owed for Safari/Firefox.
+
+**Open: task 11** — `P5_3D_TEMPLATE.md` (the subset above, cone apex
+screen-up, the half-pixel rule), validator extension, formal conformance
+of seaquest.v3, and 1–2 fresh generated 3D games. Widening the subset
+(plane, torus, scale, normalMaterial, emissiveMaterial, camera/ortho) with
+explicit no-op fallbacks for anything else belongs with it. Then Tier 2,
 starting with the JS shim forwarders (`runtime/p5/p5-shim.mjs`,
 `raster-wasm.mjs`) and turning the `gate_qjs.sh` SKIP into a real 3D golden.
 
