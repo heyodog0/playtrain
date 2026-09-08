@@ -60,13 +60,13 @@ These hold for every script here; deviations are called out per-script below.
   separately and merged at plot time. Never compare JSONs from different nodes —
   the published sweeps enforce this by construction, measuring PlayTrain and its
   baseline inside one Slurm job at the same core budget (see
-  [`as_run/README.md`](as_run/README.md)).
+  the figure-provenance section at the end of this file).
 
 ## What each script measures
 
 | script | measures | used for |
 |---|---|---|
-| `bench_compare.py` | **per-core, single env**, one backend per invocation, per-game median + SD over trials. Produced the **baseline** bars of the published figure (`--backend procgen` / `--backend ale`); `--backend qjs` measures PlayTrain's pipe-based single-env API, which is 4× below the engine's real cost, so it is *not* the figure's PlayTrain path (that was the C loop — see `as_run/`). | Figure 2(a)/(b) baseline bars |
+| `bench_compare.py` | **per-core, single env**, one backend per invocation, per-game median + SD over trials. Produced the **baseline** bars of the published figure (`--backend procgen` / `--backend ale`); `--backend qjs` measures PlayTrain's pipe-based single-env API, which is 4× below the engine's real cost, so it is *not* the figure's PlayTrain path (that was the C loop — see `reproduction/figures/as_run/`). | Figure 2(a)/(b) baseline bars |
 | `bench_vs_baselines.py` | **PlayTrain vs ProcGen at each system's best**, three ways: raw per-core, best in-process VectorEnv, and single-env×cores ceiling. Sweeps ProcGen's `num_threads` over {8,16,32} and takes its max (its threadpool peaks near 16 and *degrades* past it). | the aggregate/near-linear-scaling claim |
 | `bench_native_vec.py` | the four-way coordinator comparison at N envs: `single` (one env, no coordinator) · `ceiling` (N independent processes) · `native-vec` (in-process C++ threadpool, GIL released) · `py-coord` (Python lockstep over N subprocesses, same backend). Isolates *coordination* cost from *env* cost. | the threadpool's share of the headline number |
 | `bench_sharded.py` | **measured, not extrapolated,** P-process aggregate with synchronized start. Symmetric: both systems driven through their ordinary single-env Python API, one env per process, so neither gets a coordinator advantage. | the embarrassingly-parallel ceiling |
@@ -77,8 +77,7 @@ These hold for every script here; deviations are called out per-script below.
 | `procgen_agg_bench.py` | ProcGen's own C++ batcher, aggregate. Cross-check on the baseline side. | cross-checks |
 | `raw_vec_bench.py` | the legacy Python vec coordinator over the Node backend — kept as the "what Python-level vectorization gets you" reference, not a current number. | historical reference |
 | `plot_compare.py` | grouped-bar plots from `bench_compare.py` JSONs. | quick looks |
-| `fasrc_parallelism.sbatch` | Slurm launcher for the parallelism sweep on a full node. FASRC-specific; adapt the SBATCH header. | cluster runs |
-| `as_run/` | the **exact** sweeps that produced the published figure, recovered from the cluster and kept verbatim, plus the driver-asymmetry note. | figure provenance |
+| `reproduction/figures/as_run/` | the **exact** sweeps that produced the published figure, kept verbatim, plus the Slurm launcher. | figure provenance |
 
 Paper-styled figures (the exact rendering used in the manuscript) live in the
 paper repo; the data they plot comes from the scripts above.
@@ -160,23 +159,23 @@ To reproduce it exactly, submit the two as-run sweeps — each measures PlayTrai
 (engine C loop) and its baseline (Python harness) inside one job:
 
 ```bash
-sbatch benchmarks/as_run/sweep_procgen16.sh    # 16 games vs real ProcGen
-sbatch benchmarks/as_run/sweep_atari8.sh       # 8 games vs ALE
+sbatch reproduction/figures/as_run/sweep_procgen16.sh    # 16 games vs real ProcGen
+sbatch reproduction/figures/as_run/sweep_atari8.sh       # 8 games vs ALE
 ```
 
 For a *symmetric* per-core variant — both sides in-process, one Python call per
 step — use `bench_vs_baselines.py`'s raw-per-core arm instead
 (`NativeVecEnv(num_envs=1, num_threads=1)` vs `ProcgenGym3Env(num=1)`). The driver
 difference is about ±15% with inconsistent sign; see
-[`as_run/README.md`](as_run/README.md).
+the figure-provenance section at the end of this file.
 
 ### Provenance, stated plainly
 
 The published figure's data is committed: the as-run sweeps are in
-[`as_run/`](as_run/) and their raw output in the paper repo under
+`reproduction/figures/as_run/` and their raw output in the paper repo under
 `results/env_throughput/`, matching the figure bar-for-bar.
 
-One asymmetry travels with it, quantified in [`as_run/README.md`](as_run/README.md):
+One asymmetry travels with it, quantified in the figure-provenance section at the end of this file:
 PlayTrain was timed by the QuickJS host's own C loop, the baselines through their
 Python Gym APIs. Measured, the driver is worth about ±15% with **no consistent
 direction** (bigfish −15%, coinrun +12%), so there is no systematic inflation — a
@@ -192,7 +191,7 @@ across all 24 games, so this is about preventing future drift, not fixing an err
 
 ---
 
-# Figure provenance (was benchmarks/as_run/README.md)
+# Figure provenance (the scripts live in `reproduction/figures/as_run/`)
 
 # As-run sweeps behind the published environment-layer figure
 
