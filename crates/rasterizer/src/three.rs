@@ -397,6 +397,9 @@ struct SVert {
     nx: f64,  // OBJECT-space normal (unit-mesh); rotated + renormalised lazily
     ny: f64,
     nz: f64,
+    wnx: f64, // the same normal after rotation + renormalisation, filled by
+    wny: f64, // ensure_shaded. Only the per-fragment (specular) path reads it;
+    wnz: f64, // Gouraud already has the finished colour in r/g/b.
     shaded: bool,
 }
 
@@ -632,7 +635,8 @@ impl Three {
             let cw = -vz;
             xv.push(SVert {
                 x: cx, y: cy, z: 0.0, w: cw, cz, r: 0.0, g: 0.0, b: 0.0,
-                vx, vy, vz, nx: n[0], ny: n[1], nz: n[2], shaded: false,
+                vx, vy, vz, nx: n[0], ny: n[1], nz: n[2],
+                wnx: 0.0, wny: 0.0, wnz: 0.0, shaded: false,
             });
         }
         // Lazy per-vertex shading: rotate + renormalise the object normal
@@ -653,6 +657,9 @@ impl Three {
             v.r = col[0];
             v.g = col[1];
             v.b = col[2];
+            v.wnx = nn[0];
+            v.wny = nn[1];
+            v.wnz = nn[2];
             v.shaded = true;
         };
         for t in mesh.idx.iter() {
@@ -668,7 +675,20 @@ impl Three {
                 ensure_shaded(xv, ib);
                 ensure_shaded(xv, ic);
                 let col = |i: usize| [xv[i].r, xv[i].g, xv[i].b];
-                raster_tri(view, px, zb, &pv, &[col(ia), col(ib), col(ic)]);
+                let vpos = |i: usize| [xv[i].vx, xv[i].vy, xv[i].vz];
+                let nrm = |i: usize| [xv[i].wnx, xv[i].wny, xv[i].wnz];
+                let shading = if cur.mat.use_specular && cur.lights.on {
+                    Shading::Phong {
+                        vp: [vpos(ia), vpos(ib), vpos(ic)],
+                        nr: [nrm(ia), nrm(ib), nrm(ic)],
+                        mat: &cur.mat,
+                        lights: &cur.lights,
+                        eye_z,
+                    }
+                } else {
+                    Shading::Gouraud(&[col(ia), col(ib), col(ic)])
+                };
+                raster_tri(view, px, zb, &pv, &shading);
             } else {
                 // Rare (near-plane straddle): shade all three, then clip.
                 ensure_shaded(xv, ia);
@@ -764,9 +784,9 @@ fn clip_and_raster(view: View, px: &mut [u8], zb: &mut [f32], a: SVert, b: SVert
             pv[i] = project(view, &out[i]);
             cl[i] = [out[i].r, out[i].g, out[i].b];
         }
-        raster_tri(view, px, zb, &[pv[0], pv[1], pv[2]], &[cl[0], cl[1], cl[2]]);
+        raster_tri(view, px, zb, &[pv[0], pv[1], pv[2]], &Shading::Gouraud(&[cl[0], cl[1], cl[2]]));
         if n_out == 4 {
-            raster_tri(view, px, zb, &[pv[0], pv[2], pv[3]], &[cl[0], cl[2], cl[3]]);
+            raster_tri(view, px, zb, &[pv[0], pv[2], pv[3]], &Shading::Gouraud(&[cl[0], cl[2], cl[3]]));
         }
     }
 }
@@ -778,7 +798,25 @@ fn clip_and_raster(view: View, px: &mut [u8], zb: &mut [f32], a: SVert, b: SVert
 // k), so the row's span is their intersection — exact integer arithmetic, the
 // identical pixel set the per-pixel test would select, no wasted work on the
 // bbox of a thin or slanted triangle.
-fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[[f64; 3]; 3]) {
+// How a triangle gets its colour. Gouraud is the default and what every gate
+// scene used before: one shade() per vertex, interpolated across the span.
+// Phong shades PER PIXEL, and exists because Gouraud structurally cannot show a
+// specular highlight that lands inside a triangle rather than on a vertex --
+// which is what made specularMaterial() geometry (seaquest.v3's fish and subs)
+// look flat next to real p5. It is selected only when the material actually has
+// specular on, so diffuse-only geometry keeps the cheap path and its hashes.
+enum Shading<'a> {
+    Gouraud(&'a [[f64; 3]; 3]),
+    Phong {
+        vp: [[f64; 3]; 3],
+        nr: [[f64; 3]; 3],
+        mat: &'a Material,
+        lights: &'a Lights,
+        eye_z: f64,
+    },
+}
+
+fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], shading: &Shading) {
     #[inline]
     fn fx(v: f64) -> i64 {
         (v * 16.0).round() as i64
@@ -821,7 +859,11 @@ fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[
     let inv_area = 1.0 / area as f64;
     let w = view.dw;
     let n = maxx - minx;   // k in 0..=n
-    let (c0, c1, c2) = (col[0], col[1], col[2]);
+    let (c0, c1, c2) = match shading {
+        Shading::Gouraud(col) => (col[0], col[1], col[2]),
+        // unused by the Phong arm; keeps the flat test below a single compare
+        Shading::Phong { .. } => ([0.0; 3], [1.0; 3], [2.0; 3]),
+    };
     let flat = c0 == c1 && c1 == c2;
     let (fr, fg, fb) = (clamp_u8(c0[0]), clamp_u8(c0[1]), clamp_u8(c0[2]));
     for y in miny..=maxy {
@@ -868,6 +910,41 @@ fn raster_tri(view: View, px: &mut [u8], zb: &mut [f32], p: &[PVert; 3], col: &[
                         prow[q] = fr;
                         prow[q + 1] = fg;
                         prow[q + 2] = fb;
+                        prow[q + 3] = 255;
+                    }
+                    e0 += stepx[0];
+                    e1 += stepx[1];
+                    e2 += stepx[2];
+                }
+            } else if let Shading::Phong { vp, nr, mat, lights, eye_z } = shading {
+                // Per-fragment: interpolate the view position and the normal,
+                // renormalise, and light THIS pixel. Interpolation is affine in
+                // screen space like the z above, not perspective-correct; on the
+                // small, near-planar triangles these meshes produce the error is
+                // far below the highlight it recovers, and it keeps the edge walk
+                // exactly as gated.
+                for i in 0..n_px {
+                    let w0 = e1 as f64 * inv_area;
+                    let w1 = e2 as f64 * inv_area;
+                    let w2 = e0 as f64 * inv_area;
+                    let z = (w0 * v0.z + w1 * v1.z + w2 * v2.z) as f32;
+                    if z <= zrow[i] {
+                        zrow[i] = z;
+                        let pv = [
+                            w0 * vp[0][0] + w1 * vp[1][0] + w2 * vp[2][0],
+                            w0 * vp[0][1] + w1 * vp[1][1] + w2 * vp[2][1],
+                            w0 * vp[0][2] + w1 * vp[1][2] + w2 * vp[2][2],
+                        ];
+                        let n = normalize3([
+                            w0 * nr[0][0] + w1 * nr[1][0] + w2 * nr[2][0],
+                            w0 * nr[0][1] + w1 * nr[1][1] + w2 * nr[2][1],
+                            w0 * nr[0][2] + w1 * nr[1][2] + w2 * nr[2][2],
+                        ]);
+                        let c = shade(mat, lights, *eye_z, pv, n);
+                        let q = i * 4;
+                        prow[q] = clamp_u8(c[0]);
+                        prow[q + 1] = clamp_u8(c[1]);
+                        prow[q + 2] = clamp_u8(c[2]);
                         prow[q + 3] = 255;
                     }
                     e0 += stepx[0];
@@ -1405,6 +1482,24 @@ mod tests {
         ops
     }
 
+    // Diagnostic (not a gate): how much colour variation the specular geometry
+    // shows. Gouraud gives a highlight only if it lands on a vertex, so a
+    // per-fragment pass should raise both the distinct-colour count and the peak.
+    #[test]
+    fn specular_variation_report() {
+        let ops = seaquest_ops();
+        let h = fresh();
+        run(h, &ops);
+        let px = &crate::cv(h).px;
+        let mut cols = std::collections::HashSet::new();
+        let mut peak = 0u16;
+        for c in px.chunks_exact(4) {
+            cols.insert((c[0], c[1], c[2]));
+            let l = c[0] as u16 + c[1] as u16 + c[2] as u16;
+            if l > peak { peak = l; }
+        }
+        println!("distinct colours {}  peak luma-sum {}", cols.len(), peak);
+    }
     #[test]
     fn golden_seaquest_like() {
         let ops = seaquest_ops();
@@ -1461,5 +1556,5 @@ mod tests {
 
     const GOLD_BOX: u64 = 15669850146622006379;
     const GOLD_ROT: u64 = 6833457957690475568;
-    const GOLD_SEA: u64 = 9653048113042733574;
+    const GOLD_SEA: u64 = 13978479596181124416;
 }

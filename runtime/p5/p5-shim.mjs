@@ -573,6 +573,30 @@ function tick() {
 // by the game's own resetGame(); this only zeroes the shim's global.
 function resetFrameCount() { _frameCount = 0; }
 
+// Restore p5's defaults for everything this module keeps BETWEEN frames.
+//
+// tools/tester.py gets this for free: it serves each game its own page, so
+// switching games is a navigation and every global starts fresh. The browser
+// player instead evaluates every game into ONE realm, where nothing below is
+// reset by loading the next game -- a leftover fill or rectMode, or an
+// unbalanced push() from a game that threw mid-draw, silently carries over and
+// the next game renders with the previous one's style. Call this before a new
+// game's setup().
+function resetDrawState() {
+  _fillStyle = 'rgba(255,255,255,1)';
+  _strokeEnabled = true;
+  _strokeStyle = 'rgba(0,0,0,1)';
+  _strokeW = 1;
+  _textSz = 12;
+  _textAlignH = 'left';
+  _textFontFamily = 'sans-serif';
+  _rectMode = 'corner';
+  _ellipseMode = 'center';
+  _styleStack.length = 0;   // an unbalanced push() must not outlive its game
+  _keysDown.clear();        // nor a key held down across a switch
+  _frameCount = 0;
+}
+
 // ---- tint stub (used for player invulnerability flicker) ----
 function tint() {} // visual-only, no gameplay impact
 
@@ -643,6 +667,7 @@ export {
   resetPointer,
   tick,
   resetFrameCount,
+  resetDrawState,
   isLooping,
   getPixelData,
   getCanvasBuffer,
