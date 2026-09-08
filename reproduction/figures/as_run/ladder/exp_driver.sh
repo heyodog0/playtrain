@@ -3,7 +3,7 @@
 # probe_split (dec/s) after each stage and a bit-exact gate subset at the end.
 set -uo pipefail
 NATIVE=$HOME/node-gym-smoke/node-gym-git/native
-ANALOGEN=$HOME/node-gym-smoke/analogen
+ANALOGEN=$HOME/node-gym-smoke/consumer
 export PATH="$HOME/.local-node/bin:$PATH"
 export NODE_GYM_GAMES_DIR=$ANALOGEN/games/js
 PGO=/tmp/qjspgo_$$; mkdir -p $PGO
