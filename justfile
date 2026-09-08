@@ -152,6 +152,32 @@ build-pages:
 serve-pages: build-pages
     cd dist/pages && python3 -m http.server 5051
 
+# === human study harness (study/README.md) ===
+
+# Play the study yourself. Builds it, serves it, and saves your session.
+study-serve port="8080":
+    node study/study-serve.mjs --port {{port}}
+
+# Build the participant-facing static site into dist/study.
+study-build upload="":
+    node study/build-study.mjs {{ if upload == "" { "" } else { "--upload " + upload } }}
+
+# Replay a collected session through the headless env and check the scores reproduce.
+study-verify +SESSIONS:
+    node study/verify-replay.mjs {{SESSIONS}}
+
+# Did the participants play the same game files the agents trained on?
+study-audit *ARGS:
+    node study/study-audit.mjs {{ARGS}}
+
+# Pure-JS rasterizer vs Rust rasterizer vs native QuickJS, on the study games.
+study-parity nsteps="400" *SEEDS="90000 90001":
+    bash study/study-parity.sh {{nsteps}} {{SEEDS}}
+
+# Chromium, Firefox and WebKit produce identical traces. Needs Playwright browsers.
+study-browsers nsteps="2000":
+    node study/study-browser-check.mjs --steps {{nsteps}}
+
 # === CI ===
 
 ci:

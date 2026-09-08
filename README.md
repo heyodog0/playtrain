@@ -217,7 +217,8 @@ just variants                                            # list variants
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | Not the catalog and not games. Inputs and workspace for the generation pipeline: `catalogs/` to write from, `procgen_src/` as C reference, and an empty `js/` where `playtrain-generate` writes. |
 | `benchmarks/` | Throughput measurement. One script per claim in the paper. Each states in its docstring what it measures and which access path. |
-| `reproduction/` | Figure code, paper data, the human-study harness, and the sweeps that produced the published figures. |
+| `reproduction/` | Figure code, paper data, and the sweeps that produced the published figures. |
+| `study/` | The browser harness that collected the human baseline, and the replay check that makes human and agent scores comparable. |
 | `tools/` | Development scripts: the playtest UI, validation, profiling. |
 | `tests/` | The test suite. |
 
