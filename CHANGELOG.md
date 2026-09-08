@@ -11,7 +11,7 @@ forces a minor bump.
 
 ### Added
 - Wheels bundling the native backend, so `pip install playtrain` needs no toolchain.
-- `uvx playtrain` — `games` and `bench` subcommands, no install required.
+- `uvx playtrain`, with `games` and `bench` subcommands. No install required.
 - `examples/quickstart.py`, runnable straight from its URL with `uv run`.
 - `playtrain[gen]` extra for the LLM generation pipeline.
 
