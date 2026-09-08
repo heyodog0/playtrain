@@ -7,10 +7,15 @@ Working doc for the public release. **Delete this file before publishing.**
 
 ## A. Blockers — public release cannot happen until these are done
 
-- [ ] **A1. Participant data** `[you]` — `dist/study-data/`, 30 files, 30 Prolific IDs
+- [x] **A1. Participant data** — DONE: 30 anonymized sessions in
+      `reproduction/data/study/` (392 KB gzipped), produced by
+      `reproduction/anonymize_study_data.py`; verified no id, UA, session id,
+      completion code or absolute timestamp survives. Raw `dist/` still to delete (B1).
+      ~~`[you]`~~ — `dist/study-data/`, 30 files, 30 Prolific IDs
       + userAgent + screen + consent timestamps; 5 set `doNotRecontact: true`.
       Decide: publish nothing, or publish anonymized (opaque ids, no UA/screen/session).
-- [ ] **A2. Fresh history** `[you]` — A1 is in git history, so deleting it in a new
+- [~] **A2. Fresh history** `[you]` — private repo renamed to `playtrain-dev`. Still to do:
+      create the fresh public `playtrain`. — A1 is in git history, so deleting it in a new
       commit does not remove it. Rename the private repo to `playtrain-dev`, create a
       fresh public `playtrain` at the same URL (keeps every link already written).
 - [ ] **A3. ProcGen attribution** `[me]` — `games/procgen_src/` is 17 verbatim OpenAI
@@ -27,7 +32,9 @@ Working doc for the public release. **Delete this file before publishing.**
 - [ ] **B1. Delete** `[me]` — `handoff/` (58), `docs/` except `REPRO.md` (5),
       the 4 root `*_PLAN.md`, `tools/HANDOFF.md`, `benchmarks/raw_vec_bench.py`,
       `benchmarks/plot_compare.py`.
-- [ ] **B2. Move `website/` out** `[you]` — 92 files, 18.2 MB, 55% of the repo.
+- [x] **B2. Move `website/` out** — DONE: `heyodog0/playtrain-website` (private),
+      252 files, built `site/` excluded. Delete `website/` from this repo in B1.
+      ~~`[you]`~~ — 92 files, 18.2 MB, 55% of the repo.
       Own repo or `gh-pages` branch.
 - [ ] **B3. Delete deployment glue** `[me]` — `middleware.js`, `vercel.json`.
 - [ ] **B4. Relocate to reproduction** `[me]` — `games/logs/` (167 files, 3.7 MB),
