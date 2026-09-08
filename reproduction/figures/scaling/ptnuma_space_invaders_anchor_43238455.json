@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3315424,
+    "frames_per_s": 3315424,
+    "per_worker": [
+      209819,
+      207507,
+      205537,
+      207746,
+      208897,
+      207613,
+      207294,
+      207634,
+      205581,
+      205751,
+      206074,
+      206086,
+      206214,
+      208077,
+      209308,
+      206285
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.61,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2083527,
+    "frames_per_s": 2083527,
+    "per_worker": [
+      263298,
+      261053,
+      260842,
+      263819,
+      261506,
+      251187,
+      259242,
+      262580
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.48,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

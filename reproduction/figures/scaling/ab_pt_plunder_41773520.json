@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 420934,
+    "frames_per_s": 420934,
+    "per_worker": [
+      420934
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 838943,
+    "frames_per_s": 838943,
+    "per_worker": [
+      419894,
+      419050
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1679530,
+    "frames_per_s": 1679530,
+    "per_worker": [
+      419678,
+      420398,
+      418723,
+      420731
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2519665,
+    "frames_per_s": 2519665,
+    "per_worker": [
+      420654,
+      420176,
+      421341,
+      419622,
+      419162,
+      418710
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3355528,
+    "frames_per_s": 3355528,
+    "per_worker": [
+      421214,
+      421770,
+      420139,
+      420772,
+      417221,
+      420653,
+      418082,
+      415676
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5040537,
+    "frames_per_s": 5040537,
+    "per_worker": [
+      424577,
+      422001,
+      419941,
+      419999,
+      421246,
+      421266,
+      420086,
+      419472,
+      419352,
+      418741,
+      417441,
+      416415
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 6651484,
+    "frames_per_s": 6651484,
+    "per_worker": [
+      419533,
+      416981,
+      415899,
+      418391,
+      418659,
+      416027,
+      414621,
+      415096,
+      415664,
+      414556,
+      414309,
+      413485,
+      413046,
+      414651,
+      413032,
+      417534
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

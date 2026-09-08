@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 77253,
+    "frames_per_s": 77253,
+    "per_worker": [
+      77253
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.65,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 154008,
+    "frames_per_s": 154008,
+    "per_worker": [
+      77120,
+      76889
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.65,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 306298,
+    "frames_per_s": 306298,
+    "per_worker": [
+      77238,
+      76063,
+      77264,
+      75734
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.66,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 456323,
+    "frames_per_s": 456323,
+    "per_worker": [
+      76749,
+      76277,
+      75670,
+      75994,
+      75914,
+      75719
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.67,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 608496,
+    "frames_per_s": 608496,
+    "per_worker": [
+      76869,
+      75503,
+      76378,
+      76327,
+      76068,
+      76067,
+      75859,
+      75423
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.67,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 911275,
+    "frames_per_s": 911275,
+    "per_worker": [
+      77358,
+      75972,
+      75999,
+      75919,
+      76051,
+      76209,
+      75944,
+      76136,
+      75907,
+      76170,
+      73965,
+      75646
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.68,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1208606,
+    "frames_per_s": 1208606,
+    "per_worker": [
+      77367,
+      74962,
+      75208,
+      75191,
+      74471,
+      75382,
+      75704,
+      75224,
+      75784,
+      76538,
+      74991,
+      75765,
+      75023,
+      75761,
+      75559,
+      75677
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.68,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

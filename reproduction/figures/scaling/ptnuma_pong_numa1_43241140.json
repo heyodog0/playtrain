@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5832018,
+    "frames_per_s": 5832018,
+    "per_worker": [
+      732350,
+      726889,
+      729343,
+      735966,
+      725023,
+      720380,
+      730440,
+      731629
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

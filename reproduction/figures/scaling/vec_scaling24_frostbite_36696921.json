@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 226597,
+    "frames_per_s": 226597,
+    "per_worker": [
+      226597
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 451995,
+    "frames_per_s": 451995,
+    "per_worker": [
+      226454,
+      225541
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 905654,
+    "frames_per_s": 905654,
+    "per_worker": [
+      226267,
+      226035,
+      225329,
+      228023
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1352851,
+    "frames_per_s": 1352851,
+    "per_worker": [
+      225573,
+      225919,
+      226824,
+      223894,
+      225601,
+      225041
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1784938,
+    "frames_per_s": 1784938,
+    "per_worker": [
+      225182,
+      225788,
+      215744,
+      225224,
+      223588,
+      226736,
+      225693,
+      216983
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2684471,
+    "frames_per_s": 2684471,
+    "per_worker": [
+      225130,
+      223178,
+      223206,
+      224306,
+      223876,
+      223667,
+      223856,
+      223269,
+      224190,
+      223367,
+      222729,
+      223696
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3584115,
+    "frames_per_s": 3584115,
+    "per_worker": [
+      225604,
+      225163,
+      226118,
+      227710,
+      225296,
+      225005,
+      224687,
+      223114,
+      225292,
+      225215,
+      224296,
+      224063,
+      215256,
+      223636,
+      222732,
+      220929
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.56,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

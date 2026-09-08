@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 390049,
+    "frames_per_s": 390049,
+    "per_worker": [
+      48778,
+      49276,
+      49070,
+      48701,
+      48613,
+      48631,
+      48548,
+      48432
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.61,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

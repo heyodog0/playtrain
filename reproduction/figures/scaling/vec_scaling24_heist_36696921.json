@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 114856,
+    "frames_per_s": 114856,
+    "per_worker": [
+      114856
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.1,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 226696,
+    "frames_per_s": 226696,
+    "per_worker": [
+      112169,
+      114527
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.12,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 451804,
+    "frames_per_s": 451804,
+    "per_worker": [
+      114171,
+      113986,
+      113548,
+      110099
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.12,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 680775,
+    "frames_per_s": 680775,
+    "per_worker": [
+      114335,
+      114829,
+      114281,
+      114050,
+      111520,
+      111760
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.12,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 907606,
+    "frames_per_s": 907606,
+    "per_worker": [
+      113272,
+      113477,
+      113392,
+      114851,
+      112791,
+      113259,
+      114312,
+      112251
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.12,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1348021,
+    "frames_per_s": 1348021,
+    "per_worker": [
+      113358,
+      111957,
+      110577,
+      111702,
+      111261,
+      115101,
+      113575,
+      113114,
+      113256,
+      111287,
+      109893,
+      112939
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.13,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1781290,
+    "frames_per_s": 1781290,
+    "per_worker": [
+      112552,
+      114495,
+      109700,
+      110496,
+      110875,
+      109486,
+      110725,
+      112839,
+      110065,
+      109528,
+      112836,
+      111645,
+      109794,
+      110312,
+      112632,
+      113310
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.14,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

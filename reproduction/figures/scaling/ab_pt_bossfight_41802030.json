@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5164907,
+    "frames_per_s": 5164907,
+    "per_worker": [
+      320537,
+      322031,
+      325416,
+      322378,
+      324098,
+      319190,
+      317404,
+      323041,
+      329175,
+      322842,
+      326074,
+      322961,
+      324735,
+      321856,
+      325381,
+      317788
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.39,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

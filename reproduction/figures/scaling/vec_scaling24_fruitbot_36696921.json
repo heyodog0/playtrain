@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 49461,
+    "frames_per_s": 49461,
+    "per_worker": [
+      49461
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.57,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 99869,
+    "frames_per_s": 99869,
+    "per_worker": [
+      50213,
+      49656
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.55,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 198514,
+    "frames_per_s": 198514,
+    "per_worker": [
+      50398,
+      49516,
+      49719,
+      48880
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.57,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 296747,
+    "frames_per_s": 296747,
+    "per_worker": [
+      50519,
+      49827,
+      49434,
+      49772,
+      48847,
+      48347
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.58,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 395779,
+    "frames_per_s": 395779,
+    "per_worker": [
+      49678,
+      49052,
+      50224,
+      50133,
+      49222,
+      49166,
+      49284,
+      49019
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.57,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 590087,
+    "frames_per_s": 590087,
+    "per_worker": [
+      49830,
+      49071,
+      48533,
+      49109,
+      50371,
+      49637,
+      49484,
+      49066,
+      48638,
+      48821,
+      48616,
+      48911
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.59,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/fruitbot.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 781527,
+    "frames_per_s": 781527,
+    "per_worker": [
+      49104,
+      48181,
+      48946,
+      49056,
+      48410,
+      49325,
+      49635,
+      49370,
+      47266,
+      49955,
+      48893,
+      47742,
+      49139,
+      49049,
+      49573,
+      47884
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.61,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

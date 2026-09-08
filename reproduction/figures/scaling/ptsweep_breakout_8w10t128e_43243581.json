@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2592283,
+    "frames_per_s": 2592283,
+    "per_worker": [
+      324223,
+      323771,
+      327816,
+      321437,
+      324049,
+      324297,
+      322349,
+      324342
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.39,
+    "env_threads": 10,
+    "device": "cpu"
+  }
+]

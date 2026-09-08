@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 61273,
+    "frames_per_s": 61273,
+    "per_worker": [
+      61273
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.08,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 122587,
+    "frames_per_s": 122587,
+    "per_worker": [
+      61795,
+      60792
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.08,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 244215,
+    "frames_per_s": 244215,
+    "per_worker": [
+      62008,
+      60672,
+      60794,
+      60741
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.09,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 366665,
+    "frames_per_s": 366665,
+    "per_worker": [
+      61482,
+      61335,
+      60666,
+      60711,
+      60998,
+      61472
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.08,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 487821,
+    "frames_per_s": 487821,
+    "per_worker": [
+      61646,
+      60798,
+      61894,
+      61302,
+      61022,
+      61447,
+      60630,
+      59082
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.09,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 733665,
+    "frames_per_s": 733665,
+    "per_worker": [
+      61416,
+      61077,
+      61221,
+      61214,
+      61005,
+      61268,
+      61393,
+      61282,
+      60376,
+      61181,
+      61064,
+      61170
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.08,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 966323,
+    "frames_per_s": 966323,
+    "per_worker": [
+      61794,
+      60363,
+      59926,
+      60717,
+      58975,
+      59946,
+      60657,
+      60042,
+      61023,
+      60888,
+      60576,
+      60901,
+      60140,
+      59875,
+      60030,
+      60469
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.11,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

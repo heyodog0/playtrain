@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 97202,
+    "frames_per_s": 97202,
+    "per_worker": [
+      97202
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.31,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 194072,
+    "frames_per_s": 194072,
+    "per_worker": [
+      97825,
+      96247
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.31,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 391234,
+    "frames_per_s": 391234,
+    "per_worker": [
+      98862,
+      98325,
+      97394,
+      96652
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 584809,
+    "frames_per_s": 584809,
+    "per_worker": [
+      97397,
+      98327,
+      97312,
+      99458,
+      95694,
+      96622
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 776553,
+    "frames_per_s": 776553,
+    "per_worker": [
+      99900,
+      98904,
+      97141,
+      97633,
+      96202,
+      95617,
+      95196,
+      95961
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.31,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1168959,
+    "frames_per_s": 1168959,
+    "per_worker": [
+      99009,
+      98654,
+      98890,
+      97797,
+      96958,
+      97378,
+      96013,
+      96894,
+      98710,
+      97885,
+      95573,
+      95197
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.3,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1539052,
+    "frames_per_s": 1539052,
+    "per_worker": [
+      96949,
+      96377,
+      97838,
+      94276,
+      95451,
+      97306,
+      95972,
+      96094,
+      94030,
+      97523,
+      94649,
+      95371,
+      96325,
+      96637,
+      97744,
+      96508
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.32,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

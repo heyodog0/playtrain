@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 62423,
+    "frames_per_s": 62423,
+    "per_worker": [
+      62423
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.04,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 124101,
+    "frames_per_s": 124101,
+    "per_worker": [
+      61908,
+      62193
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.05,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 248797,
+    "frames_per_s": 248797,
+    "per_worker": [
+      62782,
+      62426,
+      61694,
+      61895
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.05,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 373932,
+    "frames_per_s": 373932,
+    "per_worker": [
+      63629,
+      62805,
+      62762,
+      62340,
+      62042,
+      60354
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.04,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 497761,
+    "frames_per_s": 497761,
+    "per_worker": [
+      63586,
+      62450,
+      62322,
+      63546,
+      62896,
+      62838,
+      60842,
+      59282
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.05,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 745280,
+    "frames_per_s": 745280,
+    "per_worker": [
+      63262,
+      63312,
+      63090,
+      62513,
+      62013,
+      62343,
+      62288,
+      60679,
+      60110,
+      61927,
+      62468,
+      61274
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.05,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 985181,
+    "frames_per_s": 985181,
+    "per_worker": [
+      63239,
+      62798,
+      62709,
+      62841,
+      62872,
+      62197,
+      62047,
+      61752,
+      62629,
+      61084,
+      60375,
+      60490,
+      60031,
+      59798,
+      58984,
+      61335
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.07,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

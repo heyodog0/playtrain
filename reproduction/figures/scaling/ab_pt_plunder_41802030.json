@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 6662902,
+    "frames_per_s": 6662902,
+    "per_worker": [
+      422252,
+      424724,
+      415680,
+      415079,
+      417282,
+      418059,
+      420395,
+      417306,
+      415591,
+      413590,
+      416741,
+      414029,
+      413405,
+      413522,
+      412700,
+      412547
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.3,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2510574,
+    "frames_per_s": 2510574,
+    "per_worker": [
+      321821,
+      325731,
+      324346,
+      326189,
+      298486,
+      309117,
+      289864,
+      315021
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.4,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

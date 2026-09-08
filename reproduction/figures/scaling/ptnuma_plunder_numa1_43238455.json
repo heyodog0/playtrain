@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/plunder.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3441587,
+    "frames_per_s": 3441587,
+    "per_worker": [
+      425340,
+      431472,
+      430716,
+      427629,
+      430244,
+      433377,
+      431199,
+      431609
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.29,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

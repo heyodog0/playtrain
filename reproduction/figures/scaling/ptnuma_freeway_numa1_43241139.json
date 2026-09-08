@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3434995,
+    "frames_per_s": 3434995,
+    "per_worker": [
+      428348,
+      430465,
+      429200,
+      430744,
+      425648,
+      426478,
+      429062,
+      435050
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.29,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

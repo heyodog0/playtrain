@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2734948,
+    "frames_per_s": 2734948,
+    "per_worker": [
+      344926,
+      340041,
+      346145,
+      340233,
+      353966,
+      330183,
+      335943,
+      343511
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

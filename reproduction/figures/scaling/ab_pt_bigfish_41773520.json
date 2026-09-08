@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 332915,
+    "frames_per_s": 332915,
+    "per_worker": [
+      332915
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 660702,
+    "frames_per_s": 660702,
+    "per_worker": [
+      333482,
+      327219
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1315229,
+    "frames_per_s": 1315229,
+    "per_worker": [
+      332073,
+      329595,
+      328508,
+      325053
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1981530,
+    "frames_per_s": 1981530,
+    "per_worker": [
+      332018,
+      331605,
+      330298,
+      330616,
+      329049,
+      327945
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2619468,
+    "frames_per_s": 2619468,
+    "per_worker": [
+      331602,
+      329633,
+      328517,
+      323414,
+      322987,
+      330015,
+      329346,
+      323954
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3931991,
+    "frames_per_s": 3931991,
+    "per_worker": [
+      333947,
+      331011,
+      330464,
+      330098,
+      329856,
+      328788,
+      328635,
+      326941,
+      326599,
+      323046,
+      321475,
+      321133
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5150158,
+    "frames_per_s": 5150158,
+    "per_worker": [
+      323873,
+      327606,
+      326051,
+      326020,
+      324376,
+      320035,
+      324311,
+      325579,
+      317457,
+      311844,
+      330743,
+      318004,
+      330266,
+      316477,
+      304057,
+      323459
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.39,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

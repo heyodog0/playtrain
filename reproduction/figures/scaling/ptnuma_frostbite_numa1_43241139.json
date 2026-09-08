@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/frostbite.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1774595,
+    "frames_per_s": 1774595,
+    "per_worker": [
+      216116,
+      222822,
+      220278,
+      223264,
+      223387,
+      222741,
+      223216,
+      222771
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.57,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

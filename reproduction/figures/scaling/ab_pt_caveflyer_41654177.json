@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 65479,
+    "frames_per_s": 65479,
+    "per_worker": [
+      65479
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.94,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 132580,
+    "frames_per_s": 132580,
+    "per_worker": [
+      67452,
+      65128
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.92,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 265994,
+    "frames_per_s": 265994,
+    "per_worker": [
+      65364,
+      68584,
+      65553,
+      66493
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.91,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 400645,
+    "frames_per_s": 400645,
+    "per_worker": [
+      67210,
+      68495,
+      66516,
+      66358,
+      67462,
+      64603
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.91,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 535458,
+    "frames_per_s": 535458,
+    "per_worker": [
+      68420,
+      65582,
+      68368,
+      68232,
+      66505,
+      66220,
+      66358,
+      65774
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.9,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 809521,
+    "frames_per_s": 809521,
+    "per_worker": [
+      70786,
+      66595,
+      66303,
+      66051,
+      68101,
+      66478,
+      68961,
+      68418,
+      67706,
+      68665,
+      67328,
+      64128
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.89,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1061326,
+    "frames_per_s": 1061326,
+    "per_worker": [
+      67473,
+      65697,
+      67042,
+      63649,
+      65952,
+      68402,
+      68220,
+      67346,
+      67426,
+      66893,
+      67373,
+      63924,
+      65365,
+      64485,
+      67669,
+      64411
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.92,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

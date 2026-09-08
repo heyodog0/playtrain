@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 339430,
+    "frames_per_s": 339430,
+    "per_worker": [
+      339430
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 678746,
+    "frames_per_s": 678746,
+    "per_worker": [
+      342508,
+      336237
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1332143,
+    "frames_per_s": 1332143,
+    "per_worker": [
+      326244,
+      339298,
+      332223,
+      334378
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2009036,
+    "frames_per_s": 2009036,
+    "per_worker": [
+      339442,
+      342699,
+      339047,
+      329738,
+      331443,
+      326668
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2666486,
+    "frames_per_s": 2666486,
+    "per_worker": [
+      342356,
+      334412,
+      340071,
+      333647,
+      333619,
+      333384,
+      329526,
+      319471
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3976116,
+    "frames_per_s": 3976116,
+    "per_worker": [
+      340613,
+      333318,
+      320340,
+      326894,
+      337906,
+      323784,
+      338438,
+      331649,
+      328365,
+      336038,
+      325375,
+      333395
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5286184,
+    "frames_per_s": 5286184,
+    "per_worker": [
+      335688,
+      334219,
+      331232,
+      322308,
+      323478,
+      331824,
+      334562,
+      331629,
+      324533,
+      337766,
+      334180,
+      326718,
+      328629,
+      323648,
+      332802,
+      332966
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

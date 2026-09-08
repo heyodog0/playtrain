@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 169138,
+    "frames_per_s": 169138,
+    "per_worker": [
+      169138
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 336318,
+    "frames_per_s": 336318,
+    "per_worker": [
+      168446,
+      167873
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 676533,
+    "frames_per_s": 676533,
+    "per_worker": [
+      168762,
+      169511,
+      169470,
+      168790
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1010180,
+    "frames_per_s": 1010180,
+    "per_worker": [
+      169461,
+      167276,
+      168747,
+      167786,
+      168153,
+      168757
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1344563,
+    "frames_per_s": 1344563,
+    "per_worker": [
+      168228,
+      168216,
+      164986,
+      168977,
+      168891,
+      168206,
+      168366,
+      168694
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2016778,
+    "frames_per_s": 2016778,
+    "per_worker": [
+      168393,
+      168655,
+      167632,
+      168041,
+      168646,
+      168354,
+      167951,
+      166893,
+      167920,
+      168565,
+      167709,
+      168018
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/breakout.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2689573,
+    "frames_per_s": 2689573,
+    "per_worker": [
+      167985,
+      168378,
+      168667,
+      167362,
+      168034,
+      167652,
+      165796,
+      167769,
+      168884,
+      167955,
+      168180,
+      168991,
+      168648,
+      168868,
+      168060,
+      168344
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.75,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

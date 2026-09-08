@@ -1,0 +1,30 @@
+{
+ "frames": 500,
+ "results": {
+  "bigfish": 499,
+  "bossfight": 490,
+  "caveflyer": 425,
+  "chaser": 475,
+  "climber": 517,
+  "coinrun": 469,
+  "dodgeball": 522,
+  "fruitbot": 489,
+  "heist": 525,
+  "jumper": 524,
+  "leaper": 539,
+  "maze": 459,
+  "miner": 391,
+  "ninja": 592,
+  "plunder": 553,
+  "starpilot": 544,
+  "qbert": 486,
+  "seaquest": 565,
+  "pong": 596,
+  "breakout": 558,
+  "space_invaders": 569,
+  "frostbite": 538,
+  "freeway": 597,
+  "asteroids": 550
+ },
+ "geomean": 517
+}

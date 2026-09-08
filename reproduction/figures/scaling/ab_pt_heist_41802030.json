@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/heist.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1764812,
+    "frames_per_s": 1764812,
+    "per_worker": [
+      110137,
+      110620,
+      110206,
+      110196,
+      110679,
+      110306,
+      110712,
+      110918,
+      110428,
+      111445,
+      110900,
+      111419,
+      110410,
+      110637,
+      110010,
+      105789
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.15,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

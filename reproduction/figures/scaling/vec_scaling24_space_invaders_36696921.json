@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 211518,
+    "frames_per_s": 211518,
+    "per_worker": [
+      211518
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.6,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 424216,
+    "frames_per_s": 424216,
+    "per_worker": [
+      210885,
+      213331
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.59,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 854331,
+    "frames_per_s": 854331,
+    "per_worker": [
+      212366,
+      212001,
+      214417,
+      215547
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.59,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1279890,
+    "frames_per_s": 1279890,
+    "per_worker": [
+      213067,
+      212814,
+      216244,
+      213794,
+      212722,
+      211250
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.59,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1704186,
+    "frames_per_s": 1704186,
+    "per_worker": [
+      213872,
+      214294,
+      213243,
+      213847,
+      213164,
+      211127,
+      213137,
+      211502
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.59,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2543952,
+    "frames_per_s": 2543952,
+    "per_worker": [
+      212275,
+      212066,
+      213045,
+      211268,
+      210236,
+      211867,
+      210144,
+      213253,
+      214145,
+      212800,
+      213705,
+      209148
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.6,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/space_invaders.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3389451,
+    "frames_per_s": 3389451,
+    "per_worker": [
+      211918,
+      212305,
+      211930,
+      211554,
+      213620,
+      210980,
+      213367,
+      213036,
+      212057,
+      211022,
+      212854,
+      211437,
+      210939,
+      213921,
+      208358,
+      210153
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.6,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

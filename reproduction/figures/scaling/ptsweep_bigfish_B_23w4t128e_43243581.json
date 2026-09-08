@@ -1,0 +1,39 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bigfish.js",
+    "workers": 23,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 6176068,
+    "frames_per_s": 6176068,
+    "per_worker": [
+      271609,
+      266063,
+      270597,
+      274256,
+      270071,
+      268956,
+      268282,
+      261297,
+      273736,
+      272832,
+      274052,
+      260261,
+      272150,
+      266713,
+      268800,
+      270085,
+      264826,
+      267034,
+      264772,
+      270906,
+      270718,
+      264980,
+      263073
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.47,
+    "env_threads": 4,
+    "device": "cpu"
+  }
+]

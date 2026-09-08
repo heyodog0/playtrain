@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 70534,
+    "frames_per_s": 70534,
+    "per_worker": [
+      70534
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.8,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 137555,
+    "frames_per_s": 137555,
+    "per_worker": [
+      68688,
+      68868
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.85,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 276502,
+    "frames_per_s": 276502,
+    "per_worker": [
+      70921,
+      69009,
+      68634,
+      67937
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 414639,
+    "frames_per_s": 414639,
+    "per_worker": [
+      70421,
+      70589,
+      68475,
+      68904,
+      68718,
+      67532
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 554460,
+    "frames_per_s": 554460,
+    "per_worker": [
+      68863,
+      69201,
+      70014,
+      69479,
+      69127,
+      70616,
+      69103,
+      68058
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 829664,
+    "frames_per_s": 829664,
+    "per_worker": [
+      68825,
+      70549,
+      69591,
+      69351,
+      69161,
+      69488,
+      70509,
+      67785,
+      69509,
+      69786,
+      67333,
+      67777
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1096470,
+    "frames_per_s": 1096470,
+    "per_worker": [
+      70870,
+      69119,
+      66763,
+      69878,
+      67687,
+      68124,
+      68703,
+      68335,
+      67837,
+      67752,
+      69964,
+      68985,
+      70443,
+      67111,
+      67640,
+      67260
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.86,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

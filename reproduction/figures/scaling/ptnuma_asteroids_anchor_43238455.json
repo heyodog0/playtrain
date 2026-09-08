@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3840509,
+    "frames_per_s": 3840509,
+    "per_worker": [
+      244122,
+      240233,
+      242105,
+      240353,
+      241745,
+      241317,
+      237728,
+      239860,
+      238814,
+      242931,
+      240169,
+      241071,
+      238950,
+      234406,
+      238271,
+      238436
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

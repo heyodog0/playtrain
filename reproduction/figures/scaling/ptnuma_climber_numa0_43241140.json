@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/climber.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 497149,
+    "frames_per_s": 497149,
+    "per_worker": [
+      61973,
+      62359,
+      61676,
+      62276,
+      62379,
+      62095,
+      62089,
+      62303
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.05,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

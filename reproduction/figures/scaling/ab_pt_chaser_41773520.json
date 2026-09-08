@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 71727,
+    "frames_per_s": 71727,
+    "per_worker": [
+      71727
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.77,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 141783,
+    "frames_per_s": 141783,
+    "per_worker": [
+      71084,
+      70698
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.79,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 286610,
+    "frames_per_s": 286610,
+    "per_worker": [
+      71770,
+      71827,
+      71554,
+      71459
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.77,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 429069,
+    "frames_per_s": 429069,
+    "per_worker": [
+      71825,
+      71681,
+      71351,
+      71214,
+      71445,
+      71553
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.78,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 569958,
+    "frames_per_s": 569958,
+    "per_worker": [
+      71803,
+      71785,
+      71342,
+      71453,
+      71271,
+      71139,
+      71179,
+      69986
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.79,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 857532,
+    "frames_per_s": 857532,
+    "per_worker": [
+      71933,
+      71969,
+      71786,
+      71746,
+      71655,
+      71673,
+      71547,
+      71487,
+      71265,
+      71158,
+      70800,
+      70513
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.78,
+    "env_threads": 5,
+    "device": "cpu"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1106429,
+    "frames_per_s": 1106429,
+    "per_worker": [
+      69822,
+      69683,
+      69508,
+      69473,
+      69462,
+      69389,
+      69230,
+      69072,
+      68958,
+      68919,
+      68695,
+      69035,
+      68390,
+      69251,
+      68328,
+      69216
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

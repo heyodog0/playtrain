@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/caveflyer.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1061160,
+    "frames_per_s": 1061160,
+    "per_worker": [
+      70073,
+      64773,
+      68837,
+      66228,
+      64031,
+      65315,
+      68272,
+      64181,
+      65140,
+      66108,
+      67635,
+      67415,
+      65987,
+      66861,
+      64541,
+      65762
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.92,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

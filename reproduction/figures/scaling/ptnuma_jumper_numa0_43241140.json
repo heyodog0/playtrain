@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/jumper.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 620025,
+    "frames_per_s": 620025,
+    "per_worker": [
+      77321,
+      77443,
+      77427,
+      77769,
+      77256,
+      77862,
+      77387,
+      77559
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.64,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

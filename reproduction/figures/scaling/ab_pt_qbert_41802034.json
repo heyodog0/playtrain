@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 936417,
+    "frames_per_s": 936417,
+    "per_worker": [
+      58756,
+      58043,
+      59324,
+      58514,
+      59185,
+      58777,
+      58597,
+      58363,
+      58890,
+      58936,
+      58767,
+      58019,
+      58573,
+      58744,
+      57264,
+      57664
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.18,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

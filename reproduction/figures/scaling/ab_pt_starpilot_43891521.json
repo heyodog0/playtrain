@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 344814,
+    "frames_per_s": 344814,
+    "per_worker": [
+      344814
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 690062,
+    "frames_per_s": 690062,
+    "per_worker": [
+      342948,
+      347114
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1372002,
+    "frames_per_s": 1372002,
+    "per_worker": [
+      346053,
+      340614,
+      344123,
+      341212
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2058306,
+    "frames_per_s": 2058306,
+    "per_worker": [
+      342134,
+      339505,
+      342449,
+      345399,
+      340183,
+      348636
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2747481,
+    "frames_per_s": 2747481,
+    "per_worker": [
+      345184,
+      345385,
+      340633,
+      344412,
+      339314,
+      341180,
+      342319,
+      349054
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 4125460,
+    "frames_per_s": 4125460,
+    "per_worker": [
+      348355,
+      340679,
+      344556,
+      342626,
+      347631,
+      343544,
+      345647,
+      341784,
+      343852,
+      340343,
+      345651,
+      340792
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/starpilot.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5501983,
+    "frames_per_s": 5501983,
+    "per_worker": [
+      344421,
+      348103,
+      342606,
+      344311,
+      347130,
+      343892,
+      340381,
+      347694,
+      344027,
+      345592,
+      345044,
+      342520,
+      341220,
+      344275,
+      340090,
+      340676
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.36,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

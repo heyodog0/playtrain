@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 390733,
+    "frames_per_s": 390733,
+    "per_worker": [
+      390733
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 767257,
+    "frames_per_s": 767257,
+    "per_worker": [
+      383131,
+      384126
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1569048,
+    "frames_per_s": 1569048,
+    "per_worker": [
+      397759,
+      393269,
+      389487,
+      388533
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2334249,
+    "frames_per_s": 2334249,
+    "per_worker": [
+      395030,
+      390479,
+      385796,
+      391145,
+      385434,
+      386365
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3108928,
+    "frames_per_s": 3108928,
+    "per_worker": [
+      386923,
+      388667,
+      388279,
+      389288,
+      385449,
+      396942,
+      389541,
+      383840
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 4666839,
+    "frames_per_s": 4666839,
+    "per_worker": [
+      389115,
+      388027,
+      380716,
+      391527,
+      388889,
+      390344,
+      390544,
+      394510,
+      395111,
+      385286,
+      387581,
+      385190
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 6197075,
+    "frames_per_s": 6197075,
+    "per_worker": [
+      387396,
+      392387,
+      385283,
+      389432,
+      378725,
+      398708,
+      380882,
+      386119,
+      385021,
+      391706,
+      391686,
+      390481,
+      380550,
+      387836,
+      383983,
+      386880
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.32,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

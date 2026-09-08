@@ -1,30 +1,19 @@
-"""Generation-showcase panels: one PNG per game, 3 trained-policy frames with
-the curves directly underneath (same stacking as fig_main's panel B).
+"""Generation-showcase panels: one PNG per game, [3 trained-policy frames | square curves].
 
 For each game picks the best-scoring finished checkpoint (IMPALA or PPO) to
-play the frames, and plots 3-seed IMPALA vs PPO bands below the strip.
+play the frames, and plots 3-seed IMPALA vs PPO bands on the right.
 Writes outputs/figs/fig_gen_<game>.png
-
-    python tools/render_showcase_panels.py                  # roll out fresh frames
-    python tools/render_showcase_panels.py --reuse-strips   # relayout only
-
---reuse-strips reads the already-rendered outputs/showcase_strips/<game>.png
-instead of replaying the policy, so a pure layout change needs no checkpoints
-and no PlayTrain runtime.
 """
-import glob, json, os, sys
+import glob, json, os
 import numpy as np
+import torch
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from PIL import Image
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-
-REUSE_STRIPS = "--reuse-strips" in sys.argv
-if not REUSE_STRIPS:   # torch + the runtime are only needed to replay policies
-    import torch
-    from playtrain.runtime.env import PlayTrainEnv
+from playtrain.runtime.env import PlayTrainEnv
 
 GAMES = ["downwell_fresh", "jump_king", "vvvvvv"]
 FRAMES = [60, 600, 1500]
@@ -169,66 +158,7 @@ def best_agent(game):
 
 
 # ---------------- render + plot ----------------
-# Panel geometry, in inches. The strip and the curve share one column so the
-# curve sits directly under the frames (fig_main panel B does the same); the
-# figure height falls out of the strip's own aspect so the frames fill their
-# axes exactly rather than floating inside a mismatched box.
-P_W = 5.4                       # panel width
-P_L, P_R, P_TOP, P_BOT = 0.58, 0.16, 0.03, 0.45   # margins (P_L holds the
-#                        y-label, P_R keeps the last x-tick off the edge)
-P_GAP, P_CURVE = 0.06, 1.10     # strip-to-curve gap, curve height
-
-
-def make_panel(game, strip):
-    axw = P_W - P_L - P_R
-    strip_h = axw / (strip.shape[1] / strip.shape[0])
-    H = P_TOP + strip_h + P_GAP + P_CURVE + P_BOT
-    fig = plt.figure(figsize=(P_W, H))
-
-    axf = fig.add_axes([P_L / P_W, (P_BOT + P_CURVE + P_GAP) / H,
-                        axw / P_W, strip_h / H])
-    axf.imshow(strip, aspect="auto")
-    axf.axis("off")
-
-    axc = fig.add_axes([P_L / P_W, P_BOT / H, axw / P_W, P_CURVE / H])
-    imp = band([load_tb(f"{d}/tb") for d in impala_runs(game)])
-    ppo = band([load_tb(f"outputs/pv_p_{game}_s{s}/tb") for s in range(3)])
-    for data, color in ((imp, IMP_C), (ppo, PPO_C)):
-        if data is None:
-            continue
-        x, m, lo, hi, k = data
-        axc.plot(x, m, lw=1.6, color=color)
-        if k > 1:
-            axc.fill_between(x, lo, hi, color=color, alpha=0.16, lw=0)
-    axc.set_xlim(0, 100)
-    axc.tick_params(labelsize=10)
-    axc.grid(alpha=0.22, lw=0.5)
-    axc.spines[["top", "right"]].set_visible(False)
-    if game == "downwell_fresh":
-        axc.set_xlabel("env steps (M)", fontsize=11)
-    axc.set_ylabel("episode return", fontsize=11)
-    axc.legend(handles=[Line2D([], [], color=IMP_C, lw=1.6, label="IMPALA"),
-                        Line2D([], [], color=PPO_C, lw=1.6, label="PPO")],
-               fontsize=9, frameon=False, loc="upper left",
-               handlelength=1.2, borderaxespad=0.1)
-
-    out = f"outputs/figs/fig_gen_{game}.png"
-    fig.savefig(out, dpi=150)
-    plt.close(fig)
-    print("wrote", out)
-
-
 for game in GAMES:
-    strip_path = f"outputs/showcase_strips/{game}.png"
-    if REUSE_STRIPS:
-        if not os.path.exists(strip_path):
-            print(f"{game}: no cached strip at {strip_path}, skipping")
-            continue
-        strip = np.asarray(Image.open(strip_path).convert("RGB"))
-        print(f"{game}: reusing {strip_path}")
-        make_panel(game, strip)
-        continue
-
     agent, src = best_agent(game)
     print(f"{game}: frames from {src}")
     if agent is None:
@@ -279,5 +209,40 @@ for game in GAMES:
     tiles = [np.pad(x, ((0, 0), (0, 5), (0, 0)), constant_values=255)
              for x in tiles[:-1]] + [tiles[-1]]
     strip = np.concatenate(tiles, axis=1)
-    Image.fromarray(strip).save(strip_path)
-    make_panel(game, strip)
+    Image.fromarray(strip).save(f"outputs/showcase_strips/{game}.png")
+
+    # ---- panel: [strip | square curves] ----
+    fig = plt.figure(figsize=(9.6, 2.75))
+    gs = fig.add_gridspec(1, 2, width_ratios=[2.9, 1.0], wspace=0.33,
+                          left=0.005, right=0.985, top=0.96, bottom=0.17)
+    axf = fig.add_subplot(gs[0])
+    axf.imshow(strip)
+    axf.axis("off")
+
+    axc = fig.add_subplot(gs[1])
+    imp = band([load_tb(f"{d}/tb") for d in impala_runs(game)])
+    ppo = band([load_tb(f"outputs/pv_p_{game}_s{s}/tb") for s in range(3)])
+    for data, color in ((imp, IMP_C), (ppo, PPO_C)):
+        if data is None:
+            continue
+        x, m, lo, hi, k = data
+        axc.plot(x, m, lw=1.6, color=color)
+        if k > 1:
+            axc.fill_between(x, lo, hi, color=color, alpha=0.16, lw=0)
+    axc.set_xlim(0, 100)
+    axc.set_box_aspect(1.0)
+    axc.tick_params(labelsize=10)
+    axc.grid(alpha=0.22, lw=0.5)
+    axc.spines[["top", "right"]].set_visible(False)
+    if game == "downwell_fresh":
+        axc.set_xlabel("env steps (M)", fontsize=11)
+    axc.set_ylabel("episode return", fontsize=11)
+    axc.legend(handles=[Line2D([], [], color=IMP_C, lw=1.6, label="IMPALA"),
+                        Line2D([], [], color=PPO_C, lw=1.6, label="PPO")],
+               fontsize=9, frameon=False, loc="upper left",
+               handlelength=1.2, borderaxespad=0.1)
+
+    out = f"outputs/figs/fig_gen_{game}.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print("wrote", out)

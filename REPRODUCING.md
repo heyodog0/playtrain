@@ -1,26 +1,42 @@
 # Reproducing every figure and table in the ICLR paper
 
-> **Start here.** The figure code and the data it reads are in
-> [`reproduction/figures/`](reproduction/figures/). Run
-> `bash reproduction/figures/fetch_data.sh` once to download the run data (277 MB,
-> published as a release asset rather than committed), then run a plotter from
-> `reproduction/figures/tools/`, for example:
+> **Start here.** The figure code and its data are in
+> [`reproduction/figures/`](reproduction/figures/). Two figures are verified to
+> reproduce exactly; the commands are below.
+>
+> **`fig_env_efficiency.pdf`** (Figure 4 in the paper) needs no download:
 >
 > ```
+> cd reproduction/figures
+> uv run --no-project --with matplotlib --with numpy --with pillow \
+>    python tools/plot_env_efficiency_bestonly.py \
+>    --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out .
+> ```
+>
+> This prints `2.18x` ProcGen and `12.62x` ALE per core, matching the paper, and
+> redraws all four panels including the 80-thread points at 3.64M and 7.36M.
+>
+> **`fig_main_D.png`** (the learning-curve composite) needs the run data first:
+>
+> ```
+> bash reproduction/figures/fetch_data.sh      # 277 MB, a release asset
 > cd reproduction/figures
 > uv run --no-project --with matplotlib --with numpy --with pillow --with tensorboard \
 >    python tools/plot_main_composite.py outputs/figs/fig_main.png
 > ```
 >
-> Two cautions. `throughput_panels.py` refuses to draw when the committed data disagrees
-> with the values printed in the paper, which is deliberate. And runs are selected by
-> config content, never by directory prefix: prefix globbing has twice dropped a whole
-> arm of the comparison with no error.
+> Three things that will otherwise cost you an afternoon.
 >
-> The rest of this file is the per-artifact index. **It was written 2026-08-10 and is
-> stale**: it predates the EnvPool re-framing, the adv2 adoption and the engine tier, so
-> its numbers and some of its paths no longer match the paper. The scripts it names are
-> right; the values are not.
+> The **job ids matter**. `--pg-job 44515188` is the tier-3 scaling run. Older ids
+> (38145651 / 39032276) still resolve and draw a figure, but it is the pre-engine-tier
+> one at roughly half the throughput.
+>
+> There are **three variants** of the efficiency plotter. `_bestonly` is the published
+> one. `_2arm` adds the as-shipped EnvPool rows, and the plain `plot_env_efficiency.py`
+> predates the tier-3 numbers.
+>
+> Runs are selected **by config content, never by directory prefix**. Prefix globbing has
+> twice dropped a whole arm of the comparison with no error.
 
 One row per artifact: what draws it, what it reads, and whether a clone is
 enough. Written 2026-08-10 after auditing all 15.

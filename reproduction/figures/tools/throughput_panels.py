@@ -12,6 +12,7 @@ committed backend ladder.
 """
 import json, math, statistics as st
 from pathlib import Path
+import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
 
@@ -26,20 +27,20 @@ DATA = Path(__file__).resolve().parents[1] / "results" / "env_throughput"
 # The figure as published, kept as a checksum on the derivation below.
 # (game, qjs_mean, qjs_std, base_mean, base_std)
 _EXPECTED_PROCGEN = [
-    ("plunder", 95442, 591, 36840, 482), ("bigfish", 74326, 463, 38698, 920),
-    ("bossfight", 69191, 289, 14575, 1083), ("ninja", 64690, 156, 18028, 603),
-    ("starpilot", 52337, 239, 34201, 292), ("leaper", 33411, 163, 24579, 3533),
-    ("heist", 22012, 68, 24675, 1232), ("dodgeball", 17708, 60, 24395, 1161),
-    ("jumper", 15278, 344, 15971, 718), ("maze", 15225, 41, 11918, 341),
-    ("caveflyer", 14985, 34, 15993, 277), ("chaser", 14489, 43, 25781, 132),
-    ("climber", 12065, 25, 23276, 970), ("fruitbot", 10814, 38, 14249, 87),
-    ("coinrun", 9655, 14, 21476, 1791), ("miner", 6366, 9, 14331, 215),
+    ("plunder", 191069, 1407, 37563, 347), ("bigfish", 127317, 1548, 37442, 1956),
+    ("bossfight", 123593, 850, 14977, 956), ("ninja", 126686, 2173, 18169, 572),
+    ("starpilot", 94492, 633, 34836, 506), ("leaper", 66213, 807, 25999, 3074),
+    ("heist", 57262, 354, 24587, 1691), ("dodgeball", 32103, 104, 25876, 1559),
+    ("jumper", 24276, 198, 16104, 353), ("maze", 38656, 186, 12272, 926),
+    ("caveflyer", 30952, 284, 16114, 553), ("chaser", 25890, 158, 26217, 149),
+    ("climber", 16876, 55, 22841, 1775), ("fruitbot", 17534, 113, 14351, 41),
+    ("coinrun", 22637, 123, 21951, 2780), ("miner", 23414, 242, 14454, 176),
 ]
 _EXPECTED_ATARI = [
-    ("pong", 167833, 2684, 11166, 37), ("seaquest", 65867, 799, 8846, 93),
-    ("space_invaders", 50758, 350, 9109, 48), ("frostbite", 39610, 250, 4977, 22),
-    ("breakout", 32206, 96, 3741, 23), ("asteroids", 48715, 196, 10462, 58),
-    ("freeway", 83686, 569, 6337, 21), ("qbert", 11366, 21, 5484, 13),
+    ("pong", 477263, 4618, 11721, 92), ("seaquest", 115031, 654, 9297, 11),
+    ("space_invaders", 95594, 832, 9628, 10), ("frostbite", 63039, 195, 5196, 28),
+    ("breakout", 73634, 1632, 3896, 14), ("asteroids", 81601, 1581, 10997, 9),
+    ("freeway", 193037, 2881, 6592, 70), ("qbert", 14706, 283, 5703, 14),
 ]
 
 
@@ -89,7 +90,7 @@ def geo(xs):
 
 
 def throughput_panel(ax, rows, base_label, base_color, rotate, fs=1.0,
-                     show_ylabel=True):
+                     show_ylabel=True, cap=None):
     rows = sorted(rows, key=lambda r: r[1], reverse=True)
     games = [r[0] for r in rows]
     se = TRIALS ** 0.5
@@ -114,6 +115,24 @@ def throughput_panel(ax, rows, base_label, base_color, rotate, fs=1.0,
     ax.spines["bottom"].set_color(MUTE)
     ax.tick_params(axis="y", labelsize=15 * fs, length=0, colors=INK)
     ax.tick_params(axis="x", length=0, colors=INK, pad=1.5)
+    if cap:
+        # One game (pong) is several times the next bar, which squashes the rest.
+        # Clip the axis and cut the bar with a wavy break, keeping its value
+        # readable rather than dropping the game or going log.
+        ax.set_ylim(0, cap)
+        for xi, v in zip(x - w/2 - 0.01, qj_all):
+            if v > cap:
+                y0, y1 = cap * 0.72, cap * 0.90
+                ax.add_patch(plt.Rectangle((xi - 0.02, y0), w + 0.04, y1 - y0,
+                                           facecolor="white", edgecolor="none",
+                                           zorder=5, clip_on=False))
+                xs = np.linspace(xi, xi + w, 120)
+                amp = (y1 - y0) * 0.22
+                for yc in (y0 + amp * 1.4, y1 - amp * 1.4):
+                    ax.plot(xs, yc + amp * np.sin(2 * np.pi * 2 * (xs - xi) / w),
+                            color=INK, lw=1.5 * fs, zorder=6, solid_capstyle="round")
+                ax.text(xi + w / 2, cap * 0.995, f"{v/1000:.0f}k", ha="center",
+                        va="bottom", fontsize=12 * fs, color=INK)
     ax.set_axisbelow(True); ax.yaxis.grid(True, color=GRID, lw=1)
     ax.legend(loc="upper right", ncol=1, frameon=False, fontsize=12 * fs,
               handlelength=1.4, borderaxespad=0.2, labelspacing=0.3)

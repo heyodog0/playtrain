@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 52457,
+    "frames_per_s": 52457,
+    "per_worker": [
+      52457
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.43,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 104357,
+    "frames_per_s": 104357,
+    "per_worker": [
+      52586,
+      51772
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.44,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 209716,
+    "frames_per_s": 209716,
+    "per_worker": [
+      53127,
+      52191,
+      52446,
+      51953
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.43,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 312974,
+    "frames_per_s": 312974,
+    "per_worker": [
+      51602,
+      52345,
+      52027,
+      52540,
+      52672,
+      51788
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.44,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 414424,
+    "frames_per_s": 414424,
+    "per_worker": [
+      52392,
+      52834,
+      50772,
+      51803,
+      51731,
+      52389,
+      51991,
+      50513
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.46,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 627040,
+    "frames_per_s": 627040,
+    "per_worker": [
+      52913,
+      52192,
+      52344,
+      52677,
+      51934,
+      52363,
+      52786,
+      52104,
+      52516,
+      52216,
+      52121,
+      50875
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.44,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 824133,
+    "frames_per_s": 824133,
+    "per_worker": [
+      52405,
+      51993,
+      51533,
+      51269,
+      51640,
+      51622,
+      49292,
+      51607,
+      51917,
+      52212,
+      51597,
+      51742,
+      50748,
+      50899,
+      51933,
+      51724
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.47,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

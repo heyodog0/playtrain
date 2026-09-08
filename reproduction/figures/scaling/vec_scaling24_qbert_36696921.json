@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 60355,
+    "frames_per_s": 60355,
+    "per_worker": [
+      60355
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.11,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 121664,
+    "frames_per_s": 121664,
+    "per_worker": [
+      60552,
+      61112
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.09,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 238703,
+    "frames_per_s": 238703,
+    "per_worker": [
+      58824,
+      60431,
+      60414,
+      59034
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.13,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 359582,
+    "frames_per_s": 359582,
+    "per_worker": [
+      60822,
+      60086,
+      60071,
+      59397,
+      59991,
+      59215
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.12,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 477449,
+    "frames_per_s": 477449,
+    "per_worker": [
+      60024,
+      58605,
+      60463,
+      59961,
+      60372,
+      59992,
+      59256,
+      58776
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.13,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 715358,
+    "frames_per_s": 715358,
+    "per_worker": [
+      60228,
+      58666,
+      60318,
+      59433,
+      60983,
+      60069,
+      59036,
+      59797,
+      59822,
+      59495,
+      59692,
+      57819
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.14,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/qbert.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 946770,
+    "frames_per_s": 946770,
+    "per_worker": [
+      59798,
+      60000,
+      60202,
+      59511,
+      59167,
+      57223,
+      59544,
+      59382,
+      60146,
+      60116,
+      59228,
+      59266,
+      58622,
+      58151,
+      59561,
+      56852
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.15,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

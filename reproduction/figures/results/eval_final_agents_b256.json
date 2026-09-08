@@ -1,0 +1,146 @@
+{
+ "bigfish": {
+  "run": "outputs/impala_34603289",
+  "greedy_return": 14.625,
+  "random_return": 0.625,
+  "ckpt_step": -1
+ },
+ "plunder": {
+  "run": "outputs/impala_34652482",
+  "greedy_return": 5.125,
+  "random_return": 2.75,
+  "ckpt_step": -1
+ },
+ "bossfight": {
+  "run": "outputs/impala_34652483",
+  "greedy_return": 59.0,
+  "random_return": -13.25,
+  "ckpt_step": -1
+ },
+ "ninja": {
+  "run": "outputs/impala_34652485",
+  "greedy_return": 1.25,
+  "random_return": 0.75,
+  "ckpt_step": -1
+ },
+ "starpilot": {
+  "run": "outputs/impala_34652486",
+  "greedy_return": 13.125,
+  "random_return": 1.75,
+  "ckpt_step": -1
+ },
+ "leaper": {
+  "run": "outputs/impala_34652487",
+  "greedy_return": 22.75,
+  "random_return": 12.5,
+  "ckpt_step": -1
+ },
+ "heist": {
+  "run": "outputs/impala_34652488",
+  "greedy_return": 5.625,
+  "random_return": 2.5,
+  "ckpt_step": -1
+ },
+ "dodgeball": {
+  "run": "outputs/impala_34652489",
+  "greedy_return": 1.0,
+  "random_return": 0.25,
+  "ckpt_step": -1
+ },
+ "jumper": {
+  "run": "outputs/impala_34652490",
+  "greedy_return": 0.875,
+  "random_return": 0.75,
+  "ckpt_step": -1
+ },
+ "maze": {
+  "run": "outputs/impala_34652491",
+  "greedy_return": 0.0,
+  "random_return": 0.0,
+  "ckpt_step": -1
+ },
+ "caveflyer": {
+  "run": "outputs/impala_34652494",
+  "greedy_return": 2.25,
+  "random_return": 1.625,
+  "ckpt_step": -1
+ },
+ "chaser": {
+  "run": "outputs/impala_34652495",
+  "greedy_return": 48.25,
+  "random_return": 5.625,
+  "ckpt_step": -1
+ },
+ "climber": {
+  "run": "outputs/impala_34652496",
+  "greedy_return": -0.5,
+  "random_return": 0.25,
+  "ckpt_step": -1
+ },
+ "fruitbot": {
+  "run": "outputs/impala_34652497",
+  "greedy_return": 5.625,
+  "random_return": -2.0,
+  "ckpt_step": -1
+ },
+ "coinrun": {
+  "run": "outputs/impala_34652499",
+  "greedy_return": 123.375,
+  "random_return": 4.75,
+  "ckpt_step": -1
+ },
+ "miner": {
+  "run": "outputs/impala_34652500",
+  "greedy_return": 2.875,
+  "random_return": 2.125,
+  "ckpt_step": -1
+ },
+ "pong": {
+  "run": "outputs/impala_34652502",
+  "greedy_return": 105.0,
+  "random_return": -35.75,
+  "ckpt_step": -1
+ },
+ "freeway": {
+  "run": "outputs/impala_34652503",
+  "greedy_return": 0.0,
+  "random_return": 0.0,
+  "ckpt_step": -1
+ },
+ "seaquest": {
+  "run": "outputs/impala_34652504",
+  "greedy_return": 488.75,
+  "random_return": 102.5,
+  "ckpt_step": -1
+ },
+ "space_invaders": {
+  "run": "outputs/impala_34652505",
+  "greedy_return": 400.0,
+  "random_return": 340.0,
+  "ckpt_step": -1
+ },
+ "asteroids": {
+  "run": "outputs/impala_34652506",
+  "greedy_return": 828.75,
+  "random_return": 513.75,
+  "ckpt_step": -1
+ },
+ "frostbite": {
+  "run": "outputs/impala_34652507",
+  "greedy_return": 257.5,
+  "random_return": 32.5,
+  "ckpt_step": -1
+ },
+ "breakout": {
+  "run": "outputs/impala_34652508",
+  "greedy_return": 225.0,
+  "random_return": 80.0,
+  "ckpt_step": -1
+ },
+ "qbert": {
+  "run": "outputs/impala_34652510",
+  "greedy_return": 320.0,
+  "random_return": 36.25,
+  "ckpt_step": -1
+ }
+}

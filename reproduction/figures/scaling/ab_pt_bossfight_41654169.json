@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 338168,
+    "frames_per_s": 338168,
+    "per_worker": [
+      338168
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 666332,
+    "frames_per_s": 666332,
+    "per_worker": [
+      331418,
+      334914
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1319182,
+    "frames_per_s": 1319182,
+    "per_worker": [
+      328643,
+      338910,
+      323993,
+      327636
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2003683,
+    "frames_per_s": 2003683,
+    "per_worker": [
+      337402,
+      331001,
+      332308,
+      337683,
+      334716,
+      330572
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2668067,
+    "frames_per_s": 2668067,
+    "per_worker": [
+      338403,
+      340423,
+      324542,
+      335209,
+      333359,
+      328981,
+      333786,
+      333364
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3963388,
+    "frames_per_s": 3963388,
+    "per_worker": [
+      330123,
+      325715,
+      334338,
+      334075,
+      334651,
+      335188,
+      333529,
+      336484,
+      329649,
+      327625,
+      328922,
+      313089
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/bossfight.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5320411,
+    "frames_per_s": 5320411,
+    "per_worker": [
+      328516,
+      329689,
+      338291,
+      333235,
+      332378,
+      328637,
+      335992,
+      330358,
+      335343,
+      334725,
+      331868,
+      333433,
+      327581,
+      339481,
+      329227,
+      331654
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 661345,
+    "frames_per_s": 661345,
+    "per_worker": [
+      661345
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1345817,
+    "frames_per_s": 1345817,
+    "per_worker": [
+      674178,
+      671638
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.18,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2618279,
+    "frames_per_s": 2618279,
+    "per_worker": [
+      661496,
+      655666,
+      651127,
+      649990
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3928204,
+    "frames_per_s": 3928204,
+    "per_worker": [
+      653706,
+      657393,
+      645505,
+      661362,
+      652394,
+      657845
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5256676,
+    "frames_per_s": 5256676,
+    "per_worker": [
+      658112,
+      658773,
+      664833,
+      662651,
+      650418,
+      666448,
+      650593,
+      644848
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 7889518,
+    "frames_per_s": 7889518,
+    "per_worker": [
+      655003,
+      652121,
+      653777,
+      652157,
+      657810,
+      670337,
+      651449,
+      658505,
+      657131,
+      669846,
+      661543,
+      649838
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/freeway.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 10461063,
+    "frames_per_s": 10461063,
+    "per_worker": [
+      659992,
+      656287,
+      676325,
+      653970,
+      647043,
+      647734,
+      655457,
+      650483,
+      643347,
+      658340,
+      649525,
+      643495,
+      660924,
+      648209,
+      650550,
+      659383
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/dodgeball.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1560980,
+    "frames_per_s": 1560980,
+    "per_worker": [
+      98549,
+      97798,
+      97496,
+      96800,
+      97908,
+      95274,
+      98212,
+      98855,
+      95407,
+      98342,
+      97661,
+      95758,
+      98938,
+      98450,
+      98187,
+      97343
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.3,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

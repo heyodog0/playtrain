@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/maze.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1021680,
+    "frames_per_s": 1021680,
+    "per_worker": [
+      64014,
+      63401,
+      63866,
+      61477,
+      64754,
+      64561,
+      63944,
+      65450,
+      65261,
+      63946,
+      62783,
+      62272,
+      64604,
+      62594,
+      63102,
+      65650
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.99,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

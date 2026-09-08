@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 882034,
+    "frames_per_s": 882034,
+    "per_worker": [
+      108841,
+      108836,
+      110777,
+      109774,
+      113346,
+      111546,
+      109825,
+      109089
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.15,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

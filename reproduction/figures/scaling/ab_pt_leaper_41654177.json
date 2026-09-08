@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 108783,
+    "frames_per_s": 108783,
+    "per_worker": [
+      108783
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 216304,
+    "frames_per_s": 216304,
+    "per_worker": [
+      108407,
+      107896
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 432910,
+    "frames_per_s": 432910,
+    "per_worker": [
+      107914,
+      109291,
+      108102,
+      107603
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 647528,
+    "frames_per_s": 647528,
+    "per_worker": [
+      108642,
+      110368,
+      109901,
+      107810,
+      105223,
+      105584
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.18,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 865869,
+    "frames_per_s": 865869,
+    "per_worker": [
+      112673,
+      110581,
+      107967,
+      105367,
+      108305,
+      106128,
+      109569,
+      105279
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1296236,
+    "frames_per_s": 1296236,
+    "per_worker": [
+      107356,
+      106474,
+      111213,
+      107824,
+      105241,
+      110913,
+      107244,
+      107651,
+      108062,
+      106313,
+      110598,
+      107347
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/leaper.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1713517,
+    "frames_per_s": 1713517,
+    "per_worker": [
+      108372,
+      105962,
+      106859,
+      104326,
+      108878,
+      112256,
+      110342,
+      103933,
+      108645,
+      105702,
+      106005,
+      109072,
+      106937,
+      106713,
+      105760,
+      103755
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.19,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/seaquest.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 6126368,
+    "frames_per_s": 6126368,
+    "per_worker": [
+      389831,
+      379609,
+      381113,
+      389325,
+      383315,
+      385451,
+      388320,
+      379127,
+      382057,
+      383570,
+      378878,
+      381679,
+      383294,
+      382389,
+      382177,
+      376232
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.33,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

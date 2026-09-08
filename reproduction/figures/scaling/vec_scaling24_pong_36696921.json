@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 712380,
+    "frames_per_s": 712380,
+    "per_worker": [
+      712380
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1425006,
+    "frames_per_s": 1425006,
+    "per_worker": [
+      712251,
+      712756
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2854408,
+    "frames_per_s": 2854408,
+    "per_worker": [
+      725978,
+      710841,
+      709723,
+      707866
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 4212653,
+    "frames_per_s": 4212653,
+    "per_worker": [
+      709590,
+      706857,
+      714953,
+      706568,
+      710496,
+      664188
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5664818,
+    "frames_per_s": 5664818,
+    "per_worker": [
+      684924,
+      706580,
+      711119,
+      708533,
+      725797,
+      703178,
+      712465,
+      712223
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 8438380,
+    "frames_per_s": 8438380,
+    "per_worker": [
+      703247,
+      713734,
+      709570,
+      709212,
+      706320,
+      709339,
+      709532,
+      712297,
+      618113,
+      713582,
+      720832,
+      712603
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/pong.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 11384939,
+    "frames_per_s": 11384939,
+    "per_worker": [
+      719024,
+      716209,
+      708134,
+      707283,
+      705986,
+      711329,
+      709895,
+      708562,
+      707304,
+      708462,
+      715850,
+      711216,
+      709730,
+      708079,
+      724718,
+      713159
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.17,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "workers": 1,
+    "envs": 128,
+    "threads": 5,
+    "decisions_per_s": 21458
+  },
+  {
+    "workers": 2,
+    "envs": 256,
+    "threads": 10,
+    "decisions_per_s": 42293
+  },
+  {
+    "workers": 4,
+    "envs": 512,
+    "threads": 20,
+    "decisions_per_s": 82649
+  },
+  {
+    "workers": 6,
+    "envs": 768,
+    "threads": 30,
+    "decisions_per_s": 121947
+  },
+  {
+    "workers": 8,
+    "envs": 1024,
+    "threads": 40,
+    "decisions_per_s": 162941
+  },
+  {
+    "workers": 12,
+    "envs": 1536,
+    "threads": 60,
+    "decisions_per_s": 231217
+  },
+  {
+    "workers": 16,
+    "envs": 2048,
+    "threads": 80,
+    "decisions_per_s": 270381
+  }
+]

@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 298382,
+    "frames_per_s": 298382,
+    "per_worker": [
+      298382
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.42,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 601772,
+    "frames_per_s": 601772,
+    "per_worker": [
+      312772,
+      289000
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.42,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1268589,
+    "frames_per_s": 1268589,
+    "per_worker": [
+      323019,
+      328625,
+      326637,
+      290309
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.4,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1920404,
+    "frames_per_s": 1920404,
+    "per_worker": [
+      326391,
+      311580,
+      326610,
+      331813,
+      329328,
+      294680
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.39,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2598890,
+    "frames_per_s": 2598890,
+    "per_worker": [
+      328869,
+      317120,
+      324880,
+      327292,
+      328551,
+      324818,
+      325253,
+      322107
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.39,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3745959,
+    "frames_per_s": 3745959,
+    "per_worker": [
+      323953,
+      325686,
+      292455,
+      317885,
+      312277,
+      326289,
+      327995,
+      329198,
+      326271,
+      284780,
+      290716,
+      288454
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.4,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/ninja.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5056529,
+    "frames_per_s": 5056529,
+    "per_worker": [
+      291566,
+      324038,
+      285951,
+      316869,
+      295769,
+      319615,
+      301206,
+      326983,
+      320638,
+      314829,
+      329771,
+      323178,
+      326434,
+      322420,
+      327722,
+      329542
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.4,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

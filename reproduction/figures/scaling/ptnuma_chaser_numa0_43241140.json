@@ -1,0 +1,24 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/chaser.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 605352,
+    "frames_per_s": 605352,
+    "per_worker": [
+      75762,
+      75455,
+      75853,
+      75804,
+      75576,
+      75851,
+      75830,
+      75221
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.68,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

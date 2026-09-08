@@ -1,0 +1,149 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 246227,
+    "frames_per_s": 246227,
+    "per_worker": [
+      246227
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.51,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 490603,
+    "frames_per_s": 490603,
+    "per_worker": [
+      246627,
+      243976
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.51,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 975960,
+    "frames_per_s": 975960,
+    "per_worker": [
+      245610,
+      242248,
+      243553,
+      244550
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1463630,
+    "frames_per_s": 1463630,
+    "per_worker": [
+      244145,
+      241944,
+      243629,
+      246791,
+      244208,
+      242912
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1950316,
+    "frames_per_s": 1950316,
+    "per_worker": [
+      246927,
+      240371,
+      242673,
+      243660,
+      242971,
+      247379,
+      243963,
+      242373
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2929592,
+    "frames_per_s": 2929592,
+    "per_worker": [
+      243526,
+      242584,
+      247916,
+      244565,
+      241360,
+      245101,
+      245555,
+      246207,
+      246113,
+      243613,
+      240706,
+      242347
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cuda"
+  },
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/asteroids.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3894407,
+    "frames_per_s": 3894407,
+    "per_worker": [
+      247262,
+      245122,
+      245064,
+      241261,
+      244447,
+      242316,
+      244403,
+      245830,
+      242789,
+      242572,
+      238620,
+      243623,
+      243484,
+      242331,
+      241021,
+      244265
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.52,
+    "env_threads": 5,
+    "device": "cuda"
+  }
+]

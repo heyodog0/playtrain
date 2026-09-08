@@ -1,0 +1,32 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/miner.js",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 533804,
+    "frames_per_s": 533804,
+    "per_worker": [
+      33550,
+      33486,
+      33447,
+      33520,
+      33386,
+      33500,
+      33627,
+      33469,
+      33453,
+      32831,
+      33220,
+      33383,
+      33565,
+      33141,
+      33385,
+      32840
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 3.82,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "game": "/n/holylabs/gershman_lab/Users/rtruong/playtrain/examples/games/js/coinrun.js",
+    "workers": 1,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 46105,
+    "frames_per_s": 46105,
+    "per_worker": [
+      46105
+    ],
+    "ms_infer": 0.02,
+    "ms_env": 2.76,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]
