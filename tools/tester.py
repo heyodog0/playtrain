@@ -735,13 +735,19 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Game tester server")
     parser.add_argument("--port", type=int, default=3000)
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="interface to bind (default: loopback only)")
     args = parser.parse_args()
 
     class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
         daemon_threads = True
 
-    server = ThreadingHTTPServer(("", args.port), Handler)
-    print(f"Tester running at http://localhost:{args.port}")
+    # Loopback only. The POST endpoints below refine/generate games through the
+    # Gemini API on this machine's key and write to the catalog, none of it
+    # authenticated - binding "" (all interfaces) hands that to anyone on the
+    # same network. Pass --host to widen it deliberately.
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    print(f"Tester running at http://{args.host}:{args.port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

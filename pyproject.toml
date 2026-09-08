@@ -18,14 +18,19 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+# Runtime only. The LLM generation pipeline (playtrain.gen) needs more; it is
+# the `gen` extra, so stepping an environment never pulls a model SDK.
 dependencies = [
   "gymnasium>=1.0",
   "numpy>=2.2.0",
-  "google-genai>=1.72.0",
-  "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
+# The generation / refinement pipeline (playtrain.gen).
+gen = [
+  "google-genai>=1.72.0",
+  "httpx>=0.27",
+]
 test = [
   "pytest>=8.0",
 ]
@@ -38,6 +43,8 @@ rom = [
 ]
 
 [project.scripts]
+# One entry point so `uvx playtrain <cmd>` works with nothing installed.
+playtrain           = "playtrain.cli:main"
 playtrain-validate = "playtrain.gen.validate.validate:main"
 playtrain-bench    = "playtrain.gen.validate.bench:main"
 playtrain-generate = "playtrain.gen.generate:main"
