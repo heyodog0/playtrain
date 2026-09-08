@@ -74,12 +74,12 @@ pipeline is the `gen` extra.
 | `examples/colab/` | The quickstart notebook. |
 | `src/playtrain/runtime/` | The environments: the Gymnasium classes and the vectorized backends. |
 | `src/playtrain/gen/` | Generation, variants, and refinement through an LLM. Includes the validation suite that gates what ships. |
-| `native/` | The QuickJS host, the build scripts, and the determinism gates. |
+| `native/` | The QuickJS host, the build scripts, and the determinism gates. `experiments/` holds the tuning-round job scripts and is not needed to build. |
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | The generation workspace and reference material, not the shipped catalog. |
-| `benchmarks/` | Throughput measurement. [BENCHMARKS.md](BENCHMARKS.md) states the methodology. |
-| `reproduction/` | Paper data, figure code, and the human-study harness. |
+| `benchmarks/` | Throughput measurement, nine scripts. [BENCHMARKS.md](BENCHMARKS.md) states the methodology. |
+| `reproduction/` | Figure code, paper data, the human-study harness, and the sweeps that produced the published figures. |
 | `tools/` | Development scripts: the playtest UI, validation, profiling. |
 | `tests/` | The test suite. |
 
