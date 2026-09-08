@@ -272,9 +272,8 @@ run data first. See [REPRODUCING.md](REPRODUCING.md).
 
 ## Getting help
 
-Open an [issue](https://github.com/heyodog0/playtrain/issues) for bugs and feature
-requests, or a [discussion](https://github.com/heyodog0/playtrain/discussions) for
-questions.
+Open an [issue](https://github.com/heyodog0/playtrain/issues) for bugs, questions and
+feature requests.
 
 ## Version policy
 
