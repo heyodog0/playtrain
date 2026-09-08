@@ -198,14 +198,8 @@ def test_frame_skip_equals_k_single_steps():
     # any two backends shows up as shifted sub-device-pixel features rather than a
     # crash — exactly the silent-divergence class that the qbert stroke leak fell
     # into. This case was previously uncovered: the check only ever ran on pong,
-    # which never calls createGraphics.
-    #
-    # The game's canonical home is the sibling a consumer repo repo; it is present here
-    # only when synced in from a consumer repo, hence the skip rather than a
-    # hard dependency. native/gate_qjs.sh covers the same game for the OTHER
-    # backend pair (node/V8 vs qjs_host) and can reach it in place via
-    # PLAYTRAIN_GAMES_DIR.
-    ("analogen_platformer_easy", 1),
+    # which never calls createGraphics. The createGraphics game lives in a consumer
+    # repo and is not in the shipped catalog, so only pong is parametrized here.
 ])
 def test_frame_skip_matches_v8_production_path(game, frame_skip):
     """Cross-engine: NativeVecEnv(frame_skip=K) must match PlayTrainEnv

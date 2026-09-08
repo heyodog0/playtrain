@@ -42,7 +42,7 @@
  "native_env_threads": 12,
  "native_games_dir": "../playtrain/examples/games/js",
  "use_wandb": false,
- "wandb_project": "analogen",
+ "wandb_project": "playtrain",
  "wandb_group": null,
  "wandb_name": null,
  "use_lstm": false,
