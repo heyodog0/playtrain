@@ -61,20 +61,21 @@ extra with `uv sync --extra gen`. The runtime and the trainers never need a key.
 Fork an existing game with a prompt:
 
 ```console
-$ just variant breakout "three balls at once, losing one costs a life" breakout.multi
+$ playtrain-variant --parent breakout --name breakout.multi \
+    --prompt "three balls at once, losing one costs a life"
 ```
 
-Refine one against feedback, then promote it into the catalog:
+Play it and refine it in the browser, then promote it into the catalog:
 
 ```console
-$ just tester
-$ just promote breakout.multi
+$ python tools/tester.py
+$ playtrain-variant --promote breakout.multi
 ```
 
-`just tester` serves a browser UI on localhost where you play the game, see the source,
-and send refinement prompts. `just gen-game` writes a new game from a catalog entry
-instead of forking. `just validate-one <game>` runs the five checks that gate what
-ships, and `just play <game>` opens any game to play yourself.
+`tools/tester.py` serves a UI on localhost where you play the game, read its source, and
+send refinement prompts. `playtrain-generate` writes a new game from a catalog entry
+instead of forking one. `playtrain-validate --game <name>` runs the five checks that gate
+what ships. These are all installed by the install above, so no extra tooling is needed.
 
 ## Installation
 
@@ -98,8 +99,8 @@ minute the first time. The backend is the default runtime engine, not an optiona
 add-on, which is why clang and cargo are needed.
 
 Contributors can use [`just`](https://just.systems) instead. `just install` does the
-same thing, and `just --list` shows the rest: tests, validation, benchmarks, and the
-generation recipes below.
+same thing, and `just --list` shows shorthands for the tests, validation, benchmarks and
+generation commands. It is a convenience, never a requirement.
 
 Training also needs
 [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
