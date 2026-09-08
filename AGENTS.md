@@ -13,7 +13,7 @@ Rust rasterizer. It exposes Gymnasium environments.
 ```python
 from playtrain.runtime import GameEnv, NativeVecEnv, list_available_games
 
-list_available_games()                     # -> ["aim_trainer", "asteroids", ...]
+list_available_games()                     # -> ["asteroids", "bigfish", ...]
 
 env = GameEnv(game="breakout", obs_size=64)          # one env, Gymnasium API
 obs, info = env.reset(seed=0)                        # Box(0,255,(64,64,3),uint8)
