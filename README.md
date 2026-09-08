@@ -9,9 +9,10 @@ the bottleneck — each one a readable JavaScript file you can edit.
 
 <!-- TODO(release): throughput figure -->
 
-PlayTrain is the artifact behind *[paper title]* ([arXiv][paper]). Environments are
-generated and modified by an LLM, then run headless on an embedded QuickJS engine and a
-native rasterizer.
+PlayTrain is the artifact behind *An Efficient Reinforcement Learning Framework for
+LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]). Environments are generated
+and modified by an LLM, then run headless on an embedded QuickJS engine and a native
+rasterizer.
 
 ## Highlights
 
@@ -80,16 +81,21 @@ the release notes.
 ## Citation
 
 ```bibtex
-@inproceedings{playtrain,
-  title  = {...},
-  author = {...},
-  year   = {2027},
+@inproceedings{truong2027playtrain,
+  title     = {PlayTrain: An Efficient Reinforcement Learning Framework for
+               LLM-Generated Adaptable JavaScript Games},
+  author    = {Truong, Ryan and Ying, Lance and Gershman, Samuel J. and Irie, Kazuki},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2027},
 }
 ```
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+The wheels bundle a native backend that statically links quickjs-ng and openlibm; their
+notices are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 [paper]: https://arxiv.org/abs/XXXX.XXXXX
 [colab]: https://colab.research.google.com/github/heyodog0/playtrain/blob/main/examples/colab/playtrain_quickstart.ipynb
