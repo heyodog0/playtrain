@@ -98,8 +98,40 @@ Games are written and modified by a language model. Install the extra with
 `pip install -e ".[gen]"` and set `GEMINI_API_KEY`. The runtime and the trainers never
 need a key.
 
-Fork an existing game with a prompt, play and refine it in the browser, then promote it
-into the catalog:
+### From scratch
+
+Describe the game in a catalog, which is a JSON list with one object per game:
+
+```json
+[
+  {
+    "name": "breakout",
+    "ref": "https://ale.farama.org/environments/breakout/",
+    "actions_used": ["LEFT", "RIGHT", "D"],
+    "mechanic": "paddle + ball + bricks"
+  }
+]
+```
+
+Only `name` is required. `actions_used` are the `default8` keys the game should use,
+`mechanic` is a one-line description, and `ref` is a URL that gets fetched and pasted
+into the prompt as plain text when you pass `--ref`.
+
+```console
+$ playtrain-generate --catalog my_games.json --name breakout --ref
+$ playtrain-validate --game breakout
+$ python tools/tester.py
+```
+
+The game is written to `games/js/`, the workspace. `playtrain-validate` runs the five
+checks that gate the catalog, and the tester lets you play it and send refinements.
+Drop `--name` to generate every entry in the catalog. `just gen-game <catalog> <name>`
+is the shorthand.
+
+### From an existing game
+
+Fork one with a prompt, play and refine it in the browser, then promote it into the
+catalog:
 
 ```console
 $ just variant breakout "three balls at once, losing one costs a life" breakout.multi
