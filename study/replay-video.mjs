@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Render a recorded human episode to video by replaying it through the headless env.
 //
-// The session log stores a seed and a frame-indexed action list, and tools/verify-replay.mjs
+// The session log stores a seed and a frame-indexed action list, and study/verify-replay.mjs
 // proves those reproduce the participant's score exactly. So the frames captured here are
 // not a reconstruction or an approximation -- they are the same episode, re-rendered.
 //
-//   node tools/replay-video.mjs session.json                      # every scored episode
-//   node tools/replay-video.mjs session.json --game asteroids     # one game
-//   node tools/replay-video.mjs session.json --best               # best round per game
-//   node tools/replay-video.mjs session.json --format mp4 --scale 2
+//   node study/replay-video.mjs session.json                      # every scored episode
+//   node study/replay-video.mjs session.json --game asteroids     # one game
+//   node study/replay-video.mjs session.json --best               # best round per game
+//   node study/replay-video.mjs session.json --format mp4 --scale 2
 //
 // Formats:
 //   gif  (default)  built in, no dependencies. Palette is taken from the frames, so for
@@ -27,10 +27,7 @@ import { fileURLToPath } from 'url';
 import { spawn, spawnSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Two levels up: this file lives in reproduction/study-harness/, so a single
-// '..' resolved to reproduction/ and every derived path missed (the runtime
-// imports below and the examples/games/js default).
-const REPO_ROOT = resolve(__dirname, '..', '..');
+const REPO_ROOT = resolve(__dirname, '..');
 const SELF = fileURLToPath(import.meta.url);
 
 function arg(flag, def) {
@@ -57,8 +54,8 @@ if (has('--child')) {
   // Render at logical resolution rather than the agent's 64x64: game-env calls
   // setRasterRes(obsWidth) before loading the game, and PLAYTRAIN_RASTER_RES (set by the
   // parent) takes precedence, making that call a no-op -- p5-shim.mjs `_RASTER_RES_FROM_ENV`.
-  const shim = await import('../../runtime/p5/p5-shim.mjs');
-  const { GameEnv } = await import('../../runtime/p5/game-env.mjs');
+  const shim = await import('../runtime/p5/p5-shim.mjs');
+  const { GameEnv } = await import('../runtime/p5/game-env.mjs');
 
   const report = [];
   for (const ep of job.episodes) {
@@ -250,7 +247,7 @@ function encodeMp4(frames, file, { fps = 60, scale = 1, crf = 18 }) {
 // ---------------------------------------------------------------------------
 const files = process.argv.slice(2).filter(a => a.endsWith('.json'));
 if (!files.length) {
-  console.error('usage: node tools/replay-video.mjs <session.json> [--game X] [--best]');
+  console.error('usage: node study/replay-video.mjs <session.json> [--game X] [--best]');
   console.error('       [--format gif|mp4] [--scale N] [--fps N] [--out DIR] [--render-width N]');
   process.exit(1);
 }

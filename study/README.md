@@ -38,6 +38,18 @@ The output is 11 self-contained HTML files, about 1.8 MB, and works on any stati
 Each `block/<game>/index.html` also runs standalone, which is the shortest way to show
 someone one game without the consent and instruction screens.
 
+## Re-rendering a recorded episode
+
+```console
+$ gunzip -c reproduction/data/study/p11.json.gz > p11.json
+$ node study/replay-video.mjs p11.json --game breakout --best
+```
+
+Writes a GIF of that participant's best breakout round, replayed through the headless
+environment from their logged actions. Because the actions reproduce the score exactly,
+this is the same episode re-rendered rather than a reconstruction. `--format mp4` needs
+ffmpeg on the path.
+
 ## Before collecting data from anyone
 
 **The consent text in `study-screens.mjs` is a template, not an approved protocol.** It is
@@ -91,11 +103,12 @@ Which revision of a game a session is replayed against decides whether it reprod
 All 1382 episodes across the 20 sessions reproduce against exactly those hashes. That file
 is what `study-audit.mjs` compares to when there is no local build.
 
-One game has since drifted from it. `vvvvvv` gained a terminal bonus of 500 points on
-2026-09-07, after the sessions were collected, so the shipped `examples/games/js/vvvvvv.js`
-scores differently from the file participants played and 45 of the 1382 episodes do not
-reproduce against it. The audit reports this. Nothing else does, which is the reason the
-audit exists.
+This has already caught one drift. `vvvvvv` gained a terminal bonus of 500 points on
+2026-09-07, after the sessions were collected, which made 45 of the 1382 episodes stop
+reproducing while changing nothing else that was visible. The bonus is reverted here, so
+the shipped catalog is again the one the humans and the agents both played. Nothing but
+the audit detects an error of that shape: replay verification passes on either revision as
+long as both sides use the same one.
 
 ## Data
 

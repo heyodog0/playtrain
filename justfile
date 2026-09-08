@@ -166,6 +166,10 @@ study-build upload="":
 study-verify +SESSIONS:
     node study/verify-replay.mjs {{SESSIONS}}
 
+# Re-render a recorded episode to GIF from its logged actions.
+study-video session *ARGS:
+    node study/replay-video.mjs {{session}} {{ARGS}}
+
 # Did the participants play the same game files the agents trained on?
 study-audit *ARGS:
     node study/study-audit.mjs {{ARGS}}
