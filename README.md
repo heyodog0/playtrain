@@ -72,7 +72,8 @@ $ just promote breakout.multi
 refinement prompts. `just gen-game` writes a new game from a catalog entry instead of
 forking one, and `just validate-one <game>` runs the five checks that gate what ships.
 
-Every recipe is a one-line wrapper, so [`just`](https://just.systems) is optional. The
+[`just`](https://just.systems) installs into the same venv with `pip install rust-just`,
+or from brew, cargo or apt. Every recipe is a one-line wrapper, so it stays optional. The
 same three steps without it:
 
 ```console
@@ -103,9 +104,10 @@ Either way this builds the native backend as part of the install, which takes ab
 minute the first time. The backend is the default runtime engine, not an optional
 add-on, which is why clang and cargo are needed.
 
-Contributors can use [`just`](https://just.systems) instead. `just install` does the
-same thing, and `just --list` shows shorthands for the tests, validation, benchmarks and
-generation commands. It is a convenience, never a requirement.
+[`just`](https://just.systems) is a convenience, never a requirement. `pip install
+rust-just` puts it in the same venv, `just install` does the same as the commands above,
+and `just --list` shows shorthands for the tests, validation, benchmarks and generation
+commands.
 
 Training also needs
 [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers). The LLM generation
