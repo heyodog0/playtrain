@@ -78,6 +78,9 @@ ships, and `just play <game>` opens any game to play yourself.
 
 ## Installation
 
+Needs Python 3.11 or newer, plus clang and cargo. On macOS the default `python3` is
+often older, so check with `python3 --version` first.
+
 ```console
 $ git clone https://github.com/heyodog0/playtrain && cd playtrain
 $ python3 -m venv .venv && .venv/bin/pip install -e .
@@ -85,9 +88,9 @@ $ python3 -m venv .venv && .venv/bin/pip install -e .
 
 Or with [uv](https://docs.astral.sh/uv/), `uv venv && uv pip install -e .`.
 
-Either way this builds the native backend as part of the install. The backend is the default
-runtime engine, not an optional add-on, so the install needs clang and cargo on PATH.
-It takes about a minute the first time.
+Either way this builds the native backend as part of the install, which takes about a
+minute the first time. The backend is the default runtime engine, not an optional
+add-on, which is why clang and cargo are needed.
 
 Contributors can use [`just`](https://just.systems) instead. `just install` does the
 same thing, and `just --list` shows the rest: tests, validation, benchmarks, and the
