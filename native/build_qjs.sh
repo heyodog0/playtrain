@@ -54,7 +54,7 @@ EXTRA=""
 case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
 clang++ -std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing \
   -I runtime -I qjs/src \
-  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
+  qjs/qjs_host.cpp runtime/p5.cpp qjs/v8libm/ieee754.cc "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
   -o build/qjs_host
 
 echo "built build/qjs_host"
