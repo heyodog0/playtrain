@@ -18,8 +18,8 @@
 #include <algorithm>
 
 // V8's own fdlibm port, vendored at native/qjs/v8libm/ieee754.cc. Math.sin and
-// friends in the reference runtime are THESE functions. openlibm's are not
-// bit-identical: 18 sin and 23 cos disagreements in 2001 samples, each 1 ULP,
+// friends in the reference runtime are THESE functions. openlibm's do not
+// match: 18 sin and 23 cos disagreements in 2001 samples, each 1 ULP,
 // enough to make jetpack_joyride.spaceship-viz-v2 fail native/gate_qjs.sh.
 // C++ linkage, at global scope, on purpose: declared inside extern "C" these
 // mangle to plain `sin`/`cos` and silently bind to the platform libm.
