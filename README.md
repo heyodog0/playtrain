@@ -1,5 +1,7 @@
 # PlayTrain
 
+[**Paper**](https://arxiv.org/abs/2609.09059) | [**Project page**](https://playtrain.org) | [**Colab**][colab]
+
 An RL framework for video-game environments that are generated and modified by a
 language model. Every environment is a single JavaScript file. A person can play it. An
 agent can train on the same game.
@@ -288,13 +290,14 @@ listed in the release notes.
 ## Citation
 
 ```bibtex
-@article{truong2026playtrain,
-  title  = {PlayTrain: An Efficient Reinforcement Learning Framework for
-            LLM-Generated Adaptable JavaScript Games},
-  author = {Truong, Ryan and Ying, Lance and Gershman, Samuel J.
-            and Irie, Kazuki},
-  year   = {2026},
-  url    = {https://playtrain.org}
+@misc{truong2026playtrainefficientreinforcementlearning,
+      title={PlayTrain: An Efficient Reinforcement Learning Framework for LLM-Generated Adaptable JavaScript Games}, 
+      author={Ryan Truong and Lance Ying and Samuel J. Gershman and Kazuki Irie},
+      year={2026},
+      eprint={2609.09059},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2609.09059}, 
 }
 ```
 
@@ -305,5 +308,5 @@ MIT. See [LICENSE](LICENSE).
 The native backend statically links quickjs-ng and openlibm. Their notices are in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
-[paper]: https://arxiv.org/abs/XXXX.XXXXX
+[paper]: https://arxiv.org/abs/2609.09059
 [colab]: https://colab.research.google.com/github/heyodog0/playtrain/blob/main/examples/colab/playtrain_quickstart.ipynb
