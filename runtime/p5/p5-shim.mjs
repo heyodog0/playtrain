@@ -114,14 +114,29 @@ function _invalidateStyleCache() {
 }
 
 // ---- Color helpers ----
+// p5 clamps colour components into range; a game computing an alpha that runs
+// past 0 (a fading particle decremented one step too far, say) must go fully
+// transparent. Unclamped, the emitted string carried a minus sign, raster.mjs's
+// rgba regex failed to match it, and the fallback painted OPAQUE BLACK — while
+// the native backend drew nothing. That is the whole of the
+// jetpack_joyride.spaceship-viz-v2 divergence in native/gate_qjs.sh.
+const _c255 = (v) => {
+  const n = +v;
+  return n !== n ? 0 : n < 0 ? 0 : n > 255 ? 255 : n;      // NaN -> 0
+};
+const _a1 = (v) => {
+  const n = +v / 255;
+  return n !== n ? 0 : n < 0 ? 0 : n > 1 ? 1 : n;
+};
+
 function colorArgs(args) {
   // p5 accepts color arrays: fill([r,g,b]) or fill([r,g,b,a]). Unwrap.
   if (args.length === 1 && Array.isArray(args[0])) args = args[0];
   if (args.length === 1 && typeof args[0] === 'string') return args[0];
-  if (args.length === 1) return `rgba(${args[0]},${args[0]},${args[0]},1)`;
-  if (args.length === 2) return `rgba(${args[0]},${args[0]},${args[0]},${args[1]/255})`;
-  if (args.length === 3) return `rgba(${args[0]},${args[1]},${args[2]},1)`;
-  if (args.length === 4) return `rgba(${args[0]},${args[1]},${args[2]},${args[3]/255})`;
+  if (args.length === 1) { const g = _c255(args[0]); return `rgba(${g},${g},${g},1)`; }
+  if (args.length === 2) { const g = _c255(args[0]); return `rgba(${g},${g},${g},${_a1(args[1])})`; }
+  if (args.length === 3) return `rgba(${_c255(args[0])},${_c255(args[1])},${_c255(args[2])},1)`;
+  if (args.length === 4) return `rgba(${_c255(args[0])},${_c255(args[1])},${_c255(args[2])},${_a1(args[3])})`;
   return 'rgba(0,0,0,1)';
 }
 
