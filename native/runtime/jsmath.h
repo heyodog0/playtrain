@@ -49,6 +49,7 @@ double fm_pow(double, double);
 double fm_atan2(double, double);
 double fm_sin(double);
 double fm_cos(double);
+double fm_acos(double);
 }
 inline double floor(double x) { return std::floor(x); }
 inline double ceil(double x)  { return std::ceil(x); }
@@ -69,6 +70,10 @@ constexpr double PI_R   = 3.141592653589793;
 constexpr double PI_H   = 1.5707963267948966;
 inline double sin(double x) { return fm_sin(x); }
 inline double cos(double x) { return fm_cos(x); }
+// Matter.js calls Math.acos (Vector.angle between bodies). Left on the platform
+// libm it is the one transcendental the engines disagree on in the physics
+// games: suika matched V8 for 353 steps and then drifted (native/gate_qjs.sh).
+inline double acos(double x) { return fm_acos(x); }
 
 // Variadic min/max matching Math.min/Math.max (2+ args in the game subset).
 inline double max(double a, double b) { return a > b ? a : b; }

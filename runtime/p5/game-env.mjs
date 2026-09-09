@@ -122,6 +122,11 @@ function mulberry32(seed) {
 }
 
 function loadGame(gamePath, needsMatter) {
+  // null/undefined means "work it out", the same rule env.py applies
+  // ("Matter." in the source). Callers that pass an explicit boolean still win.
+  if (needsMatter === null || needsMatter === undefined) {
+    needsMatter = readFileSync(gamePath, 'utf8').includes('Matter.');
+  }
   if (!globalsInstalled) {
     installGlobals();
     globalsInstalled = true;
@@ -174,7 +179,7 @@ function loadGame(gamePath, needsMatter) {
 }
 
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1, actions = null, inputMap = null } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
     // Per-instance discrete action space (name / path / array; see
     // resolveActionSpace). Default: the frozen default8 mapping.

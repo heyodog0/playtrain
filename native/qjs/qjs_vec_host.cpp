@@ -204,6 +204,7 @@ FN(js_m_sqrt)  { return JS_NewFloat64(ctx, js::sqrt(argd(ctx, argv[0]))); }
 FN(js_m_sin)   { return JS_NewFloat64(ctx, js::sin(argd(ctx, argv[0]))); }
 FN(js_m_cos)   { return JS_NewFloat64(ctx, js::cos(argd(ctx, argv[0]))); }
 FN(js_m_atan2) { return JS_NewFloat64(ctx, js::atan2(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_m_acos)  { return JS_NewFloat64(ctx, js::acos(argd(ctx, argv[0]))); }
 FN(js_m_hypot) { return JS_NewFloat64(ctx, js::hypot(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 
 struct Binding { const char* name; JSCFunction* fn; int nargs; };
@@ -233,6 +234,7 @@ static const Binding BINDINGS[] = {
   {"frameRate", js_noop, 1}, {"smooth", js_noop, 0},
   {"__m_pow", js_m_pow, 2}, {"__m_sqrt", js_m_sqrt, 1}, {"__m_sin", js_m_sin, 1},
   {"__m_cos", js_m_cos, 1}, {"__m_atan2", js_m_atan2, 2}, {"__m_hypot", js_m_hypot, 2},
+  {"__m_acos", js_m_acos, 1},
 };
 
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
@@ -247,7 +249,7 @@ globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
 globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
-Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
+Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot; Math.acos=__m_acos;
 )JS";
 
 static inline void cpu_relax() {
