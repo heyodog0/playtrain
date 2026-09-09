@@ -241,11 +241,20 @@ static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_Se
 
 #include "matter_bundle.h"
 
+// p5's math helpers as bare globals, the same set runtime/p5/p5-shim.mjs installs
+// and with the same bodies. They were missing here, so a game calling abs() threw
+// mid-frame in the native backend and every draw after it was dropped, while the
+// reference drew the full frame (jetpack_joyride.spaceship-viz-v2, native/gate_qjs.sh).
+// They read Math.* at call time, so the frozen Math.sin/cos/... below apply to them.
 static const char* PRELUDE = R"JS(
 globalThis.dist=(x1,y1,x2,y2)=>Math.sqrt((x2-x1)**2+(y2-y1)**2);
 globalThis.constrain=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
 globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
+globalThis.abs=(v)=>Math.abs(v);globalThis.floor=(v)=>Math.floor(v);globalThis.ceil=(v)=>Math.ceil(v);globalThis.round=(v)=>Math.round(v);
+globalThis.sqrt=(v)=>Math.sqrt(v);globalThis.pow=(b,e)=>Math.pow(b,e);globalThis.sin=(a)=>Math.sin(a);globalThis.cos=(a)=>Math.cos(a);globalThis.atan2=(y,x)=>Math.atan2(y,x);
+globalThis.min=(...a)=>Math.min(...(a.length===1&&Array.isArray(a[0])?a[0]:a));globalThis.max=(...a)=>Math.max(...(a.length===1&&Array.isArray(a[0])?a[0]:a));
+globalThis.random=(a,b)=>a===undefined?Math.random():b===undefined?Math.random()*a:a+Math.random()*(b-a);
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
 globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
