@@ -127,7 +127,7 @@ unvariant name:
 
 # Generated-catalog tester + Gemini refinement (localhost:3000).
 tester:
-    uv run python tools/tester.py
+    uv run --extra gen python tools/tester.py
 
 # Runtime game picker: `just play` for the picker, `just play flappy_bird` to jump in.
 play game="":

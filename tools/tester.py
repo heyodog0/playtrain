@@ -21,6 +21,30 @@ JS_DIR = GAMES_DIR / "js"
 BACKUPS_DIR = GAMES_DIR / "backups"
 
 
+def seed_workspace() -> int:
+    """Copy the shipped catalog into the empty generation workspace.
+
+    ``games/js`` is where generation, refinement and variants write, and a fresh
+    clone ships it empty, so the tester would otherwise open on a picker with no
+    games in it. Seeding from the read-only catalog gives it something to show
+    while keeping every edit inside the workspace.
+    """
+    import shutil
+    from playtrain._paths import games_dir
+
+    JS_DIR.mkdir(parents=True, exist_ok=True)
+    if any(JS_DIR.glob("*.js")):
+        return 0
+    src = games_dir()
+    if not src.is_dir():
+        return 0
+    n = 0
+    for f in sorted(src.glob("*.js")):
+        shutil.copy2(f, JS_DIR / f.name)
+        n += 1
+    return n
+
+
 def list_games() -> list[str]:
     return sorted(p.stem for p in JS_DIR.glob("*.js"))
 
@@ -598,7 +622,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "application/json", json.dumps(games).encode())
 
         elif path == "/api/variants":
-            self._send(200, "application/json", json.dumps(load_registry()).encode())
+            # Only the variants that still have a file. The registry is the
+            # generation history and outlives the games it records, so shipping
+            # it whole puts entries in the picker that 404 when clicked.
+            reg = {k: v for k, v in load_registry().items()
+                   if (JS_DIR / f"{k}.js").exists()}
+            self._send(200, "application/json", json.dumps(reg).encode())
 
         elif path.startswith("/api/games/"):
             name = path.split("/api/games/")[1]
@@ -738,6 +767,10 @@ def main():
     parser.add_argument("--host", default="127.0.0.1",
                         help="interface to bind (default: loopback only)")
     args = parser.parse_args()
+
+    seeded = seed_workspace()
+    if seeded:
+        print(f"seeded games/js with {seeded} games from the shipped catalog")
 
     class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
         daemon_threads = True
