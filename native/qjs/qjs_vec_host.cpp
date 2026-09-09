@@ -237,6 +237,8 @@ static const Binding BINDINGS[] = {
 
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
 
+#include "matter_bundle.h"
+
 static const char* PRELUDE = R"JS(
 globalThis.dist=(x1,y1,x2,y2)=>Math.sqrt((x2-x1)**2+(y2-y1)**2);
 globalThis.constrain=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
@@ -518,6 +520,13 @@ static void env_init(VecHost* H, Env& e, int idx) {
   { JSValue r = JS_Eval(ctx, PRELUDE, strlen(PRELUDE), "<prelude>", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
+  // Matter.js games expect a `Matter` global. Same auto-detect the node backend
+  // uses (env.py: "Matter." in the source), so non-physics games pay nothing.
+  if (e.ok && src.find("Matter.") != std::string::npos) {
+    JSValue r = JS_Eval(ctx, MATTER_JS, strlen(MATTER_JS), "<matter>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s2 = JS_ToCString(ctx, ex); e.err = s2?s2:"matter"; e.ok=false; JS_FreeCString(ctx,s2); JS_FreeValue(ctx,ex); }
+    JS_FreeValue(ctx, r);
+  }
   if (p5cb::enabled()) { e.cb = p5cb::create(); JS_SetContextOpaque(ctx, e.cb); }
   // Opt-in dirty-rect whole-frame skip (QJS_DIRTY, like qjs_host): identical
   // command streams skip the raster pass entirely; per-env state, so this

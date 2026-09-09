@@ -16,6 +16,7 @@ fi
 [ -f frozenmath/libfrozenmath.a ] || { echo "run build_qjs.sh first (frozenmath missing)"; exit 1; }
 [ -f qjs/bld/libqjs.a ] || { echo "run build_qjs.sh first (libqjs missing)"; exit 1; }
 
+bash gen_matter_header.sh          # qjs/matter_bundle.h, compiled into the host
 mkdir -p build
 CXXFLAGS="-std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing -fPIC -I runtime -I qjs/src"
 SRCS="qjs/qjs_vec_host.cpp runtime/p5.cpp"

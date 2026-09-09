@@ -28,6 +28,7 @@ if [ ! -f frozenmath/libfrozenmath.a ] || ! nm frozenmath/libfrozenmath.a 2>/dev
     && ar rcs libfrozenmath.a e_pow.o e_atan2.o s_atan.o s_scalbn.o \
          s_sin.o s_cos.o k_sin.o k_cos.o e_rem_pio2.o k_rem_pio2.o )
 fi
+bash gen_matter_header.sh          # qjs/matter_bundle.h, compiled into the host
 FROZEN="frozenmath/libfrozenmath.a"
 
 # QuickJS static lib — STOCK quickjs-ng. A custom tracing JIT was tried and dropped on

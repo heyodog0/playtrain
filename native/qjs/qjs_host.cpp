@@ -194,6 +194,8 @@ static const Binding BINDINGS[] = {
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
 
 // p5 helper + constant prelude (JS). Math helpers p5 exposes as globals; RNG.
+#include "matter_bundle.h"
+
 static const char* PRELUDE = R"JS(
 globalThis.dist=(x1,y1,x2,y2)=>Math.sqrt((x2-x1)**2+(y2-y1)**2);
 globalThis.constrain=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
@@ -237,6 +239,9 @@ int main(int argc, char** argv) {
     JS_FreeValue(ctx, r);
   };
   evalv(PRELUDE, "<prelude>");
+  // Matter.js games expect a `Matter` global. Same auto-detect the node backend
+  // uses (env.py: "Matter." in the source), so non-physics games pay nothing.
+  if (src.find("Matter.") != std::string::npos) evalv(MATTER_JS, "<matter>");
   p5cb::Buf* CB = p5cb::enabled() ? p5cb::create() : nullptr;
   if (CB) JS_SetContextOpaque(ctx, CB);
   auto cbflush = [&]() { if (CB) p5cb::flush(CB, g_nodraw); };
