@@ -204,6 +204,7 @@ FN(js_m_sqrt)  { return JS_NewFloat64(ctx, js::sqrt(argd(ctx, argv[0]))); }
 FN(js_m_sin)   { return JS_NewFloat64(ctx, js::sin(argd(ctx, argv[0]))); }
 FN(js_m_cos)   { return JS_NewFloat64(ctx, js::cos(argd(ctx, argv[0]))); }
 FN(js_m_atan2) { return JS_NewFloat64(ctx, js::atan2(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_m_acos)  { return JS_NewFloat64(ctx, js::acos(argd(ctx, argv[0]))); }
 FN(js_m_hypot) { return JS_NewFloat64(ctx, js::hypot(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 
 struct Binding { const char* name; JSCFunction* fn; int nargs; };
@@ -233,19 +234,31 @@ static const Binding BINDINGS[] = {
   {"frameRate", js_noop, 1}, {"smooth", js_noop, 0},
   {"__m_pow", js_m_pow, 2}, {"__m_sqrt", js_m_sqrt, 1}, {"__m_sin", js_m_sin, 1},
   {"__m_cos", js_m_cos, 1}, {"__m_atan2", js_m_atan2, 2}, {"__m_hypot", js_m_hypot, 2},
+  {"__m_acos", js_m_acos, 1},
 };
 
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
 
+#include "matter_bundle.h"
+
+// p5's math helpers as bare globals, the same set runtime/p5/p5-shim.mjs installs
+// and with the same bodies. They were missing here, so a game calling abs() threw
+// mid-frame in the native backend and every draw after it was dropped, while the
+// reference drew the full frame (jetpack_joyride.spaceship-viz-v2, native/gate_qjs.sh).
+// They read Math.* at call time, so the frozen Math.sin/cos/... below apply to them.
 static const char* PRELUDE = R"JS(
 globalThis.dist=(x1,y1,x2,y2)=>Math.sqrt((x2-x1)**2+(y2-y1)**2);
 globalThis.constrain=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
 globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
+globalThis.abs=(v)=>Math.abs(v);globalThis.floor=(v)=>Math.floor(v);globalThis.ceil=(v)=>Math.ceil(v);globalThis.round=(v)=>Math.round(v);
+globalThis.sqrt=(v)=>Math.sqrt(v);globalThis.pow=(b,e)=>Math.pow(b,e);globalThis.sin=(a)=>Math.sin(a);globalThis.cos=(a)=>Math.cos(a);globalThis.atan2=(y,x)=>Math.atan2(y,x);
+globalThis.min=(...a)=>Math.min(...(a.length===1&&Array.isArray(a[0])?a[0]:a));globalThis.max=(...a)=>Math.max(...(a.length===1&&Array.isArray(a[0])?a[0]:a));
+globalThis.random=(a,b)=>a===undefined?Math.random():b===undefined?Math.random()*a:a+Math.random()*(b-a);
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
 globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
-Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
+Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot; Math.acos=__m_acos;
 )JS";
 
 static inline void cpu_relax() {
@@ -321,6 +334,10 @@ struct Env {
     JSValue r0 = JS_Eval(ctx, buf, strlen(buf), "<seed>", JS_EVAL_TYPE_GLOBAL); JS_FreeValue(ctx, r0);
     JSValue a = JS_NewInt32(ctx, (int)s);
     JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a);
+    // Record it like call0 does. Dropping it here is how a game that throws on
+    // every reset produced black frames and no error for a whole training run.
+    if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* cs = JS_ToCString(ctx, e);
+      err = cs ? cs : "?"; ok = false; JS_FreeCString(ctx, cs); JS_FreeValue(ctx, e); }
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, a);
   }
   // read score/lives/gameState into out params; returns term flag.
@@ -518,6 +535,13 @@ static void env_init(VecHost* H, Env& e, int idx) {
   { JSValue r = JS_Eval(ctx, PRELUDE, strlen(PRELUDE), "<prelude>", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s = JS_ToCString(ctx, ex); e.err = s?s:"prelude"; e.ok=false; JS_FreeCString(ctx,s); JS_FreeValue(ctx,ex); }
     JS_FreeValue(ctx, r); }
+  // Matter.js games expect a `Matter` global. Same auto-detect the node backend
+  // uses (env.py: "Matter." in the source), so non-physics games pay nothing.
+  if (e.ok && src.find("Matter.") != std::string::npos) {
+    JSValue r = JS_Eval(ctx, MATTER_JS, strlen(MATTER_JS), "<matter>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsException(r)) { JSValue ex = JS_GetException(ctx); const char* s2 = JS_ToCString(ctx, ex); e.err = s2?s2:"matter"; e.ok=false; JS_FreeCString(ctx,s2); JS_FreeValue(ctx,ex); }
+    JS_FreeValue(ctx, r);
+  }
   if (p5cb::enabled()) { e.cb = p5cb::create(); JS_SetContextOpaque(ctx, e.cb); }
   // Opt-in dirty-rect whole-frame skip (QJS_DIRTY, like qjs_host): identical
   // command streams skip the raster pass entirely; per-env state, so this
@@ -834,6 +858,25 @@ static bool read_file(const char* path, std::string& out) {
 #endif
 extern "C" {
 
+// Last init failure, for the caller to report. A JS error at env init used to be
+// printed to stderr while vec_create still returned a live handle, so a game the
+// engine could not run (a Matter.js game before matter was compiled in, say)
+// trained on all-black frames and zero reward instead of failing.
+static std::string g_last_error;
+const char* vec_last_error() { return g_last_error.c_str(); }
+void vec_close(void* h);   // defined below; used by the create paths on failure
+
+// First env stuck in an error state, or nullptr when all are healthy. Polled by
+// the Python wrapper after reset and after the first step: a JS exception in
+// resetGame or draw leaves the frame blank rather than stopping anything, and
+// that reads as a game that trains badly instead of one that never ran.
+const char* vec_error(void* h) {
+  if (!h) return nullptr;
+  VecHost* H = (VecHost*)h;
+  for (auto& e : H->envs) if (!e.ok) { g_last_error = e.err; return g_last_error.c_str(); }
+  return nullptr;
+}
+
 void* vec_create(const char* game_path, int num_envs, int obs_size,
                  int max_steps, int num_threads, int autoreset) {
   std::string src;
@@ -865,7 +908,15 @@ void* vec_create(const char* game_path, int num_envs, int obs_size,
   H->cmd = 2;
   dispatch(H);
 
-  for (auto& e : H->envs) if (!e.ok) { fprintf(stderr, "qjs_vec: env init failed: %s\n", e.err.c_str()); }
+  for (auto& e : H->envs) {
+    if (!e.ok) {
+      g_last_error = e.err;
+      fprintf(stderr, "qjs_vec: env init failed: %s\n", e.err.c_str());
+      vec_close(H);
+      return nullptr;
+    }
+  }
+  g_last_error.clear();
   return H;
 }
 
@@ -1081,8 +1132,15 @@ static void* make_async(std::vector<std::string>&& srcs, int num_envs, int obs_s
   H->async_init_left.store(T, std::memory_order_release);
   for (int t = 0; t < T; t++) H->pool.emplace_back(worker_async, H, t);
   while (H->async_init_left.load(std::memory_order_acquire) > 0) cpu_relax();
+  bool failed = false;
   for (int i = 0; i < num_envs; i++)
-    if (!H->envs[i].ok) fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
+    if (!H->envs[i].ok) {
+      g_last_error = H->envs[i].err;
+      fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
+      failed = true;
+    }
+  if (failed) { vec_close(H); return nullptr; }
+  g_last_error.clear();
   return H;
 }
 

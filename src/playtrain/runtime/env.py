@@ -357,6 +357,12 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
     def close(self) -> None:
         if self._closed:
             return
+        # A constructor that failed before spawning the worker (a missing game
+        # file, say) still reaches here through __del__, and the AttributeError
+        # it raised buried the real error under a traceback for every check.
+        if getattr(self, "_proc", None) is None:
+            self._closed = True
+            return
         try:
             self._request({"cmd": "close"})
         except Exception:

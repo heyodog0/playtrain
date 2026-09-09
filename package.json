@@ -47,8 +47,7 @@
   },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
-    "canvas": "^3.2.3",
-    "firebase-admin": "^13.0.0"
+    "canvas": "^3.2.3"
   },
   "optionalDependencies": {
     "matter-js": "^0.20.0"

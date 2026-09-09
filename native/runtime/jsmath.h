@@ -14,7 +14,18 @@
 
 #include <cstdint>
 #include <cmath>
+#include <limits>
 #include <algorithm>
+
+// V8's own fdlibm port, vendored at native/qjs/v8libm/ieee754.cc. Math.sin and
+// friends in the reference runtime are THESE functions. openlibm's do not
+// match: 18 sin and 23 cos disagreements in 2001 samples, each 1 ULP,
+// enough to make jetpack_joyride.spaceship-viz-v2 fail native/gate_qjs.sh.
+// C++ linkage, at global scope, on purpose: declared inside extern "C" these
+// mangle to plain `sin`/`cos` and silently bind to the platform libm.
+namespace v8 { namespace base { namespace ieee754 {
+double sin(double); double cos(double); double acos(double); double atan2(double, double);
+}}}
 
 namespace js {
 
@@ -49,13 +60,29 @@ double fm_pow(double, double);
 double fm_atan2(double, double);
 double fm_sin(double);
 double fm_cos(double);
+double fm_acos(double);
 }
 inline double floor(double x) { return std::floor(x); }
 inline double ceil(double x)  { return std::ceil(x); }
 inline double abs(double x)   { return std::fabs(x); }
 inline double sqrt(double x)  { return std::sqrt(x); }
-inline double pow(double b, double e)   { return fm_pow(b, e); }
-inline double atan2(double y, double x) { return fm_atan2(y, x); }
+// Math.pow in V8 (src/numbers/ieee754.cc, use_std_math_pow, the default) is the
+// platform std::pow behind a few special cases that mirror what its optimizing
+// compilers emit. Not fdlibm: openlibm's pow was 1 in 2001 off, which is what
+// kept suika diverging after sin/cos were fixed. This follows the platform libm
+// exactly as V8 does, so native and node agree on any one machine.
+inline double pow(double x, double y) {
+  if (std::isnan(y)) return std::numeric_limits<double>::quiet_NaN();
+  if (std::isinf(y) && (x == 1 || x == -1)) return std::numeric_limits<double>::quiet_NaN();
+  if (std::isnan(x)) x = std::numeric_limits<double>::quiet_NaN();
+  if (y == 2) return x * x;
+  if (y == 0.5) {
+    if (std::isinf(x)) return std::numeric_limits<double>::infinity();
+    return std::sqrt(x + 0);     // +0 so (-0)**0.5 is +0, as in V8
+  }
+  return std::pow(x, y);
+}
+inline double atan2(double y, double x) { return v8::base::ieee754::atan2(y, x); }
 inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  // deterministic (games use small coords)
 
 // GAME-VISIBLE sin/cos must be fdlibm (what V8 gives Math.sin), NOT the
@@ -67,8 +94,12 @@ inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  //
 constexpr double TWO_PI = 6.283185307179586;
 constexpr double PI_R   = 3.141592653589793;
 constexpr double PI_H   = 1.5707963267948966;
-inline double sin(double x) { return fm_sin(x); }
-inline double cos(double x) { return fm_cos(x); }
+inline double sin(double x) { return v8::base::ieee754::sin(x); }
+inline double cos(double x) { return v8::base::ieee754::cos(x); }
+// Matter.js calls Math.acos (Vector.angle between bodies). Left on the platform
+// libm it is the one transcendental the engines disagree on in the physics
+// games: suika matched V8 for 353 steps and then drifted (native/gate_qjs.sh).
+inline double acos(double x) { return v8::base::ieee754::acos(x); }
 
 // Variadic min/max matching Math.min/Math.max (2+ args in the game subset).
 inline double max(double a, double b) { return a > b ? a : b; }

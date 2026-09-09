@@ -16,9 +16,17 @@ fi
 [ -f frozenmath/libfrozenmath.a ] || { echo "run build_qjs.sh first (frozenmath missing)"; exit 1; }
 [ -f qjs/bld/libqjs.a ] || { echo "run build_qjs.sh first (libqjs missing)"; exit 1; }
 
+bash gen_matter_header.sh          # qjs/matter_bundle.h, compiled into the host
 mkdir -p build
 CXXFLAGS="-std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing -fPIC -I runtime -I qjs/src"
-SRCS="qjs/qjs_vec_host.cpp runtime/p5.cpp"
+# V8's ieee754.cc gets its own object with FMA contraction set the way node's own
+# V8 build has it: clang's default (on) for arm64, which is what Apple-silicon node
+# ships, and off for x86-64, where node targets baseline x86-64 without FMA. One
+# input in suika (sin(3*pi/20)) is 1 ULP apart between the two settings, and the
+# gate needs the reference's. Everything else in the host stays -ffp-contract=off.
+case "$(uname -m)" in arm64|aarch64) V8_FPC="-ffp-contract=on";; *) V8_FPC="-ffp-contract=off";; esac
+clang++ -std=c++17 -O3 $V8_FPC -fno-fast-math -fPIC -c qjs/v8libm/ieee754.cc -o build/v8_ieee754.o
+SRCS="qjs/qjs_vec_host.cpp runtime/p5.cpp build/v8_ieee754.o"
 
 case "$(uname)" in
   Darwin)

@@ -56,7 +56,7 @@ def browser_shim_bundle(wasm: bool = True) -> str:
 
 
 def matter_bundle() -> str:
-    return (ROOT / "tools" / "vendor" / "matter.min.js").read_text()
+    return (ROOT / "runtime" / "vendor" / "matter.min.js").read_text()
 
 
 def seed_workspace() -> int:

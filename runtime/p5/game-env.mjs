@@ -122,18 +122,38 @@ function mulberry32(seed) {
 }
 
 function loadGame(gamePath, needsMatter) {
+  // null/undefined means "work it out", the same rule env.py applies
+  // ("Matter." in the source). Callers that pass an explicit boolean still win.
+  if (needsMatter === null || needsMatter === undefined) {
+    needsMatter = readFileSync(gamePath, 'utf8').includes('Matter.');
+  }
   if (!globalsInstalled) {
     installGlobals();
     globalsInstalled = true;
   }
 
   if (needsMatter) {
+    // The vendored copy, not node_modules: matter-js was never a declared
+    // dependency, so `npm install` did not provide it and physics games loaded
+    // to a black screen. runtime/vendor ships in the wheel and the sdist, and is
+    // the same file the browser tester and the QuickJS host use.
+    const matterPath = join(__dirname, '..', 'vendor', 'matter.min.js');
+    let matterCode;
     try {
-      const matterPath = join(__dirname, '..', '..', 'node_modules', 'matter-js', 'build', 'matter.js');
-      const matterCode = readFileSync(matterPath, 'utf8');
-      vm.runInThisContext(matterCode, { filename: 'matter.js' });
+      matterCode = readFileSync(matterPath, 'utf8');
     } catch (err) {
-      throw new Error(`Failed to load Matter.js: ${err.message}. Run: npm install matter-js`);
+      throw new Error(`Failed to read Matter.js at ${matterPath}: ${err.message}`);
+    }
+    // matter.min.js is a UMD bundle. Run as a bare script its `this` is not the
+    // global, so its fallback branch attaches `Matter` somewhere the game cannot
+    // see it and the game dies on `Matter is not defined`. Give it the CommonJS
+    // branch instead and publish the result explicitly.
+    vm.runInThisContext(
+      `(function(){var module={exports:{}};var exports=module.exports;\n${matterCode}\n;` +
+      `globalThis.Matter = module.exports && module.exports.Bodies ? module.exports : globalThis.Matter;})()`,
+      { filename: 'matter.min.js' });
+    if (typeof globalThis.Matter === 'undefined') {
+      throw new Error(`Matter.js loaded from ${matterPath} but left no Matter global`);
     }
   }
 
@@ -159,7 +179,7 @@ function loadGame(gamePath, needsMatter) {
 }
 
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = false, frameSkip = 1, actions = null, inputMap = null } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
     // Per-instance discrete action space (name / path / array; see
     // resolveActionSpace). Default: the frozen default8 mapping.

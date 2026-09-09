@@ -18,6 +18,7 @@ if [ ! -f frozenmath/libfrozenmath.a ] || ! nm frozenmath/libfrozenmath.a 2>/dev
   # rename the public symbols to fm_* so they never collide with the platform libm
   sed -i.bak -e 's/#define[[:space:]]*__ieee754_pow[[:space:]]*pow/#define __ieee754_pow fm_pow/' \
              -e 's/#define[[:space:]]*__ieee754_atan2[[:space:]]*atan2/#define __ieee754_atan2 fm_atan2/' \
+             -e 's/#define[[:space:]]*__ieee754_acos[[:space:]]*acos/#define __ieee754_acos fm_acos/' \
              frozenmath/src/src/math_private.h
   ( cd frozenmath && A=$(pwd)/src && rm -f *.o libfrozenmath.a \
     && clang -c -O2 -DNDEBUG -w -Datan=fm_atan -I"$A/include" -I"$A/src" \
@@ -25,9 +26,11 @@ if [ ! -f frozenmath/libfrozenmath.a ] || ! nm frozenmath/libfrozenmath.a 2>/dev
       src/src/k_sin.c src/src/k_cos.c src/src/e_rem_pio2.c src/src/k_rem_pio2.c \
     && clang -c -O2 -DNDEBUG -w -Dsin=fm_sin -I"$A/include" -I"$A/src" -o s_sin.o src/src/s_sin.c \
     && clang -c -O2 -DNDEBUG -w -Dcos=fm_cos -I"$A/include" -I"$A/src" -o s_cos.o src/src/s_cos.c \
+    && clang -c -O2 -DNDEBUG -w -I"$A/include" -I"$A/src" -o e_acos.o src/src/e_acos.c \
     && ar rcs libfrozenmath.a e_pow.o e_atan2.o s_atan.o s_scalbn.o \
-         s_sin.o s_cos.o k_sin.o k_cos.o e_rem_pio2.o k_rem_pio2.o )
+         s_sin.o s_cos.o k_sin.o k_cos.o e_rem_pio2.o k_rem_pio2.o e_acos.o )
 fi
+bash gen_matter_header.sh          # qjs/matter_bundle.h, compiled into the host
 FROZEN="frozenmath/libfrozenmath.a"
 
 # QuickJS static lib — STOCK quickjs-ng. A custom tracing JIT was tried and dropped on
@@ -49,9 +52,17 @@ mkdir -p build
 # extra libs: pthread/m/dl needed by quickjs on Linux (harmless on macOS)
 EXTRA=""
 case "$(uname)" in Linux) EXTRA="-lpthread -lm -ldl";; esac
+mkdir -p build
+# V8's ieee754.cc gets its own object with FMA contraction set the way node's own
+# V8 build has it: clang's default (on) for arm64, which is what Apple-silicon node
+# ships, and off for x86-64, where node targets baseline x86-64 without FMA. One
+# input in suika (sin(3*pi/20)) is 1 ULP apart between the two settings, and the
+# gate needs the reference's. Everything else in the host stays -ffp-contract=off.
+case "$(uname -m)" in arm64|aarch64) V8_FPC="-ffp-contract=on";; *) V8_FPC="-ffp-contract=off";; esac
+clang++ -std=c++17 -O3 $V8_FPC -fno-fast-math -fPIC -c qjs/v8libm/ieee754.cc -o build/v8_ieee754.o
 clang++ -std=c++17 -O3 -ffp-contract=off -fno-fast-math -Wno-c++11-narrowing \
   -I runtime -I qjs/src \
-  qjs/qjs_host.cpp runtime/p5.cpp "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
+  qjs/qjs_host.cpp runtime/p5.cpp build/v8_ieee754.o "$RASTER_LIB" qjs/bld/libqjs.a "$FROZEN" $EXTRA \
   -o build/qjs_host
 
 echo "built build/qjs_host"

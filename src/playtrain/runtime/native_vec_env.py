@@ -74,6 +74,15 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_reset_subset.argtypes = [P, P, P, ctypes.c_int, P]
     lib.vec_close.restype = None
     lib.vec_close.argtypes = [P]
+    # The JS error behind a failed create. Older builds do not export it, so the
+    # message is optional and its absence must not break loading the library.
+    try:
+        lib.vec_last_error.restype = ctypes.c_char_p
+        lib.vec_last_error.argtypes = []
+        lib.vec_error.restype = ctypes.c_char_p
+        lib.vec_error.argtypes = [P]
+    except AttributeError:
+        pass
     # Custom-action-space entry points, absent from pre-box builds of the .so.
     # Bind them only if present: the default8 path never calls them, so an old
     # binary keeps working for default-space games (A/B against archived .so's).
@@ -116,6 +125,19 @@ def _load_lib(path: Path) -> ctypes.CDLL:
     lib.vec_recv.argtypes = [P, ctypes.c_int, P]
     return lib
 
+
+
+def _create_error(lib, what: str, game: str) -> str:
+    """A create failure with the engine's own message when it has one."""
+    detail = ""
+    try:
+        raw = lib.vec_last_error()
+        if raw:
+            detail = raw.decode(errors="replace").strip()
+    except AttributeError:
+        pass
+    msg = f"{what} failed for {game}"
+    return f"{msg}: {detail}" if detail else msg
 
 def _install_action_space(lib, h, action_space) -> dict:
     """Resolve ``action_space`` (name / .json path / action list / box dict /
@@ -180,7 +202,7 @@ class NativeVecEnv:
             game_path.encode(), self.num_envs, self.obs_size,
             self.max_steps, int(num_threads), 1 if autoreset else 0)
         if not self._h:
-            raise RuntimeError(f"vec_create failed for {game_path}")
+            raise RuntimeError(_create_error(self._lib, "vec_create", str(game_path)))
         spec = _install_action_space(self._lib, self._h, action_space)
         if spec["type"] == "box":
             self.actions = None
@@ -225,6 +247,22 @@ class NativeVecEnv:
             self._qact = np.zeros((self.num_envs, self.action_dim), dtype=np.uint16)
             self._qact_p = self._qact.ctypes.data_as(ctypes.c_void_p)
 
+    def _raise_if_js_error(self):
+        """Surface a JS exception from resetGame/draw.
+
+        The host keeps running an env that threw, producing blank frames and no
+        reward, which looks like a game that will not train rather than one that
+        never ran. Checked after reset and after the first step: throwing games
+        throw immediately, and this keeps the per-step path free of the call.
+        """
+        try:
+            err = self._lib.vec_error(self._h)
+        except AttributeError:
+            return                       # older libqjs_vec without the export
+        if err:
+            raise RuntimeError(
+                f"game raised in the JS runtime: {err.decode(errors='replace').strip()}")
+
     def reset(self, seeds: Sequence[int] | int | None = None):
         if seeds is None:
             seeds = np.arange(self.num_envs, dtype=np.int32)
@@ -235,6 +273,8 @@ class NativeVecEnv:
         if seeds.shape[0] != self.num_envs:
             raise ValueError(f"seeds length {seeds.shape[0]} != num_envs {self.num_envs}")
         self._lib.vec_reset(self._h, seeds.ctypes.data_as(ctypes.c_void_p), self._obs_p)
+        self._raise_if_js_error()
+        self._checked_steps = False
         return self._obs
 
     def step(self, actions):
@@ -245,6 +285,9 @@ class NativeVecEnv:
             self._lib.vec_step_q(
                 self._h, self._qact_p,
                 self._obs_p, self._rew_p, self._term_p, self._trunc_p)
+            if not getattr(self, "_checked_steps", False):
+                self._checked_steps = True
+                self._raise_if_js_error()
             return (self._obs, self._rew,
                     self._term.view(bool), self._trunc.view(bool), {})
         # Copy into the persistent int32 buffer and reuse its cached pointer
@@ -256,6 +299,9 @@ class NativeVecEnv:
         self._lib.vec_step(
             self._h, self._act_p,
             self._obs_p, self._rew_p, self._term_p, self._trunc_p)
+        if not getattr(self, "_checked_steps", False):
+            self._checked_steps = True
+            self._raise_if_js_error()
         # uint8 buffers hold only 0/1, so .view(bool) is a valid zero-copy view
         # (avoids a per-step allocation in the hot loop).
         return (self._obs, self._rew,
@@ -380,7 +426,7 @@ class AsyncNativeVecEnv:
                 paths[0].encode(), self.num_envs, self.obs_size,
                 int(max_steps), int(num_threads), 1 if autoreset else 0)
         if not self._h:
-            raise RuntimeError("vec_create_async failed")
+            raise RuntimeError(_create_error(self._lib, "vec_create_async", str(paths[0])))
         spec = _install_action_space(self._lib, self._h, action_space)
         if spec["type"] == "box":
             raise ValueError("box action spaces are sync-only for now; "
@@ -485,7 +531,7 @@ class PingPongVecEnv:
             game_path.encode(), self.num_envs, self.obs_size,
             int(max_steps), int(num_threads), 1)  # autoreset always on
         if not self._h:
-            raise RuntimeError(f"vec_create_async failed for {game_path}")
+            raise RuntimeError(_create_error(self._lib, "vec_create_async", str(game_path)))
         spec = _install_action_space(self._lib, self._h, action_space)
         if spec["type"] == "box":
             raise ValueError("box action spaces are sync-only for now; "

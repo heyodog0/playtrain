@@ -13,6 +13,7 @@ namespace p5 {
 struct StyleSnap {
   Color fill, stroke;
   bool strokeEnabled;
+  bool fillEnabled;
   double strokeW;
   int rectMode, ellipseMode;
 };
@@ -36,6 +37,7 @@ struct P5State {
   Color _fill{255, 255, 255, 255};
   Color _stroke{0, 0, 0, 255};
   bool _strokeEnabled = true;
+  bool _fillEnabled = true;
   double _strokeW = 1.0;
   int _rectMode = CORNER;
   int _ellipseMode = CENTER;
@@ -81,6 +83,7 @@ void freeState(void* s) { delete (P5State*)s; }
 #define _fill         (_S()._fill)
 #define _stroke       (_S()._stroke)
 #define _strokeEnabled (_S()._strokeEnabled)
+#define _fillEnabled  (_S()._fillEnabled)
 #define _strokeW      (_S()._strokeW)
 #define _rectMode     (_S()._rectMode)
 #define _ellipseMode  (_S()._ellipseMode)
@@ -289,7 +292,7 @@ void background(double r, double g, double b) { background(color(r, g, b)); }
 
 // In WEBGL mode fill() is the material's diffuse colour and is forwarded at
 // once (no deferred applyFill: the 3D path has no rasterizer style cache).
-void fill(Color c) { _fill = c; if (_webgl) rs_3d_fill(c.r, c.g, c.b); }
+void fill(Color c) { _fillEnabled = true; _fill = c; if (_webgl) rs_3d_fill(c.r, c.g, c.b); }
 void fill(double gray) { fill(color(gray)); }
 void fill(double gray, double a) { fill(color(gray, a)); }
 void fill(double r, double g, double b) { fill(color(r, g, b)); }
@@ -300,7 +303,10 @@ void stroke(double gray) { _strokeEnabled = true; _stroke = color(gray); }
 void stroke(double r, double g, double b) { _strokeEnabled = true; _stroke = color(r, g, b); }
 void stroke(double r, double g, double b, double a) { _strokeEnabled = true; _stroke = color(r, g, b, a); }
 void noStroke() { _strokeEnabled = false; }
-void noFill() { /* not represented in shim; no-op for now */ }
+// Was a no-op, so every shape after noFill() came out filled in the native
+// backend while the JS shim and the browser drew an outline. Two shipped games
+// (vvvvvv.v2, jetpack_joyride.spaceship-viz-v2) failed native/gate_qjs.sh on it.
+void noFill() { _fillEnabled = false; }
 void strokeWeight(double w) { _strokeW = w; }
 void rectMode(int mode) { _rectMode = (mode == CENTER) ? CENTER : CORNER; }
 void ellipseMode(int mode) { _ellipseMode = (mode == CORNER) ? CORNER : CENTER; }
@@ -309,8 +315,7 @@ void ellipseMode(int mode) { _ellipseMode = (mode == CORNER) ? CORNER : CENTER; 
 void rect(double x, double y, double w, double h) {
   double dx = x, dy = y;
   if (_rectMode == CENTER) { dx = x - w / 2; dy = y - h / 2; }
-  applyFill();
-  rs_fill_rect(_h, dx, dy, w, h);
+  if (_fillEnabled) { applyFill(); rs_fill_rect(_h, dx, dy, w, h); }
   if (_strokeEnabled) {
     applyStroke();
     rs_begin_path(_h);
@@ -322,20 +327,20 @@ void rect(double x, double y, double w, double h, double r) {
   if (!(r > 0)) { rect(x, y, w, h); return; }
   double dx = x, dy = y;
   if (_rectMode == CENTER) { dx = x - w / 2; dy = y - h / 2; }
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_round_rect_path(_h, dx, dy, w, h, r);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 
 void ellipse(double x, double y, double w, double h) {
   double cx = x, cy = y;
   if (_ellipseMode == CORNER) { cx = x + w / 2; cy = y + h / 2; }
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_ellipse_path(_h, cx, cy, w / 2, h / 2, 0, TWO_PI);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 void ellipse(double x, double y, double w) { ellipse(x, y, w, w); }
@@ -345,33 +350,33 @@ void arc(double x, double y, double w, double h, double start, double stop) {
   // path (rs_ellipse_path has carried a0/a1 since day one).
   double cx = x, cy = y;
   if (_ellipseMode == CORNER) { cx = x + w / 2; cy = y + h / 2; }
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_ellipse_path(_h, cx, cy, w / 2, h / 2, start, stop);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 void circle(double x, double y, double d) { ellipse(x, y, d, d); }
 
 void triangle(double x1, double y1, double x2, double y2, double x3, double y3) {
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_move_to(_h, x1, y1);
   rs_line_to(_h, x2, y2);
   rs_line_to(_h, x3, y3);
   rs_close_path(_h);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 void quad(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_move_to(_h, x1, y1);
   rs_line_to(_h, x2, y2);
   rs_line_to(_h, x3, y3);
   rs_line_to(_h, x4, y4);
   rs_close_path(_h);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 void line(double x1, double y1, double x2, double y2) {
@@ -385,7 +390,7 @@ void line(double x1, double y1, double x2, double y2) {
 // ---- transform stack ----
 void push() {
   if (_webgl) rs_3d_push(); else rs_save(_h);
-  _styleStack.push_back({_fill, _stroke, _strokeEnabled, _strokeW, _rectMode, _ellipseMode});
+  _styleStack.push_back({_fill, _stroke, _strokeEnabled, _fillEnabled, _strokeW, _rectMode, _ellipseMode});
 }
 void pop() {
   if (_webgl) rs_3d_pop(); else rs_restore(_h);
@@ -393,6 +398,7 @@ void pop() {
     StyleSnap s = _styleStack.back();
     _styleStack.pop_back();
     _fill = s.fill; _stroke = s.stroke; _strokeEnabled = s.strokeEnabled;
+    _fillEnabled = s.fillEnabled;
     _strokeW = s.strokeW; _rectMode = s.rectMode; _ellipseMode = s.ellipseMode;
   }
   invalidateCache();
@@ -427,13 +433,13 @@ void beginShape() { _shapeVerts.clear(); }
 void vertex(double x, double y) { _shapeVerts.emplace_back(x, y); }
 static void endShapeImpl(bool close) {
   if (_shapeVerts.size() < 2) return;
-  applyFill();
+  if (_fillEnabled) applyFill();
   rs_begin_path(_h);
   rs_move_to(_h, _shapeVerts[0].first, _shapeVerts[0].second);
   for (size_t i = 1; i < _shapeVerts.size(); i++)
     rs_line_to(_h, _shapeVerts[i].first, _shapeVerts[i].second);
   if (close) rs_close_path(_h);
-  rs_fill(_h);
+  if (_fillEnabled) rs_fill(_h);
   if (_strokeEnabled) { applyStroke(); rs_stroke(_h); }
 }
 void endShape() { endShapeImpl(false); }

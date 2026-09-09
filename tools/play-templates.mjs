@@ -84,7 +84,9 @@ export function browserShimBundle({ wasm = true } = {}) {
 // Mirrors runtime/p5/game-env.mjs, which loads matter-js into the headless context so games
 // get the `Matter` global. Vendored under tools/vendor so the static build needs no
 // node_modules (Vercel skips install). UMD -> sets window.Matter when run as a classic <script>.
-const _matterPath = join(dirname(fileURLToPath(import.meta.url)), 'vendor', 'matter.min.js');
+// Under runtime/, not tools/: the sdist and the wheel both ship runtime/, so the
+// native build and an installed package can reach the same single copy.
+const _matterPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'runtime', 'vendor', 'matter.min.js');
 let _matter = null;
 function matterBundle() {
   if (_matter === null) _matter = readFileSync(_matterPath, 'utf8');

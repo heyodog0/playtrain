@@ -29,7 +29,7 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
   package that depends on this one, and it produced every training number in the paper.
   See [Training](#training).
 
-The catalog has 36 games. Some are clones of Atari and ProcGen games, some are original,
+The catalog has 38 games. Some are clones of Atari and ProcGen games, some are original,
 and several ship as deliberate variants of a base game. The project page is at
 [playtrain.org](https://playtrain.org).
 

@@ -160,6 +160,7 @@ FN(js_m_sqrt)  { return JS_NewFloat64(ctx, js::sqrt(argd(ctx, argv[0]))); }
 FN(js_m_sin)   { return JS_NewFloat64(ctx, js::sin(argd(ctx, argv[0]))); }
 FN(js_m_cos)   { return JS_NewFloat64(ctx, js::cos(argd(ctx, argv[0]))); }
 FN(js_m_atan2) { return JS_NewFloat64(ctx, js::atan2(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_m_acos)  { return JS_NewFloat64(ctx, js::acos(argd(ctx, argv[0]))); }
 FN(js_m_hypot) { return JS_NewFloat64(ctx, js::hypot(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 
 struct Binding { const char* name; JSCFunction* fn; int nargs; };
@@ -189,20 +190,32 @@ static const Binding BINDINGS[] = {
   {"frameRate", js_noop, 1}, {"smooth", js_noop, 0},
   {"__m_pow", js_m_pow, 2}, {"__m_sqrt", js_m_sqrt, 1}, {"__m_sin", js_m_sin, 1},
   {"__m_cos", js_m_cos, 1}, {"__m_atan2", js_m_atan2, 2}, {"__m_hypot", js_m_hypot, 2},
+  {"__m_acos", js_m_acos, 1},
 };
 
 static void setConst(JSContext* ctx, JSValue g, const char* k, double v) { JS_SetPropertyStr(ctx, g, k, JS_NewFloat64(ctx, v)); }
 
 // p5 helper + constant prelude (JS). Math helpers p5 exposes as globals; RNG.
+#include "matter_bundle.h"
+
+// p5's math helpers as bare globals, the same set runtime/p5/p5-shim.mjs installs
+// and with the same bodies. They were missing here, so a game calling abs() threw
+// mid-frame in the native backend and every draw after it was dropped, while the
+// reference drew the full frame (jetpack_joyride.spaceship-viz-v2, native/gate_qjs.sh).
+// They read Math.* at call time, so the frozen Math.sin/cos/... below apply to them.
 static const char* PRELUDE = R"JS(
 globalThis.dist=(x1,y1,x2,y2)=>Math.sqrt((x2-x1)**2+(y2-y1)**2);
 globalThis.constrain=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
 globalThis.lerp=(a,b,t)=>a+(b-a)*t;
 globalThis.map=(v,s1,e1,s2,e2)=>s2+(e2-s2)*((v-s1)/(e1-s1));
+globalThis.abs=(v)=>Math.abs(v);globalThis.floor=(v)=>Math.floor(v);globalThis.ceil=(v)=>Math.ceil(v);globalThis.round=(v)=>Math.round(v);
+globalThis.sqrt=(v)=>Math.sqrt(v);globalThis.pow=(b,e)=>Math.pow(b,e);globalThis.sin=(a)=>Math.sin(a);globalThis.cos=(a)=>Math.cos(a);globalThis.atan2=(y,x)=>Math.atan2(y,x);
+globalThis.min=(...a)=>Math.min(...(a.length===1&&Array.isArray(a[0])?a[0]:a));globalThis.max=(...a)=>Math.max(...(a.length===1&&Array.isArray(a[0])?a[0]:a));
+globalThis.random=(a,b)=>a===undefined?Math.random():b===undefined?Math.random()*a:a+Math.random()*(b-a);
 globalThis.__mb=function(s){let t=s>>>0;return function(){t+=0x6D2B79F5;let n=Math.imul(t^(t>>>15),t|1);n^=n+Math.imul(n^(n>>>7),n|61);return((n^(n>>>14))>>>0)/4294967296}};
 globalThis.millis=()=>frameCount*(1000/60);
 globalThis.mouseX=0;globalThis.mouseY=0;globalThis.mouseIsPressed=false;globalThis.gamepadAxes=[0,0,0,0];
-Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot;
+Math.pow=__m_pow; Math.sqrt=__m_sqrt; Math.sin=__m_sin; Math.cos=__m_cos; Math.atan2=__m_atan2; Math.hypot=__m_hypot; Math.acos=__m_acos;
 )JS";
 
 int main(int argc, char** argv) {
@@ -237,6 +250,9 @@ int main(int argc, char** argv) {
     JS_FreeValue(ctx, r);
   };
   evalv(PRELUDE, "<prelude>");
+  // Matter.js games expect a `Matter` global. Same auto-detect the node backend
+  // uses (env.py: "Matter." in the source), so non-physics games pay nothing.
+  if (src.find("Matter.") != std::string::npos) evalv(MATTER_JS, "<matter>");
   p5cb::Buf* CB = p5cb::enabled() ? p5cb::create() : nullptr;
   if (CB) JS_SetContextOpaque(ctx, CB);
   auto cbflush = [&]() { if (CB) p5cb::flush(CB, g_nodraw); };
