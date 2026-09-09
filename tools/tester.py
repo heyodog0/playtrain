@@ -1,6 +1,7 @@
 """Lightweight game tester: play games in browser + refine via Gemini."""
 
 import json
+import re
 import queue
 import socketserver
 import threading
@@ -19,6 +20,43 @@ JS_DIR = GAMES_DIR / "js"
 
 
 BACKUPS_DIR = GAMES_DIR / "backups"
+
+# The browser shim: PlayTrain's own rasterizer, not real p5. The tester used to load
+# p5.js from a CDN, which renders the same game slightly differently from the runtime
+# the agent trains on (and from playtrain.org). This is the Python twin of
+# browserShimBundle() in tools/play-templates.mjs, so both surfaces draw identically.
+_P5_DIR = ROOT / "runtime" / "p5"
+_shim_cache: dict[bool, str] = {}
+
+
+def browser_shim_bundle(wasm: bool = True) -> str:
+    if wasm in _shim_cache:
+        return _shim_cache[wasm]
+    raster = (_P5_DIR / "raster.mjs").read_text().replace(
+        "export function createCanvas(", "function createRasterCanvas(")
+    shim = (_P5_DIR / "p5-shim.mjs").read_text().replace(
+        "import { createCanvas as createJsCanvas } from './raster.mjs'; // pure JS, browser-safe",
+        "const createJsCanvas = createRasterCanvas;")
+    pre = ""
+    if wasm:
+        import base64 as _b64, re as _re
+        glue = (_P5_DIR / "raster-wasm.mjs").read_text()
+        glue = _re.sub(r"// @node-only-begin[\s\S]*?// @node-only-end\n?", "", glue)
+        glue = glue.replace("export function makeWasmBackend(", "function makeWasmBackend(")
+        b64 = _b64.b64encode((_P5_DIR / "rasterizer.wasm").read_bytes()).decode()
+        pre = (glue + "\n{\n"
+               "  const __b = atob(" + json.dumps(b64) + ");\n"
+               "  const __bytes = new Uint8Array(__b.length);\n"
+               "  for (let i = 0; i < __b.length; i++) __bytes[i] = __b.charCodeAt(i);\n"
+               "  globalThis.__PT_WASM_EXPORTS = (await WebAssembly.instantiate(__bytes, {})).instance.exports;\n"
+               "}\n")
+    bundle = pre + raster + "\n" + shim
+    _shim_cache[wasm] = bundle
+    return bundle
+
+
+def matter_bundle() -> str:
+    return (ROOT / "tools" / "vendor" / "matter.min.js").read_text()
 
 
 def seed_workspace() -> int:
@@ -231,6 +269,13 @@ function variantRow(name, meta) {
 }
 
 function loadGameFrame(src) {
+  // The renderer choice lives in the frame's localStorage but the parent builds
+  // the src, so re-apply it here or switching games silently reverts to native.
+  try {
+    if (localStorage.getItem('pt-renderer') === 'p5' && src.indexOf('p5=1') < 0) {
+      src += (src.indexOf('?') < 0 ? '?' : '&') + 'p5=1';
+    }
+  } catch (e) {}
   clearConsole();
   const main = document.getElementById('main');
   main.querySelector('#empty')?.remove();
@@ -240,7 +285,13 @@ function loadGameFrame(src) {
   stage.id = 'stage';
   stage.innerHTML = '<iframe id="game-frame" src="' + src + '"></iframe>';
   main.appendChild(stage);
-  stage.querySelector('iframe').addEventListener('load', syncBigScreen);
+  const frame = stage.querySelector('iframe');
+  frame.addEventListener('load', () => {
+    syncBigScreen();
+    // Key events go to the focused document. Without this the parent keeps focus
+    // and the game ignores the keyboard until you click inside the frame.
+    try { frame.contentWindow.focus(); } catch (e) {}
+  });
   syncBigScreen();
 }
 
@@ -526,7 +577,7 @@ loadGames();
 </body>
 </html>"""
 
-PLAY_HTML = """<!DOCTYPE html>
+P5_HTML = """<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -539,12 +590,14 @@ PLAY_HTML = """<!DOCTYPE html>
   canvas {{ transform: scale(var(--game-scale)); transform-origin: top center; transition: transform 140ms ease; }}
   #controls {{ position: fixed; bottom: 4px; left: 0; right: 0; text-align: center; color: #888; font: 11px monospace; z-index: 10; }}
   #controls button {{ background: #222; color: #aaa; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: 11px monospace; }}
+  #renderer {{ margin-left: 10px; cursor: pointer; }}
 </style>
 </head>
 <body>
 <div id="controls">
-  <button id="reset-btn" onclick="_maxLives=0; resetGame(Date.now()>>>0); this.blur();">Reset</button>
+  <button id="reset-btn" onclick="_newEpisode(); this.blur();">Reset</button>
   <span id="state"></span>
+  <label id="renderer"><input type="checkbox" id="use-p5" checked> real p5 (CDN)</label>
 </div>
 <script>
 (function() {{
@@ -565,14 +618,31 @@ PLAY_HTML = """<!DOCTYPE html>
 </script>
 <script src="/api/games/{name}"></script>
 <script>
+// Same seed pinning as the rasterizer page, so toggling the renderer replays
+// the identical episode instead of rolling a new one.
+var _maxLives = 0;
+var _u0 = new URL(location.href);
+var _SEED = Number(_u0.searchParams.get('seed')) || (Date.now() >>> 0);
+if (_u0.searchParams.get('seed') !== String(_SEED)) {{
+  _u0.searchParams.set('seed', String(_SEED));
+  history.replaceState(null, '', _u0.toString());
+}}
+function _newEpisode() {{
+  _maxLives = 0;
+  _SEED = Date.now() >>> 0;
+  var u = new URL(location.href);
+  u.searchParams.set('seed', String(_SEED));
+  history.replaceState(null, '', u.toString());
+  if (typeof resetGame === 'function') resetGame(_SEED);
+}}
+
 // Wrap setup to auto-call resetGame after canvas creation
 const _origSetup = typeof setup === 'function' ? setup : function(){{}};
 setup = function() {{
   _origSetup();
-  if (typeof resetGame === 'function') resetGame(Date.now() >>> 0);
+  if (typeof resetGame === 'function') resetGame(_SEED);
 }};
 // State overlay — only show "Lives" if a game actually uses lives (max ever > 1).
-var _maxLives = 0;
 setInterval(() => {{
   if (typeof getGameState === 'function') {{
     const s = getGameState();
@@ -583,6 +653,19 @@ setInterval(() => {{
     document.getElementById('state').textContent = parts.join(' | ');
   }}
 }}, 200);
+
+(function() {{
+  function grabFocus() {{ try {{ window.focus(); }} catch (e) {{}} }}
+  grabFocus();
+  addEventListener('pointerdown', grabFocus);
+  document.addEventListener('mouseover', grabFocus);
+  document.getElementById('use-p5').onchange = function () {{
+    try {{ localStorage.setItem('pt-renderer', this.checked ? 'p5' : 'native'); }} catch (e) {{}}
+    var u = new URL(location.href);
+    if (this.checked) u.searchParams.set('p5', '1'); else u.searchParams.delete('p5');
+    location.href = u.toString();
+  }};
+}})();
 
 window.addEventListener('message', event => {{
   if (event.origin !== window.location.origin) return;
@@ -595,7 +678,187 @@ window.addEventListener('message', event => {{
 </body>
 </html>"""
 
-MATTER_TAG = '<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>'
+P5_MATTER_TAG = '<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>'
+
+
+def play_html(name: str, source: str, needs_matter: bool, use_p5: bool = False) -> str:
+    """The play page, rendered by PlayTrain's rasterizer.
+
+    Mirrors rasterizerPage() in tools/play-templates.mjs, which is what
+    playtrain.org serves, so a game looks the same in both places and the same
+    as what the training runtime draws. The game source is inlined inert and
+    eval'd only after the shim has installed its globals; a <script src> would
+    run against real p5's globals or none at all.
+    """
+    if use_p5:
+        # Real p5 from a CDN, for eyeballing the difference. Not what the agent
+        # sees: p5 lights per fragment where our rasterizer is per vertex, so a
+        # 3D game is visibly smoother here than in training.
+        return P5_HTML.format(name=name,
+                              matter_tag=P5_MATTER_TAG if needs_matter else "")
+    matter = "<script>" + matter_bundle() + "</script>\n" if needs_matter else ""
+    bundle = browser_shim_bundle(wasm=bool(re.search(r"\bWEBGL\b", source)))
+    return (
+        HEAD_HTML.replace("__TITLE__", name)
+        + matter
+        + '<script type="text/plain" id="game-src">' + source + "</script>\n"
+        + '<script type="module">\n' + bundle + BOOT_JS + "</script>\n</body></html>"
+    )
+
+
+HEAD_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<style>
+  :root { --game-scale: 1; }
+  body { margin: 0; background: #000; display: flex; flex-direction: column;
+         align-items: center; overflow: auto; }
+  canvas { transform: scale(var(--game-scale)); transform-origin: top center;
+           transition: transform 140ms ease; image-rendering: pixelated; }
+  #controls { position: fixed; bottom: 4px; left: 0; right: 0; text-align: center;
+              color: #888; font: 11px monospace; z-index: 10; }
+  #controls button { background: #222; color: #aaa; border: 1px solid #444;
+                     padding: 2px 10px; cursor: pointer; font: 11px monospace; }
+  #renderer { margin-left: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="controls">
+  <button id="reset-btn">Reset</button>
+  <span id="state"></span>
+  <label id="renderer"><input type="checkbox" id="use-p5"> real p5 (CDN)</label>
+</div>
+<canvas id="view"></canvas>
+<script>
+(function() {
+  ['log','warn','error'].forEach(function(lvl) {
+    var orig = console[lvl].bind(console);
+    console[lvl] = function() {
+      orig.apply(console, arguments);
+      try { parent.postMessage({type:'tester-console',level:lvl,text:Array.from(arguments).map(function(a){return typeof a==='object'?JSON.stringify(a):String(a)}).join(' ')}, window.location.origin); } catch(e) {}
+    };
+  });
+  window.onerror = function(msg, src, line) {
+    try { parent.postMessage({type:'tester-console',level:'error',text:String(msg)+' (line '+line+')'}, window.location.origin); } catch(e) {}
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    try { parent.postMessage({type:'tester-console',level:'error',text:'Unhandled: '+String(e.reason)}, window.location.origin); } catch(e) {}
+  });
+})();
+</script>
+"""
+
+# Runs after the shim bundle in the same module scope. An IIFE so its locals cannot
+# collide with the shim's top-level names (loop, tick, ...).
+BOOT_JS = """
+(function () {
+  // Same reason as the parent side: this document has to hold focus for its
+  // keydown listeners to fire. Grab it at boot, and grab it back whenever the
+  // pointer comes over the game, so clicking the sidebar does not mute the keys.
+  function grabFocus() { try { window.focus(); } catch (e) {} }
+  grabFocus();
+  addEventListener('pointerdown', grabFocus);
+  addEventListener('mouseenter', grabFocus);
+  document.addEventListener('mouseover', grabFocus, { once: false });
+
+  // Renderer toggle. Sticky across games via localStorage, since switching game
+  // rebuilds the frame with a fresh src.
+  document.getElementById('use-p5').onchange = function () {
+    try { localStorage.setItem('pt-renderer', this.checked ? 'p5' : 'native'); } catch (e) {}
+    var u = new URL(location.href);
+    if (this.checked) u.searchParams.set('p5', '1'); else u.searchParams.delete('p5');
+    location.href = u.toString();
+  };
+
+  // Seed lives in the URL. Swapping the renderer reloads the page, so without a
+  // pinned seed the two sides would show different episodes and be impossible to
+  // compare; with it, both start from the identical frame 0.
+  var _u = new URL(location.href);
+  var SEED = Number(_u.searchParams.get('seed')) || (Date.now() >>> 0);
+  if (_u.searchParams.get('seed') !== String(SEED)) {
+    _u.searchParams.set('seed', String(SEED));
+    history.replaceState(null, '', _u.toString());
+  }
+
+  installGlobals();
+  (0, eval)(document.getElementById('game-src').textContent);
+  if (typeof window.setup === 'function') window.setup();
+  if (typeof window.resetGame === 'function') window.resetGame(SEED);
+
+  var view = document.getElementById('view');
+  var p0 = getPixelData(); view.width = p0.width; view.height = p0.height;
+  var vctx = view.getContext('2d');
+
+  var held = new Set(), pressed = new Set();
+  var KEYS = [32, 37, 38, 39, 40, 65, 66, 68, 83, 87];
+  addEventListener('keydown', function (e) {
+    if (KEYS.indexOf(e.keyCode) >= 0) {
+      e.preventDefault();
+      if (!held.has(e.keyCode)) pressed.add(e.keyCode);
+      held.add(e.keyCode);
+    }
+  }, { passive: false });
+  addEventListener('keyup', function (e) { held.delete(e.keyCode); });
+
+  // Pointer, quantized to the same uint16 wire format the envs step with.
+  var mq = { x: 0, y: 0, down: false };
+  var Q = function (v) { return Math.floor(Math.min(1, Math.max(0, v)) * 65535 + 0.5); };
+  view.addEventListener('mousemove', function (e) {
+    var r = view.getBoundingClientRect();
+    mq.x = Q((e.clientX - r.left) / r.width);
+    mq.y = Q((e.clientY - r.top) / r.height);
+  });
+  view.addEventListener('mousedown', function (e) { e.preventDefault(); mq.down = true; });
+  addEventListener('mouseup', function () { mq.down = false; });
+
+  var maxLives = 0;
+  document.getElementById('reset-btn').onclick = function () {
+    maxLives = 0;
+    var s = Date.now() >>> 0;                    // a new episode, and record it
+    var u = new URL(location.href);
+    u.searchParams.set('seed', String(s));
+    history.replaceState(null, '', u.toString());
+    if (typeof window.resetGame === 'function') window.resetGame(s);
+    this.blur();
+  };
+
+  window.addEventListener('message', function (event) {
+    if (event.origin !== window.location.origin) return;
+    if (event.data && event.data.type === 'tester-scale') {
+      var scale = Number(event.data.scale) || 1;
+      document.documentElement.style.setProperty('--game-scale', String(scale));
+    }
+  });
+
+  var FRAME_MS = 1000 / 60, last = 0;      // fixed-timestep games: pin to 60fps
+  function renderLoop(now) {
+    requestAnimationFrame(renderLoop);
+    if (now - last < FRAME_MS - 0.5) return;
+    last = now;
+    setKeysDown(Array.from(held));
+    pressed.forEach(function (c) { simulateKeyPress(c); });
+    pressed.clear();
+    setPointerPos(mq.x, mq.y);
+    setButtons(mq.down ? 1 : 0);
+    tick();
+    var p = getPixelData();
+    vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
+    if (typeof window.getGameState === 'function') {
+      try {
+        var st = window.getGameState();
+        if (typeof st.lives === 'number' && st.lives > maxLives) maxLives = st.lives;
+        var parts = ['Score: ' + st.score];
+        if (maxLives > 1) parts.push('Lives: ' + st.lives);
+        parts.push(st.gameState);
+        document.getElementById('state').textContent = parts.join(' | ');
+      } catch (e) {}
+    }
+  }
+  requestAnimationFrame(renderLoop);
+})();
+"""
 
 
 # -- HTTP handler -------------------------------------------------------------
@@ -612,7 +875,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        path = self.path
+        path, _, query = self.path.partition("?")
+        # ?p5=1 swaps the renderer for the CDN build. Viewing only: everything
+        # measured, trained or replayed goes through the shim.
+        use_p5 = "p5=1" in query
 
         if path == "/":
             self._send(200, "text/html", TESTER_HTML.encode())
@@ -654,16 +920,20 @@ class Handler(BaseHTTPRequestHandler):
             filename = path.split("/play-backup/")[1]
             # derive game name from filename (strip timestamp suffix)
             name = "_".join(filename.replace(".js", "").split("_")[:-1])
-            matter = MATTER_TAG if needs_matter(name) else ""
-            html = PLAY_HTML.format(name=filename, matter_tag=matter).replace(
-                f"/api/games/{filename}", f"/api/backup-file/{filename}"
-            )
+            src = BACKUPS_DIR / filename
+            if not src.exists():
+                self._send(404, "text/plain", b"not found")
+                return
+            html = play_html(filename, src.read_text(), needs_matter(name), use_p5)
             self._send(200, "text/html", html.encode())
 
         elif path.startswith("/play/"):
             name = path.split("/play/")[1]
-            matter = MATTER_TAG if needs_matter(name) else ""
-            html = PLAY_HTML.format(name=name, matter_tag=matter)
+            fp = JS_DIR / f"{name}.js"
+            if not fp.exists():
+                self._send(404, "text/plain", b"not found")
+                return
+            html = play_html(name, fp.read_text(), needs_matter(name), use_p5)
             self._send(200, "text/html", html.encode())
 
         else:
