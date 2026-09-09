@@ -115,7 +115,7 @@ $ uv venv && uv pip install -e .
 $ python -m playtrain_trainers.train_impala --config configs/impala_quickstart.json
 ```
 
-Two are provided: IMPALA with V-trace, whose math is bit-exact against FAIR's torchbeast,
+Two are provided: IMPALA with V-trace, whose math matches FAIR's torchbeast,
 and PPO. Both are configured by a JSON file and both write TensorBoard scalars, where
 `charts/mean_episode_return` is the number to watch.
 
