@@ -51,16 +51,18 @@ $ uv run https://raw.githubusercontent.com/heyodog0/playtrain/main/examples/quic
 Needs Python 3.11 or newer, plus clang and cargo. On macOS the default `python3` is
 often older, so check with `python3 --version` first.
 
-```console
-$ git clone https://github.com/heyodog0/playtrain && cd playtrain
-$ python3 -m venv .venv && .venv/bin/pip install -e .
-```
-
-Or with [uv](https://docs.astral.sh/uv/):
+With [uv](https://docs.astral.sh/uv/):
 
 ```console
 $ git clone https://github.com/heyodog0/playtrain && cd playtrain
 $ uv venv && uv pip install -e .
+```
+
+Or without it:
+
+```console
+$ git clone https://github.com/heyodog0/playtrain && cd playtrain
+$ python3 -m venv .venv && .venv/bin/pip install -e .
 ```
 
 Either way this builds the native backend as part of the install, which takes about a
