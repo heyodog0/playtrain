@@ -323,6 +323,10 @@ struct Env {
     JSValue r0 = JS_Eval(ctx, buf, strlen(buf), "<seed>", JS_EVAL_TYPE_GLOBAL); JS_FreeValue(ctx, r0);
     JSValue a = JS_NewInt32(ctx, (int)s);
     JSValue r = JS_Call(ctx, jsReset, JS_UNDEFINED, 1, &a);
+    // Record it like call0 does. Dropping it here is how a game that throws on
+    // every reset produced black frames and no error for a whole training run.
+    if (JS_IsException(r)) { JSValue e = JS_GetException(ctx); const char* cs = JS_ToCString(ctx, e);
+      err = cs ? cs : "?"; ok = false; JS_FreeCString(ctx, cs); JS_FreeValue(ctx, e); }
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, a);
   }
   // read score/lives/gameState into out params; returns term flag.
@@ -843,6 +847,25 @@ static bool read_file(const char* path, std::string& out) {
 #endif
 extern "C" {
 
+// Last init failure, for the caller to report. A JS error at env init used to be
+// printed to stderr while vec_create still returned a live handle, so a game the
+// engine could not run (a Matter.js game before matter was compiled in, say)
+// trained on all-black frames and zero reward instead of failing.
+static std::string g_last_error;
+const char* vec_last_error() { return g_last_error.c_str(); }
+void vec_close(void* h);   // defined below; used by the create paths on failure
+
+// First env stuck in an error state, or nullptr when all are healthy. Polled by
+// the Python wrapper after reset and after the first step: a JS exception in
+// resetGame or draw leaves the frame blank rather than stopping anything, and
+// that reads as a game that trains badly instead of one that never ran.
+const char* vec_error(void* h) {
+  if (!h) return nullptr;
+  VecHost* H = (VecHost*)h;
+  for (auto& e : H->envs) if (!e.ok) { g_last_error = e.err; return g_last_error.c_str(); }
+  return nullptr;
+}
+
 void* vec_create(const char* game_path, int num_envs, int obs_size,
                  int max_steps, int num_threads, int autoreset) {
   std::string src;
@@ -874,7 +897,15 @@ void* vec_create(const char* game_path, int num_envs, int obs_size,
   H->cmd = 2;
   dispatch(H);
 
-  for (auto& e : H->envs) if (!e.ok) { fprintf(stderr, "qjs_vec: env init failed: %s\n", e.err.c_str()); }
+  for (auto& e : H->envs) {
+    if (!e.ok) {
+      g_last_error = e.err;
+      fprintf(stderr, "qjs_vec: env init failed: %s\n", e.err.c_str());
+      vec_close(H);
+      return nullptr;
+    }
+  }
+  g_last_error.clear();
   return H;
 }
 
@@ -1090,8 +1121,15 @@ static void* make_async(std::vector<std::string>&& srcs, int num_envs, int obs_s
   H->async_init_left.store(T, std::memory_order_release);
   for (int t = 0; t < T; t++) H->pool.emplace_back(worker_async, H, t);
   while (H->async_init_left.load(std::memory_order_acquire) > 0) cpu_relax();
+  bool failed = false;
   for (int i = 0; i < num_envs; i++)
-    if (!H->envs[i].ok) fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
+    if (!H->envs[i].ok) {
+      g_last_error = H->envs[i].err;
+      fprintf(stderr, "qjs_vec: env init failed: %s\n", H->envs[i].err.c_str());
+      failed = true;
+    }
+  if (failed) { vec_close(H); return nullptr; }
+  g_last_error.clear();
   return H;
 }
 
