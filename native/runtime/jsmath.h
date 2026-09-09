@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <cmath>
+#include <limits>
 #include <algorithm>
 
 // V8's own fdlibm port, vendored at native/qjs/v8libm/ieee754.cc. Math.sin and
@@ -65,7 +66,22 @@ inline double floor(double x) { return std::floor(x); }
 inline double ceil(double x)  { return std::ceil(x); }
 inline double abs(double x)   { return std::fabs(x); }
 inline double sqrt(double x)  { return std::sqrt(x); }
-inline double pow(double b, double e)   { return fm_pow(b, e); }
+// Math.pow in V8 (src/numbers/ieee754.cc, use_std_math_pow, the default) is the
+// platform std::pow behind a few special cases that mirror what its optimizing
+// compilers emit. Not fdlibm: openlibm's pow was 1 in 2001 off, which is what
+// kept suika diverging after sin/cos were fixed. This follows the platform libm
+// exactly as V8 does, so native and node agree on any one machine.
+inline double pow(double x, double y) {
+  if (std::isnan(y)) return std::numeric_limits<double>::quiet_NaN();
+  if (std::isinf(y) && (x == 1 || x == -1)) return std::numeric_limits<double>::quiet_NaN();
+  if (std::isnan(x)) x = std::numeric_limits<double>::quiet_NaN();
+  if (y == 2) return x * x;
+  if (y == 0.5) {
+    if (std::isinf(x)) return std::numeric_limits<double>::infinity();
+    return std::sqrt(x + 0);     // +0 so (-0)**0.5 is +0, as in V8
+  }
+  return std::pow(x, y);
+}
 inline double atan2(double y, double x) { return v8::base::ieee754::atan2(y, x); }
 inline double hypot(double x, double y) { return std::sqrt(x * x + y * y); }  // deterministic (games use small coords)
 
