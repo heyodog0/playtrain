@@ -23,6 +23,7 @@ from ccref import run as crun
 from jsrun import have_node
 
 from playtrain.runtime import PlayTrainEnv
+from playtrain.runtime.native_vec_env import _LIB_PATH, NativeVecEnv
 
 pytestmark = pytest.mark.skipif(not have_node(), reason="node not on PATH")
 
@@ -155,3 +156,95 @@ def test_the_one_noop_offset_is_declared():
     sidecar = json.loads((GAME / "dist" / f"{NAME}.json").read_text())
     joined = " ".join(sidecar["reference"]["not_matched"]).lower()
     assert "noop" in joined and "reset" in joined, sidecar["reference"]["not_matched"]
+
+
+# --- 13c: the vectorised C++ host ------------------------------------------
+
+native = pytest.mark.skipif(
+    not _LIB_PATH.exists(),
+    reason="native backend not built (run native/build_qjs_vec.sh)")
+
+
+@native
+def test_the_vec_host_reports_a_float32_vector():
+    env = NativeVecEnv(game=NAME, num_envs=3, obs_mode="symbolic", max_steps=500)
+    try:
+        obs = np.asarray(env.reset(seeds=[1, 2, 3]))
+        assert obs.shape == (3, OBS_DIM)
+        assert obs.dtype == np.float32
+    finally:
+        env.close()
+
+
+@native
+def test_the_vec_host_still_does_pixels_by_default():
+    env = NativeVecEnv(game=NAME, num_envs=2, obs_size=64, max_steps=500)
+    try:
+        obs = np.asarray(env.reset(seeds=[1, 2]))
+        assert obs.shape == (2, 64, 64, 3)
+        assert obs.dtype == np.uint8
+    finally:
+        env.close()
+
+
+@native
+def test_the_vec_host_refuses_a_game_with_no_symbolic_declaration():
+    with pytest.raises((ValueError, RuntimeError)):
+        NativeVecEnv(game="pong", num_envs=2, obs_mode="symbolic")
+
+
+@native
+def test_the_vec_host_vector_is_well_formed_and_moves():
+    env = NativeVecEnv(game=NAME, num_envs=2, obs_mode="symbolic", max_steps=500)
+    try:
+        # The host reuses one output slab, so every sample must be copied
+        # before the next step — comparing two views of it always says
+        # "unchanged", which is how this test first fooled me.
+        first = np.asarray(env.reset(seeds=[5, 6])).copy()
+        later = np.asarray(env.step(np.full(2, 5, dtype=np.int32))[0]).copy()
+        assert not np.array_equal(first, later)
+        for row in (first, later):
+            for tile in range(63):
+                assert row[0, tile * 21 : tile * 21 + 17].sum() == pytest.approx(1.0)
+    finally:
+        env.close()
+
+
+@native
+@pytest.mark.skipif(not have_driver(), reason=DRIVER_ABSENT_REASON)
+def test_the_vec_host_matches_the_c_bit_for_bit(tmp_path):
+    """The same end-to-end check as the node host, through the C++ one.
+
+    Same one-NOOP reset offset: the vec host's env_reset ticks draw() once
+    before the first step, exactly as the node host does.
+    """
+    seed = 4
+    actions = bytes((i * 3 + 1) % 17 for i in range(80))
+    path = tmp_path / "a.bin"
+    path.write_bytes(bytes([0]) + actions)
+
+    blob = crun("obs", str(seed), str(path))
+    dim, _ = struct.unpack("<II", blob[4:12])
+    rec = 1 + dim * 4
+    body = blob[12:]
+    c_steps = [np.frombuffer(body[i * rec + 1 : (i + 1) * rec], dtype=np.float32)
+               for i in range(len(body) // rec)]
+
+    env = NativeVecEnv(game=NAME, num_envs=1, obs_mode="symbolic", max_steps=10000)
+    try:
+        obs = np.asarray(env.reset(seeds=[seed])).copy()
+        assert np.array_equal(obs[0], c_steps[0]), "reset observation differs"
+        for i, a in enumerate(actions):
+            out = env.step(np.full(1, int(a), dtype=np.int32))
+            obs = np.asarray(out[0]).copy()
+            term, trunc = np.asarray(out[2]), np.asarray(out[3])
+            want = c_steps[i + 1]
+            if not np.array_equal(obs[0], want):
+                bad = int(np.flatnonzero(obs[0] != want)[0])
+                pytest.fail(
+                    f"step {i + 1}: obs[{bad}] host {obs[0][bad]!r} vs C {want[bad]!r}"
+                )
+            if term[0] or trunc[0]:
+                break
+    finally:
+        env.close()

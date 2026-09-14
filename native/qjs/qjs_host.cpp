@@ -285,8 +285,47 @@ int main(int argc, char** argv) {
   if (getenv("QJS_NODRAW")) g_nodraw = true;     // measurement: skip draw-binding bodies
   resetGame(0); setFrame(++frameCount); p5::frameBegin(); call0(jsDraw); p5::frameEnd();
 
+  // PLAN 3.6 symbolic observations. Opt in with
+  // PLAYTRAIN_QJS_OBS_MODE=symbolic, matching how PLAYTRAIN_QJS_ACTIONS opts
+  // into a non-default action table. In that mode the rasterizer is never
+  // called: the game's getObservation() returns a Float32Array and its bytes
+  // are what gets hashed, so the differential gate covers the symbolic
+  // observation as well as the frame.
+  JSValue jsGetObs = JS_GetPropertyStr(ctx, g, "getObservation");
+  const bool symbolicObs = [&] {
+    const char* m = getenv("PLAYTRAIN_QJS_OBS_MODE");
+    if (!m || strcmp(m, "symbolic") != 0) return false;
+    if (!JS_IsFunction(ctx, jsGetObs)) {
+      fprintf(stderr, "qjs_host: PLAYTRAIN_QJS_OBS_MODE=symbolic but the game "
+                      "has no getObservation(); staying on pixels\n");
+      return false;
+    }
+    return true;
+  }();
+
   std::vector<uint8_t> obs((size_t)OBS * OBS * 3);
-  auto obshash = [&]() -> uint64_t { p5::render_obs_rgb(obs.data()); uint64_t h = 1469598103934665603ULL; for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; } return h; };
+  auto obshash = [&]() -> uint64_t {
+    uint64_t h = 1469598103934665603ULL;
+    if (symbolicObs) {
+      JSValue v = JS_Call(ctx, jsGetObs, JS_UNDEFINED, 0, nullptr);
+      if (JS_IsException(v)) { JS_FreeValue(ctx, JS_GetException(ctx)); JS_FreeValue(ctx, v); return h; }
+      size_t off = 0, len = 0, per = 0;
+      JSValue ab = JS_GetTypedArrayBuffer(ctx, v, &off, &len, &per);
+      if (!JS_IsException(ab)) {
+        size_t sz = 0;
+        uint8_t* src = JS_GetArrayBuffer(ctx, &sz, ab);
+        if (src && off + len <= sz) {
+          for (size_t i = 0; i < len; i++) { h ^= src[off + i]; h *= 1099511628211ULL; }
+        }
+        JS_FreeValue(ctx, ab);
+      }
+      JS_FreeValue(ctx, v);
+      return h;
+    }
+    p5::render_obs_rgb(obs.data());
+    for (uint8_t b : obs) { h ^= b; h *= 1099511628211ULL; }
+    return h;
+  };
   // Discrete action table + optional box input map (shared with qjs_vec_host
   // via action_table.hpp; press/pointer semantics documented there).
   // default8 unless PLAYTRAIN_QJS_ACTIONS holds a JSON action array (the

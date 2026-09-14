@@ -21,6 +21,8 @@ import json
 import os
 import subprocess
 
+import re
+
 import numpy as np
 import pytest
 
@@ -92,3 +94,64 @@ def test_the_vectorised_host_is_deterministic():
             env.close()
 
     assert np.array_equal(run(), run())
+
+
+# --- 13c: the differential gate over the symbolic observation ---------------
+
+def _gate(extra_env: dict, steps: str = "600") -> subprocess.CompletedProcess:
+    env = dict(os.environ)
+    env["PLAYTRAIN_GAMES_DIR"] = str(DIST)
+    env["PLAYTRAIN_QJS_ACTIONS"] = sidecar_actions()
+    env.update(extra_env)
+    return subprocess.run(
+        ["./gate_qjs.sh", NAME, steps],
+        cwd=REPO / "native", capture_output=True, text=True, env=env,
+    )
+
+
+def _first_obshash(extra_env: dict) -> tuple[str, str]:
+    """The reset obshash from each engine, for one seed."""
+    env = dict(os.environ)
+    env["PLAYTRAIN_GAMES_DIR"] = str(DIST)
+    env["PLAYTRAIN_QJS_ACTIONS"] = sidecar_actions()
+    env.update(extra_env)
+    v8 = subprocess.run(
+        ["node", "reference_trace.mjs", NAME, "1", "2"],
+        cwd=REPO / "native", capture_output=True, text=True, env=env)
+    qjs = subprocess.run(
+        [str(REPO / "native" / "build" / "qjs_host"),
+         str(DIST / f"{NAME}.js"), "trace", "1", "2"],
+        cwd=REPO / "native", capture_output=True, text=True, env=env)
+    assert v8.returncode == 0, v8.stderr
+    assert qjs.returncode == 0, qjs.stderr
+    grab = lambda out: re.search(r"obshash=(\d+)", out).group(1)
+    return grab(v8.stdout), grab(qjs.stdout)
+
+
+def test_v8_and_quickjs_agree_on_the_symbolic_observation():
+    """PLAN 3.6 asks for the gate to hash the symbolic buffer alongside the
+    frame. With both sides in symbolic mode the existing differential gate
+    compares the 1345-float vector instead of the 64x64x3 frame."""
+    proc = _gate({"PLAYTRAIN_OBS_MODE": "symbolic",
+                  "PLAYTRAIN_QJS_OBS_MODE": "symbolic"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE PASS" in proc.stdout, proc.stdout
+    assert proc.stdout.count("bit-exact") == 3, proc.stdout
+
+
+def test_the_symbolic_gate_is_not_passing_vacuously():
+    """Both engines silently falling back to pixels would also produce a
+    green gate. The symbolic hashes must differ from the pixel ones, and the
+    two engines must agree within each mode."""
+    v8_rgb, qjs_rgb = _first_obshash({})
+    v8_sym, qjs_sym = _first_obshash({"PLAYTRAIN_OBS_MODE": "symbolic",
+                                      "PLAYTRAIN_QJS_OBS_MODE": "symbolic"})
+    assert v8_rgb == qjs_rgb, "the engines disagree in pixel mode"
+    assert v8_sym == qjs_sym, "the engines disagree in symbolic mode"
+    assert v8_sym != v8_rgb, "symbolic mode produced the pixel hash: it was ignored"
+
+
+def test_pixel_mode_is_still_the_default():
+    proc = _gate({}, steps="600")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE PASS" in proc.stdout

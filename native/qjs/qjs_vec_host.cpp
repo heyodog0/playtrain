@@ -301,6 +301,9 @@ struct Env {
   JSRuntime* rt = nullptr;
   JSContext* ctx = nullptr;
   JSValue g, jsReset, jsDraw, jsState, jsKeyPressed, jsMousePressed;
+  // PLAN 3.6 symbolic obs: the game's getObservation(), when it has one.
+  JSValue jsGetObs = JS_UNDEFINED;
+  bool hasGetObs = false;
   bool hasKeyPressed = false;
   bool hasMousePressed = false;
   uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
@@ -419,6 +422,9 @@ struct VecHost {
   std::vector<Env> envs;
   std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
+  // 0 = rgb pixels (obs_bytes = obs_size^2*3), >0 = symbolic: that many
+  // float32 from the game's getObservation(), rasterizer skipped entirely.
+  int obs_symbolic_dim = 0;
   // Action-repeat: run `frame_skip` game ticks per vec_step, holding the action
   // (semantics mirror runtime/p5/game-env.mjs: per-frame terminal/trunc check
   // with early break, `steps`/`max_steps` count FRAMES, reward = end-score -
@@ -566,6 +572,8 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.hasKeyPressed = JS_IsFunction(ctx, e.jsKeyPressed);
   e.jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
   e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
+  e.jsGetObs = JS_GetPropertyStr(ctx, g, "getObservation");
+  e.hasGetObs = JS_IsFunction(ctx, e.jsGetObs);
   e.call0(jsSetup);
   e.flushCB();
   JS_FreeValue(ctx, jsSetup);
@@ -606,6 +614,8 @@ static void env_apply_frame(Env& e, const InputFrame& f) {
 }
 
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
+static void write_obs(VecHost* H, Env& e, int idx);   // defined below
+
 static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
   g_nodraw = false;  // reset frames always render fully
@@ -635,7 +645,44 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.readState(score, lives, gs);
   e.flushCB();
   e.steps = 0; e.lastScore = score;
-  p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
+  write_obs(H, e, idx);
+}
+
+// Write env idx's observation into the output slab.
+//
+// PLAN 3.6: in symbolic mode the game owns the vector and the rasterizer is
+// never called — getObservation() returns a Float32Array and its bytes go
+// straight into the slot. A short or missing vector is zero-filled rather
+// than left as whatever the slab held, so a misdeclared dimension shows up
+// as a dead observation instead of stale neighbouring data.
+static void write_obs(VecHost* H, Env& e, int idx) {
+  uint8_t* dst = H->out_obs + (size_t)idx * H->obs_bytes;
+  if (H->obs_symbolic_dim <= 0) {
+    p5::render_obs_rgb(dst);
+    return;
+  }
+  memset(dst, 0, (size_t)H->obs_bytes);
+  if (!e.hasGetObs) return;
+  JSValue v = JS_Call(e.ctx, e.jsGetObs, JS_UNDEFINED, 0, nullptr);
+  if (JS_IsException(v)) {
+    JSValue ex = JS_GetException(e.ctx);
+    const char* m = JS_ToCString(e.ctx, ex);
+    e.err = m ? m : "getObservation threw"; e.ok = false;
+    JS_FreeCString(e.ctx, m); JS_FreeValue(e.ctx, ex); JS_FreeValue(e.ctx, v);
+    return;
+  }
+  size_t byte_off = 0, byte_len = 0, bytes_per = 0;
+  JSValue ab = JS_GetTypedArrayBuffer(e.ctx, v, &byte_off, &byte_len, &bytes_per);
+  if (!JS_IsException(ab)) {
+    size_t sz = 0;
+    uint8_t* src = JS_GetArrayBuffer(e.ctx, &sz, ab);
+    if (src && byte_off + byte_len <= sz) {
+      size_t n = byte_len < (size_t)H->obs_bytes ? byte_len : (size_t)H->obs_bytes;
+      memcpy(dst, src + byte_off, n);
+    }
+    JS_FreeValue(e.ctx, ab);
+  }
+  JS_FreeValue(e.ctx, v);
 }
 
 // Next autoreset seed for env idx, per the host's seeding policy.
@@ -688,7 +735,7 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
   H->out_rew[idx]   = (float)reward;
   H->out_term[idx]  = term ? 1 : 0;
   H->out_trunc[idx] = trunc ? 1 : 0;
-  p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
+  write_obs(H, e, idx);
   if (H->autoreset && (term || trunc)) {
     // SAME_STEP autoreset: overwrite obs with the reset frame; done flag stays set.
     env_reset(H, e, idx, autoreset_seed(H, e, idx));
@@ -921,6 +968,26 @@ void* vec_create(const char* game_path, int num_envs, int obs_size,
 }
 
 int vec_obs_bytes(void* h) { return h ? ((VecHost*)h)->obs_bytes : 0; }
+
+// PLAN 3.6. Additive on purpose: vec_create's signature is the trainers' ABI,
+// so symbolic mode is opted into afterwards instead of changing it. dim is the
+// game's declared obs.symbolic length; 0 restores pixels. Returns 0 if any env
+// lacks getObservation(), leaving the host in pixel mode.
+int vec_set_obs_symbolic(void* h, int dim) {
+  if (!h) return 0;
+  VecHost* H = (VecHost*)h;
+  if (dim <= 0) {
+    H->obs_symbolic_dim = 0;
+    H->obs_bytes = H->obs_size * H->obs_size * 3;
+    return 1;
+  }
+  for (int i = 0; i < H->num_envs; i++) {
+    if (!H->envs[i].hasGetObs) return 0;
+  }
+  H->obs_symbolic_dim = dim;
+  H->obs_bytes = dim * (int)sizeof(float);
+  return 1;
+}
 int vec_num_threads(void* h) { return h ? ((VecHost*)h)->nthreads : 0; }
 
 void vec_reset(void* h, const int32_t* seeds, uint8_t* obs) {

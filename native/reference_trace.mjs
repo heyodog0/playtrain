@@ -41,7 +41,11 @@ const qActionAt = (i, j) => (Math.imul(i * 33 + j + 1, 2654435761) >>> 16) & 0xF
 const gamesDir = process.env.PLAYTRAIN_GAMES_DIR
   || join(__dirname, '..', 'examples', 'games', 'js');
 const gamePath = game.endsWith('.js') ? game : join(gamesDir, `${game}.js`);
-const env = new GameEnv({ gamePath, obsWidth: 64, obsHeight: 64, obsMode: 'rgb', maxSteps: 100000, frameSkip: 1, actions: actionSpace, inputMap });
+// PLAYTRAIN_OBS_MODE=symbolic drives the same differential comparison over
+// the game's own observation vector instead of the frame; qjs_host takes the
+// matching PLAYTRAIN_QJS_OBS_MODE. Unset = rgb, unchanged.
+const obsMode = process.env.PLAYTRAIN_OBS_MODE === 'symbolic' ? 'symbolic' : 'rgb';
+const env = new GameEnv({ gamePath, obsWidth: 64, obsHeight: 64, obsMode, maxSteps: 100000, frameSkip: 1, actions: actionSpace, inputMap });
 const actionAt = (i) => (i * 3 + 1) % env.actions.length;
 
 let r = env.reset({ seed });
