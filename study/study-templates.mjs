@@ -37,8 +37,10 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ACTIONS = JSON.parse(readFileSync(
   join(__dirname, '..', 'runtime', 'action_spaces.json'), 'utf8')).default8;
-const actionsLiteral = JSON.stringify(DEFAULT_ACTIONS, null, 2)
-  .split('\n').map((l, i) => (i === 0 ? l : '  ' + l)).join('\n');
+function indentLiteral(value) {
+  return JSON.stringify(value, null, 2)
+    .split('\n').map((l, i) => (i === 0 ? l : '  ' + l)).join('\n');
+}
 
 // Participant-facing styling. Deliberately plain: a system sans-serif, near-black text
 // on white, no accent colours. The tester's dark monospace look (play-templates.mjs
@@ -144,6 +146,10 @@ export function blockPage(name, source, cfg) {
   const {
     blockSeconds = 150, frameSkip = 1, maxSteps = 2000, seedBase = 90000,
     actionMode = 'quantized', controls = '', obsRes = false,
+    // A game that ships a sidecar declares its own action table and its own
+    // human tick rate. Default: default8 at 60 steps/s, which is what every
+    // catalog game has always had, so existing study data stays comparable.
+    actions = null, stepsPerSecond = 60,
     canvasSize = 600, seedCount = 100, uploadUrl = '',
     // Games whose lives the HARNESS must show, because the game itself never draws them.
     // Only seaquest and caveflyer qualify; see study-config.json for why the other seven
@@ -161,6 +167,12 @@ export function blockPage(name, source, cfg) {
   } = cfg || {};
   const practice = isPractice;
   const showLives = (hudLives || []).indexOf(name) >= 0;
+  const actionTable = actions && actions.length ? actions : DEFAULT_ACTIONS;
+  const actionsLiteral = indentLiteral(actionTable);
+  // default8's quantizer is a hand-written recency stack over five keys and is
+  // what every existing study block used; it stays exactly as it was. A game
+  // with its own table gets the generic quantizer instead — see quantize().
+  const isDefault8 = JSON.stringify(actionTable) === JSON.stringify(DEFAULT_ACTIONS);
   // The round timer is deliberately NOT on by default. maxSteps truncation is a harness
   // artifact, not a rule of the game, and nothing in the agent's 64x64 observation encodes
   // how many steps are left -- so a visible countdown would let the human spend the last
@@ -230,6 +242,9 @@ ${browserShimBundle()}
   }
 
   var FRAME_SKIP  = ${frameSkip};
+  var IS_DEFAULT8 = ${isDefault8};
+  // Steps per second for a human. Craftax is turn-based and unplayable at 60.
+  var STEPS_PER_SECOND = ${stepsPerSecond};
   var MAX_STEPS   = ${maxSteps};
   var SEED_BASE   = ${seedBase};
   var SEED_COUNT  = ${seedCount};
@@ -313,7 +328,17 @@ ${browserShimBundle()}
   // most recently pressed key still held wins, SPACE merges only where legal.
   // This is many-to-one -- 24 of the 32 states fold onto one of the 8 -- so the
   // raw keys are logged alongside the action and the folds are counted.
-  var TRACKED = [32, 37, 38, 39, 40];
+  // default8 tracks exactly these five keys. A game with its own table tracks
+  // every key its actions mention, so nothing it declares is unreachable.
+  var TRACKED = IS_DEFAULT8 ? [32, 37, 38, 39, 40] : (function () {
+    var keys = {};
+    for (var i = 0; i < ACTIONS.length; i++) {
+      var a = ACTIONS[i];
+      for (var j = 0; j < (a.held || []).length; j++) keys[a.held[j]] = 1;
+      if (a.press !== null && a.press !== undefined) keys[a.press] = 1;
+    }
+    return Object.keys(keys).map(Number);
+  })();
   var held = new Set();
   var stack = [];              // held keys, oldest -> newest
 
@@ -346,7 +371,7 @@ ${browserShimBundle()}
     }
   });
 
-  function quantize() {
+  function quantizeDefault8() {
     var top = stack.length ? stack[stack.length - 1] : 0;
     var space = held.has(32);
     if (top === 32) return held.has(37) ? 6 : held.has(39) ? 7 : 5;
@@ -355,6 +380,37 @@ ${browserShimBundle()}
     if (top === 38) return 3;   // thrust; a held SPACE is unrepresentable here
     if (top === 40) return 4;
     return 0;
+  }
+
+  // Generic quantizer, for a game that declares its own action table.
+  //
+  // Same shape as the game's own input handling (90_playtrain.js
+  // currentAction): a PRESS action wins over a HELD one, so a craft or a place
+  // fires once per keystroke while an arrow can be held to walk. Within each
+  // class the most recently pressed key still down wins, which is the recency
+  // rule default8 already uses. Action 0 when nothing maps.
+  //
+  // This is derived from the table rather than hand-written, so a 17-action
+  // space needs no harness edit — which was G6's blocker.
+  function quantizeFromTable() {
+    for (var s = stack.length - 1; s >= 0; s--) {
+      var key = stack[s];
+      for (var i = 0; i < ACTIONS.length; i++) {
+        if (ACTIONS[i].press === key) return i;
+      }
+    }
+    for (var s2 = stack.length - 1; s2 >= 0; s2--) {
+      var k2 = stack[s2];
+      for (var j = 0; j < ACTIONS.length; j++) {
+        var h = ACTIONS[j].held || [];
+        if (h.length === 1 && h[0] === k2) return j;
+      }
+    }
+    return 0;
+  }
+
+  function quantize() {
+    return IS_DEFAULT8 ? quantizeDefault8() : quantizeFromTable();
   }
 
   // True when the held keys carry intent the chosen action cannot express --
@@ -516,7 +572,7 @@ ${browserShimBundle()}
     roundEl.className = 'show';
   }
 
-  var FRAME_MS = 1000 / 60;
+  var FRAME_MS = 1000 / STEPS_PER_SECOND;
   var MAX_CATCHUP = 3;
   var running = false, blockStart = 0, prev = 0, acc = 0, delivered = 0;
   var scoreEl = document.getElementById('score');

@@ -72,6 +72,22 @@ function writeFile(path, content) {
   writeFileSync(path, content);
 }
 
+// A multi-file game ships <name>.json beside its bundle, declaring its own
+// action table and how fast a human should tick it. Catalog games have no
+// sidecar and keep default8 at 60 steps/s, so existing study data stays
+// comparable.
+function sidecarFor(name) {
+  const p = join(GAMES_DIR, `${name}.json`);
+  if (!existsSync(p)) return {};
+  const sc = JSON.parse(readFileSync(p, 'utf8'));
+  const out = {};
+  if (Array.isArray(sc.actions) && sc.actions.length) out.actions = sc.actions;
+  if (sc.human && sc.human.steps_per_second) out.stepsPerSecond = sc.human.steps_per_second;
+  if (sc.human && sc.human.controls) out.sidecarControls = sc.human.controls;
+  if (sc.max_steps) out.maxSteps = sc.max_steps;
+  return out;
+}
+
 function sourceFor(name) {
   const p = join(GAMES_DIR, `${name}.js`);
   if (!existsSync(p)) {
@@ -107,20 +123,26 @@ if (cfg.games.some(g => g.name === practice.game)) {
 blocks.push({ game: practice.game, practice: true, obsRes: false, href: `block/practice/` });
 writeFile(join(OUT_DIR, 'block', 'practice', 'index.html'),
   blockPage(practice.game, sourceFor(practice.game), {
-    ...cfg, blockSeconds: practice.seconds ?? 25,
+    ...cfg, ...sidecarFor(practice.game), blockSeconds: practice.seconds ?? 25,
     controls: practice.controls, isPractice: true, uploadUrl: UPLOAD_URL,
   }));
 
 for (const g of cfg.games) {
   writeFile(join(OUT_DIR, 'block', g.name, 'index.html'),
-    blockPage(g.name, sourceFor(g.name),
-      { ...cfg, controls: g.controls, uploadUrl: UPLOAD_URL }));
+    blockPage(g.name, sourceFor(g.name), (() => {
+      const sc = sidecarFor(g.name);
+      // The study config's own controls text wins; the sidecar's is the
+      // fallback so a game that joins the study is playable before anyone
+      // writes study copy for it.
+      return { ...cfg, ...sc, controls: g.controls || sc.sidecarControls || '',
+               uploadUrl: UPLOAD_URL };
+    })()));
   blocks.push({ game: g.name, practice: false, obsRes: false, href: `block/${g.name}/` });
 
   if (obsSet.has(g.name)) {
     writeFile(join(OUT_DIR, 'block', `${g.name}-obs`, 'index.html'),
       blockPage(g.name, sourceFor(g.name), {
-        ...cfg, obsRes: true, uploadUrl: UPLOAD_URL,
+        ...cfg, ...sidecarFor(g.name), obsRes: true, uploadUrl: UPLOAD_URL,
         controls: `${g.controls}<br><br>This round is shown at the low resolution the AI sees.`,
       }));
     blocks.push({ game: g.name, practice: false, obsRes: true, href: `block/${g.name}-obs/` });
