@@ -25,7 +25,7 @@ sub-tasks under the parent; never delete rows.
 | 8a | `80_render.js`, `90_playtrain.js` | mac | done | `76 passed in 69.43s` (`tests/test_render.py`); repo suite `95 passed, 3 skipped` | 0783c04 | `90_playtrain.js` landed in 7b; this task added `80_render.js` (`renderGame`) and put both in the manifest. PLAN 6 layout: 512 canvas, 56px tiles = exactly 7 obs px, 9x7 view + 2 HUD rows. **Bug found and fixed:** `90_playtrain.js` was calling `createCanvas(64, 64)`, so everything drew off-canvas except the first tile and the observation came back as 3 flat colours; it is 512 now and frames have ~24. Flat fills + one primitive glyph per block, a 3x5 segment font for inventory digits, no `text()` and no images, so the rasterizer path is the one the catalog already gates on. Night multiplies tile colour by `light_level`. A source-level test asserts the renderer never touches the RNG or writes state — a render that drew from the RNG would desync from the reference without failing any dynamics gate, since those never call `draw()`. **`85_obs_symbolic.js` is NOT written**; it belongs with the obs mode in task 13. |
 | 8b | `tools/validate.py --game craftax_classic` with 17 actions | mac | blocked | 4/5 checks PASS; **REW FAILS**. `API ok, DET ok, OBS ok, REW FAIL, 12815 FPS` | | **The step wire packs `score` as int32, and this is the first game with a fractional score.** Needs a 5th runtime change, which PLAN 3 does not authorise — see the write-up below. |
 | 9a | `gate_qjs.sh` + vectorised host with the sidecar action table | mac | done | `80 passed in 73.5s` (`tests/test_engines.py`) | 13a6e99 | **V8 and QuickJS are bit-exact: 3000 steps x 3 seeds, GATE PASS.** Reward, terminal, score, lives, state and the observation hash all match every step. The vectorised host steps with 17 actions and is deterministic. **Do NOT set `PLAYTRAIN_ACTION_SPACE` to the sidecar path** — the sidecar is a manifest, not a bare action array, and `resolveActionSpace` chokes on it (`this.actions.some is not a function`). It is unnecessary anyway: 7b makes the node `GameEnv` load the sidecar itself, and `qjs_host` takes the bare array via `PLAYTRAIN_QJS_ACTIONS`. Both sides pick the action as `(i*3+1) % table_size`, so a silent default8 fallback on either side shows up as divergence. Invocation: `PLAYTRAIN_GAMES_DIR=<dist> PLAYTRAIN_QJS_ACTIONS="$(jq -c .actions <dist>/craftax_classic.json)" ./gate_qjs.sh craftax_classic 3000`. |
-| 9b | AOT tier + `gate_async.py` | cluster | todo | | | Cannot run on the Mac: `aot_cache.toolchain()` returns None, so `resolve_lib` falls back to the stock `libqjs_vec.dylib` and there is no tier lib to gate. Needs the pinned clang from the AOT toolchain on FASRC. `gate_async.py` takes explicit `.so` paths (`WE`, `GDIR` env vars; see its header) and wants at least two arms — stock plus the built tier — so build the tier for this game first with `PLAYTRAIN_AOT_SYNC=1`. |
+| 9b | AOT tier + `gate_async.py` | cluster | blocked | not run: no engine-tier toolchain exists on either machine | | **Blocked on infrastructure, not on this port.** See the write-up below. |
 | 10a | Study harness reads sidecar actions and pacing | mac | todo | | | |
 | 10b | Human quickplay session, replay-verified | human | handoff | | | G6 |
 | 11 | Website: third source dir, overlay, label | human | handoff | | | agent builds; human checks the page |
@@ -161,3 +161,46 @@ Option 1 is the recommendation. Until it is decided, G5 cannot pass and 8b
 stays blocked; the other four checks pass, and 12815 FPS single-env is a useful
 number for task 12.
 - 2026-09-14 — 9a — engine gate green on the Mac half of G4. The sidecar reaches both native hosts; the AOT half is 9b and needs the cluster toolchain.
+
+## 9b blocker: there is no engine-tier toolchain to gate against
+
+G4's AOT half needs a tier `.so` for this game, and `gate_async.py` needs at
+least two arms (stock plus tier). Neither machine can produce one right now.
+
+**Mac.** `aot_cache.toolchain()` returns `None`, so `resolve_lib` falls back to
+the stock `native/build/libqjs_vec.dylib`. `toolchain()` requires all of
+`native/aotfork/out/{qjsc, prelude.js, src/quickjs.i, picIT2u/libqjs_forkaot.a,
+forkI24.profdata, libqjs_vec.forkIT2.so}`; that directory has never been built
+here.
+
+**FASRC** (`/n/home06/truong/node-gym-smoke/playtrain`, the only checkout
+there):
+
+- it is on `main` at `29e1e7f`, which **predates the engine-tier work entirely**
+  — `native/aotfork/` does not exist in that tree at all;
+- its working tree is dirty with unpushed local edits (a large set of deleted
+  `examples/games/js/*.js`), and the standing note is not to disturb it;
+- `native/build/` has only the stock `libqjs_vec.so` and `qjs_host`;
+- `~/.cache/playtrain` is empty, so no tier was ever built for any game;
+- clang 21.1.8 is available, so the compiler is not the obstacle.
+
+Also worth stating plainly: **this branch has 34 unpushed commits**, so even a
+clean cluster checkout has nothing to fetch yet.
+
+**What would unblock it**, in order:
+
+1. Push `release`, and get a clean checkout on FASRC that has
+   `native/aotfork/` (do not reuse the dirty `node-gym-smoke` tree).
+2. Build the native backend there (`native/build_qjs.sh && build_qjs_vec.sh`).
+3. Build the engine-tier toolchain (`native/aotfork/build_fork.sh`). This is
+   the PGO/AOT pipeline from the engine-tier project, not a step this port
+   owns, and it is the expensive one.
+4. Build the tier for this game: `PLAYTRAIN_AOT_SYNC=1` with
+   `PLAYTRAIN_GAMES_DIR` pointed at the dist, then confirm `resolve_lib`
+   returns a `tier*.so`.
+5. `WE=<repo> GDIR=<dist> gate_async.py <steps> craftax_classic \
+   stock=<...>/libqjs_vec.so tier=<...>/tier3.so`.
+
+Nothing here is specific to Craftax-Classic — any game would hit the same wall.
+The Mac half of G4 (9a) is green and is the part that actually exercises this
+game's 17-action sidecar through the engine stack.
