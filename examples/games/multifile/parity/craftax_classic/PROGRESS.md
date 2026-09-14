@@ -7,7 +7,7 @@ sub-tasks under the parent; never delete rows.
 
 | # | Task | Where | Status | Gate result | Commit | Notes |
 |---|---|---|---|---|---|---|
-| 1a | Vendor `games/craftax_src/` at commit 6ffa5b1 with LICENSE and README | mac | done | `shasum -a 256 -c`: 6/6 OK; git-blob ids match the pinned tree | fe79c6d | 5 headers + LICENSE + README in `games/craftax_src/`. `craftax_parity.h` deliberately not vendored (PLAN 2 layout). PLAN.md corrected: upstream has no `pufferlib/` prefix. `craftax_classic.h` includes `raylib.h` and `pufferenv.h` only — so 2a needs a `raylib.h` stub; `ini.h` is not included by the Classic header. |
+| 1a | Vendor `games/craftax_src/` at commit 6ffa5b1 with LICENSE and README | mac | done | `shasum -a 256 -c`: 6/6 OK; git-blob ids match the pinned tree | f8d38ed | 5 headers + LICENSE + README in `games/craftax_src/`. `craftax_parity.h` deliberately not vendored (PLAN 2 layout). PLAN.md corrected: upstream has no `pufferlib/` prefix. `craftax_classic.h` includes `raylib.h` and `pufferenv.h` only — so 2a needs a `raylib.h` stub; `ini.h` is not included by the Classic header. |
 | 1b | `THIRD_PARTY_LICENSES.md` row; `multifile/README.md`; directory skeleton | mac | todo | | | |
 | 2a | `cc_ref_driver.c`, stubs, `build.sh`; `layout`, `rng`, `world`, `run` modes | mac | todo | | | `nm` must show no `cosf`/`sinf` |
 | 2b | Same build on FASRC; 100-episode self-diff mac vs cluster | cluster | todo | | | depends on 2a |
