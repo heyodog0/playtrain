@@ -178,9 +178,32 @@ function loadGame(gamePath, needsMatter) {
   gameLoaded = true;
 }
 
+// The <game>.json beside a bundled game, or null. Catalog games have none.
+function loadSidecar(gamePath) {
+  const path = String(gamePath).replace(/\.js$/, '.json');
+  if (path === String(gamePath)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = null, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
+    // A bundled multi-file game ships a <game>.json sidecar next to its .js
+    // declaring its own action space and step budget. Explicit options win;
+    // catalog games have no sidecar and behave exactly as before.
+    const sidecar = loadSidecar(gamePath);
+    if (sidecar) {
+      if (actions === null && Array.isArray(sidecar.actions)) actions = sidecar.actions;
+      if (maxSteps === null && sidecar.max_steps) maxSteps = sidecar.max_steps;
+    }
+    // maxSteps is null-defaulted rather than 2000 so "caller said nothing" is
+    // distinguishable from "caller asked for 2000"; the effective default is
+    // unchanged.
+    if (maxSteps === null || maxSteps === undefined) maxSteps = 2000;
     // Per-instance discrete action space (name / path / array; see
     // resolveActionSpace). Default: the frozen default8 mapping.
     this.actions = resolveActionSpace(actions);

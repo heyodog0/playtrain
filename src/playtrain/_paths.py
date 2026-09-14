@@ -44,3 +44,20 @@ def games_dir() -> Path:
     ``$PLAYTRAIN_GAMES_DIR``, the ``games_dir=`` argument, or an explicit path.
     """
     return asset("examples/games/js")
+
+
+def multifile_dist_dirs() -> list[Path]:
+    """Every built multi-file game's ``dist/`` directory.
+
+    Multi-file games (``examples/games/multifile/<kind>/<name>/``) are too
+    large for one readable file and are bundled into a flat
+    ``dist/<name>.js`` plus a ``dist/<name>.json`` sidecar. Those dist
+    directories are a second games root, searched after the catalog, so a
+    bundled game is discoverable by name like any other.
+
+    Sorted, so discovery order does not depend on the filesystem.
+    """
+    root = asset("examples/games/multifile")
+    if not root.is_dir():
+        return []
+    return sorted(p for p in root.glob("*/*/dist") if p.is_dir())

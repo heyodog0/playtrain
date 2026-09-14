@@ -49,6 +49,16 @@ def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
     return _GAMES_DIR
 
 
+def _resolve_game_path(game: str, games_dir) -> str:
+    """Game name (or a .js path) to a file, searching the catalog and then
+    every built multi-file dist/ — the same order PlayTrainEnv uses."""
+    if game.endswith(".js"):
+        return game
+    from .env import resolve_game_file
+
+    return str(resolve_game_file(game, games_dir))
+
+
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _asset("native/build/" + _LIBNAME)
 
@@ -190,10 +200,21 @@ class NativeVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = _resolve_games_dir(games_dir)
-        game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
+        game_path = _resolve_game_path(game, games_dir)
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
+
+        # A bundled multi-file game ships a <game>.json sidecar declaring its
+        # own action space and step budget. Explicit arguments win; catalog
+        # games have no sidecar and behave exactly as before.
+        from .env import load_sidecar
+
+        sidecar = load_sidecar(game_path)
+        if sidecar is not None:
+            if action_space is None and sidecar.get("actions"):
+                action_space = sidecar["actions"]
+            if max_steps == 2000 and sidecar.get("max_steps"):
+                self.max_steps = int(sidecar["max_steps"])
 
         # No explicit lib: the engine-tier ladder (aot_cache: stock -> tier 1/2/3 by
         # what exists for this game; missing tiers build in the background).
@@ -388,10 +409,9 @@ class AsyncNativeVecEnv:
                  num_threads: int = 0, autoreset: bool = True, frame_skip: int = 1,
                  action_space: str | list | None = None,
                  games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
-        gdir = _resolve_games_dir(games_dir)
 
         def _resolve(g: str) -> str:
-            p = g if g.endswith(".js") else str(gdir / f"{g}.js")
+            p = _resolve_game_path(g, games_dir)
             if not Path(p).exists():
                 raise FileNotFoundError(f"game not found: {p}")
             return p
@@ -521,8 +541,7 @@ class PingPongVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = _resolve_games_dir(games_dir)
-        game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
+        game_path = _resolve_game_path(game, games_dir)
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 

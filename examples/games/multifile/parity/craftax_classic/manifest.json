@@ -14,29 +14,109 @@
     "src/40_player.js",
     "src/50_mobs.js",
     "src/60_world_tick.js",
-    "src/70_step.js"
+    "src/70_step.js",
+    "src/90_playtrain.js"
   ],
   "action_space": "craftax17",
   "actions": [
-    {"name": "NOOP",             "held": [],   "press": null},
-    {"name": "LEFT",             "held": [37], "press": null},
-    {"name": "RIGHT",            "held": [39], "press": null},
-    {"name": "UP",               "held": [38], "press": null},
-    {"name": "DOWN",             "held": [40], "press": null},
-    {"name": "DO",               "held": [],   "press": 32},
-    {"name": "SLEEP",            "held": [],   "press": 9},
-    {"name": "PLACE_STONE",      "held": [],   "press": 49},
-    {"name": "PLACE_TABLE",      "held": [],   "press": 50},
-    {"name": "PLACE_FURNACE",    "held": [],   "press": 51},
-    {"name": "PLACE_PLANT",      "held": [],   "press": 52},
-    {"name": "MAKE_WOOD_PICK",   "held": [],   "press": 53},
-    {"name": "MAKE_STONE_PICK",  "held": [],   "press": 54},
-    {"name": "MAKE_IRON_PICK",   "held": [],   "press": 55},
-    {"name": "MAKE_WOOD_SWORD",  "held": [],   "press": 56},
-    {"name": "MAKE_STONE_SWORD", "held": [],   "press": 57},
-    {"name": "MAKE_IRON_SWORD",  "held": [],   "press": 48}
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "DO",
+      "held": [],
+      "press": 32
+    },
+    {
+      "name": "SLEEP",
+      "held": [],
+      "press": 9
+    },
+    {
+      "name": "PLACE_STONE",
+      "held": [],
+      "press": 49
+    },
+    {
+      "name": "PLACE_TABLE",
+      "held": [],
+      "press": 50
+    },
+    {
+      "name": "PLACE_FURNACE",
+      "held": [],
+      "press": 51
+    },
+    {
+      "name": "PLACE_PLANT",
+      "held": [],
+      "press": 52
+    },
+    {
+      "name": "MAKE_WOOD_PICK",
+      "held": [],
+      "press": 53
+    },
+    {
+      "name": "MAKE_STONE_PICK",
+      "held": [],
+      "press": 54
+    },
+    {
+      "name": "MAKE_IRON_PICK",
+      "held": [],
+      "press": 55
+    },
+    {
+      "name": "MAKE_WOOD_SWORD",
+      "held": [],
+      "press": 56
+    },
+    {
+      "name": "MAKE_STONE_SWORD",
+      "held": [],
+      "press": 57
+    },
+    {
+      "name": "MAKE_IRON_SWORD",
+      "held": [],
+      "press": 48
+    }
   ],
-  "obs": {"rgb": true, "symbolic": 1345},
+  "obs": {
+    "rgb": true,
+    "symbolic": 1345
+  },
   "max_steps": 10000,
   "human": {
     "steps_per_second": 8,
@@ -50,6 +130,9 @@
     "file": "ocean/craftax_classic/craftax_classic.h",
     "license": "MIT",
     "parity": "full-state trace, every step, scalar no-FMA build, libm bound to V8 ieee754",
-    "not_matched": ["pixels", "auto-reset RNG continuation across episodes"]
+    "not_matched": [
+      "pixels",
+      "auto-reset RNG continuation across episodes"
+    ]
   }
 }
