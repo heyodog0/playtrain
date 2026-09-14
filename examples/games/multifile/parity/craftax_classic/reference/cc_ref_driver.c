@@ -22,6 +22,14 @@
 //       the whole canonical record instead of a subset costs nothing and keeps
 //       one serializer on each side.
 //
+//   cc_ref serve <seed>
+//       interactive: play the env one action at a time so a Python policy can
+//       decide its next move from the C's own state. Writes u32 state_bytes
+//       then the initial canonical state; thereafter reads one action byte
+//       from stdin and writes u8 done followed by the canonical state. This is
+//       how the scripted corpus policies of PLAN 4.3 are driven. Like run
+//       mode, it steps with cc_step_no_reset, so the terminal state survives.
+//
 //   cc_ref run <seed> <actions.bin> [--dump-every K]
 //       steps the env once per byte of actions.bin and writes a binary stream:
 //         magic "CCR1", u32 state_bytes, u32 n_steps,
@@ -441,11 +449,40 @@ static int mode_run(unsigned int seed, const char* actions_path, int dump_every)
     return 0;
 }
 
+static int mode_serve(unsigned int seed) {
+    CraftaxClassic* env = cc_new(seed);
+    int nb = cc_state_bytes();
+    unsigned char* buf = (unsigned char*)malloc(nb);
+
+    uint32_t nb32 = (uint32_t)nb;
+    fwrite(&nb32, 4, 1, stdout);
+    cc_serialize(env, 0.0f, buf);
+    fwrite(buf, 1, nb, stdout);
+    fflush(stdout);
+
+    bool done = false;
+    for (;;) {
+        int c = fgetc(stdin);
+        if (c == EOF) break;
+        if (done) break;            // the episode is over; further actions are a caller bug
+        float reward = 0.0f;
+        cc_step_no_reset(env, c, &reward, &done);
+        cc_serialize(env, reward, buf);
+        unsigned char d8 = (unsigned char)(done ? 1 : 0);
+        fwrite(&d8, 1, 1, stdout);
+        fwrite(buf, 1, nb, stdout);
+        fflush(stdout);
+    }
+    free(buf);
+    return 0;
+}
+
 static int usage(void) {
     fprintf(stderr,
         "usage: cc_ref layout\n"
         "       cc_ref rng   <seed> <n>\n"
         "       cc_ref world <seed>\n"
+        "       cc_ref serve <seed>\n"
         "       cc_ref run   <seed> <actions.bin> [--dump-every K]\n");
     return 2;
 }
@@ -461,6 +498,10 @@ int main(int argc, char** argv) {
     if (strcmp(mode, "world") == 0) {
         if (argc != 3) return usage();
         return mode_world((unsigned int)strtoul(argv[2], NULL, 10));
+    }
+    if (strcmp(mode, "serve") == 0) {
+        if (argc != 3) return usage();
+        return mode_serve((unsigned int)strtoul(argv[2], NULL, 10));
     }
     if (strcmp(mode, "run") == 0) {
         if (argc != 4 && argc != 6) return usage();

@@ -84,4 +84,5 @@ here until it has been confirmed against the vendored header.
 
 | # | Quirk | Where | How we mirror it |
 |---|---|---|---|
-| — | none recorded yet | | |
+| 1 | **Lava never generates.** A cell becomes `BLK_LAVA` only when `mountain_val > 0.85` *and* `tree_noise > 0.7` (line 450). Scanning 500 seeds found **zero** lava cells in any world. The `done` branch for "standing on lava" (line 1000) and the lava rejection in `can_move_mob` (line 649) are therefore unreachable in play. | `generate_world`, `puf_step`, `can_move_mob` | Ported as written. The corpus's `lava` policy searches for lava and never finds any, so every one of its episodes ends by health instead — recorded honestly in `traces/corpus.json`. The JS keeps the branch so that if a future seed or a future Craftax does generate lava, the two sides still agree. |
+| 2 | **The sand band's upper bound is dead.** Line 444 reads `else if (water_val > 0.6f && water_val <= 0.75f) blk = BLK_SAND;`, but the preceding `if (water_val > 0.7f)` has already claimed everything above 0.7. The effective sand range is `(0.6, 0.7]` and the `<= 0.75` test can never fail when reached. | `generate_world` | Ported as written, including the redundant comparison, so the two implementations stay line-comparable. |
