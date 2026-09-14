@@ -39,7 +39,9 @@ const OBS_DIM_SYMBOLIC = 1345;
 // use the frame buffer too.
 const _obsSymbolic = new Float32Array(OBS_DIM_SYMBOLIC);
 
-function getObservation(st) {
+// Named for the state it reads. 90_playtrain.js wraps this as the no-arg
+// getObservation() the host contract expects (PLAN 3.6).
+function computeSymbolicObs(st) {
   const obs = _obsSymbolic;
   const pr = st.playerR[0];
   const pc = st.playerC[0];

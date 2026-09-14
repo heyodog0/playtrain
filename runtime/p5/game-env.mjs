@@ -264,6 +264,18 @@ export class GameEnv {
   }
 
   _getObservation() {
+    // PLAN 3.6. The game owns the vector; the host just hands the bytes on,
+    // so no rasterizer work happens at all in this mode. A game that does not
+    // define getObservation() cannot be run symbolically, and saying so here
+    // is clearer than returning a wrongly-shaped buffer.
+    if (this.obsMode === 'symbolic') {
+      const v = globalThis.getObservation && globalThis.getObservation();
+      if (!(v instanceof Float32Array)) {
+        throw new Error('obsMode "symbolic" needs the game to export ' +
+                        'getObservation() returning a Float32Array');
+      }
+      return new Uint8Array(v.buffer, v.byteOffset, v.length * 4);
+    }
     if (FAST_OBS && this.obsMode === 'rgb') {
       const buf = getObsBuffer(this.obsWidth, this.obsHeight);
       return bgraBufferToRGB(buf, this.obsWidth, this.obsHeight);

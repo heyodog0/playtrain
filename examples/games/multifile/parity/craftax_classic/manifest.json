@@ -134,7 +134,8 @@
     "parity": "full-state trace, every step, scalar no-FMA build, libm bound to V8 ieee754",
     "not_matched": [
       "pixels",
-      "auto-reset RNG continuation across episodes"
+      "auto-reset RNG continuation across episodes",
+      "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended"
     ]
   }
 }

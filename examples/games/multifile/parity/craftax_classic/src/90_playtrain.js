@@ -71,6 +71,14 @@ function resetGame(seed) {
   gameOver = false;
 }
 
+// PLAN 3.6: the symbolic observation mode. The host calls this with no
+// arguments and copies the Float32Array straight into the obs slot, skipping
+// the rasterizer entirely. Length is manifest.obs.symbolic (1345).
+function getObservation() {
+  if (gameState === null) resetGame(0);
+  return computeSymbolicObs(gameState);
+}
+
 // PLAN 3.5: score is the float32 running sum of the C's per-step reward, so
 // it equals PufferLib's episode_return_accum bit for bit. lives is 1 while
 // alive. Classic has no win condition.

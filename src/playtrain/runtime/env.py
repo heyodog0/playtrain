@@ -195,7 +195,20 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         else:
             needs_matter = require_matter
 
-        if obs_mode == "rgb":
+        # PLAN 3.6: "symbolic" bypasses the rasterizer — the game returns a
+        # flat float32 vector whose length the sidecar declares. Frame
+        # stacking is a pixel idea and is not applied to it.
+        self._symbolic_dim = None
+        if obs_mode == "symbolic":
+            dim = (self._sidecar or {}).get("obs", {}).get("symbolic")
+            if not dim:
+                raise ValueError(
+                    f'obs_mode="symbolic" needs the game to declare obs.symbolic '
+                    f"in its sidecar; {game} does not"
+                )
+            self._symbolic_dim = int(dim)
+            self._channels = 0
+        elif obs_mode == "rgb":
             self._channels = 3 * frame_stack
         else:
             self._channels = frame_stack
@@ -215,12 +228,17 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             self._actions = spec["actions"]
             self._box_channels = None
             self.action_space = spaces.Discrete(len(self._actions))
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(obs_size, obs_size, self._channels),
-            dtype=np.uint8,
-        )
+        if self._symbolic_dim is not None:
+            self.observation_space = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(self._symbolic_dim,), dtype=np.float32,
+            )
+        else:
+            self.observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(obs_size, obs_size, self._channels),
+                dtype=np.uint8,
+            )
 
         self._frames: deque[np.ndarray] = deque(maxlen=frame_stack)
         self._last_seed: int | None = None
@@ -362,12 +380,24 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
     # -- Observation handling --
 
     def _decode_obs(self, raw: bytes) -> np.ndarray:
+        if self._symbolic_dim is not None:
+            vec = np.frombuffer(raw, dtype=np.float32)
+            if vec.size != self._symbolic_dim:
+                raise ValueError(
+                    f"symbolic observation is {vec.size} floats, "
+                    f"the sidecar declares {self._symbolic_dim}"
+                )
+            return vec
         obs = np.frombuffer(raw, dtype=np.uint8)
         if self.obs_mode == "rgb":
             return obs.reshape(self.obs_size, self.obs_size, 3)
         return obs.reshape(self.obs_size, self.obs_size)
 
     def _stacked_obs(self) -> np.ndarray:
+        # A symbolic vector is not a frame; stacking it would be a different
+        # observation, so the newest one is returned as-is.
+        if self._symbolic_dim is not None:
+            return list(self._frames)[-1]
         if self.obs_mode == "rgb" and self.frame_stack == 1:
             return list(self._frames)[0]
         if self.obs_mode == "rgb":

@@ -49,6 +49,14 @@ Integer logic and the RNG are untouched by any of this.
   different observation again, and our comparison row says so.
 - **Auto-reset RNG continuation.** PufferLib does not reset the PCG stream
   between episodes; `resetGame(seed)` does.
+- **One NOOP at reset.** `GameEnv.reset()` calls `resetGame(seed)` and then a
+  free `tick()`, and a p5 game's `draw()` advances and renders in the same
+  frame — so the game has taken one step, with no keys held, before the first
+  `env.step()`. A PlayTrain episode is therefore the C's episode with a NOOP
+  prepended. This is PlayTrain's convention for every catalog game, not
+  something this port introduced, but it matters if you line a PlayTrain
+  trajectory up against a PufferLib one: shift by one. The bundle stepped
+  directly (which is what G2 does) has no offset.
 
 ## Gates
 

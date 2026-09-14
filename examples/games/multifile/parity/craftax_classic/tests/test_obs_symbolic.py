@@ -43,7 +43,7 @@ newEpisode(st, seed);
 const out = [];
 for (let t = 0; t < actions.length; t++) {
   const res = stepGame(st, actions[t]);
-  const obs = getObservation(st);
+  const obs = computeSymbolicObs(st);
   const b = Buffer.alloc(1 + obs.length * 4);
   b[0] = res.done ? 1 : 0;
   Buffer.from(obs.buffer, obs.byteOffset, obs.length * 4).copy(b, 1);
@@ -216,7 +216,7 @@ def test_out_of_bounds_tiles_are_a_real_one_hot_channel():
 const st = createState();
 newEpisode(st, 1);
 st.playerR[0] = 0; st.playerC[0] = 0;
-const obs = getObservation(st);
+const obs = computeSymbolicObs(st);
 // tile (dr=-3, dc=-4) is entirely off-map for a player at (0, 0)
 const base = 0;
 const out = [];
