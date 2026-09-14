@@ -9,7 +9,7 @@ measured, not estimated.
 | condition | result |
 |---|---|
 | `light_level >= 0.5` | **byte-identical** — 147/147 and 81/81 consecutive frames |
-| `light_level < 0.5` | not reproducible, by anything carrying this state |
+| `light_level < 0.5` | not reproducible — the frame depends on the caller's PRNG key, not on the state |
 
 ## Why you cannot just compare by seed
 
@@ -56,45 +56,61 @@ byte-identical). Three things closed that:
    daylight — and almost no frame is, since the reset tick alone puts
    `light_level` at 0.806.
 
-## The one gap that stays open
+## The one gap that stays open, and why
 
-1. **Player tile, 4 px — closable.** Craftax composites with
-   `pixels * (1 - alpha) + texture * alpha` in float32 and keeps the frame
-   as float; `80_render.js` composites in integer with round-half-up. Match
-   the float arithmetic and this goes to zero.
+Below `light_level` 0.5 Craftax adds per-pixel random static:
 
-2. **Inventory, 124 px — closable.** Craftax's layout is specific and ours
-   was guessed. It draws a 0.8-scale icon
-   (`int(0.8 * 7) = 5` px at offset 0) and a 0.6-scale number
-   (`int(0.6 * 7) = 4` px at offset 2) per slot, with slots at fixed
-   coordinates: health (0,0), food (1,0), drink (2,0), energy (3,0),
-   sapling (4,0), wood (5,0), stone (6,0), coal (7,0), iron (8,0),
-   diamond (0,1), and the tools along row 1. Reimplement to match.
+```python
+night_with_static = jax.random.uniform(state.state_rng, map_pixels.shape[:2]) * 95 + 32
+night_pixels = jax.lax.select(daylight < 0.5, night_with_static, map_pixels)
+```
 
-3. **Night, ~3086 px — NOT closable.** This is the finding that matters.
-   When `light_level < 0.5` Craftax adds per-pixel random static:
+**The reason this cannot be reproduced is not that the PRNG is exotic.**
+`jax.random.uniform` is threefry-2x32: add/rotate/xor on uint32, fully
+specified, and no harder to port than the PCG already in `common/`. Given a
+key, the static is deterministic — rendering the same state twice gives
+identical frames.
 
-   ```python
-   night_with_static = jax.random.uniform(state.state_rng, map_pixels.shape[:2]) * 95 + 32
-   night_pixels = jax.lax.select(daylight < 0.5, night_with_static, map_pixels)
-   ```
+The reason is where the key comes from. In `game_logic.py`:
 
-   `state_rng` is a JAX threefry key. PufferLib's C — the thing this port is
-   bit-exact with — has no such field; it carries one 64-bit PCG stream and
-   nothing equivalent. Measured with `night_rng_probe.py`: at light 1.0 and
-   0.7 two different `state_rng` values give identical frames; at light 0.4
-   and 0.2 they differ in **3086 of 3969 pixels**.
+```python
+rng, _rng = jax.random.split(rng)
+state = state.replace(timestep=..., light_level=..., state_rng=_rng)
+```
 
-   `light_level = 1 - |cos(pi * (t/300 mod 1 + 0.3))|^3` is below 0.5 for
-   **4125 of 10000 timesteps (41%)** of an episode.
+`rng` there is the **step key the caller passes in** — the training loop's own
+PRNG. So `state_rng` is not derived from the environment state at all; it is
+threaded in from outside.
 
-   Above 0.5 the night path is deterministic (luminance enhance, tint,
-   daylight blend) and *is* reproducible — it is simply not implemented here
-   yet, so any frame with `light_level < 1.0` also differs today.
+Two consequences:
+
+1. **Craftax's night observation is not a function of its environment state.**
+   Two runs from an identical state with different driver keys produce
+   different frames — measured: 3086 of 3969 pixels differ. So night frames
+   are not reproducible even between two Craftax runs, unless the driver's
+   RNG stream is also reproduced.
+
+2. There is therefore nothing for this port to derive the key *from*. Our
+   dynamics follow PufferLib's C, which is not JAX-exact in the first place
+   (it has its own PCG stream and derives from `Infatoshi/craftax.c` — see
+   PLAN section 0), so even a threefry implementation here would have no
+   correct key to feed it.
+
+**What would close it**, for the record:
+
+- *As a renderer:* implement threefry-2x32 and accept `state_rng` as an
+  input. A comparison harness could then feed Craftax's key and match night
+  frames exactly. This is real work but entirely tractable, and it would make
+  the renderer complete.
+- *As an environment:* impossible without also making the dynamics JAX-exact,
+  i.e. porting Craftax's own game logic instead of PufferLib's C — a
+  different port against a different reference (PufferLib's own
+  `craftax_parity.h` is the analogue for full Craftax).
 
 ## What can honestly be claimed
 
 With gaps 1 and 2 closed and the deterministic dusk blending implemented:
 **byte-identical to Craftax-Classic-Pixels whenever `light_level >= 0.5`,
-which is 59% of an episode.** Never at night, for a reason that is in
-Craftax's design rather than in this port.
+which is 59% of an episode.** Never at night — because Craftax's night
+frame depends on the caller's PRNG key rather than on the environment state,
+which no implementation can derive.

@@ -139,7 +139,7 @@
       "pixels",
       "auto-reset RNG continuation across episodes",
       "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended",
-      "Craftax-Classic-Pixels below light_level 0.5: Craftax adds per-pixel static drawn from state_rng, a JAX threefry key PufferLib's C has no counterpart for, so those frames cannot be reproduced (41% of an episode). At light_level >= 0.5 the frame IS byte-identical to render_craftax_pixels(state).astype(uint8) \u2014 verified on 147 consecutive daylight frames. See reference/craftax_pixels/README.md"
+      "Craftax-Classic-Pixels below light_level 0.5: Craftax adds per-pixel static from state_rng, which game_logic.py sets from the CALLER's step key (rng, _rng = split(rng)) \u2014 so its night frame is not a function of the environment state and is not reproducible even between two Craftax runs with different driver seeds. At light_level >= 0.5 our frame IS byte-identical to render_craftax_pixels(state).astype(uint8), verified on 147 consecutive daylight frames. See reference/craftax_pixels/README.md"
     ]
   }
 }

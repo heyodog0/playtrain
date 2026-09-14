@@ -52,10 +52,11 @@ Integer logic and the RNG are untouched by any of this.
   `render_craftax_pixels` (the JAX env cannot be compared by seed — different
   worldgen). At `light_level >= 0.5` our frame is **byte-identical** to
   `render_craftax_pixels(state).astype(uint8)`: 147 of 147 consecutive
-  daylight frames on one trajectory, 81 of 81 on another. Below 0.5 it is
-  **not reproducible by anything carrying this state** — Craftax draws
-  per-pixel static from `state_rng`, a JAX threefry key PufferLib's C does not
-  have. That is 41% of an episode. Detail and the harness:
+  daylight frames on one trajectory, 81 of 81 on another. Below 0.5 it is **not
+  reproducible by anything** — Craftax draws per-pixel static from
+  `state_rng`, which `game_logic.py` sets from the *caller's* step key, so
+  that frame is not a function of the environment state and differs between
+  two Craftax runs with different driver seeds. That is 41% of an episode. Detail and the harness:
   `reference/craftax_pixels/README.md`.
 - **Auto-reset RNG continuation.** PufferLib does not reset the PCG stream
   between episodes; `resetGame(seed)` does.
