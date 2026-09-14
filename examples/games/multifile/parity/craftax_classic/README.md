@@ -54,6 +54,7 @@ Integer logic and the RNG are untouched by any of this.
 
 | gate | test | needs |
 |---|---|---|
+| driver | `tests/test_driver.py` | C driver |
 | G0 | `tests/test_rng.py` | — |
 | G1 | `tests/test_worldgen.py` | C driver |
 | G2 | `tests/test_lockstep.py` | C driver |
@@ -65,8 +66,15 @@ Integer logic and the RNG are untouched by any of this.
 uv run pytest examples/games/multifile/parity/craftax_classic/tests -q
 ```
 
-`test_lockstep.py` skips — and this is the only permitted skip — when the C
-driver has not been built. Build it with `reference/build.sh`.
+Gates that need the C driver skip when it has not been built; build it with
+`reference/build.sh`, which also asserts that no platform `cosf`/`sinf` survived
+the redirect to V8's `ieee754`. `reference/build/` is not committed.
+
+The driver carries `cc_step_no_reset`, a transcription of the reference's
+`puf_step`, because `puf_step` auto-resets over the terminal state the gate has
+to compare. It is never taken on trust: `run` mode steps a shadow env with the
+real `puf_step` and compares full canonical state after every non-terminal step,
+exiting non-zero on the first disagreement. See PLAN 4.2, correction 3.
 
 ## Reference quirks
 

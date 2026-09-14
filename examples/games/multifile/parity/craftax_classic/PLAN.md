@@ -120,11 +120,13 @@ Integer logic dominates. The float paths are:
 
 **The one real hazard is `cosf`/`sinf`.** PlayTrain already solved the analogous
 problem for `Math.*`: every engine links the same V8 `ieee754` implementation
-(`native/frozenmath`, see memory note "Native/reference parity"). So:
+(`native/qjs/v8libm/ieee754.cc`, reached through `js::cos` in
+`native/runtime/jsmath.h`; **not** `native/frozenmath`, which is openlibm and
+measurably 1 ULP off V8 — see the task 2a correction in 4.2). So:
 
 - The reference C driver (section 4) is compiled with `-ffp-contract=off`,
   without AVX-512, and with `cosf(x)`/`sinf(x)` redirected to
-  `(float)v8_ieee754_cos((double)x)` from `native/frozenmath`.
+  `(float)cc_ieee754_cos((double)x)` from `native/qjs/v8libm/ieee754.cc`.
 - The JS uses `Math.fround(Math.cos(x))`, which in every PlayTrain engine is the
   same V8 function.
 
@@ -375,6 +377,43 @@ the handful of typedefs (`Texture2D`, `Rectangle`, `Vector2`, `Color`) and no-op
 functions the render path references, and an `Agent` with malloc'd
 `observations[1345]`, `actions[1]`, `rewards[1]`, `terminals[1]`.
 
+**Correction and addition (task 2a, 2026-09-14).**
+
+1. *The `Dict` stub is `stubs/ini.h`, not part of the driver.* `craftax_classic.h`
+   includes only `raylib.h` and `pufferenv.h`; it is `pufferenv.h` that includes
+   `ini.h`, for the `Dict` its `puf_init`/`puf_log` take. So `stubs/` holds two
+   files, as the section 2 layout already said.
+2. *The libm redirect binds to `native/qjs/v8libm/ieee754.cc`, not to
+   `native/frozenmath`.* The plan named the wrong directory. `native/frozenmath`
+   is openlibm, and `native/runtime/jsmath.h` records that openlibm's sin/cos do
+   **not** match V8's: 18 sin and 23 cos disagreements in 2001 samples, 1 ULP
+   each, enough to fail `native/gate_qjs.sh`. `Math.cos` in every PlayTrain
+   engine resolves to `js::cos` -> `v8::base::ieee754::cos`, from
+   `native/qjs/v8libm/ieee754.cc`. The driver links that object, compiled with
+   node's own per-architecture FMA setting (contraction on for arm64, off for
+   x86-64), exactly as `native/build_qjs.sh` does. The intent in 1.4 — "the same
+   V8 function the engines link" — is unchanged; only the path was wrong.
+3. *The driver must transcribe `puf_step`, and cross-check the transcription.*
+   `puf_step` auto-resets on the terminal step: it calls `add_log` then
+   `puf_reset`, and `generate_world` destroys precisely the state the gate needs
+   to compare for that step. The reference is not editable, and the reset cannot
+   be interposed — renaming `puf_reset` with `-D` renames its definition and its
+   call site to the same token, so there is no seam. The driver therefore carries
+   `cc_step_no_reset`, a line-for-line transcription of lines 957-1009 whose only
+   change is that the terminal branch records `done` instead of resetting.
+   Because a transcription that drifted would silently corrupt every later gate,
+   `run` mode steps a **shadow env with the real `puf_step`** alongside and
+   asserts identical canonical state, reward bits and `done` after every
+   non-terminal step, exiting non-zero on the first disagreement. On the terminal
+   step the shadow has already reset, so only reward bits and `done` are
+   cross-checked there. The transcription is thus validated against the real
+   function on every step it is used for, bar the one step the real function
+   cannot answer.
+4. *`world` mode emits the whole canonical record* (`CC_STATE_BYTES`), not a
+   map-plus-block subset. Its leading fields are the 4096 map bytes and the
+   player/intrinsics block the plan asked for, and emitting the full record keeps
+   one serializer on each side instead of two.
+
 Modes:
 
 ```
@@ -394,10 +433,17 @@ produces the identical bytes from the JS `ArrayBuffer`.
 Build (`reference/build.sh`):
 
 ```
-clang -O2 -std=c11 -ffp-contract=off -fno-fast-math -march=x86-64-v2 \
+clang -O2 -std=c11 -ffp-contract=off -fno-fast-math $ARCH_FLAGS \
   -Dcosf=pt_cosf -Dsinf=pt_sinf \
-  -I games/craftax_src -I reference/stubs -I native/frozenmath \
-  reference/cc_ref_driver.c native/frozenmath/<ieee754 objects> -lm -o build/cc_ref
+  -I games/craftax_src -I reference/stubs \
+  -c reference/cc_ref_driver.c -o build/cc_ref_driver.o
+clang++ -O2 -o build/cc_ref build/cc_ref_driver.o build/v8_shim.o build/v8_ieee754.o -lm
+
+# ARCH_FLAGS is -march=x86-64-v2 on x86 (no FMA at all) and empty on arm64,
+# where -ffp-contract=off is the only guard. build/v8_ieee754.o is
+# native/qjs/v8libm/ieee754.cc built with node's per-arch FMA setting
+# (contraction on for arm64, off for x86-64); build/v8_shim.o gives its
+# C++-linkage cos/sin a C entry point. See correction 2 above.
 ```
 
 `pt_cosf(x)` is `(float)ieee754_cos((double)x)` defined in the driver. Verify the
