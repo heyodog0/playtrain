@@ -60,19 +60,29 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 
 // V8's ieee754, the same object the QuickJS host binds Math.cos/Math.sin to
-// (native/runtime/jsmath.h). build.sh redirects cosf/sinf here so the C's
-// transcendentals are the JS engine's, which is the parity target PLAN 1.4
-// states. Declared C++-mangled in the real header; build.sh compiles a tiny
-// shim, so here we only need the float wrappers' prototypes.
+// (native/runtime/jsmath.h). The reference's cosf/sinf are redirected here so
+// the C's transcendentals are the JS engine's, which is the parity target
+// PLAN 1.4 states. ieee754.cc has C++ linkage on purpose (see
+// native/runtime/jsmath.h), so v8_shim.cc gives it a C entry point.
 double cc_ieee754_cos(double);
 double cc_ieee754_sin(double);
-// Not static: build.sh passes -Dcosf=pt_cosf, so <math.h>'s own declaration of
-// cosf becomes a declaration of pt_cosf, and a static definition here would
-// collide with it.
-float pt_cosf(float x) { return (float)cc_ieee754_cos((double)x); }
-float pt_sinf(float x) { return (float)cc_ieee754_sin((double)x); }
+static float pt_cosf(float x) { return (float)cc_ieee754_cos((double)x); }
+static float pt_sinf(float x) { return (float)cc_ieee754_sin((double)x); }
+
+// The redirect is a macro HERE rather than -Dcosf=pt_cosf on the command line,
+// and <math.h> above is included first on purpose. glibc's math.h builds the
+// name __DECL_SIMD_cosf by token-pasting __DECL_SIMD_ onto the function name;
+// with the name already rewritten on the command line it pastes
+// __DECL_SIMD_pt_cosf, which does not exist, and the build dies inside
+// /usr/include/math.h. (Apple's libc does not do this, so the command-line
+// form worked on the Mac and only broke on FASRC.) Declaring math.h's own
+// prototypes first, then defining the macros, redirects every call site in
+// craftax_classic.h and leaves the system header alone.
+#define cosf pt_cosf
+#define sinf pt_sinf
 
 #include "craftax_classic.h"
 

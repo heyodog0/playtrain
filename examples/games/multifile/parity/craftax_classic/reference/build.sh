@@ -17,7 +17,7 @@
 #                      in case the contract flag is ever lost. On arm64 the
 #                      contract flag is the only guard, which is why it is
 #                      also asserted below.
-#  -Dcosf/-Dsinf       the header's transcendentals are redirected to V8's
+#  cosf/sinf redirect  the header's transcendentals are redirected to V8's
 #                      ieee754, the same code PlayTrain's QuickJS host binds
 #                      Math.cos/Math.sin to (native/runtime/jsmath.h). This is
 #                      the one libm dependency in the C, and binding it to the
@@ -54,7 +54,6 @@ $CXX -std=c++17 -O3 $V8_FPC -fno-fast-math -w -c "$V8/ieee754.cc" -o "$OUT/v8_ie
 $CXX -std=c++17 -O2 -ffp-contract=off -fno-fast-math -c v8_shim.cc -o "$OUT/v8_shim.o"
 
 $CC -O2 -std=c11 -ffp-contract=off -fno-fast-math $ARCH_FLAGS \
-    -Dcosf=pt_cosf -Dsinf=pt_sinf \
     -I "$SRC" -I stubs \
     -c cc_ref_driver.c -o "$OUT/cc_ref_driver.o"
 
