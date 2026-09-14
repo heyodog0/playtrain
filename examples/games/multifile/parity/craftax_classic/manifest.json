@@ -138,7 +138,8 @@
     "not_matched": [
       "pixels",
       "auto-reset RNG continuation across episodes",
-      "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended"
+      "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended",
+      "Craftax-Classic-Pixels: terrain is byte-identical (0 of 3381 px differ) but the player tile (4 px) and inventory rows (124 px) do not yet match, and NIGHT CANNOT match \u2014 below light_level 0.5 Craftax adds per-pixel static from a JAX threefry key (state_rng) that PufferLib's C has no counterpart for; that is 41% of an episode. See reference/craftax_pixels/README.md"
     ]
   }
 }
