@@ -8,7 +8,7 @@ sub-tasks under the parent; never delete rows.
 | # | Task | Where | Status | Gate result | Commit | Notes |
 |---|---|---|---|---|---|---|
 | 1a | Vendor `games/craftax_src/` at commit 6ffa5b1 with LICENSE and README | mac | done | `shasum -a 256 -c`: 6/6 OK; git-blob ids match the pinned tree | f8d38ed | 5 headers + LICENSE + README in `games/craftax_src/`. `craftax_parity.h` deliberately not vendored (PLAN 2 layout). PLAN.md corrected: upstream has no `pufferlib/` prefix. `craftax_classic.h` includes `raylib.h` and `pufferenv.h` only — so 2a needs a `raylib.h` stub; `ini.h` is not included by the Classic header. |
-| 1b | `THIRD_PARTY_LICENSES.md` row; `multifile/README.md`; directory skeleton | mac | todo | | | |
+| 1b | `THIRD_PARTY_LICENSES.md` row; `multifile/README.md`; directory skeleton | mac | done | no pytest gate; skeleton matches PLAN 2 layout, TPL row + PufferLib section added | COMMIT1B | Also wrote `parity/craftax_classic/README.md` with the empty **Reference quirks** table — quirks found later go there. Empty dirs hold `.gitkeep` files whose text says which task fills them; delete each when its task lands. |
 | 2a | `cc_ref_driver.c`, stubs, `build.sh`; `layout`, `rng`, `world`, `run` modes | mac | todo | | | `nm` must show no `cosf`/`sinf` |
 | 2b | Same build on FASRC; 100-episode self-diff mac vs cluster | cluster | todo | | | depends on 2a |
 | 3a | Corpus policies in Python against the driver; action files committed | mac | todo | | | depends on 2a |
@@ -35,3 +35,4 @@ sub-tasks under the parent; never delete rows.
 Newest first. One line per iteration: date, task, what happened.
 
 - 2026-09-14 — 1a — vendored PufferLib @6ffa5b1 into `games/craftax_src/`, byte-identical (git blob ids checked against the commit tree); README records sha256 + upstream path per file; PLAN.md path corrected.
+- 2026-09-14 — 1b — `multifile/README.md` (the tree's contract: bundle-step-only rule, what earns `parity/`, dist/bundler rules, "tools read manifests not directory names"); game README with provenance / exact / not-matched / gates / quirks; PufferLib row + section in `THIRD_PARTY_LICENSES.md`; skeleton dirs created.

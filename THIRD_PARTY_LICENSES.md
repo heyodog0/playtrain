@@ -11,6 +11,7 @@ binary. The build fetches the sources rather than vendoring them
 | [openlibm](https://github.com/JuliaMath/openlibm) (fdlibm) | bit-reproducible `Math.*`, so a game steps identically everywhere | MIT / Sun fdlibm |
 | [matter-js](https://brm.io/matter-js/) 0.20.0 | 2D physics for the games that use it (`tools/vendor/matter.min.js`, MIT header inline) | MIT |
 | [ProcGen](https://github.com/openai/procgen) | reference C++ sources, not compiled — see `games/procgen_src/LICENSE` | MIT |
+| [PufferLib](https://github.com/PufferAI/PufferLib) | reference C sources for the Craftax-Classic parity port, not compiled — see `games/craftax_src/` | MIT |
 
 ---
 
@@ -35,10 +36,20 @@ Portions used here are fdlibm, carrying the original Sun notice:
 openlibm as a whole is distributed under its own terms; see
 https://github.com/JuliaMath/openlibm/blob/master/LICENSE.md.
 
+## PufferLib
+
+Copyright (c) 2022 PufferAI
+
+Vendored at commit `6ffa5b10dbbbe4d1e8288367c7d9d3acd3bad4a2` in
+`games/craftax_src/`, which records the upstream path and sha256 of each file.
+The sources are reference only: they are not compiled into the wheel. They are
+built locally, outside the wheel, by the lockstep gate of the Craftax-Classic
+parity port in `examples/games/multifile/parity/craftax_classic/`.
+
 ## MIT License
 
-Applies to quickjs-ng, matter-js, ProcGen and the MIT-licensed portions of
-openlibm, each under the copyright lines given above.
+Applies to quickjs-ng, matter-js, ProcGen, PufferLib and the MIT-licensed
+portions of openlibm, each under the copyright lines given above.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
