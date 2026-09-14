@@ -61,6 +61,7 @@ Integer logic and the RNG are untouched by any of this.
 | G2 (CI) | `tests/test_golden.py` | committed hashes only |
 | G3 | `tests/test_coverage.py` | C driver |
 | bundle | `tests/test_bundle_fresh.py` | — |
+| G5 | `tools/validate.py --game craftax_classic` | — (blocked: see PROGRESS.md) |
 
 ```sh
 uv run pytest examples/games/multifile/parity/craftax_classic/tests -q

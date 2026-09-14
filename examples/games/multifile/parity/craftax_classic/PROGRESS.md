@@ -23,7 +23,7 @@ sub-tasks under the parent; never delete rows.
 | 7a | `tools/bundle_multifile.py`, `just bundle`; bundle-fresh test | mac | done | `58 passed in 69.70s` (`tests/test_bundle_fresh.py`) | 57d39bf | Bundler + `just bundle <name>` / `bundle-all` / `bundle-check`. `dist/craftax_classic.js` (1582 lines) and the sidecar are committed. **`manifest.json` currently lists 12 sources — 8a must add `80_render.js`, `85_obs_symbolic.js`, `90_playtrain.js` to it**, or they will not ship. Staleness detection verified by touching a source. The gate also evaluates the bundle in node and checks it steps identically to the same sources loaded loose, because concatenation order is scope order and a mis-ordered manifest yields a byte-correct broken bundle. |
 | 7b | Second games root + sidecar loading (PLAN 3.1, 3.2) in Python and node envs | mac | done | `69 passed in 70.38s` (`tests/test_runtime_sidecar.py`); repo suite `95 passed, 3 skipped` | 92eefe8 | `GameEnv('craftax_classic')` now reports `Discrete(17)` and `max_steps 10000`, both from the sidecar — PLAN task 7's done-when. Four edits: `_paths.multifile_dist_dirs()`, `game_search_roots`/`resolve_game_file`/`load_sidecar` in `runtime/env.py`, the same resolution + sidecar in `native_vec_env.py`, and sidecar defaults in `runtime/p5/game-env.mjs`. Catalog stays first in the search order so no existing name can be shadowed, and an explicit `games_dir=` still resolves to exactly that directory. `max_steps` in `PlayTrainEnv` and the node `GameEnv` is now `None`-defaulted (effective default still 2000, exported as `DEFAULT_MAX_STEPS`) so "caller said nothing" is distinguishable from "caller asked for 2000". **Scope note:** making the game discoverable turned `tests/test_smoke.py::test_every_bundled_game_boots` red, because a bundled game must boot. `src/90_playtrain.js` was therefore written in this task, not 8a — it is the PlayTrain contract only (setup/draw/resetGame/getGameState/input), and its `draw()` delegates to `renderGame()` if defined and otherwise paints a flat background. **8a still owns `80_render.js` and must define `renderGame(state)`**; it also still owns `85_obs_symbolic.js` and adding it to the manifest. |
 | 8a | `80_render.js`, `90_playtrain.js` | mac | done | `76 passed in 69.43s` (`tests/test_render.py`); repo suite `95 passed, 3 skipped` | 0783c04 | `90_playtrain.js` landed in 7b; this task added `80_render.js` (`renderGame`) and put both in the manifest. PLAN 6 layout: 512 canvas, 56px tiles = exactly 7 obs px, 9x7 view + 2 HUD rows. **Bug found and fixed:** `90_playtrain.js` was calling `createCanvas(64, 64)`, so everything drew off-canvas except the first tile and the observation came back as 3 flat colours; it is 512 now and frames have ~24. Flat fills + one primitive glyph per block, a 3x5 segment font for inventory digits, no `text()` and no images, so the rasterizer path is the one the catalog already gates on. Night multiplies tile colour by `light_level`. A source-level test asserts the renderer never touches the RNG or writes state — a render that drew from the RNG would desync from the reference without failing any dynamics gate, since those never call `draw()`. **`85_obs_symbolic.js` is NOT written**; it belongs with the obs mode in task 13. |
-| 8b | `tools/validate.py --game craftax_classic` with 17 actions | mac | todo | | | G5 |
+| 8b | `tools/validate.py --game craftax_classic` with 17 actions | mac | blocked | 4/5 checks PASS; **REW FAILS**. `API ok, DET ok, OBS ok, REW FAIL, 12815 FPS` | | **The step wire packs `score` as int32, and this is the first game with a fractional score.** Needs a 5th runtime change, which PLAN 3 does not authorise — see the write-up below. |
 | 9 | `gate_qjs.sh`, `gate_async.py`, AOT tier with the sidecar action table | mac + cluster | todo | | | G4 |
 | 10a | Study harness reads sidecar actions and pacing | mac | todo | | | |
 | 10b | Human quickplay session, replay-verified | human | handoff | | | G6 |
@@ -108,3 +108,54 @@ change and should be decided explicitly, not slipped in.
 - 2026-09-14 — 7a — bundler is plain concatenation with a banner carrying a sha256 of the sources; sidecar is the manifest minus `sources`, plus that hash.
 - 2026-09-14 — 7b — runtime wiring done and the repo suite is green again. The smoke test catching an unbootable bundled game is the ordering lesson: dist/ becoming discoverable and the game booting have to land together.
 - 2026-09-14 — 8a — renderer written and gated. Pixels are explicitly outside the parity claim (PufferLib's textures are a raylib viewer; Craftax's pixel env is a third, different image), so the gate checks determinism, state-tracking, obs-grid alignment and purity rather than exact bytes.
+
+## 8b blocker: the step header packs score as an int32
+
+`uv run python tools/validate.py --game craftax_classic`:
+
+```
+  1/5 API compliance ... PASS -- check_env passed
+  2/5 Determinism ... PASS -- 200 steps deterministic (strict, seed=42)
+  3/5 Observation sanity ... PASS -- shape=(64, 64, 3) range=[10,231] unique=48
+  4/5 Reward / terminal ... FAIL -- step 219: reward -0.7000000476837158 != score delta -1
+  5/5 Throughput ... PASS -- 12815 FPS (0.08 ms/step)
+```
+
+**Cause.** `runtime/p5/game-worker.mjs:30` writes the score into the 16-byte
+step header as `h.writeInt32BE(info.score | 0, 8)`, and `runtime/env.py:137`
+unpacks it with `struct.Struct(">fBBBBii")`. So `info["score"]` reaching Python
+is **truncated to an integer**. `reward` is fine — it is a float32 in the same
+header, computed in JS at full precision.
+
+Craftax-Classic is the first game with a **fractional** score: the reward is
+`(new achievements) + 0.1 * (health change)`, so a step can pay -0.2 or -0.7.
+Watching it accumulate, `info["score"]` reads `0, 0, -1` across three steps
+that each paid -0.2 and then -0.7. `check_reward_terminal` asserts
+`reward == info["score"] - prev_score` exactly, so it fails at every step where
+the running total crosses an integer.
+
+**The game is not at fault.** Driving the bundle directly, bypassing the host
+wire, `max |score - sum(reward)|` over 246 steps is **exactly 0**, and the final
+score is 1.499999761581421 — which the int32 wire delivers as 1. G2 already
+compares the game's own per-step reward against the C as float32 bits across
+all 210 episodes, and that is green.
+
+**Why this is not fixed here.** The fix is two lines —
+`writeInt32BE` -> `writeFloatBE` in the worker, and `">fBBBBii"` ->
+`">fBBBBfi"` in `env.py` — but that is a **fifth** runtime change, and PLAN 3
+authorises exactly four. It also changes the type of `info["score"]` for every
+existing game, which is a catalog-wide behavioural change that wants a decision,
+not a quiet edit. Options, for whoever picks this up:
+
+1. Widen the wire field to float32 (two lines, plus the same header in
+   `native_vec_env` if it duplicates the layout). Cleanest, and arguably a bug
+   fix: `| 0` silently discards precision the game meant to report.
+2. Leave the wire alone and relax `check_reward_terminal` to compare against
+   the score delta only when the score is integral. Weakens an existing check
+   for every game, so worse.
+3. Make the game report an integer score. Breaks PLAN 3.5, which requires
+   `score` to equal PufferLib's `episode_return_accum` bit for bit.
+
+Option 1 is the recommendation. Until it is decided, G5 cannot pass and 8b
+stays blocked; the other four checks pass, and 12815 FPS single-env is a useful
+number for task 12.
