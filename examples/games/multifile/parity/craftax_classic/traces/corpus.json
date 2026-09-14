@@ -11,14 +11,17 @@
   },
   "totals": {
     "episodes": 210,
-    "steps": 48561,
+    "steps": 49061,
     "achievements_reached": [
+      "collect_coal",
       "collect_drink",
+      "collect_iron",
       "collect_sapling",
       "collect_stone",
       "collect_wood",
       "defeat_zombie",
       "eat_cow",
+      "eat_plant",
       "make_stone_pick",
       "make_stone_sword",
       "make_wood_pick",
@@ -30,11 +33,8 @@
       "wake_up"
     ],
     "achievements_missed": [
-      "collect_coal",
       "collect_diamond",
-      "collect_iron",
       "defeat_skeleton",
-      "eat_plant",
       "make_iron_pick",
       "make_iron_sword"
     ],
@@ -1984,90 +1984,99 @@
       "policy": "forager",
       "seed": 0,
       "rng_seed": 1000,
-      "steps": 561,
+      "steps": 548,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
+        "defeat_zombie",
         "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
+        "place_furnace",
         "place_plant",
         "place_table",
         "wake_up"
       ],
-      "sha256": "40de006c2b3df661e6dcf4b38cae590e86a7cea372a8ae65adbb3e5bb4a1f9ae"
+      "sha256": "deb575abadab50aff3c5886947604221adae4a381d3e20cc6f7f85e8fc565f29"
     },
     {
       "file": "corpus/forager_001.bin",
       "policy": "forager",
       "seed": 1,
       "rng_seed": 1001,
-      "steps": 855,
+      "steps": 198,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
         "collect_stone",
         "collect_wood",
-        "defeat_zombie",
         "eat_cow",
+        "make_stone_pick",
         "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "47d829891261708e310458b60a3579a150ff818d53e8e6d74860f2f6073f1464"
+      "sha256": "777d81392ec3d86badb6eb5983809e678a5fc45a301ab1a78b5e50a3be86855d"
     },
     {
       "file": "corpus/forager_002.bin",
       "policy": "forager",
       "seed": 2,
       "rng_seed": 1002,
-      "steps": 254,
+      "steps": 257,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
+        "defeat_zombie",
         "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
         "place_table"
       ],
-      "sha256": "cc7d9ac4a235a52f50520b72296071c349b870aef0736db3b300d635b3fea66f"
+      "sha256": "ca5d972a753f872a1c7c3c47eb8194009264a5e805f841ea2a0b1e9ff46649e5"
     },
     {
       "file": "corpus/forager_003.bin",
       "policy": "forager",
       "seed": 3,
       "rng_seed": 1003,
-      "steps": 844,
+      "steps": 275,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "353648fdcd74e63dc60b058f90a45a8c87d670b493216990d582b777303f1255"
+      "sha256": "9548c9048cae15c92557fc982af6b70018710517e74d8dc20c48e927b33e7151"
     },
     {
       "file": "corpus/forager_004.bin",
       "policy": "forager",
       "seed": 4,
       "rng_seed": 1004,
-      "steps": 281,
+      "steps": 519,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2078,18 +2087,65 @@
         "eat_cow",
         "make_wood_pick",
         "make_wood_sword",
-        "place_furnace",
         "place_plant",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "da09a5ce95e9fd559e92b9e4e86e7b2ecf1157a967763de68a53da0f8efcb2c5"
+      "sha256": "d44ccf0be6cedb6220f75cbf67701ffd2a07a00939f66b5341a1dbb1aeed99d7"
     },
     {
       "file": "corpus/forager_005.bin",
       "policy": "forager",
       "seed": 5,
       "rng_seed": 1005,
-      "steps": 481,
+      "steps": 230,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "28c6419cb8cdfc0792efbf392a4835fcfba32bfd941de65bed5e0362cea88d25"
+    },
+    {
+      "file": "corpus/forager_006.bin",
+      "policy": "forager",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 371,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "16b1929ef449f6a50047d8f13a68ef6c32a4c588f18ea04d5c7f3e49cc171fcf"
+    },
+    {
+      "file": "corpus/forager_007.bin",
+      "policy": "forager",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 201,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2103,218 +2159,16 @@
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "ab670243b4ff6cc429442bfca0dbaf22c9fec1e510fcdc6e76c6ebe5e3ad7014"
-    },
-    {
-      "file": "corpus/forager_006.bin",
-      "policy": "forager",
-      "seed": 6,
-      "rng_seed": 1006,
-      "steps": 229,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
         "place_table"
       ],
-      "sha256": "16c3a585c836c09dfa07ac0599f9caf95d057a9d7f7c95179c81836213a314ae"
-    },
-    {
-      "file": "corpus/forager_007.bin",
-      "policy": "forager",
-      "seed": 7,
-      "rng_seed": 1007,
-      "steps": 739,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "47e4e05a577639bf56f29c5fdb12663c9f33c28f5a58ba5456b01b3035a7b8b0"
+      "sha256": "9221246e74f1bf7f6efb1725378503decce66e128fd954792087176235e29722"
     },
     {
       "file": "corpus/forager_008.bin",
       "policy": "forager",
       "seed": 8,
       "rng_seed": 1008,
-      "steps": 273,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "1c53b4f1526a75d5e9bafcda8f497632264872ba46dc902dd9e4d45bfc9960a4"
-    },
-    {
-      "file": "corpus/forager_009.bin",
-      "policy": "forager",
-      "seed": 9,
-      "rng_seed": 1009,
-      "steps": 211,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "b8a1f4150dc357530eae36f75d33ac6dc31e9038ed82f385ae00925dccf14160"
-    },
-    {
-      "file": "corpus/forager_010.bin",
-      "policy": "forager",
-      "seed": 10,
-      "rng_seed": 1010,
-      "steps": 797,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "dc1731de4c7c4c2687d3d10681fc6fab69fcc4c9e48eaabc70b952590c34e743"
-    },
-    {
-      "file": "corpus/forager_011.bin",
-      "policy": "forager",
-      "seed": 11,
-      "rng_seed": 1011,
-      "steps": 701,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "ec257063a2dd5a4cf784139d279e5eb20b53c73fd3c03d8855d5e4c219b286cd"
-    },
-    {
-      "file": "corpus/forager_012.bin",
-      "policy": "forager",
-      "seed": 12,
-      "rng_seed": 1012,
-      "steps": 263,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "df06e895da7874c5bff09e56d963a7005edba2d9a76be0c42721718f52b47d1c"
-    },
-    {
-      "file": "corpus/forager_013.bin",
-      "policy": "forager",
-      "seed": 13,
-      "rng_seed": 1013,
-      "steps": 442,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "58f73537a4d30f5f95c54d4f2b790b65e74c6745ccb42b8295ac1ac61c39675d"
-    },
-    {
-      "file": "corpus/forager_014.bin",
-      "policy": "forager",
-      "seed": 14,
-      "rng_seed": 1014,
-      "steps": 538,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "c4fc50c5a16ebe3cdfbdb572ae7414f58cd9c7fff10b5e1a9acb26070db2d475"
-    },
-    {
-      "file": "corpus/forager_015.bin",
-      "policy": "forager",
-      "seed": 15,
-      "rng_seed": 1015,
-      "steps": 238,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "80e02f19843224643749eb0fd02ee367b9a22ecf2ab2f1b950733ebcd72d51aa"
-    },
-    {
-      "file": "corpus/forager_016.bin",
-      "policy": "forager",
-      "seed": 16,
-      "rng_seed": 1016,
-      "steps": 605,
+      "steps": 199,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2323,6 +2177,73 @@
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "82529dd6ae7f663a5e610828dee9148180341b0c69c2ab6e1ef78141d62167c8"
+    },
+    {
+      "file": "corpus/forager_009.bin",
+      "policy": "forager",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 300,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "29afaf43ee6273235c8f0fc4f678ed8c32f19e268ae0e3113b1751356e3fb34b"
+    },
+    {
+      "file": "corpus/forager_010.bin",
+      "policy": "forager",
+      "seed": 10,
+      "rng_seed": 1010,
+      "steps": 202,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "2dde368d0a470f10d8289cd8b714e9933d31ea27d9c11f6c20aa22e7aa0936a0"
+    },
+    {
+      "file": "corpus/forager_011.bin",
+      "policy": "forager",
+      "seed": 11,
+      "rng_seed": 1011,
+      "steps": 1149,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "eat_plant",
+        "make_stone_pick",
         "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
@@ -2331,57 +2252,42 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "2561819ef41711c20d9d0e98be6227ae1e563bbee0afcc3bf6e53d5f7d7a7fae"
+      "sha256": "13032dc1c654f30861a5ed2c88945688d17ec1e3a28fb1b785781b89e39a1974"
     },
     {
-      "file": "corpus/forager_017.bin",
+      "file": "corpus/forager_012.bin",
       "policy": "forager",
-      "seed": 17,
-      "rng_seed": 1017,
-      "steps": 198,
+      "seed": 12,
+      "rng_seed": 1012,
+      "steps": 659,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
-        "collect_wood",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "fef113bb6a0c229172b3774f58d441ab9afd7942ab50154c792f11c774bde1ab"
-    },
-    {
-      "file": "corpus/forager_018.bin",
-      "policy": "forager",
-      "seed": 18,
-      "rng_seed": 1018,
-      "steps": 242,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "60611b6e6c143195ddcfac5cc23373f7520a0df64a08a75edf2a39db28098f03"
+      "sha256": "1bf761e1b2fe06302684a523423027cda462fd24194daeb347c019f6fab062b5"
     },
     {
-      "file": "corpus/forager_019.bin",
+      "file": "corpus/forager_013.bin",
       "policy": "forager",
-      "seed": 19,
-      "rng_seed": 1019,
-      "steps": 807,
+      "seed": 13,
+      "rng_seed": 1013,
+      "steps": 455,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
@@ -2391,18 +2297,47 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "9ca66a300d6c9d8e093af0e04e0a70ca1b615ffc7bd95bfca6a0030384ca49b4"
+      "sha256": "ad806aa58ea7b974238e0d95f5a91aef1a1a8311f8f1ce182b15fb65ffb992b3"
     },
     {
-      "file": "corpus/forager_020.bin",
+      "file": "corpus/forager_014.bin",
       "policy": "forager",
-      "seed": 20,
-      "rng_seed": 1020,
-      "steps": 230,
+      "seed": 14,
+      "rng_seed": 1014,
+      "steps": 540,
+      "terminal": "health",
+      "achievements": [
+        "collect_coal",
+        "collect_drink",
+        "collect_iron",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f11655da1cb84e2bbc6d91ab5b5a6c018a9e10514cb2f255a753a88a8873de06"
+    },
+    {
+      "file": "corpus/forager_015.bin",
+      "policy": "forager",
+      "seed": 15,
+      "rng_seed": 1015,
+      "steps": 305,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
@@ -2411,34 +2346,41 @@
         "place_plant",
         "place_table"
       ],
-      "sha256": "12d0807bdfbe1d503e17832e0314d7f74b41a22ae1bf401c2ec3626f4dbe2ac7"
+      "sha256": "1a90da08d4a1dc9cf9099c13b5a7baf160ab51ff9a6ff65396dc58b1fcc71108"
     },
     {
-      "file": "corpus/forager_021.bin",
+      "file": "corpus/forager_016.bin",
       "policy": "forager",
-      "seed": 21,
-      "rng_seed": 1021,
-      "steps": 224,
+      "seed": 16,
+      "rng_seed": 1016,
+      "steps": 846,
       "terminal": "health",
       "achievements": [
+        "collect_coal",
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
+        "place_furnace",
         "place_plant",
-        "place_table"
+        "place_stone",
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "ef6d045f0c2f05c62f511911520e40475526ea61528a85d94ac093687f860a57"
+      "sha256": "45d428d04530ba76bd73ed7dddd739199142604ffce57cd06879e4523488744f"
     },
     {
-      "file": "corpus/forager_022.bin",
+      "file": "corpus/forager_017.bin",
       "policy": "forager",
-      "seed": 22,
-      "rng_seed": 1022,
-      "steps": 221,
+      "seed": 17,
+      "rng_seed": 1017,
+      "steps": 266,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2454,74 +2396,226 @@
         "place_plant",
         "place_table"
       ],
-      "sha256": "d59b6d89c4091b24cc2355239ec6e54325d3e959ca8317860877f76894c1bf74"
+      "sha256": "818bf53b22c053aa08839c4233d34c7ecd2c7781ab97c37e262a8698fe18deb0"
     },
     {
-      "file": "corpus/forager_023.bin",
+      "file": "corpus/forager_018.bin",
       "policy": "forager",
-      "seed": 23,
-      "rng_seed": 1023,
-      "steps": 194,
+      "seed": 18,
+      "rng_seed": 1018,
+      "steps": 210,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
         "place_table"
       ],
-      "sha256": "89d0306771be6a5ae00c1b35b396f5878003799c1f13f0f3662005980b4dc63a"
+      "sha256": "0237935c3b40f162f53a878d2d87bc330450d005a69b28e6a630f6b30c66ed7a"
     },
     {
-      "file": "corpus/forager_024.bin",
+      "file": "corpus/forager_019.bin",
       "policy": "forager",
-      "seed": 24,
-      "rng_seed": 1024,
-      "steps": 435,
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 900,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table"
-      ],
-      "sha256": "99cbee3eb5f7f7172d141fb0f5203360575805aca6152784dd7e58e227098afe"
-    },
-    {
-      "file": "corpus/forager_025.bin",
-      "policy": "forager",
-      "seed": 25,
-      "rng_seed": 1025,
-      "steps": 890,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "defeat_zombie",
-        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
         "place_table",
         "wake_up"
       ],
-      "sha256": "8d4e668701b41987c284a8ec97b3b6d0e076499217e83fa2bebbe53b7e99aa1b"
+      "sha256": "72e4e8c8a7ab0b2e1826155723829595f7325e83493e76f9ddc8125653b359b0"
+    },
+    {
+      "file": "corpus/forager_020.bin",
+      "policy": "forager",
+      "seed": 20,
+      "rng_seed": 1020,
+      "steps": 253,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "2e1dd9bc7a6a71ac92c2c0bed3a74571cb7cfff6e88b2955b474499535df2ec2"
+    },
+    {
+      "file": "corpus/forager_021.bin",
+      "policy": "forager",
+      "seed": 21,
+      "rng_seed": 1021,
+      "steps": 551,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "2c194959f2f3d8ab582d78a2b7327c3bbbe09acf2a032483880278af9977b8f3"
+    },
+    {
+      "file": "corpus/forager_022.bin",
+      "policy": "forager",
+      "seed": 22,
+      "rng_seed": 1022,
+      "steps": 225,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "c866abc618cc083379a8b7de8f6acf7e7b0af60b051496d4696a97eb068ae0d5"
+    },
+    {
+      "file": "corpus/forager_023.bin",
+      "policy": "forager",
+      "seed": 23,
+      "rng_seed": 1023,
+      "steps": 572,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "4c4dd5f9b1c70a0544c24f3b554b6e0fb0ff78bdc4ca07cfbc48feefee02020c"
+    },
+    {
+      "file": "corpus/forager_024.bin",
+      "policy": "forager",
+      "seed": 24,
+      "rng_seed": 1024,
+      "steps": 192,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "4945c1e4a85c8549a06400e588168defbc5cee56d6a659d0f43a42ec416b02a3"
+    },
+    {
+      "file": "corpus/forager_025.bin",
+      "policy": "forager",
+      "seed": 25,
+      "rng_seed": 1025,
+      "steps": 926,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f3141c331a6198da430ca226ee31edfb1b3b1a50b83349af58bec06a55014ef8"
     },
     {
       "file": "corpus/forager_026.bin",
       "policy": "forager",
       "seed": 26,
       "rng_seed": 1026,
-      "steps": 916,
+      "steps": 208,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "64c579e21a816787663bd1c46df2c2b0d0f667651127b9d7a7c8622f74a5ee49"
+    },
+    {
+      "file": "corpus/forager_027.bin",
+      "policy": "forager",
+      "seed": 27,
+      "rng_seed": 1027,
+      "steps": 531,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2537,38 +2631,19 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "a4e7d5bb8226d5fcb897c7b839f4fc5b71dc55ee87d6ffc0c350e753bac93532"
-    },
-    {
-      "file": "corpus/forager_027.bin",
-      "policy": "forager",
-      "seed": 27,
-      "rng_seed": 1027,
-      "steps": 416,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_sapling",
-        "collect_wood",
-        "eat_cow",
-        "make_wood_pick",
-        "make_wood_sword",
-        "place_plant",
-        "place_table",
-        "wake_up"
-      ],
-      "sha256": "c210da3cf0ba78726ee9e19074670d663a59d6f7544940ecf53be4742499aa62"
+      "sha256": "23e1f2aa2c2d0235ff52b5ce6fd2dff8f1ad03aefb462fd687f0ff16c9fdf7f8"
     },
     {
       "file": "corpus/forager_028.bin",
       "policy": "forager",
       "seed": 28,
       "rng_seed": 1028,
-      "steps": 187,
+      "steps": 399,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
@@ -2577,34 +2652,36 @@
         "place_plant",
         "place_table"
       ],
-      "sha256": "8851eb6785ddc8068555968acb8b326b20b38ad8e6d51a4868a6a064a40e3c15"
+      "sha256": "75bb6210d71a775d8d0d0c44163281fa70e9c48835a81749715771a38f1ec4c6"
     },
     {
       "file": "corpus/forager_029.bin",
       "policy": "forager",
       "seed": 29,
       "rng_seed": 1029,
-      "steps": 363,
+      "steps": 1188,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_sapling",
+        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
         "make_wood_sword",
         "place_plant",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "d14d0cf4d8365903524448e8250ccd7dbad48ced9a1bfeba3168c870b9429b7d"
+      "sha256": "69f8f18c1950e25c1c32ef97ef3ca27fb8e6645d6db20cc0de5291008d328efd"
     },
     {
       "file": "corpus/adversarial_000.bin",
       "policy": "adversarial",
       "seed": 0,
       "rng_seed": 1000,
-      "steps": 319,
+      "steps": 179,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2613,14 +2690,14 @@
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "d29664c55efa96e7462e4e6fb4ddc97f08d55713345d3f4696659797cd48de86"
+      "sha256": "82d83261df87d88d173ce7d9523ed517f61e6e6f184947592ce9f28dcbf1f44e"
     },
     {
       "file": "corpus/adversarial_001.bin",
       "policy": "adversarial",
       "seed": 1,
       "rng_seed": 1001,
-      "steps": 601,
+      "steps": 249,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2628,69 +2705,65 @@
         "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "c98ec0db8a53239c99da140fe284c3b094a925919a21858d7e26111b94e675f1"
+      "sha256": "709708f47568da9008d305d61f2d8627f84cc150a8b1c559ed03f7c1a3ec60f9"
     },
     {
       "file": "corpus/adversarial_002.bin",
       "policy": "adversarial",
       "seed": 2,
       "rng_seed": 1002,
-      "steps": 231,
+      "steps": 196,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
+        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "6c3557fb6216bfd01df8ab5e425c52bb7b7e4488f2d42dbaf88fa9dffd4fd383"
+      "sha256": "b96b40a3cbc2095522ba3996c2b7b461f9dc7fbfa69bece8cf79fc88a28a36c9"
     },
     {
       "file": "corpus/adversarial_003.bin",
       "policy": "adversarial",
       "seed": 3,
       "rng_seed": 1003,
-      "steps": 345,
+      "steps": 171,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
-        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "a616eded37918c5c0dabd2c732b55a407eac352cc2815a154c148ff7af221123"
+      "sha256": "4e52953ec68b95902e0f5a53a64655cbcf31f15c45044edf8e4fdcffaf66a22e"
     },
     {
       "file": "corpus/adversarial_004.bin",
       "policy": "adversarial",
       "seed": 4,
       "rng_seed": 1004,
-      "steps": 223,
+      "steps": 240,
       "terminal": "health",
       "achievements": [
         "collect_drink",
-        "collect_stone",
         "collect_wood",
-        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "66afc38f82b9484d6559a33f672d9d6e5ce6bc91fcea50020ba5c34d0b96c803"
+      "sha256": "072db5343a233761e216f87cc52f45935f3f6860adc4987feabe779dd28726f4"
     },
     {
       "file": "corpus/adversarial_005.bin",
       "policy": "adversarial",
       "seed": 5,
       "rng_seed": 1005,
-      "steps": 713,
+      "steps": 903,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2701,29 +2774,32 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "e10f97ebd0b09f58009615966a8d2ead3e8426d279e6b5afecc1e47b54aeecce"
+      "sha256": "614806ec3bf1daa24a77faace38317a0dd509ad40436271bf6fcad49c038926a"
     },
     {
       "file": "corpus/adversarial_006.bin",
       "policy": "adversarial",
       "seed": 6,
       "rng_seed": 1006,
-      "steps": 155,
+      "steps": 542,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
         "make_wood_pick",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "3ef2e92311321a797a469210425a8aca772538d864c4e63cae65a51be6fcf8d8"
+      "sha256": "ac1cbe612bf6104f8286f03b99e43e0e5738701df16c904696878141b43e0dcc"
     },
     {
       "file": "corpus/adversarial_007.bin",
       "policy": "adversarial",
       "seed": 7,
       "rng_seed": 1007,
-      "steps": 229,
+      "steps": 272,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2732,30 +2808,32 @@
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "4e81000139804659a29e8344245d127b80f543c0dbfc3ec4fb03c562aed0fd32"
+      "sha256": "f9607389c482a67d72d82c3a9e0729c68157f2b8f2d6b15dd9e828fac3b74006"
     },
     {
       "file": "corpus/adversarial_008.bin",
       "policy": "adversarial",
       "seed": 8,
       "rng_seed": 1008,
-      "steps": 255,
+      "steps": 837,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
+        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "e094063f3b0513f374495e15ad4b120e5990e830f207853e9d945a80e4590815"
+      "sha256": "6e1960ad51c8d21fb4d5e6ebe0e77839c0cb8977e19b27d646818fdae736b409"
     },
     {
       "file": "corpus/adversarial_009.bin",
       "policy": "adversarial",
       "seed": 9,
       "rng_seed": 1009,
-      "steps": 226,
+      "steps": 248,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2764,14 +2842,14 @@
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "6ddcc27066f36b1b4a14247aa30c85fce3c175a3ed92b8b4f78886aaff471e39"
+      "sha256": "f18b2b93fe91f98df386a3c894f9555eaaf34c2438248b9022296dc74603f89e"
     },
     {
       "file": "corpus/adversarial_010.bin",
       "policy": "adversarial",
       "seed": 10,
       "rng_seed": 1010,
-      "steps": 174,
+      "steps": 193,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2781,14 +2859,14 @@
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "8b27cf422fbdadfe2aef859a29a7567eca287f9f6255c054829d8d855c033411"
+      "sha256": "599175cb2f3596f7c5b3403fcb027e0ead58b68278fc643fbde9758aeaf90c68"
     },
     {
       "file": "corpus/adversarial_011.bin",
       "policy": "adversarial",
       "seed": 11,
       "rng_seed": 1011,
-      "steps": 490,
+      "steps": 720,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2799,65 +2877,65 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "bb10b54fa5a37fdf69c2c788467bfb76b32fe72fed7ec1ddce54675f8954e220"
+      "sha256": "dfbf41a18038b2d0bad26aa321eea52016cc1197f656ff084dbc28d3e0284ef1"
     },
     {
       "file": "corpus/adversarial_012.bin",
       "policy": "adversarial",
       "seed": 12,
       "rng_seed": 1012,
-      "steps": 220,
+      "steps": 228,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
+        "eat_cow",
         "make_wood_pick",
         "place_table"
       ],
-      "sha256": "2137237f1907e9f423fad3b6eac0f79540421b041f5d5b679c79e34f3592b24d"
+      "sha256": "690c398635cdc2232e79f8c753e93ea535dec9729815075ad8e5d4873dd05616"
     },
     {
       "file": "corpus/adversarial_013.bin",
       "policy": "adversarial",
       "seed": 13,
       "rng_seed": 1013,
-      "steps": 515,
+      "steps": 426,
       "terminal": "health",
       "achievements": [
         "collect_drink",
-        "collect_stone",
         "collect_wood",
         "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_stone",
         "place_table",
         "wake_up"
       ],
-      "sha256": "a1f4effb0c5ba24edcd45fedcbb264c52853f5bb3cef5549c3206afac8a4f3b6"
+      "sha256": "aeef9808f3aad95784bb268e6d3a8349efaab5682a15e5ae608c1c1644e8c61c"
     },
     {
       "file": "corpus/adversarial_014.bin",
       "policy": "adversarial",
       "seed": 14,
       "rng_seed": 1014,
-      "steps": 382,
+      "steps": 508,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
         "eat_cow",
         "make_wood_pick",
-        "place_table"
+        "place_table",
+        "wake_up"
       ],
-      "sha256": "0518c1647f048ceade9c609f520acd36fc5488a302561784deee756cf20ddb87"
+      "sha256": "d6ee73e22784e4cb27edf1c85122addf99747b36e7a5a84436354e9bdadb8f13"
     },
     {
       "file": "corpus/adversarial_015.bin",
       "policy": "adversarial",
       "seed": 15,
       "rng_seed": 1015,
-      "steps": 453,
+      "steps": 206,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2865,70 +2943,49 @@
         "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "1cef213ff381f77a1787a4e79a387637616636802389f1fb2a19b1e3d5cbc652"
+      "sha256": "402d807f2fe2d4444ece57a692a81fa87c83256882f27130cbaebac17890ba44"
     },
     {
       "file": "corpus/adversarial_016.bin",
       "policy": "adversarial",
       "seed": 16,
       "rng_seed": 1016,
-      "steps": 561,
+      "steps": 191,
       "terminal": "health",
       "achievements": [
         "collect_drink",
-        "collect_stone",
         "collect_wood",
-        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
-        "place_stone",
-        "place_table",
-        "wake_up"
+        "place_table"
       ],
-      "sha256": "6572f8bfe5dc56307f2dded20eb467ee1c10b2eb573c4d83dfe409f33dee94ff"
+      "sha256": "75415d7e52c376f782c3127358d70a45ccb2759790051119e52e8ed7db7346c7"
     },
     {
       "file": "corpus/adversarial_017.bin",
       "policy": "adversarial",
       "seed": 17,
       "rng_seed": 1017,
-      "steps": 385,
+      "steps": 352,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "collect_wood",
-        "defeat_zombie",
         "eat_cow",
         "make_wood_pick",
         "place_table",
         "wake_up"
       ],
-      "sha256": "3d80f58ae76ecec08e8795a8ad1bb244356c32aa741a98b8670387194fbb5993"
+      "sha256": "d5f0b4a76ddddec886395f9c9290eaee2cbfc33bf627cc6c275309c5733fc8be"
     },
     {
       "file": "corpus/adversarial_018.bin",
       "policy": "adversarial",
       "seed": 18,
       "rng_seed": 1018,
-      "steps": 195,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "collect_wood",
-        "make_wood_pick",
-        "place_table"
-      ],
-      "sha256": "480dfc324f1db80d7dc893365ae2db08bb19549007d9c5f07c1813c2df67bb9d"
-    },
-    {
-      "file": "corpus/adversarial_019.bin",
-      "policy": "adversarial",
-      "seed": 19,
-      "rng_seed": 1019,
-      "steps": 496,
+      "steps": 593,
       "terminal": "health",
       "achievements": [
         "collect_drink",
@@ -2939,95 +2996,128 @@
         "place_table",
         "wake_up"
       ],
-      "sha256": "7a723d9b53371f5f77a061f55fe3d42adafa77deec0826383c1026c44d3b2218"
+      "sha256": "3e2875630db5fd0eb8057b14bbae086e27cc4cfc21067c7d5ce8d5ddb20598a6"
+    },
+    {
+      "file": "corpus/adversarial_019.bin",
+      "policy": "adversarial",
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 251,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "83490d0f4a128dae4a5e3dff8f8c950e095c332e4e8d02f6b1a2b1bf8b1bbce5"
     },
     {
       "file": "corpus/lava_000.bin",
       "policy": "lava",
       "seed": 0,
       "rng_seed": 1000,
-      "steps": 281,
+      "steps": 302,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "92bc6353a061343e8e8a0b6e91feba6c850ef69da7d2948d3e18d7a4753b636e"
+      "sha256": "f2cc02f19d2fc753c98aa9ea7a2622052d129e000b57e634835dd0a48f2ebcb1"
     },
     {
       "file": "corpus/lava_001.bin",
       "policy": "lava",
       "seed": 1,
       "rng_seed": 1001,
-      "steps": 306,
+      "steps": 171,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "5a0eaf5bf8561b498e177a934b94027c124ce808e807865ca2786f72530d7d50"
+      "sha256": "6fbfeed367fcd9bcdf517a89f29a40b19fb69d59b3aa1ded29b40b4566c829c9"
     },
     {
       "file": "corpus/lava_002.bin",
       "policy": "lava",
       "seed": 2,
       "rng_seed": 1002,
-      "steps": 408,
+      "steps": 232,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "eat_cow"
       ],
-      "sha256": "7695d9c4f838c6fcb9970412c60320066c561bf11334d8551225d7cd9df72b2b"
+      "sha256": "f64fe4c708c35924be28aede9ae511388fa2b4e4573f59b62138193910403e45"
     },
     {
       "file": "corpus/lava_003.bin",
       "policy": "lava",
       "seed": 3,
       "rng_seed": 1003,
-      "steps": 251,
+      "steps": 312,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "c53ac7a70a4034289f0a4ae14bcdc9a01fff487c86785ff71117c126e4816247"
+      "sha256": "d1ea6d6f4043ff1990f4c489f81bbb044c7b7fd32aa35c40d67fa13dff91ce72"
     },
     {
       "file": "corpus/lava_004.bin",
       "policy": "lava",
       "seed": 4,
       "rng_seed": 1004,
-      "steps": 326,
+      "steps": 405,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "a30cc9e7304e91f02a4db8bda0154d7c0721ccf2af6a10a10459046a0d7e79ff"
+      "sha256": "98c279b4f28c883234c8ba33ec59a6da4d363ae95ea873cd68bc85f4d2e31096"
     },
     {
       "file": "corpus/lava_005.bin",
       "policy": "lava",
       "seed": 5,
       "rng_seed": 1005,
-      "steps": 180,
+      "steps": 298,
       "terminal": "health",
       "achievements": [
         "collect_drink",
-        "defeat_zombie"
+        "defeat_zombie",
+        "eat_cow"
       ],
-      "sha256": "41f8093c486777df793e07d670d1a7afbbb62aac914b789a893029f96d87c902"
+      "sha256": "355d7c0d00e6a427b1549a8ab28cefc5d1430dbcfb746c0acc75aca948cb03ed"
     },
     {
       "file": "corpus/lava_006.bin",
       "policy": "lava",
       "seed": 6,
       "rng_seed": 1006,
+      "steps": 376,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "c4568c7fdeb99b6e09e91cff44f11190b4d95557be898632d95bdce3b8fba329"
+    },
+    {
+      "file": "corpus/lava_007.bin",
+      "policy": "lava",
+      "seed": 7,
+      "rng_seed": 1007,
       "steps": 328,
       "terminal": "health",
       "achievements": [
@@ -3035,48 +3125,34 @@
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "2cf3fce4f79956137b19ac1c7936708f236252f483c6caee08673c7be9d62896"
-    },
-    {
-      "file": "corpus/lava_007.bin",
-      "policy": "lava",
-      "seed": 7,
-      "rng_seed": 1007,
-      "steps": 408,
-      "terminal": "health",
-      "achievements": [
-        "collect_drink",
-        "eat_cow"
-      ],
-      "sha256": "d5503fc2791f07bdb659c52430ba88038e674a386c14c40f27ea03241fde65df"
+      "sha256": "e4c2c0cf5539f7da5390f01fc5fa090d4a03bad8688cd8676c9f9c250a841ec4"
     },
     {
       "file": "corpus/lava_008.bin",
       "policy": "lava",
       "seed": 8,
       "rng_seed": 1008,
-      "steps": 215,
+      "steps": 292,
       "terminal": "health",
       "achievements": [
         "collect_drink",
-        "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "54323f2f534c321c0cf31530a5e9640629f7279a60c4ae0baa6cf0c0104f9b9d"
+      "sha256": "3f05af91afe7e2ef39a578615d34d4f86211fff7f6f610b8d0bb7e93a88a4f4c"
     },
     {
       "file": "corpus/lava_009.bin",
       "policy": "lava",
       "seed": 9,
       "rng_seed": 1009,
-      "steps": 330,
+      "steps": 440,
       "terminal": "health",
       "achievements": [
         "collect_drink",
         "defeat_zombie",
         "eat_cow"
       ],
-      "sha256": "e6283dc19dcd0fa7ceca17d0cdc63c59f4340c9f50dd9b3909b4e043d8f49dda"
+      "sha256": "6c0adaa4afb5c55773676f5c7668f7319b2eb9e133f283a04251ee0e0fa19f26"
     }
   ]
 }

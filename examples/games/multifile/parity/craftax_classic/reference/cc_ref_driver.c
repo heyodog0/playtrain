@@ -446,6 +446,11 @@ static int mode_run(unsigned int seed, const char* actions_path, int dump_every)
         fwrite(&has_dump, 1, 1, stdout);
         if (has_dump) fwrite(buf, 1, nb, stdout);
     }
+    // Not needed to free anything — puf_close is empty — but calling it is
+    // what the reference's own API expects, and it keeps the function inside
+    // the coverage the G3 gate measures.
+    puf_close(env);
+    puf_close(shadow);
     return 0;
 }
 
@@ -473,6 +478,7 @@ static int mode_serve(unsigned int seed) {
         fwrite(buf, 1, nb, stdout);
         fflush(stdout);
     }
+    puf_close(env);
     free(buf);
     return 0;
 }

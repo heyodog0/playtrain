@@ -279,37 +279,51 @@ def harvest(st, blocks) -> int | None:
     return approach_block(st, blocks)
 
 
+def threats_near(st, radius: int = 3) -> bool:
+    return any(
+        st.zombie_at(st.player_r + dr, st.player_c + dc)
+        or st.skel_at(st.player_r + dr, st.player_c + dc)
+        for dr in range(-radius, radius + 1)
+        for dc in range(-radius, radius + 1)
+    )
+
+
 def survive(st, sleep_ok: bool = True) -> int | None:
     """The action needed to not die, or None if nothing is pressing.
 
-    Ordered by how fast the thing kills you. A zombie does 2 damage every 5
-    steps from an adjacent cell against 9 health, so it wins in about 25
-    steps; food and drink drain on a 20-25 step tick and only start costing
-    health once they hit zero; energy is slowest but pins health recovery at
-    zero while it is out.
+    Ordered by how fast the thing kills you. A zombie has 5 health and does 2
+    damage every 5 steps from an adjacent cell; against 9 health and a wood
+    sword (2 damage, so three swings) that is a fight the player loses, which
+    is what killed every early version of the forager at full food and water.
+    So: fight only with a stone sword or better, otherwise walk away.
     """
     hostile = lambda r, c: st.zombie_at(r, c) or st.skel_at(r, c)
+    inv = st.inv
+
     a = face_adjacent(st, hostile)
     if a is not None:
-        # Trading blows only works while there is health to trade. Up to
-        # three zombies spawn at night and each does 2 every 5 steps, so a
-        # wood sword (damage 2) loses that race; below half health, walk away
-        # instead. Nearly every death in the first version of this policy was
-        # a full-health-but-outnumbered brawl.
-        if st.health > 4:
-            return a
-        away = flee_from(st, hostile)
-        if away is not None:
-            return away
+        # Fight, almost always. Fleeing looks safer and is not: a zombie
+        # closes with p=0.75 every step, so it moves as fast as the player
+        # and running only postpones the same fight with less health. The
+        # arithmetic favours attacking — a zombie's attack cooldown is 5
+        # steps, so killing one takes 2 or 3 swings and costs about 2 damage.
+        # Only back off at the very end, when one more hit is fatal and there
+        # is somewhere to go.
+        if st.health <= 2:
+            away = flee_from(st, hostile)
+            if away is not None:
+                return away
         return a
-    # Thresholds are low on purpose. drink and food tick down once every 20
-    # to 25 steps and only cost health at zero, so topping up at 7 meant the
-    # agent shuttled between the pond and the cows and never went prospecting.
-    if st.drink <= 4:
+
+    # Topping up starts well before zero because reaching the water or
+    # catching a cow takes tens of steps, and a cow walks away while you do
+    # it. Waiting until 4 meant the agent was already starving by the time it
+    # set off.
+    if st.drink <= 6:
         b = harvest(st, (BLK_WATER,))
         if b is not None:
             return b
-    if st.food <= 4:
+    if st.food <= 6:
         if st.block(*st.facing()) == BLK_RIPE_PLANT:
             return ACT_DO
         b = face_adjacent(st, st.cow_at)
@@ -326,14 +340,25 @@ def survive(st, sleep_ok: bool = True) -> int | None:
     if sleep_ok:
         # Never sleep with a zombie in reach: a hit on a sleeping player does
         # 7, not 2, and that is most of the health bar in one tick.
-        zombie_near = any(
-            st.zombie_at(st.player_r + dr, st.player_c + dc)
-            for dr in range(-3, 4) for dc in range(-3, 4)
-        )
+        # Sleep is the ONLY way energy comes back (fatigue < -10 in
+        # update_intrinsics), and energy 0 stops health recovering. Gating
+        # sleep on food and drink created a death spiral: hungry, so no
+        # sleep; no sleep, so no energy; no energy, so no healing.
         sleepy = (st.light_level < 0.15 and st.energy < 9) or st.energy <= 4
-        if (sleepy and st.food > 3 and st.drink > 3 and st.health >= 6
-                and not zombie_near):
+        if sleepy and st.health >= 4 and not threats_near(st):
             return ACT_SLEEP
+    return None
+
+
+def rest(st) -> int | None:
+    """Stand still to heal. recover climbs by 1 a step while food, drink and
+    energy are all above zero, and every 25 of it is one health back. Doing
+    nothing is the only way to heal in Classic, and a forager that never
+    pauses arrives at the ore field on 2 health."""
+    if st.health >= 9 or threats_near(st, 4):
+        return None
+    if st.food > 4 and st.drink > 4 and st.energy > 0:
+        return ACT_NOOP
     return None
 
 
@@ -341,20 +366,37 @@ def survive(st, sleep_ok: bool = True) -> int | None:
 # scripted forager
 # --------------------------------------------------------------------------
 
-# What the iron tools need in one place: a table and a furnace adjacent to the
-# player, and one each of wood, stone, iron, coal — per tool. The forager
-# gathers a margin above that before building its workshop, because walking
-# back for a missing unit is how the first draft kept timing out.
-WORKSHOP = {INV_WOOD: 5, INV_STONE: 5, INV_IRON: 2, INV_COAL: 2}
+# Phases run in this order and never go backwards. An earlier draft recomputed
+# the goal from inventory every tick, and that oscillated: one step toward the
+# stone would drop wood below its threshold, the next step went back to a
+# tree, and the agent spent 500 steps between the two and died in the middle.
+# A phase variable that only advances is what stopped it.
+PHASES = [
+    "wood",       # 5 wood
+    "table",      # table down, wood pick and wood sword made
+    "stone",      # 3 stone mined
+    "tools",      # stone sword, stone pick, a furnace and a placed stone
+    "coal",       # 2 coal
+    "iron",       # 2 iron
+    "workshop",   # table + furnace adjacent, with wood and stone to spare
+    "irontools",  # iron pick and iron sword
+    "diamond",    # the map's single diamond
+    "skeleton",   # one skeleton killed; they only exist near mined stone
+    "idle",       # stay alive, which is also the only route to the step cap
+]
 
 
 def forager(serve, rng: random.Random, max_steps: int) -> list[int]:
-    """Walk the tech tree: wood -> table -> picks -> stone -> furnace ->
-    coal/iron -> iron tools -> diamond, drinking, eating and sleeping on the
-    way. Greedy and map-omniscient: it reads the C's full map out of the dump.
-    That is fine — the corpus has to reach the code, not to be a plausible
-    agent."""
+    """Walk the whole tech tree as a monotonic phase machine.
+
+    Greedy and map-omniscient: it reads the C's full map out of the dump.
+    That is fine — the corpus has to reach the code, not be a plausible agent.
+    Every ore is within about 35 cells of spawn, tunnelling included, so the
+    binding constraint is never distance; it is not wasting steps and not
+    dying on the way.
+    """
     actions = []
+    phase = 0
 
     def emit(a):
         if serve.done or len(actions) >= max_steps:
@@ -362,123 +404,177 @@ def forager(serve, rng: random.Random, max_steps: int) -> list[int]:
         actions.append(a)
         serve.step(a)
 
+    def mine(block):
+        st = serve.state
+        return harvest(st, (block,)) or dig_toward(st, st.inv, (block,))
+
+    def place(action):
+        """Place a block; if the facing cell is occupied, step to free one."""
+        if facing_is_free(serve.state):
+            emit(action)
+            return True
+        mv = face_free_cell(serve.state)
+        if mv is not None:
+            emit(mv)
+            return True
+        return False
+
     while not serve.done and len(actions) < max_steps:
         st = serve.state
         inv = st.inv
         ach = st.achievements
         near_table = st.near_block(BLK_TABLE)
         near_furnace = st.near_block(BLK_FURNACE)
+        name = PHASES[phase]
 
+        # --- interrupts, before any phase logic ---------------------------
         a = survive(st)
         if a is not None:
             emit(a); continue
-
-        # A sapling is a 10% roll per DO on grass, so it needs its own drive
-        # rather than being left to the idle branch.
-        if inv[INV_SAPLING] < 1 and not ach[7]:                  # ACH_PLACE_PLANT
-            if st.block(*st.facing()) == BLK_GRASS:
-                emit(ACT_DO); continue
-
-        # Crafting, whenever the preconditions already hold.
-        if near_table:
-            if not inv[INV_WPICK] and inv[INV_WOOD] >= 1:
-                emit(ACT_MAKE_WOOD_PICK); continue
-            if not inv[INV_WSWORD] and inv[INV_WOOD] >= 1:
-                emit(ACT_MAKE_WOOD_SWORD); continue
-            # Sword before pick at the stone tier: a zombie has 5 health, so
-            # a wood sword (2 damage) needs three swings and a stone sword
-            # (3) needs two. That one step is most of the difference between
-            # winning and losing a night.
-            if not inv[INV_SSWORD] and inv[INV_WOOD] >= 1 and inv[INV_STONE] >= 1:
-                emit(ACT_MAKE_STONE_SWORD); continue
-            if not inv[INV_SPICK] and inv[INV_WOOD] >= 1 and inv[INV_STONE] >= 1:
-                emit(ACT_MAKE_STONE_PICK); continue
-            if near_furnace and inv[INV_WOOD] and inv[INV_STONE] and inv[INV_IRON] and inv[INV_COAL]:
-                if not inv[INV_IPICK]:
-                    emit(ACT_MAKE_IRON_PICK); continue
-                if not inv[INV_ISWORD]:
-                    emit(ACT_MAKE_IRON_SWORD); continue
-
-        # Placing. Everything here needs a free cell in front, and the only
-        # way to face one is to have walked into it, so face_free_cell moves
-        # first and the place happens on the next pass.
-        if facing_is_free(st):
-            # Wall off when hurt. Zombies only spawn on grass and path and
-            # cannot walk through stone, so a placed block is real cover.
-            if st.health <= 4 and inv[INV_STONE] >= 1 and any(
-                    st.zombie_at(st.player_r + dr, st.player_c + dc)
-                    for dr in range(-3, 4) for dc in range(-3, 4)):
-                emit(ACT_PLACE_STONE); continue
-            if inv[INV_WOOD] >= 2 and not near_table:
-                emit(ACT_PLACE_TABLE); continue
-            if inv[INV_STONE] >= 1 and near_table and not near_furnace:
-                emit(ACT_PLACE_FURNACE); continue
-            if inv[INV_SAPLING] >= 1 and st.block(*st.facing()) == BLK_GRASS:
-                emit(ACT_PLACE_PLANT); continue
-            if inv[INV_STONE] >= 2 and not ach[10]:              # ACH_PLACE_STONE
-                emit(ACT_PLACE_STONE); continue
-
-        # Once the ingredients are in hand, build a workshop here rather than
-        # walking back to the first table — the return trip is usually what
-        # the clock runs out on.
-        have_workshop_stock = all(inv[k] >= v for k, v in WORKSHOP.items())
-        if have_workshop_stock and not (near_table and near_furnace) and not inv[INV_ISWORD]:
-            a = face_free_cell(st)
+        # Healing is an interrupt too, not just something the idle phase does.
+        # Standing still is the only way health comes back, and a phase
+        # machine that never pauses arrives at the ore field on 2 health.
+        if st.health <= 5:
+            a = rest(st)
             if a is not None:
                 emit(a); continue
+        if inv[INV_SAPLING] < 1 and not ach[3] and st.block(*st.facing()) == BLK_GRASS:
+            emit(ACT_DO); continue                       # ACH_COLLECT_SAPLING
+        if inv[INV_SAPLING] >= 1 and not ach[7] and st.block(*st.facing()) == BLK_GRASS:
+            emit(ACT_PLACE_PLANT); continue              # ACH_PLACE_PLANT
 
-        # Gathering. Order is by scarcity, not by tech tree: a world holds
-        # 300-400 trees and one to three iron cells, so "nearest of everything
-        # I want" degenerates into farming wood forever. Wood only jumps the
-        # queue when there is not enough left to craft with.
-        wants = []
-        if inv[INV_WOOD] < 2:
-            wants.append(BLK_TREE)
-        if inv[INV_IPICK] and not ach[19]:                       # ACH_COLLECT_DIAMOND
-            wants.append(BLK_DIAMOND)
-        # Stone before the rarer ores: it gates the stone pick, which gates
-        # iron, and it is the one mineral that is never far away.
-        # Enough to craft with, then move on. Holding out for a full
-        # workshop's worth of stone starved the later ores: stone gets spent
-        # on every tool, so "stone < 5" is almost always true and the queue
-        # never advanced past it.
-        if inv[INV_WPICK] and inv[INV_STONE] < 2:
-            wants.append(BLK_STONE)
-        if inv[INV_SPICK] and inv[INV_IRON] < WORKSHOP[INV_IRON]:
-            wants.append(BLK_IRON)
-        if inv[INV_WPICK] and inv[INV_COAL] < WORKSHOP[INV_COAL]:
-            wants.append(BLK_COAL)
-        if inv[INV_WPICK] and inv[INV_STONE] < WORKSHOP[INV_STONE]:
-            wants.append(BLK_STONE)
-        if inv[INV_WOOD] < WORKSHOP[INV_WOOD]:
-            wants.append(BLK_TREE)
-        # One want at a time, in tech-tree order. Pursuing the whole set at
-        # once means always taking the nearest, and trees are everywhere while
-        # a world holds one to three iron cells — so the agent farmed wood
-        # until it starved and never walked to the ore.
-        acted = False
-        for want in wants:
-            a = harvest(st, (want,)) or dig_toward(st, inv, (want,))
-            if a is not None:
-                emit(a); acted = True; break
-        if acted:
+        # --- phase goals ---------------------------------------------------
+        if name == "wood":
+            if inv[INV_WOOD] >= 5:
+                phase += 1; continue
+            a = mine(BLK_TREE)
+            emit(a if a is not None else rng.choice(MOVES)); continue
+
+        if name == "table":
+            if inv[INV_WPICK] and inv[INV_WSWORD]:
+                phase += 1; continue
+            if near_table:
+                if not inv[INV_WPICK] and inv[INV_WOOD] >= 1:
+                    emit(ACT_MAKE_WOOD_PICK); continue
+                if not inv[INV_WSWORD] and inv[INV_WOOD] >= 1:
+                    emit(ACT_MAKE_WOOD_SWORD); continue
+                a = mine(BLK_TREE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            if inv[INV_WOOD] >= 2:
+                if place(ACT_PLACE_TABLE):
+                    continue
+            a = mine(BLK_TREE)
+            emit(a if a is not None else rng.choice(MOVES)); continue
+
+        if name == "stone":
+            if inv[INV_STONE] >= 3:
+                phase += 1; continue
+            a = mine(BLK_STONE)
+            emit(a if a is not None else rng.choice(MOVES)); continue
+
+        if name == "tools":
+            # Needs a table again, and this is usually far from the first one,
+            # so build a second rather than walk back.
+            if inv[INV_SPICK] and inv[INV_SSWORD] and ach[16] and ach[10]:
+                phase += 1; continue                     # PLACE_FURNACE, PLACE_STONE
+            if inv[INV_WOOD] < 2:
+                a = mine(BLK_TREE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            if inv[INV_STONE] < 2:
+                a = mine(BLK_STONE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            if not near_table:
+                if place(ACT_PLACE_TABLE):
+                    continue
+            if not inv[INV_SSWORD]:
+                emit(ACT_MAKE_STONE_SWORD); continue
+            if not inv[INV_SPICK]:
+                emit(ACT_MAKE_STONE_PICK); continue
+            if not ach[16] and place(ACT_PLACE_FURNACE):
+                continue
+            if not ach[10] and place(ACT_PLACE_STONE):
+                continue
+            phase += 1; continue
+
+        if name in ("coal", "iron"):
+            block, slot = (BLK_COAL, INV_COAL) if name == "coal" else (BLK_IRON, INV_IRON)
+            if inv[slot] >= 2:
+                phase += 1; continue
+            a = mine(block)
+            if a is None:
+                phase += 1; continue                     # none left on this map
+            emit(a); continue
+
+        if name == "workshop":
+            if near_table and near_furnace and inv[INV_WOOD] >= 2 and inv[INV_STONE] >= 2:
+                phase += 1; continue
+            # Walk back to a table and furnace that are already standing
+            # before spending 4 wood and 4 stone building a second pair. The
+            # tools phase leaves exactly such a pair behind, and the return
+            # trip is about 35 cells — cheaper than re-gathering, and it is
+            # the step that the iron tools were never reaching.
+            if not (near_table and near_furnace):
+                back = bfs(st, None, lambda cell: any(
+                    st.block(cell[0] + dr, cell[1] + dc) == BLK_TABLE
+                    for dr, dc in ((0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1))
+                ) and any(
+                    st.block(cell[0] + dr, cell[1] + dc) == BLK_FURNACE
+                    for dr, dc in ((0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1))
+                ))
+                a = step_along(back)
+                if a is not None:
+                    emit(a); continue
+            if inv[INV_WOOD] < 4:
+                a = mine(BLK_TREE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            if inv[INV_STONE] < 4:
+                a = mine(BLK_STONE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            if not near_table and place(ACT_PLACE_TABLE):
+                continue
+            if not near_furnace and place(ACT_PLACE_FURNACE):
+                continue
+            phase += 1; continue
+
+        if name == "irontools":
+            if (inv[INV_IPICK] and inv[INV_ISWORD]) or not (inv[INV_IRON] and inv[INV_COAL]):
+                phase += 1; continue
+            if not (near_table and near_furnace):
+                phase -= 1; continue                     # workshop got left behind
+            if inv[INV_WOOD] < 1 or inv[INV_STONE] < 1:
+                a = mine(BLK_TREE if inv[INV_WOOD] < 1 else BLK_STONE)
+                emit(a if a is not None else rng.choice(MOVES)); continue
+            emit(ACT_MAKE_IRON_PICK if not inv[INV_IPICK] else ACT_MAKE_IRON_SWORD)
             continue
 
-        # Hunt a skeleton if we have never beaten one; they sit on path cells
-        # and the rest of the policy actively avoids those.
-        if not ach[12] and (inv[INV_SSWORD] or inv[INV_ISWORD]):  # ACH_DEFEAT_SKELETON
+        if name == "diamond":
+            if ach[19] or not inv[INV_IPICK]:            # ACH_COLLECT_DIAMOND
+                phase += 1; continue
+            a = mine(BLK_DIAMOND)
+            if a is None:
+                phase += 1; continue
+            emit(a); continue
+
+        if name == "skeleton":
+            if ach[12]:                                  # ACH_DEFEAT_SKELETON
+                phase += 1; continue
             path = bfs(st, None, lambda cell: any(
                 st.skel_at(cell[0] + dr, cell[1] + dc)
                 for dr, dc in ((0, -1), (0, 1), (-1, 0), (1, 0))))
             a = step_along(path)
             if a is not None:
                 emit(a); continue
+            # None about: mine stone to make more path for them to spawn on.
+            a = mine(BLK_STONE)
+            emit(a if a is not None else rng.choice(MOVES)); continue
 
-        # Idle: dig grass for a sapling, else wander.
-        if st.block(*st.facing()) == BLK_GRASS and inv[INV_SAPLING] < 1:
+        # idle: heal, keep the plant company, and run out the clock
+        a = rest(st)
+        if a is not None:
+            emit(a); continue
+        if st.block(*st.facing()) == BLK_RIPE_PLANT:
             emit(ACT_DO); continue
-        a = approach_block(st, (BLK_TREE,)) if inv[INV_WOOD] < 9 else None
-        emit(a if a is not None else rng.choice(MOVES))
+        emit(ACT_NOOP if rng.random() < 0.7 else rng.choice(MOVES))
 
     return actions
 

@@ -12,7 +12,8 @@ sub-tasks under the parent; never delete rows.
 | 2a | `cc_ref_driver.c`, stubs, `build.sh`; `layout`, `rng`, `world`, `run` modes | mac | done | `15 passed in 0.55s` (`tests/test_driver.py`) | f4360be | Canonical state = **6880 bytes**, packed LE, 47 fields; `cc_ref layout` prints the table and `common/parity.js` must reproduce it byte for byte. Driver exits non-zero if its `cc_step_no_reset` transcription ever disagrees with the real `puf_step`. `reference/build/` is gitignored — every C gate builds it first. Random-action episodes die in ~140 steps, so the corpus (3a) needs the scripted policies to reach late-game branches. |
 | 2b | Same build on FASRC; 100-episode self-diff mac vs cluster | cluster | done | `19 passed in 5.74s` (`tests/test_selfdiff.py`) | a647941 | **arm64 Mac and x86_64 FASRC agree bit-for-bit** on all 100 episodes / 17705 steps, despite different `-march` and different per-arch V8 FMA settings — Craftax's `cosf` inputs never hit the 1 ULP arm/x86 divergence `native/build_qjs.sh` warns about. The `cosf`/`sinf` redirect had to move from `-D` on the command line into `cc_ref_driver.c`: glibc's `math.h` token-pastes `__DECL_SIMD_` onto the function name, so the command-line form dies inside `/usr/include/math.h` (Apple libc does not, so it only broke on FASRC). Cluster scratch tree: `/n/home06/truong/craftax_selfdiff` (the live tree was left untouched). Cluster `python3` is 3.6 — use `/usr/bin/python3.12`. |
 | 3a | Corpus policies in Python against the driver; action files committed | mac | done | `25 passed in 6.64s` (`tests/test_corpus.py`) | 03c01de | 210 episodes / 48561 steps in `traces/corpus/`, manifest `traces/corpus.json`. Needed a new driver mode, `cc_ref serve` (one action in, one canonical dump out), so policies can decide from the C's own state. **Two gaps 3b must close:** (a) only **15/22** achievements reached — missing `collect_coal`, `collect_iron`, `collect_diamond`, `make_iron_pick`, `make_iron_sword`, `defeat_skeleton`, `eat_plant`; (b) **every** episode terminates by health, so neither the timeout nor the lava terminal branch is in the corpus. Lava is unreachable by construction (quirk 1); a timeout episode needs a survive-and-idle policy, which PLAN 4.3's table does not list — adding one is a PLAN change, so 3b should decide it. |
-| 3b | Golden hash chains; C coverage of game functions 100% | mac | todo | | | G3 half |
+| 3b-i | Golden hash chains (`traces/golden/*.fnv`, `golden.json`) | mac | done | `31 passed in 7.49s` (`tests/test_golden.py`) | COMMIT3B | 210 chains, 49061 steps, 13 bytes/step (state hash + reward bits + done). CI-checkable without a compiler; the C-present half replays every episode and reports the first diverging step. |
+| 3b-ii | G3: every `ACH_*` fires, every action index appears, C game-function coverage 100% | mac | blocked | C game-function line coverage **96.43% (567/588)**; 18/22 achievements | | **Exact blocker below.** Do not write `tests/test_coverage.py` until the corpus closes it — a green gate over a corpus that misses these lines would be the gate lying. |
 | 4a | `common/f32.js`, `rng_pcg32.js`, `u64bits.js`, `parity.js` | mac | todo | | | G0 |
 | 4b | `10_constants.js`, `20_state.js`; layout test vs `cc_ref layout` | mac | todo | | | |
 | 5 | `30_worldgen.js` | mac | todo | | | G1, 1000 seeds |
@@ -39,3 +40,60 @@ Newest first. One line per iteration: date, task, what happened.
 - 2026-09-14 — 2a — driver + `stubs/{raylib,ini}.h` + `build.sh` + `v8_shim.cc`; four modes work; 5619 steps cross-checked against the real `puf_step` across 40 seeds. PLAN 4.2 corrected on three points (ini.h stub, v8libm not frozenmath, the transcription requirement) and 1.4's frozenmath path fixed.
 - 2026-09-14 — 2b — built on FASRC (clang 21.1.8, x86_64); fixed the glibc math.h clash; `traces/selfdiff_{arm64,x86_64}.txt` committed and identical; gate also re-derives this machine's digest so a drifted local build cannot pass.
 - 2026-09-14 — 3a — `ccstate.py` (layout-driven dump decoder + `Serve`), `policies.py` (5 policies), `build_corpus.py`; `cc_ref serve` added to the driver. Two reference quirks documented in README: lava never generates (0 cells in 500 seeds), and the sand band's upper bound is dead code.
+- 2026-09-14 — 3b — forager rewritten as a monotonic phase machine (the old recompute-from-inventory version oscillated between wood and stone and died mid-swing); survival core corrected. Corpus regenerated: 15 -> 18 achievements. Golden chains built and gated. G3 coverage measured and blocked; see below.
+
+## 3b-ii blocker: the 21 uncovered lines
+
+Measured with a `--coverage` build of the driver over all 210 corpus episodes
+(`clang -O0 --coverage`, then `gcov -b`). Restricted to the game functions
+(`craftax_classic.h` lines 236-1011, so excluding `puf_render` and `puf_log`):
+**567/588 lines = 96.43%**. The whole header reads 79.45% of 730 lines, but the
+difference is the render path, which G3 excludes.
+
+Every uncovered line traces to one of four unreached achievements:
+
+| Lines | Code | Needs |
+|---|---|---|
+| 508-509, 513-514 | `make_iron_pick`, `make_iron_sword` bodies in `do_crafting` | a table **and** furnace adjacent while holding wood, stone, iron and coal |
+| 547-554 | attacking a skeleton in `do_action` | a skeleton adjacent; they only spawn on `BLK_PATH`, which only exists where stone has been mined |
+| 582-586 | collecting diamond in `do_action` | an iron pickaxe, so it is downstream of the two above |
+| 718-720 | skeleton despawn at `MOB_DESPAWN_DIST` | a skeleton spawned, then the player walking 14 away from it |
+
+`puf_close` (line 1011) was also uncovered and is now called by the driver.
+
+**Why the corpus does not get there.** Distance is not the constraint: from
+spawn, tunnelling included, stone is ~20 cells away, coal ~30, iron ~30 and
+diamond ~30 on every seed measured. The constraint is survival. The forager
+reliably reaches stone tools (18/22 achievements, `make_stone_pick`,
+`make_stone_sword`, `place_furnace`, `place_stone` all covered) but usually
+dies between 200 and 900 steps, and only 1 seed in 20 reaches iron ore at all.
+Deaths are combat, not starvation — zombies, three at a time at night, against
+a 5-health-per-zombie / 2-damage-per-swing arithmetic.
+
+**Tried and measured, so the next iteration does not repeat it:**
+
+- Best-of-6 random restarts per world seed over all 30 forager seeds: union
+  stays at **18/22**, best single episode 17. Variance is not the answer.
+- Fleeing from zombies instead of fighting: worse. A zombie closes with
+  p=0.75 per step, so it matches the player's speed and running only defers
+  the fight with less health.
+- Survival thresholds at 7 instead of 4: worse — the agent shuttles between
+  water and cows and never prospects. At 4 it starves. 6 is the current value.
+- Stockpiling 6 wood + 6 stone before the ore trip: worse (14/22); the
+  stockpile consumes the lifespan.
+- Walking back to an existing table+furnace instead of rebuilding: no change.
+
+**What is most likely to work next.** The agent needs to survive the night
+rather than out-fight it. Zombies spawn only on `BLK_GRASS` and `BLK_PATH`
+(`try_spawn`, and note the `!need_grass && !need_path` branch still requires
+one of the two), and `can_move_mob` refuses solid blocks — so a player sealed
+inside mined stone is unreachable. A "burrow at dusk" behaviour (mine into a
+stone mass, place stone behind, idle until `light_level` recovers) should turn
+the 200-900 step lifespan into a full 10000-step episode, which would also
+produce the first `timeout` terminal the corpus lacks. Skeleton coverage
+follows for free, since burrowing creates the `BLK_PATH` they spawn on.
+
+Second, smaller thing: **no episode reaches the step cap**, so the
+`timestep >= MAX_TIMESTEPS` terminal is untested too. All 210 end by health.
+PLAN 4.3's policy table has no survive-and-idle policy; adding one is a PLAN
+change and should be decided explicitly, not slipped in.
