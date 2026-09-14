@@ -92,12 +92,14 @@ def test_rng_matches_a_python_reference():
     lines = run("rng", str(seed), str(n)).decode().splitlines()
     assert len(lines) == n
     for line in lines:
-        out_s, rf_hex, ri_s = line.split()
+        out_s, rf_hex, ri4_s, ri8_s, ri64_s = line.split()
         out = nxt()
         assert int(out_s) == out
         rf = struct.unpack("<f", struct.pack("<I", int(rf_hex, 16)))[0]
         assert rf == (out >> 8) * (1.0 / 16777216.0)
-        assert int(ri_s) == out % 64
+        assert int(ri4_s) == out % 4
+        assert int(ri8_s) == out % 8
+        assert int(ri64_s) == out % 64
 
 
 def test_rng_is_deterministic():

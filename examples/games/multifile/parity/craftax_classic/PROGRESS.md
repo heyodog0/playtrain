@@ -14,7 +14,7 @@ sub-tasks under the parent; never delete rows.
 | 3a | Corpus policies in Python against the driver; action files committed | mac | done | `25 passed in 6.64s` (`tests/test_corpus.py`) | 03c01de | 210 episodes / 48561 steps in `traces/corpus/`, manifest `traces/corpus.json`. Needed a new driver mode, `cc_ref serve` (one action in, one canonical dump out), so policies can decide from the C's own state. **Two gaps 3b must close:** (a) only **15/22** achievements reached — missing `collect_coal`, `collect_iron`, `collect_diamond`, `make_iron_pick`, `make_iron_sword`, `defeat_skeleton`, `eat_plant`; (b) **every** episode terminates by health, so neither the timeout nor the lava terminal branch is in the corpus. Lava is unreachable by construction (quirk 1); a timeout episode needs a survive-and-idle policy, which PLAN 4.3's table does not list — adding one is a PLAN change, so 3b should decide it. |
 | 3b-i | Golden hash chains (`traces/golden/*.fnv`, `golden.json`) | mac | done | `31 passed in 7.49s` (`tests/test_golden.py`) | d170ae4 | 210 chains, 49061 steps, 13 bytes/step (state hash + reward bits + done). CI-checkable without a compiler; the C-present half replays every episode and reports the first diverging step. |
 | 3b-ii | G3: every `ACH_*` fires, every action index appears, C game-function coverage 100% | mac | blocked | C game-function line coverage **96.43% (567/588)**; 18/22 achievements | | **Exact blocker below.** Do not write `tests/test_coverage.py` until the corpus closes it — a green gate over a corpus that misses these lines would be the gate lying. |
-| 4a | `common/f32.js`, `rng_pcg32.js`, `u64bits.js`, `parity.js` | mac | todo | | | G0 |
+| 4a | `common/f32.js`, `rng_pcg32.js`, `u64bits.js`, `parity.js` | mac | done | `35 passed in 38.11s` (`tests/test_rng.py` = G0) | COMMIT4A | G0 green: 10^6 draws on one seed and 16 draws on each of 1000 seeds, all five columns (pcg, rf bits, ri4/8/64) identical to the C. 64-bit LCG is two uint32 words in 16-bit limbs, no BigInt. `cc_ref rng` now prints 5 columns, not 3. **Use `tests/jsrun.py`, never `node -e`** — under eval a top-level `const`/`class` is invisible to later snippets while `function` leaks, which is not how the concatenated bundle behaves. `parity.js` ships `ParityWriter` + `fnv1a64`; 4b wires it to the real state buffer and checks it against `cc_ref layout`. |
 | 4b | `10_constants.js`, `20_state.js`; layout test vs `cc_ref layout` | mac | todo | | | |
 | 5 | `30_worldgen.js` | mac | todo | | | G1, 1000 seeds |
 | 6a | `40_player.js` | mac | todo | | | lockstep on forager episodes only |
@@ -43,6 +43,8 @@ Newest first. One line per iteration: date, task, what happened.
 - 2026-09-14 — 3b — forager rewritten as a monotonic phase machine (the old recompute-from-inventory version oscillated between wood and stone and died mid-swing); survival core corrected. Corpus regenerated: 15 -> 18 achievements. Golden chains built and gated. G3 coverage measured and blocked; see below.
 
 ## 3b-ii blocker: the 21 uncovered lines
+
+*(Still open. 4a was taken next because the loop skips blocked tasks.)*
 
 Measured with a `--coverage` build of the driver over all 210 corpus episodes
 (`clang -O0 --coverage`, then `gcov -b`). Restricted to the game functions
@@ -97,3 +99,4 @@ Second, smaller thing: **no episode reaches the step cap**, so the
 `timestep >= MAX_TIMESTEPS` terminal is untested too. All 210 end by health.
 PLAN 4.3's policy table has no survive-and-idle policy; adding one is a PLAN
 change and should be decided explicitly, not slipped in.
+- 2026-09-14 — 4a — four `common/` modules written and gated. FNV-1a 64 and the writer checked against Python; RNG checked against the C on 1_000_000 + 16000 draws.

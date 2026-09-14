@@ -10,10 +10,11 @@
 //       agree with this table byte for byte.
 //
 //   cc_ref rng <seed> <n>
-//       n lines: "<pcg_out> <rf_bits> <ri64>" from a stream seeded exactly as
-//       c_init seeds it (including the 8 warm-up draws). rf_bits is the float32
-//       of cr_rf as a hex u32 so the comparison is on bits, not on a printed
-//       decimal.
+//       n lines: "<pcg_out> <rf_bits> <ri4> <ri8> <ri64>" from a stream seeded
+//       exactly as c_init seeds it (including the 8 warm-up draws). Every
+//       column is derived from the SAME draw. rf_bits is the float32 of cr_rf
+//       as a hex u32 so the comparison is on bits, not on a printed decimal.
+//       The three ri columns are the moduli G0 asks for.
 //
 //   cc_ref world <seed>
 //       one canonical state dump (binary, CC_STATE_BYTES) straight after
@@ -346,11 +347,15 @@ static int mode_rng(unsigned int seed, int n) {
     uint64_t s = (uint64_t)seed * 0x9E3779B97F4A7C15ULL + 0x87C37B91114253D5ULL;
     for (int i = 0; i < 8; i++) (void)cr_pcg(&s);
     for (int i = 0; i < n; i++) {
+        // Each column re-runs the same single draw on a copy, so the line
+        // describes one output rather than five consecutive ones.
         uint64_t sa = s;  uint32_t out = cr_pcg(&sa);
         uint64_t sb = s;  float f = cr_rf(&sb);
-        uint64_t sc = s;  int k = cr_ri(&sc, 64);
+        uint64_t s4 = s;  int k4  = cr_ri(&s4, 4);
+        uint64_t s8 = s;  int k8  = cr_ri(&s8, 8);
+        uint64_t s64 = s; int k64 = cr_ri(&s64, 64);
         uint32_t fb; memcpy(&fb, &f, 4);
-        printf("%u %08x %d\n", out, fb, k);
+        printf("%u %08x %d %d %d\n", out, fb, k4, k8, k64);
         s = sa;  // one draw consumed per line
     }
     return 0;
