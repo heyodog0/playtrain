@@ -177,6 +177,8 @@ function createState() {
   bind(STATE_FIELDS_I16, 2, (b, o, n) => new Int16Array(b, o, n));
   bind(STATE_FIELDS_I8, 1, (b, o, n) => new Int8Array(b, o, n));
   bind(STATE_FIELDS_U8, 1, (b, o, n) => new Uint8Array(b, o, n));
+  // Episode accumulators live outside the parity buffer; see 70_step.js.
+  if (typeof attachEpisodeAccumulators === 'function') attachEpisodeAccumulators(st);
   return st;
 }
 
