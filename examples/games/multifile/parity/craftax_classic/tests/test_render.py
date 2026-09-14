@@ -6,8 +6,9 @@ deterministic, obs-aligned view of the state:
 
   - frames are deterministic for a given seed and action sequence
   - they change when the state changes, and track the player
-  - the 56px tile grid lands on obs pixel boundaries, which is the whole
-    reason for the 512 canvas and the 9x7 layout (PLAN 6)
+  - tiles arrive UNRESAMPLED: a rendered tile is byte-identical to the
+    baked atlas sprite, which is what makes the frame Craftax's image
+    rather than an approximation of it
   - it reads state only: rendering twice from the same state must not
     change the state or the RNG
 
@@ -18,6 +19,8 @@ dynamics gates, because those never call draw().
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -25,9 +28,12 @@ from playtrain.runtime import PlayTrainEnv
 
 GAME = "craftax_classic"
 OBS = 64
-# 56 canvas px per tile / (512 canvas px / 64 obs px) = 7 obs px per tile.
+# BLOCK_PIXEL_SIZE_AGENT. The canvas is 64 and the device scale is 1:1, so a
+# 7px tile is 7 obs px and every blit is a straight copy.
 TILE_OBS = 7
 VIEW_ROWS, VIEW_COLS = 7, 9
+# Craftax's frame is 63x63 in the top-left; col/row 63 is padding.
+CRAFTAX_W = CRAFTAX_H = 63
 
 
 @pytest.fixture(scope="module")
@@ -85,42 +91,77 @@ def test_different_seeds_render_differently():
     assert not np.array_equal(run(1), run(2))
 
 
-def test_tiles_land_on_obs_pixel_boundaries(frames):
-    """PLAN 6's reason for the 512 canvas: a tile is 56 canvas px = exactly 7
-    obs px, so each block is a crisp 7x7 block in the observation rather than
-    a smeared 6.8. Check by looking at the flat interior of each tile: the
-    3x3 centre of every tile must be one uniform colour.
+def atlas_sprites():
+    """Decode the baked atlas the game ships, as {name: (7,7,4) uint8}."""
+    import base64
+    import re
 
-    The player tile is skipped — it is the one tile that always has a glyph
-    through its middle.
+    src = (Path(__file__).resolve().parent.parent / "src" / "15_atlas.js").read_text()
+    tile = int(re.search(r"const ATLAS_TILE = (\d+)", src).group(1))
+    body = src.split("const ATLAS = {", 1)[1].split("};", 1)[0]
+    index = {k: int(v) for k, v in re.findall(r"(\w+):\s*(\d+),", body)}
+    b64 = "".join(re.findall(r"'([A-Za-z0-9+/=]*)'", src.split("ATLAS_B64 =", 1)[1]))
+    raw = np.frombuffer(base64.b64decode(b64), dtype=np.uint8)
+    stride = tile * tile * 4
+    return {
+        name: raw[i * stride : (i + 1) * stride].reshape(tile, tile, 4)
+        for name, i in index.items()
+    }, tile
+
+
+def test_tiles_are_byte_identical_to_the_atlas():
+    """The claim the whole baked-atlas design exists to support.
+
+    Craftax downsamples its 16x16 assets to 7x7 with PIL NEAREST, whose index
+    mapping differs from the rasterizer's blit. So the downscale is done at
+    build time and the runtime blit is 1:1 — which means a rendered tile must
+    equal the atlas sprite EXACTLY, not approximately. If this drifts, the
+    frame is no longer Craftax's image.
+
+    Checked on an all-grass corner of the view, away from the player and any
+    mob overlay.
     """
-    frame = frames[0]
-    ragged = []
+    sprites, tile = atlas_sprites()
+    grass = sprites["block_2"][:, :, :3]
+
+    env = PlayTrainEnv(game=GAME, obs_size=OBS)
+    try:
+        obs, _ = env.reset(seed=3)
+    finally:
+        env.close()
+
+    matches = 0
     for vr in range(VIEW_ROWS):
         for vc in range(VIEW_COLS):
             if (vr, vc) == (3, 4):
-                continue  # the player
-            r0 = vr * TILE_OBS
-            c0 = vc * TILE_OBS
-            centre = frame[r0 + 2 : r0 + 5, c0 + 2 : c0 + 5]
-            if len(np.unique(centre.reshape(-1, 3), axis=0)) > 2:
-                ragged.append((vr, vc))
-    # A tile with a glyph through its centre is legitimate; a majority being
-    # ragged would mean the grid is misaligned.
-    assert len(ragged) < (VIEW_ROWS * VIEW_COLS) // 2, (
-        f"{len(ragged)} of {VIEW_ROWS * VIEW_COLS} tiles have a ragged centre: {ragged[:10]}"
+                continue                      # the player tile
+            got = obs[vr * tile : (vr + 1) * tile, vc * tile : (vc + 1) * tile]
+            if np.array_equal(got, grass):
+                matches += 1
+    assert matches >= 10, (
+        f"only {matches} tiles are byte-identical to the grass sprite; "
+        "blits are being resampled or the atlas is stale"
     )
 
 
-def test_the_hud_occupies_the_bottom_two_tile_rows(frames):
-    """The view is 7 rows of 56px = 392 canvas px = 49 obs rows; the two HUD
-    rows follow. Check the HUD band is not just a copy of the world."""
+def test_the_padding_column_and_row_are_black(frames):
+    """Craftax's frame is 63x63; ours is 64x64 because every harness fixes
+    the observation at 64. The extra row and column must be inert padding,
+    not a smeared edge — obs[:63, :63] is the Craftax frame."""
+    frame = frames[0]
+    assert frame[:, CRAFTAX_W:].sum() == 0, "the padding column is not black"
+    assert frame[CRAFTAX_H:, :].sum() == 0, "the padding row is not black"
+
+
+def test_the_inventory_rows_sit_below_the_map(frames):
+    """7 map rows of 7px = 49, then 2 inventory rows = 63, then 1 pad row."""
     frame = frames[-1]
     view = frame[: VIEW_ROWS * TILE_OBS]
-    hud = frame[VIEW_ROWS * TILE_OBS :]
-    assert hud.shape[0] == OBS - VIEW_ROWS * TILE_OBS == 15
-    assert hud.mean() != view.mean(), "the HUD band looks like the world view"
-    assert len(np.unique(hud.reshape(-1, 3), axis=0)) >= 3
+    inv = frame[VIEW_ROWS * TILE_OBS : CRAFTAX_H]
+    assert inv.shape[0] == 2 * TILE_OBS == 14
+    assert inv.mean() != view.mean(), "the inventory band looks like the world view"
+    # Intrinsics are always non-zero, so the band is never fully black.
+    assert inv.sum() > 0
 
 
 def test_render_does_not_touch_the_state_or_the_rng():

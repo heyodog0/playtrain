@@ -12,6 +12,7 @@ binary. The build fetches the sources rather than vendoring them
 | [matter-js](https://brm.io/matter-js/) 0.20.0 | 2D physics for the games that use it (`tools/vendor/matter.min.js`, MIT header inline) | MIT |
 | [ProcGen](https://github.com/openai/procgen) | reference C++ sources, not compiled — see `games/procgen_src/LICENSE` | MIT |
 | [PufferLib](https://github.com/PufferAI/PufferLib) | reference C sources for the Craftax-Classic parity port, not compiled — see `games/craftax_src/` | MIT |
+| [Craftax](https://github.com/MichaelTMatthews/Craftax) | the 16x16 textures the Craftax-Classic port renders from, baked into the bundle at build time — see `games/craftax_assets/` | MIT |
 
 ---
 
@@ -46,10 +47,22 @@ The sources are reference only: they are not compiled into the wheel. They are
 built locally, outside the wheel, by the lockstep gate of the Craftax-Classic
 parity port in `examples/games/multifile/parity/craftax_classic/`.
 
+## Craftax
+
+Copyright (c) 2024 Michael Matthews
+
+Vendored at commit `c3c2e0d038c4e641f9481320c158f457f30c28f3` in
+`games/craftax_assets/`. The 59 PNGs are Craftax's own sprite assets; the
+Craftax-Classic port renders from them so its observation carries the same
+image the published Craftax-Classic-Pixels benchmark does. They are baked
+into the bundle by `tools/craftax_atlas.py`, so no asset file ships or is
+loaded at runtime.
+
 ## MIT License
 
-Applies to quickjs-ng, matter-js, ProcGen, PufferLib and the MIT-licensed
-portions of openlibm, each under the copyright lines given above.
+Applies to quickjs-ng, matter-js, ProcGen, PufferLib, Craftax and the
+MIT-licensed portions of openlibm, each under the copyright lines given
+above.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal

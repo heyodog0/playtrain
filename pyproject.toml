@@ -88,3 +88,8 @@ include = [
   "README.md",
   "LICENSE",
 ]
+
+[dependency-groups]
+dev = [
+    "pillow>=12.3.0",
+]

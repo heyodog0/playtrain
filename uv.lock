@@ -656,6 +656,11 @@ test = [
     { name = "pytest" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pillow" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "ale-py", marker = "extra == 'rom'", specifier = ">=0.10" },
@@ -669,6 +674,9 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
 ]
 provides-extras = ["gen", "test", "rom"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pillow", specifier = ">=12.3.0" }]
 
 [[package]]
 name = "pluggy"

@@ -9,6 +9,7 @@
     "../../common/parity.js",
     "src/00_header.js",
     "src/10_constants.js",
+    "src/15_atlas.js",
     "src/20_state.js",
     "src/30_worldgen.js",
     "src/40_player.js",
@@ -117,7 +118,9 @@
   ],
   "obs": {
     "rgb": true,
-    "symbolic": 1345
+    "symbolic": 1345,
+    "rgb_size": 64,
+    "craftax_frame": "obs[:63, :63] is Craftax's 63x63 agent frame; the last row and column are black padding (the harnesses fix the observation at 64)"
   },
   "max_steps": 10000,
   "human": {

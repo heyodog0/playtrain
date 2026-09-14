@@ -1,274 +1,188 @@
-// 80_render.js — house-style rendering, aligned to the observation grid.
+// 80_render.js — Craftax's own textures, at Craftax's own geometry.
 //
-// PLAN 6. Canvas 512x512 and obs 64x64, so one obs pixel is an 8x8 canvas
-// block. Tiles are 56 canvas px = exactly 7 obs px, laid out 9 columns x 7
-// rows (504x392) — the same 7x9 window compute_observations reads — then two
-// 56px rows for the inventory strip and the status bars, giving 504x504 with
-// an 8px margin right and bottom. Every tile edge lands on an obs pixel
-// boundary, so a block is a crisp 7x7 in the observation rather than a
-// smeared 6.8.
+// The observation is 63x63: a 9-wide by 7-tall map view plus 2 inventory
+// rows, every tile 7x7. That is BLOCK_PIXEL_SIZE_AGENT and OBS_DIM from
+// craftax_classic/constants.py, not a layout of ours.
 //
-// Constraints this file keeps to, all of them so the rasterizer path is the
-// one every catalog game already gates on:
-//   - flat fills plus at most one primitive glyph per block
-//   - no images and no text(); digits come from a 3x5 segment table
-//   - reads state only: never mutates, never draws from the RNG
+// The textures are Craftax's, baked to 7x7 at build time by
+// tools/craftax_atlas.py and carried in 15_atlas.js. They are uploaded once
+// at setup into rasterizer bitmaps, and every tile is then a 1:1 blit — no
+// resampling at runtime, so the image is identical on every backend.
 //
-// The pixels are explicitly NOT part of the parity claim. PufferLib's
-// textures are a raylib viewer and its training is symbolic; Craftax's own
-// pixel env is a third, different image. See README.md.
+// WHAT IS AND IS NOT VERIFIED. The geometry, the textures and the tile
+// placement follow Craftax. Whether the finished frame is byte-identical to
+// Craftax-Classic-Pixels has NOT been checked — that needs a comparison run
+// against the JAX environment, which nothing here can do. In particular the
+// overlay compositing below uses integer arithmetic, while Craftax blends in
+// float; those can differ by a unit on edge pixels. See README.
+//
+// The dynamics parity claim (G0-G2) is unaffected either way: it compares
+// state, never pixels.
 
-const RENDER_CANVAS = 512;
-const RENDER_TILE = 56;          // 7 obs pixels
-const RENDER_COLS = 9;           // dc -4..4, matching compute_observations
-const RENDER_ROWS = 7;           // dr -3..3
-const RENDER_VIEW_H = RENDER_TILE * RENDER_ROWS;   // 392
-const RENDER_HUD_Y = RENDER_VIEW_H;                // inventory strip
-const RENDER_BAR_Y = RENDER_VIEW_H + RENDER_TILE;  // status bars
+const RENDER_TILE = 7;              // BLOCK_PIXEL_SIZE_AGENT
+const RENDER_COLS = 9;              // OBS_DIM[1]
+const RENDER_ROWS = 7;              // OBS_DIM[0]
+const RENDER_INV_ROWS = 2;          // INVENTORY_OBS_HEIGHT
+const RENDER_W = RENDER_TILE * RENDER_COLS;                        // 63
+const RENDER_H = RENDER_TILE * (RENDER_ROWS + RENDER_INV_ROWS);    // 63
 
-// Flat colour per block id, indexed by BLK_*.
-const BLOCK_COLOURS = [
-  [0, 0, 0],          // 0  invalid
-  [12, 12, 16],       // 1  out of bounds
-  [86, 142, 66],      // 2  grass
-  [54, 98, 178],      // 3  water
-  [128, 128, 132],    // 4  stone
-  [42, 104, 52],      // 5  tree
-  [138, 98, 58],      // 6  wood
-  [162, 148, 122],    // 7  path
-  [58, 58, 62],       // 8  coal
-  [176, 142, 108],    // 9  iron
-  [110, 200, 214],    // 10 diamond
-  [150, 106, 58],     // 11 table
-  [96, 92, 96],       // 12 furnace
-  [214, 200, 140],    // 13 sand
-  [206, 88, 40],      // 14 lava
-  [76, 158, 74],      // 15 plant
-  [196, 190, 70],     // 16 ripe plant
-];
+// One rasterizer bitmap per sprite, filled at setup from the baked atlas.
+let _atlasBmp = null;
+// A 7x7 scratch bitmap for a sprite composited over its background tile.
+let _scratchBmp = -1;
+const _scratchPx = new Uint8Array(RENDER_TILE * RENDER_TILE * 4);
+let _atlasRaw = null;
 
-// 3x5 segment font, one bit per cell, row-major from the top. Only digits:
-// the inventory strip is the only place the render shows a number.
-const DIGIT_GLYPHS = [
-  0b111101101101111, // 0
-  0b010110010010111, // 1
-  0b111001111100111, // 2
-  0b111001111001111, // 3
-  0b101101111001001, // 4
-  0b111100111001111, // 5
-  0b111100111101111, // 6
-  0b111001001001001, // 7
-  0b111101111101111, // 8
-  0b111101111001111, // 9
-];
-
-function renderDim(rgb, light) {
-  // Night multiplies tile colour by light_level, so the observation carries
-  // time of day the way the original pixel env does.
-  return [
-    (rgb[0] * light) | 0,
-    (rgb[1] * light) | 0,
-    (rgb[2] * light) | 0,
-  ];
-}
-
-function renderDigit(d, x, y, px) {
-  const glyph = DIGIT_GLYPHS[d];
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 3; col++) {
-      if ((glyph >> (14 - (row * 3 + col))) & 1) {
-        rect(x + col * px, y + row * px, px, px);
-      }
-    }
+function _decodeAtlas() {
+  // base64 -> bytes, without atob (QuickJS has no DOM) and without BigInt.
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const lut = new Int16Array(256).fill(-1);
+  for (let i = 0; i < 64; i++) lut[B64.charCodeAt(i)] = i;
+  const s = ATLAS_B64;
+  let pad = 0;
+  for (let i = s.length - 1; i >= 0 && s[i] === '='; i--) pad++;
+  const out = new Uint8Array((s.length / 4) * 3 - pad);
+  let o = 0;
+  for (let i = 0; i < s.length; i += 4) {
+    const a = lut[s.charCodeAt(i)], b = lut[s.charCodeAt(i + 1)];
+    const c = lut[s.charCodeAt(i + 2)], d = lut[s.charCodeAt(i + 3)];
+    const n = (a << 18) | (b << 12) | ((c < 0 ? 0 : c) << 6) | (d < 0 ? 0 : d);
+    if (o < out.length) out[o++] = (n >> 16) & 0xff;
+    if (o < out.length) out[o++] = (n >> 8) & 0xff;
+    if (o < out.length) out[o++] = n & 0xff;
   }
+  return out;
 }
 
-function renderTileGlyph(blk, x, y, light) {
-  const t = RENDER_TILE;
-  noStroke();
-  switch (blk) {
-    case BLK_TREE: {
-      const c = renderDim([28, 72, 36], light);
-      fill(c[0], c[1], c[2]);
-      triangle(x + t / 2, y + 6, x + 8, y + t - 8, x + t - 8, y + t - 8);
-      break;
-    }
-    case BLK_COAL:
-    case BLK_IRON:
-    case BLK_DIAMOND: {
-      const base = BLOCK_COLOURS[blk];
-      const c = renderDim([base[0] >> 1, base[1] >> 1, base[2] >> 1], light);
-      fill(c[0], c[1], c[2]);
-      rect(x + 16, y + 16, t - 32, t - 32);
-      break;
-    }
-    case BLK_WATER: {
-      const c = renderDim([88, 170, 208], light);
-      fill(c[0], c[1], c[2]);
-      rect(x + 8, y + 16, t - 16, 6);
-      rect(x + 8, y + 34, t - 16, 6);
-      break;
-    }
-    case BLK_TABLE: {
-      const c = renderDim([96, 64, 32], light);
-      fill(c[0], c[1], c[2]);
-      rect(x + 8, y + 18, t - 16, 8);
-      break;
-    }
-    case BLK_FURNACE: {
-      const c = renderDim([220, 120, 40], light);
-      fill(c[0], c[1], c[2]);
-      rect(x + 18, y + 26, t - 36, t - 36);
-      break;
-    }
-    case BLK_PLANT:
-    case BLK_RIPE_PLANT: {
-      const c = renderDim(blk === BLK_RIPE_PLANT ? [232, 226, 90] : [40, 110, 50], light);
-      fill(c[0], c[1], c[2]);
-      rect(x + t / 2 - 3, y + 14, 6, t - 26);
-      break;
-    }
-    default:
-      break;
+function _spriteBytes(index) {
+  const off = index * ATLAS_STRIDE;
+  return _atlasRaw.subarray(off, off + ATLAS_STRIDE);
+}
+
+function initRender() {
+  _atlasRaw = _decodeAtlas();
+  _atlasBmp = new Int32Array(ATLAS_COUNT);
+  for (let i = 0; i < ATLAS_COUNT; i++) {
+    const h = createBitmap(RENDER_TILE, RENDER_TILE);
+    loadBitmap(h, _spriteBytes(i));
+    _atlasBmp[i] = h;
   }
+  _scratchBmp = createBitmap(RENDER_TILE, RENDER_TILE);
 }
 
-function renderBar(x, y, w, h, value, maxValue, rgb) {
-  noStroke();
-  fill(26, 26, 30);
-  rect(x, y, w, h);
-  const v = value < 0 ? 0 : (value > maxValue ? maxValue : value);
-  if (v > 0) {
-    fill(rgb[0], rgb[1], rgb[2]);
-    rect(x, y, ((w * v) / maxValue) | 0, h);
+// Draw sprite `idx` at tile (col, row) of the grid, 1:1.
+function _blit(idx, col, row) {
+  image(_atlasBmp[idx], col * RENDER_TILE, row * RENDER_TILE, RENDER_TILE, RENDER_TILE);
+}
+
+// Composite an alpha sprite over a background sprite and blit the result.
+//
+// rs_draw_image is a straight byte copy with no blending — deliberately, so
+// that blits stay integer-only and bit-exact — so anything with an alpha
+// edge has to be composited before it is uploaded. Integer arithmetic with
+// round-half-up; see the honesty note at the top of this file.
+function _blitOver(bgIdx, fgIdx, col, row) {
+  const bg = _spriteBytes(bgIdx);
+  const fg = _spriteBytes(fgIdx);
+  for (let i = 0; i < ATLAS_STRIDE; i += 4) {
+    const a = fg[i + 3];
+    if (a === 255) {
+      _scratchPx[i] = fg[i]; _scratchPx[i + 1] = fg[i + 1];
+      _scratchPx[i + 2] = fg[i + 2];
+    } else if (a === 0) {
+      _scratchPx[i] = bg[i]; _scratchPx[i + 1] = bg[i + 1];
+      _scratchPx[i + 2] = bg[i + 2];
+    } else {
+      const ia = 255 - a;
+      _scratchPx[i] = ((fg[i] * a + bg[i] * ia + 127) / 255) | 0;
+      _scratchPx[i + 1] = ((fg[i + 1] * a + bg[i + 1] * ia + 127) / 255) | 0;
+      _scratchPx[i + 2] = ((fg[i + 2] * a + bg[i + 2] * ia + 127) / 255) | 0;
+    }
+    _scratchPx[i + 3] = 255;
   }
+  loadBitmap(_scratchBmp, _scratchPx);
+  image(_scratchBmp, col * RENDER_TILE, row * RENDER_TILE, RENDER_TILE, RENDER_TILE);
 }
 
-// The only entry point. 90_playtrain.js calls this from draw().
+function _playerSprite(dir, asleep) {
+  if (asleep) return ATLAS.player_sleep;
+  if (dir === 1) return ATLAS.player_left;
+  if (dir === 2) return ATLAS.player_right;
+  if (dir === 3) return ATLAS.player_up;
+  return ATLAS.player_down;
+}
+
+function _arrowSprite(dr, dc) {
+  if (dr < 0) return ATLAS.arrow_up;
+  if (dr > 0) return ATLAS.arrow_down;
+  if (dc < 0) return ATLAS.arrow_left;
+  return ATLAS.arrow_right;
+}
+
+// Inventory rows. Craftax shows the four intrinsics then the items and
+// tools, each with its count as a digit. The exact slot order here is ours,
+// not verified against Craftax's renderer — see the note at the top.
+const _INV_ROW_A = ['health', 'food', 'drink', 'energy',
+                    'inv_wood', 'inv_stone', 'inv_coal', 'inv_iron', 'inv_diamond'];
+const _INV_ROW_B = ['inv_sapling', 'inv_wpick', 'inv_spick', 'inv_ipick',
+                    'inv_wsword', 'inv_ssword', 'inv_isword'];
+
 function renderGame(st) {
-  const light = st.lightLevel[0];
+  if (_atlasBmp === null) initRender();
+
   const pr = st.playerR[0];
   const pc = st.playerC[0];
 
-  background(10, 10, 12);
-  noStroke();
+  background(0, 0, 0);
 
-  // --- the 9x7 view ------------------------------------------------------
+  // --- the 9x7 map view --------------------------------------------------
   for (let vr = 0; vr < RENDER_ROWS; vr++) {
     for (let vc = 0; vc < RENDER_COLS; vc++) {
       const r = pr + vr - 3;
       const c = pc + vc - 4;
       const blk = inBounds(r, c) ? mapGet(st, r, c) : BLK_OUT_OF_BOUNDS;
-      const x = vc * RENDER_TILE;
-      const y = vr * RENDER_TILE;
-      const base = BLOCK_COLOURS[blk] || BLOCK_COLOURS[0];
-      const col = renderDim(base, light);
-      fill(col[0], col[1], col[2]);
-      rect(x, y, RENDER_TILE, RENDER_TILE);
-      renderTileGlyph(blk, x, y, light);
+      const bgIdx = ATLAS['block_' + blk];
 
-      if (!inBounds(r, c)) continue;
+      if (!inBounds(r, c)) { _blit(bgIdx, vc, vr); continue; }
 
-      // Mobs, drawn over the tile. Read from the bitmaps, which are the
-      // same thing the observation reads.
-      if (mbGet(st.zombieBits, r, c)) {
-        const z = renderDim([104, 186, 96], light);
-        fill(z[0], z[1], z[2]);
-        rect(x + 12, y + 10, RENDER_TILE - 24, RENDER_TILE - 20);
-        fill(10, 10, 10);
-        rect(x + 18, y + 18, 6, 6);
-        rect(x + RENDER_TILE - 24, y + 18, 6, 6);
-      } else if (mbGet(st.cowBits, r, c)) {
-        const z = renderDim([168, 122, 92], light);
-        fill(z[0], z[1], z[2]);
-        rect(x + 10, y + 16, RENDER_TILE - 20, RENDER_TILE - 28);
-        fill(240, 240, 240);
-        rect(x + 14, y + 20, 8, 6);
-      } else if (mbGet(st.skelBits, r, c)) {
-        const z = renderDim([210, 210, 200], light);
-        fill(z[0], z[1], z[2]);
-        rect(x + 14, y + 10, RENDER_TILE - 28, RENDER_TILE - 20);
-        fill(20, 20, 20);
-        rect(x + 20, y + 18, 5, 5);
-      }
-      if (mbGet(st.arrowBits, r, c)) {
-        stroke(240, 240, 220);
-        strokeWeight(3);
-        const cx = x + RENDER_TILE / 2;
-        const cy = y + RENDER_TILE / 2;
-        let adr = 0, adc = 0;
+      let fg = -1;
+      if (mbGet(st.zombieBits, r, c)) fg = ATLAS.zombie;
+      else if (mbGet(st.cowBits, r, c)) fg = ATLAS.cow;
+      else if (mbGet(st.skelBits, r, c)) fg = ATLAS.skeleton;
+      if (fg < 0 && mbGet(st.arrowBits, r, c)) {
         for (let i = 0; i < MAX_ARROWS; i++) {
           if (st.arrowMask[i] && st.arrowR[i] === r && st.arrowC[i] === c) {
-            adr = st.arrowDr[i]; adc = st.arrowDc[i];
+            fg = _arrowSprite(st.arrowDr[i], st.arrowDc[i]);
             break;
           }
         }
-        line(cx - adc * 12, cy - adr * 12, cx + adc * 12, cy + adr * 12);
-        noStroke();
       }
+      if (vr === 3 && vc === 4) fg = _playerSprite(st.playerDir[0], st.isSleeping[0]);
+
+      if (fg < 0) _blit(bgIdx, vc, vr);
+      else _blitOver(bgIdx, fg, vc, vr);
     }
   }
 
-  // --- the player, always at the view centre ------------------------------
-  {
-    const x = 4 * RENDER_TILE;
-    const y = 3 * RENDER_TILE;
-    const asleep = st.isSleeping[0] !== 0;
-    const body = renderDim(asleep ? [120, 110, 150] : [238, 226, 200], light);
-    fill(body[0], body[1], body[2]);
-    rect(x + 12, y + 12, RENDER_TILE - 24, RENDER_TILE - 24);
-    // Facing mark on the edge the player is looking at.
-    fill(30, 30, 40);
-    const dir = st.playerDir[0];
-    const mid = RENDER_TILE / 2;
-    if (dir === 1) rect(x + 6, y + mid - 4, 8, 8);
-    else if (dir === 2) rect(x + RENDER_TILE - 14, y + mid - 4, 8, 8);
-    else if (dir === 3) rect(x + mid - 4, y + 6, 8, 8);
-    else rect(x + mid - 4, y + RENDER_TILE - 14, 8, 8);
-  }
+  // --- the two inventory rows --------------------------------------------
+  const counts = {
+    health: st.health[0], food: st.food[0], drink: st.drink[0], energy: st.energy[0],
+    inv_wood: st.inv[INV_WOOD], inv_stone: st.inv[INV_STONE], inv_coal: st.inv[INV_COAL],
+    inv_iron: st.inv[INV_IRON], inv_diamond: st.inv[INV_DIAMOND],
+    inv_sapling: st.inv[INV_SAPLING], inv_wpick: st.inv[INV_WPICK],
+    inv_spick: st.inv[INV_SPICK], inv_ipick: st.inv[INV_IPICK],
+    inv_wsword: st.inv[INV_WSWORD], inv_ssword: st.inv[INV_SSWORD],
+    inv_isword: st.inv[INV_ISWORD],
+  };
 
-  // --- inventory strip ----------------------------------------------------
-  // 12 slots across 504px: a swatch per item with its count beside it.
-  {
-    noStroke();
-    fill(18, 18, 22);
-    rect(0, RENDER_HUD_Y, RENDER_TILE * RENDER_COLS, RENDER_TILE);
-    const slotW = ((RENDER_TILE * RENDER_COLS) / NUM_INVENTORY) | 0;
-    const swatches = [
-      BLOCK_COLOURS[BLK_WOOD], BLOCK_COLOURS[BLK_STONE], BLOCK_COLOURS[BLK_COAL],
-      BLOCK_COLOURS[BLK_IRON], BLOCK_COLOURS[BLK_DIAMOND], BLOCK_COLOURS[BLK_PLANT],
-      [150, 120, 70], [150, 150, 155], [190, 205, 215],
-      [170, 130, 80], [170, 170, 175], [205, 220, 230],
-    ];
-    for (let i = 0; i < NUM_INVENTORY; i++) {
-      const x = i * slotW;
-      const n = st.inv[i];
-      const s = swatches[i];
-      // Dim an empty slot rather than hiding it, so positions stay stable.
-      const k = n > 0 ? 1.0 : 0.25;
-      fill((s[0] * k) | 0, (s[1] * k) | 0, (s[2] * k) | 0);
-      rect(x + 4, RENDER_HUD_Y + 10, 16, 16);
-      if (n > 0) {
-        fill(235, 235, 235);
-        renderDigit(n > 9 ? 9 : n, x + 24, RENDER_HUD_Y + 10, 4);
-      }
-    }
-  }
+  const drawSlot = (key, col, row) => {
+    const n = counts[key];
+    if (!n || n <= 0) return;              // empty slots stay black, as in Craftax
+    const icon = ATLAS[key];
+    const d = n > 9 ? 9 : n;
+    _blitOver(icon, ATLAS['digit_' + d], col, row);
+  };
 
-  // --- status bars --------------------------------------------------------
-  {
-    noStroke();
-    fill(18, 18, 22);
-    rect(0, RENDER_BAR_Y, RENDER_TILE * RENDER_COLS, RENDER_TILE);
-    const w = 108;
-    const gap = 16;
-    renderBar(8, RENDER_BAR_Y + 12, w, 14, st.health[0], 9, [206, 70, 70]);
-    renderBar(8 + (w + gap), RENDER_BAR_Y + 12, w, 14, st.food[0], 9, [196, 150, 60]);
-    renderBar(8 + 2 * (w + gap), RENDER_BAR_Y + 12, w, 14, st.drink[0], 9, [70, 140, 210]);
-    renderBar(8 + 3 * (w + gap), RENDER_BAR_Y + 12, w, 14, st.energy[0], 9, [150, 200, 90]);
-    // A thin light-level strip, so time of day is legible at obs resolution
-    // even where no tile is visible.
-    fill((220 * light) | 0, (220 * light) | 0, (160 * light) | 0);
-    rect(8, RENDER_BAR_Y + 34, ((RENDER_TILE * RENDER_COLS - 16) * light) | 0, 6);
-  }
+  for (let i = 0; i < _INV_ROW_A.length; i++) drawSlot(_INV_ROW_A[i], i, RENDER_ROWS);
+  for (let i = 0; i < _INV_ROW_B.length; i++) drawSlot(_INV_ROW_B[i], i, RENDER_ROWS + 1);
 }

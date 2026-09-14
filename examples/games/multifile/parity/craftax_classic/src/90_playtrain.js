@@ -9,11 +9,23 @@
 // the game boots and steps — the dynamics gates (G0-G2) never look at
 // pixels, and the render gates (G5) are not claimed yet.
 
-// 512, not 64: the renderer's layout (80_render.js) is built so one obs
-// pixel is an 8x8 canvas block and a tile is exactly 7 obs pixels. Creating
-// a 64px canvas here silently drew everything off-screen except the first
-// tile, and the observation came back as three flat colours.
-const CANVAS_SIZE = 512;
+// 64, with Craftax's 63x63 frame drawn into the top-left and a one-pixel
+// black margin on the right and bottom.
+//
+// Craftax's agent observation is exactly 63x63 (a 9x7 map view plus two
+// inventory rows, every tile BLOCK_PIXEL_SIZE_AGENT = 7), and 63 was tried
+// first. It does not work: every harness fixes the observation at 64 —
+// reference_trace.mjs hardcodes obsWidth 64, qjs_host has `static const int
+// OBS = 64` — so a 63 canvas gets resampled up to 64 on readback, and the
+// two backends resample differently. The differential gate caught it
+// immediately, diverging on the very first frame.
+//
+// At 64 the device scale is 1:1, so every tile blit stays a straight 7x7
+// copy with no resampling, which is the whole point of the baked atlas. The
+// cost is that the observation is (64, 64, 3) rather than Craftax's
+// (63, 63, 3); the content is identical and `obs[:63, :63]` is the Craftax
+// frame. Declared in the manifest.
+const CANVAS_SIZE = 64;
 
 let gameState = null;
 let gameOver = false;
