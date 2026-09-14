@@ -30,15 +30,16 @@ const s = pcgState();
 pcgSeed(s, seed);
 const out = [];
 for (let i = 0; i < n; i++) {
-  const a = {hi: s.hi, lo: s.lo};
-  const b = {hi: s.hi, lo: s.lo};
-  const c4 = {hi: s.hi, lo: s.lo};
-  const c8 = {hi: s.hi, lo: s.lo};
-  const c64 = {hi: s.hi, lo: s.lo};
+  // Each column is the same single draw, taken on a copy.
+  const a = Uint32Array.from(s);
+  const b = Uint32Array.from(s);
+  const c4 = Uint32Array.from(s);
+  const c8 = Uint32Array.from(s);
+  const c64 = Uint32Array.from(s);
   const v = crPcg(a);
   const rf = f32Bits(crRf(b)).toString(16).padStart(8, '0');
   out.push(v + ' ' + rf + ' ' + crRi(c4, 4) + ' ' + crRi(c8, 8) + ' ' + crRi(c64, 64));
-  s.hi = a.hi; s.lo = a.lo;
+  s.set(a);
 }
 process.stdout.write(out.join('\\n') + '\\n');
 """
@@ -122,7 +123,7 @@ const s = pcgState();
 pcgSeed(s, 7);
 let bad = 0;
 for (let i = 0; i < 100000; i++) {
-  const c = {hi: s.hi, lo: s.lo};
+  const c = Uint32Array.from(s);
   const v = crPcg(c);
   const f = crRf(s);
   if (f < 0 || f >= 1) bad++;

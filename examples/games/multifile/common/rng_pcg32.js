@@ -18,10 +18,18 @@ const PCG_MULT_LO = 0x4c957f2d;
 const PCG_INC_HI = 0x14057b7e;    // 1442695040888963407
 const PCG_INC_LO = 0xf767814f;
 
-// The state, as the C's single uint64 split in two. Callers that need more
-// than one stream make their own {hi, lo} pair and pass it in.
+// The state, as the C's single uint64 split in two: a Uint32Array of length
+// 2, word 0 the low half and word 1 the high half.
+//
+// Two words in that order on purpose. This IS the game state's `pcg` field
+// (src/20_state.js), and the canonical dump writes a uint64 low word first,
+// so the RNG can run directly on the parity buffer with no copying and no
+// chance of the two drifting apart.
+const PCG_LO = 0;
+const PCG_HI = 1;
+
 function pcgState() {
-  return { hi: 0, lo: 0 };
+  return new Uint32Array(2);
 }
 
 // Unsigned 32x32 -> 64 multiply, returned through these two module-level
@@ -47,8 +55,8 @@ function umul32(a, b) {
 
 // One step of the LCG, in place.
 function pcgAdvance(s) {
-  const lo = s.lo;
-  const hi = s.hi;
+  const lo = s[PCG_LO];
+  const hi = s[PCG_HI];
   umul32(lo, PCG_MULT_LO);
   let rLo = _mulLo;
   // The cross terms only affect the high word.
@@ -57,15 +65,15 @@ function pcgAdvance(s) {
   const sum = (rLo >>> 0) + (PCG_INC_LO >>> 0);
   rLo = sum >>> 0;
   rHi = (rHi + PCG_INC_HI + (sum > 0xffffffff ? 1 : 0)) >>> 0;
-  s.lo = rLo;
-  s.hi = rHi;
+  s[PCG_LO] = rLo;
+  s[PCG_HI] = rHi;
 }
 
 // cr_pcg: advance, then the XSH-RR output transform. Returns a uint32.
 function crPcg(s) {
   pcgAdvance(s);
-  const hi = s.hi;
-  const lo = s.lo;
+  const hi = s[PCG_HI];
+  const lo = s[PCG_LO];
   // (s >> 18) ^ s, as two words.
   const shLo = ((lo >>> 18) | (hi << 14)) >>> 0;
   const shHi = hi >>> 18;
@@ -101,7 +109,7 @@ function pcgSeed(s, seed) {
   const sum = (lo >>> 0) + 0x114253d5;
   lo = sum >>> 0;
   hi = (hi + 0x87c37b91 + (sum > 0xffffffff ? 1 : 0)) >>> 0;
-  s.hi = hi;
-  s.lo = lo;
+  s[PCG_HI] = hi;
+  s[PCG_LO] = lo;
   for (let i = 0; i < 8; i++) crPcg(s);
 }
