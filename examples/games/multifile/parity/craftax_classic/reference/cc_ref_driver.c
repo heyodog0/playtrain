@@ -550,6 +550,41 @@ static int mode_probe(unsigned int seed, const char* actions_path, int with_mobs
     return 0;
 }
 
+static int mode_obs(unsigned int seed, const char* actions_path) {
+    FILE* af = fopen(actions_path, "rb");
+    if (!af) { fprintf(stderr, "cc_ref: cannot open %s\n", actions_path); return 2; }
+    fseek(af, 0, SEEK_END);
+    long n_actions = ftell(af);
+    fseek(af, 0, SEEK_SET);
+    unsigned char* actions = (unsigned char*)malloc((size_t)n_actions);
+    if (n_actions > 0 && fread(actions, 1, (size_t)n_actions, af) != (size_t)n_actions) {
+        fprintf(stderr, "cc_ref: short read on %s\n", actions_path);
+        return 2;
+    }
+    fclose(af);
+
+    CraftaxClassic* env = cc_new(seed);
+
+    // "CCO1", u32 obs floats, u32 n_actions, then per step: u8 done + the
+    // observation as raw float32.
+    fwrite("CCO1", 1, 4, stdout);
+    uint32_t hdr[2] = {(uint32_t)OBS_SIZE, (uint32_t)n_actions};
+    fwrite(hdr, 4, 2, stdout);
+
+    bool done = false;
+    for (long t = 0; t < n_actions && !done; t++) {
+        float reward = 0.0f;
+        cc_step_no_reset(env, actions[t], &reward, &done);
+        compute_observations(env);
+        unsigned char d8 = (unsigned char)(done ? 1 : 0);
+        fwrite(&d8, 1, 1, stdout);
+        fwrite(env->agents[0].observations, sizeof(obs_t), OBS_SIZE, stdout);
+    }
+    puf_close(env);
+    free(actions);
+    return 0;
+}
+
 static int usage(void) {
     fprintf(stderr,
         "usage: cc_ref layout\n"
@@ -558,6 +593,7 @@ static int usage(void) {
         "       cc_ref serve <seed>\n"
         "       cc_ref player <seed> <actions.bin>\n"
         "       cc_ref mobs  <seed> <actions.bin>\n"
+        "       cc_ref obs   <seed> <actions.bin>\n"
         "       cc_ref run   <seed> <actions.bin> [--dump-every K]\n");
     return 2;
 }
@@ -585,6 +621,10 @@ int main(int argc, char** argv) {
     if (strcmp(mode, "mobs") == 0) {
         if (argc != 4) return usage();
         return mode_probe((unsigned int)strtoul(argv[2], NULL, 10), argv[3], 1);
+    }
+    if (strcmp(mode, "obs") == 0) {
+        if (argc != 4) return usage();
+        return mode_obs((unsigned int)strtoul(argv[2], NULL, 10), argv[3]);
     }
     if (strcmp(mode, "run") == 0) {
         if (argc != 4 && argc != 6) return usage();

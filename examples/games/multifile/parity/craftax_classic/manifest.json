@@ -16,6 +16,7 @@
     "src/60_world_tick.js",
     "src/70_step.js",
     "src/80_render.js",
+    "src/85_obs_symbolic.js",
     "src/90_playtrain.js"
   ],
   "action_space": "craftax17",
