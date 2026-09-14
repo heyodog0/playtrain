@@ -67,6 +67,17 @@ export function makeWasmBackend(ex) {
     fillText() {}
 
     drawImage(src, dx, dy, dw, dh) { ex.rs_draw_image(this._h, src._h, dx, dy, dw, dh); }
+    // Writes through the canvas's pixel pointer rather than calling a wasm
+    // import: rs_pixels_ptr + mem() already exposes the buffer (see
+    // getImageData), so no data has to be marshalled twice. Re-read mem()
+    // each time — the view detaches if wasm memory grows.
+    loadRGBA(bytes) {
+      const ptr = ex.rs_pixels_ptr(this._h), len = ex.rs_buf_len(this._h);
+      const dst = new Uint8ClampedArray(mem(), ptr, len);
+      const n = Math.min(bytes.length, len);
+      for (let i = 0; i < n; i++) dst[i] = bytes[i];
+      return n;
+    }
     getImageData() {
       const ptr = ex.rs_pixels_ptr(this._h), len = ex.rs_buf_len(this._h);
       return { data: new Uint8ClampedArray(mem(), ptr, len).slice(), width: this.canvasW, height: this.canvasH };

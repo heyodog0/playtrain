@@ -129,6 +129,12 @@ void endShape(int mode);  // CLOSE
 // experiment path — pre-rasterize-then-
 // rescale, which is NOT bit-exact to direct rendering on scaled-camera games.
 int  createGraphics(double w, double h);
+// A bitmap layer: exactly w x h DEVICE pixels, not scaled to the canvas like
+// createGraphics. Sprite atlases need exact texel dimensions, and image()
+// then scales on blit with integer nearest-neighbour.
+int  createBitmap(double w, double h);
+// Load RGBA straight-alpha bytes into a bitmap layer. Returns bytes copied.
+int  loadBitmap(int handle, const uint8_t* data, int len);
 void setTarget(int handle);
 void clearTarget();
 void image(int srcHandle, double x, double y, double w, double h);

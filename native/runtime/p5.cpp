@@ -195,6 +195,15 @@ int createGraphics(double w, double h) {
   double dw = w * _devSx, dh = h * _devSy;
   return (int)rs_new_canvas(w, h, std::floor(dw + 0.5), std::floor(dh + 0.5));
 }
+int createBitmap(double w, double h) {
+  // 1:1 logical->device on purpose. createGraphics matches the main canvas's
+  // device scale so a cached layer reproduces a direct draw; a texture is not
+  // a cached draw, it is source data, and it must keep its exact texel grid.
+  return (int)rs_new_canvas(w, h, w, h);
+}
+int loadBitmap(int handle, const uint8_t* data, int len) {
+  return rs_load_rgba((uint32_t)handle, data, (uint32_t)len);
+}
 void setTarget(int handle) {
   _targetStack.push_back(_h);
   _h = (uint32_t)handle;

@@ -147,6 +147,25 @@ FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 // Offscreen graphics (layer-cache experiment).
 FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_createBitmap) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
+  return JS_NewInt32(ctx, p5::createBitmap(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+// loadBitmap(handle, Uint8Array) — texture upload. Flushes the command buffer
+// first: this writes canvas memory directly, so any recorded draws to that
+// canvas must land before the bytes do.
+FN(js_loadBitmap) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t off = 0, len = 0, per = 0;
+  JSValue ab = JS_GetTypedArrayBuffer(ctx, argv[1], &off, &len, &per);
+  if (JS_IsException(ab)) return JS_NewInt32(ctx, 0);
+  size_t sz = 0;
+  uint8_t* src = JS_GetArrayBuffer(ctx, &sz, ab);
+  int n = 0;
+  if (src && off + len <= sz) {
+    n = p5::loadBitmap((int)argd(ctx, argv[0]), src + off, (int)len);
+  }
+  JS_FreeValue(ctx, ab);
+  return JS_NewInt32(ctx, n);
+}
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
@@ -183,6 +202,7 @@ static const Binding BINDINGS[] = {
   {"cylinder", js_cylinder, 2}, {"cone", js_cone, 2},
   {"noLights", js_noop, 0}, {"normalMaterial", js_noop, 0}, {"emissiveMaterial", js_noop, 3},
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
+  {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},

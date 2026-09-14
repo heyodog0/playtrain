@@ -199,6 +199,32 @@ function createGraphics(w, h) {
   return id;   // opaque handle, matching the native host's int handle
 }
 
+// A bitmap layer: exactly w x h device pixels, NOT scaled to the main canvas
+// the way createGraphics is. A texture is source data, not a cached draw, so
+// it has to keep its own texel grid; image() then scales on blit with integer
+// nearest-neighbour. Mirrors p5::createBitmap in native/runtime/p5.cpp.
+function createBitmap(w, h) {
+  const canvas = createNodeCanvas(w, h, w, h);
+  const id = _nextLayerId++;
+  _layers.set(id, { canvas, ctx: canvas.getContext('2d'), w, h });
+  return id;
+}
+
+// Load raw RGBA straight-alpha bytes into a bitmap layer. Returns bytes
+// copied. Mirrors p5::loadBitmap.
+function loadBitmap(handle, bytes) {
+  const L = _layers.get(handle);
+  if (!L) return 0;
+  const target = L.ctx.loadRGBA ? L.ctx : L.canvas;
+  if (typeof target.loadRGBA === 'function') return target.loadRGBA(bytes);
+  // node-canvas/cairo fallback: no direct buffer, go through ImageData.
+  const img = L.ctx.createImageData(L.canvas.width, L.canvas.height);
+  const n = Math.min(bytes.length, img.data.length);
+  for (let i = 0; i < n; i++) img.data[i] = bytes[i];
+  L.ctx.putImageData(img, 0, 0);
+  return n;
+}
+
 function setTarget(handle) {
   const L = _layers.get(handle);
   if (!L) return;
@@ -638,7 +664,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, setTarget, clearTarget, image,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

@@ -229,6 +229,17 @@ class Context2D {
   fillText() {}
 
   // ---- image / readback ----
+  // Load raw RGBA straight-alpha bytes into this canvas. The JS mirror of
+  // rs_load_rgba; see crates/rasterizer/src/lib.rs. A blit of the result goes
+  // through drawImage below, which is integer nearest-neighbour, so native,
+  // wasm and this backend stay bit-identical.
+  loadRGBA(bytes) {
+    const px = this.px;
+    const n = Math.min(bytes.length, px.length);
+    for (let i = 0; i < n; i++) px[i] = bytes[i];
+    return n;
+  }
+
   drawImage(src, dx, dy, dw, dh) {
     // nearest-neighbor blit/downsample of another raster Canvas into this one
     const sw = src.width, sh = src.height, spx = src._px, W = this.w, px = this.px;
