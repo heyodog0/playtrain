@@ -15,6 +15,15 @@ package-lock.json  # repo standardizes on pnpm (pnpm-lock.yaml)
 
 build/
 dist/
+# ...except the multi-file game bundles. `examples/games/multifile/*/*/dist/`
+# is a SHIPPED artifact, not a build scratch dir: the catalog, the Play tab,
+# the engine gates and the second games root in _paths.py all resolve a game
+# by finding that flat .js and its .json sidecar. The blanket `dist/` rule
+# above had been silently swallowing them, so a fresh clone had no game at
+# all while every local check passed.
+!examples/games/multifile/*/*/dist/
+!examples/games/multifile/*/*/dist/*.js
+!examples/games/multifile/*/*/dist/*.json
 *.egg-info/
 .pytest_cache/
 .mypy_cache/

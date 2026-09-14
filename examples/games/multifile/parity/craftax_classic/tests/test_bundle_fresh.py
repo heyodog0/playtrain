@@ -113,3 +113,24 @@ process.stdout.write(Buffer.from(getParityState(st, 0)).toString('hex'));
     loose = run_sources([(GAME / rel).read_text() for rel in m["sources"]] + [drive])
     assert from_bundle == loose, "the bundle steps differently from its own sources"
     assert len(from_bundle) > 0
+
+
+def test_the_bundle_is_actually_committed():
+    """`dist/` is the shipped artifact, not build scratch — the catalog, the
+    Play tab, the engine gates and `_paths.multifile_dist_dirs()` all resolve
+    this game by finding that flat .js and its sidecar.
+
+    The repo's blanket `dist/` ignore rule swallowed them for several
+    commits. Every local check still passed, because the files existed on the
+    machine running them; a fresh clone had no game at all. Checking
+    tracked-ness is the only way to catch that.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", str(DIST.relative_to(REPO))],
+        capture_output=True, text=True, cwd=REPO,
+    )
+    assert out.returncode == 0, out.stderr
+    tracked = {line.rsplit("/", 1)[-1] for line in out.stdout.split() if line}
+    name = manifest()["name"]
+    assert f"{name}.js" in tracked, f"{name}.js is not tracked by git"
+    assert f"{name}.json" in tracked, f"{name}.json is not tracked by git"

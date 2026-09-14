@@ -1,0 +1,128 @@
+{
+  "name": "craftax_classic",
+  "version": "0.1.0",
+  "title": "Craftax-Classic",
+  "action_space": "craftax17",
+  "actions": [
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "DO",
+      "held": [],
+      "press": 32
+    },
+    {
+      "name": "SLEEP",
+      "held": [],
+      "press": 9
+    },
+    {
+      "name": "PLACE_STONE",
+      "held": [],
+      "press": 49
+    },
+    {
+      "name": "PLACE_TABLE",
+      "held": [],
+      "press": 50
+    },
+    {
+      "name": "PLACE_FURNACE",
+      "held": [],
+      "press": 51
+    },
+    {
+      "name": "PLACE_PLANT",
+      "held": [],
+      "press": 52
+    },
+    {
+      "name": "MAKE_WOOD_PICK",
+      "held": [],
+      "press": 53
+    },
+    {
+      "name": "MAKE_STONE_PICK",
+      "held": [],
+      "press": 54
+    },
+    {
+      "name": "MAKE_IRON_PICK",
+      "held": [],
+      "press": 55
+    },
+    {
+      "name": "MAKE_WOOD_SWORD",
+      "held": [],
+      "press": 56
+    },
+    {
+      "name": "MAKE_STONE_SWORD",
+      "held": [],
+      "press": 57
+    },
+    {
+      "name": "MAKE_IRON_SWORD",
+      "held": [],
+      "press": 48
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "symbolic": 1345,
+    "rgb_size": 64,
+    "craftax_frame": "obs[:63, :63] is Craftax's 63x63 agent frame; the last row and column are black padding (the harnesses fix the observation at 64)"
+  },
+  "max_steps": 10000,
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move and face. SPACE interacts. TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand next to a table; iron needs a furnace too).",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "PufferLib craftax_classic",
+    "repo": "https://github.com/PufferAI/PufferLib",
+    "commit": "6ffa5b10dbbbe4d1e8288367c7d9d3acd3bad4a2",
+    "file": "ocean/craftax_classic/craftax_classic.h",
+    "license": "MIT",
+    "parity": "full-state trace, every step, scalar no-FMA build, libm bound to V8 ieee754",
+    "not_matched": [
+      "pixels",
+      "auto-reset RNG continuation across episodes",
+      "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended",
+      "Craftax-Classic-Pixels below light_level 0.5, as drawn by the hosts: Craftax adds per-pixel static from state_rng, which game_logic.py sets from the CALLER's step key (rng, _rng = split(rng)) \u2014 so its night frame is not a function of the environment state and no environment can derive the key. The RENDERER reproduces it given the key: setNightKey(k0, k1) installs Craftax's state_rng and the static is drawn with a bit-exact threefry-2x32 (74/74 night frames byte-identical, sleeping frames included). No host supplies a key, so what they draw at night is the deterministic dusk image without the static. At light_level >= 0.5 the hosts' frame IS byte-identical to render_craftax_pixels(state).astype(uint8): 147/147 and 120/120 frames, death frame included. See reference/craftax_pixels/README.md"
+    ]
+  },
+  "source_sha256": "cdc9d360157c80d19646720868d36f8c6fcdf44ef7b959bf9f17dd2b1ef3e8c3"
+}
