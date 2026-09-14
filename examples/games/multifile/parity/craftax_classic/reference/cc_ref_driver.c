@@ -488,12 +488,64 @@ static int mode_serve(unsigned int seed) {
     return 0;
 }
 
+// The player half of puf_step: lines 973-977 of craftax_classic.h, stopping
+// before update_mobs. Same order, same effective-action rule.
+static void cc_step_player_only(CraftaxClassic* env, int action) {
+    if (action < 0) action = 0;
+    if (action >= NUM_ACTIONS) action = NUM_ACTIONS - 1;
+    int eff_action = env->is_sleeping ? ACT_NOOP : action;
+    do_crafting(env, eff_action);
+    if (eff_action == ACT_DO) do_action(env);
+    if (eff_action >= ACT_PLACE_STONE && eff_action <= ACT_PLACE_PLANT) place_block(env, eff_action);
+    move_player(env, eff_action);
+}
+
+static int mode_player(unsigned int seed, const char* actions_path) {
+    FILE* af = fopen(actions_path, "rb");
+    if (!af) { fprintf(stderr, "cc_ref: cannot open %s\n", actions_path); return 2; }
+    fseek(af, 0, SEEK_END);
+    long n_actions = ftell(af);
+    fseek(af, 0, SEEK_SET);
+    unsigned char* actions = (unsigned char*)malloc((size_t)n_actions);
+    if (n_actions > 0 && fread(actions, 1, (size_t)n_actions, af) != (size_t)n_actions) {
+        fprintf(stderr, "cc_ref: short read on %s\n", actions_path);
+        return 2;
+    }
+    fclose(af);
+
+    CraftaxClassic* env = cc_new(seed);
+    int nb = cc_state_bytes();
+    unsigned char* buf = (unsigned char*)malloc(nb);
+
+    fwrite("CCR1", 1, 4, stdout);
+    uint32_t hdr[2] = {(uint32_t)nb, (uint32_t)n_actions};
+    fwrite(hdr, 4, 2, stdout);
+
+    for (long t = 0; t < n_actions; t++) {
+        cc_step_player_only(env, actions[t]);
+        cc_serialize(env, 0.0f, buf);
+        uint64_t h = fnv1a64(buf, nb);
+        uint32_t rb = 0;
+        unsigned char d8 = 0, has_dump = 1;
+        fwrite(&h, 8, 1, stdout);
+        fwrite(&rb, 4, 1, stdout);
+        fwrite(&d8, 1, 1, stdout);
+        fwrite(&has_dump, 1, 1, stdout);
+        fwrite(buf, 1, nb, stdout);
+    }
+    puf_close(env);
+    free(buf);
+    free(actions);
+    return 0;
+}
+
 static int usage(void) {
     fprintf(stderr,
         "usage: cc_ref layout\n"
         "       cc_ref rng   <seed> <n>\n"
         "       cc_ref world <seed>\n"
         "       cc_ref serve <seed>\n"
+        "       cc_ref player <seed> <actions.bin>\n"
         "       cc_ref run   <seed> <actions.bin> [--dump-every K]\n");
     return 2;
 }
@@ -513,6 +565,10 @@ int main(int argc, char** argv) {
     if (strcmp(mode, "serve") == 0) {
         if (argc != 3) return usage();
         return mode_serve((unsigned int)strtoul(argv[2], NULL, 10));
+    }
+    if (strcmp(mode, "player") == 0) {
+        if (argc != 4) return usage();
+        return mode_player((unsigned int)strtoul(argv[2], NULL, 10), argv[3]);
     }
     if (strcmp(mode, "run") == 0) {
         if (argc != 4 && argc != 6) return usage();
