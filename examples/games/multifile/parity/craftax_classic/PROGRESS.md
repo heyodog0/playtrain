@@ -212,3 +212,76 @@ game's 17-action sidecar through the engine stack.
 - 2026-09-14 — 13a — symbolic observation ported and gated. 13b (obs_mode plumbing in the envs and hosts) is the remaining half.
 - 2026-09-14 — 13b — symbolic mode delivered through the node host. **Found a real semantic offset while gating it:** `GameEnv.reset()` runs a free `tick()`, and a p5 `draw()` advances and renders in the same frame, so the game takes one NOOP step before the first `env.step()`. A PlayTrain episode is the C's episode with a NOOP prepended. That is the house convention for every catalog game, not something this port introduced, but it is now declared in the manifest's `not_matched` and in README's "What is not matched", and the gate asserts it rather than papering over it. G2 drives the bundle directly and has no offset.
 - 2026-09-14 — 13c — the two C++ hosts. Two traps worth remembering: the vec host reuses one output slab, so a test that compares two `np.asarray(...)` views of it always reports "unchanged" (copy first — this briefly convinced me the observation was frozen); and a symbolic gate can pass vacuously if both engines quietly fall back to pixels, so `test_the_symbolic_gate_is_not_passing_vacuously` asserts the symbolic hash differs from the pixel hash.
+
+---
+
+# Loop summary — 2026-09-14
+
+Every task that could be done on this machine is done. The five that remain
+are blocked on infrastructure or waiting on a person; none is blocked on the
+port itself.
+
+## What was built
+
+A bit-exact JavaScript Craftax-Classic, bundled as one flat catalog file with
+a sidecar, playable and trainable, with **115 gate tests green** (plus the
+repo's own 95).
+
+**The parity claim holds.** G2 compares full canonical state, per-step reward
+as float32 bits, and the done flag against PufferLib's C on **all 210 corpus
+episodes / 49061 steps**, and it is green. G0 (RNG, 10^6 draws + 1000 seeds),
+G1 (worldgen, 1000 seeds), and the symbolic observation (all 1345 floats,
+every step of every episode) are green too. The reference driver cross-checks
+its own transcription of `puf_step` against the real one on every step it
+takes.
+
+| gate | state |
+|---|---|
+| G0 rng | green |
+| G1 worldgen | green, 1000 seeds |
+| **G2 lockstep** | **green, 210 episodes / 49061 steps** |
+| G2 golden chains (no compiler needed) | green |
+| G3 coverage | **blocked at 96.43%** — see 3b-ii |
+| G4 engines, Mac half | green — V8/QuickJS bit-exact, 3000 steps x 3 seeds |
+| G4 AOT tier | **blocked** — see 9b |
+| G5 validate | **blocked** — see 8b |
+| G6 human session | **handoff** |
+| symbolic obs, all three hosts | green |
+
+## What is left, and why
+
+| # | What | Why it stopped |
+|---|---|---|
+| 3b-ii | G3 coverage at 96.43% (567/588) | The corpus never reaches iron or diamond. 21 uncovered lines, all traced to 4 unreached achievements. Five approaches tried and measured; the promising one (burrow at dusk) is written up. |
+| 8b | G5 reward check | The step wire packs `score` as **int32** and this is the first game with a fractional score. Two-line fix, but it is a 5th runtime change and alters `info["score"]` for every game — a decision, not a quiet edit. |
+| 9b | AOT tier + `gate_async.py` | No engine-tier toolchain exists on either machine. Not Craftax-specific. |
+| 12 | Cluster bench + PPO | Same wall as 9b. |
+| 10b | Human session (G6) | Needs a person. Prerequisites built and verified. |
+| 11 | Website Play tab | Built and gated; needs eyes on the page. |
+
+**Three of the five share one root cause**: this branch has ~40 unpushed
+commits and the only FASRC checkout is on `main` at `29e1e7f`, dirty, and
+predates the engine-tier work. Pushing `release` and making a clean cluster
+checkout unblocks 9b and 12 (and is a prerequisite for any cluster work at
+all). That is the user's call, so the loop did not do it.
+
+## Reference quirks found (ported as-is, not fixed)
+
+1. **Lava never generates** — 0 cells in 500 seeds, so the lava terminal and
+   the lava check in `can_move_mob` are unreachable in play.
+2. **The sand band's upper bound is dead code.**
+
+## Things a future session should not have to rediscover
+
+- `native/frozenmath` is openlibm and does **not** match V8; the engines'
+  `Math.cos` is `native/qjs/v8libm/ieee754.cc`. PLAN named the wrong one.
+- The `cosf` redirect cannot go on the command line: glibc's `math.h`
+  token-pastes the function name (`__DECL_SIMD_<fn>`). Apple libc does not,
+  so it only breaks on FASRC.
+- `puf_step` auto-resets over the terminal state, which is why the driver
+  transcribes it — and why the transcription is cross-checked every step.
+- A PlayTrain episode is the C's episode **with a NOOP prepended** (the
+  reset tick). Declared in `not_matched`.
+- Run JS as a concatenated file, never `node -e`: under eval a top-level
+  `const`/`class` is invisible to later snippets.
+- The vec host reuses one obs slab — copy before comparing.
