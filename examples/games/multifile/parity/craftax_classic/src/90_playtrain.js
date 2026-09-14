@@ -9,7 +9,11 @@
 // the game boots and steps — the dynamics gates (G0-G2) never look at
 // pixels, and the render gates (G5) are not claimed yet.
 
-const CANVAS_SIZE = 64;
+// 512, not 64: the renderer's layout (80_render.js) is built so one obs
+// pixel is an 8x8 canvas block and a tile is exactly 7 obs pixels. Creating
+// a 64px canvas here silently drew everything off-screen except the first
+// tile, and the observation came back as three flat colours.
+const CANVAS_SIZE = 512;
 
 let gameState = null;
 let gameOver = false;
