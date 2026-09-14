@@ -20,7 +20,11 @@ export const baseStyle = `
   button:hover { border-color: #888; color: #fff; }
 `;
 
-const playStyle = `${baseStyle}
+const playStyle = `
+#parity-label { margin: 8px auto 0; max-width: 900px; font-size: 13px; opacity: .75; }
+#parity-label code { opacity: .9; }
+#controls-overlay { margin: 8px auto 0; max-width: 900px; font-size: 13px; line-height: 1.5; opacity: .85; }
+${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
   #topbar { width: 100%; max-width: 480px; margin-bottom: 16px;
             display: grid; grid-template-columns: 1fr auto 1fr;
@@ -126,7 +130,24 @@ ${autoOpenScript}
 
 // All games render live by PlayTrain's own rasterizer (the agent's renderer). Matter.js games
 // also get matter.min.js inlined so the `Matter` global is available before the game runs.
-function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = {}) {
+function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sidecar = null } = {}) {
+  // A multi-file game ships <name>.json beside its bundle. Three things come
+  // from it: the human tick rate (Craftax is turn-based; 60fps is unplayable),
+  // the controls overlay, and the parity label. Catalog games have no sidecar
+  // and every one of these falls back to what the page always did.
+  const human = (sidecar && sidecar.human) || {};
+  const stepsPerSecond = human.steps_per_second || 60;
+  const controlsHtml = human.keymap_overlay && human.controls
+    ? `<div id="controls-overlay">${human.controls}</div>` : '';
+  const ref = sidecar && sidecar.reference;
+  // PLAN 8: label parity games from manifest.reference, nothing extra for others.
+  const parityLabel = ref
+    ? `<div id="parity-label">exact dynamics vs ${ref.name || 'the reference'}` +
+      (ref.commit ? ` <code>${String(ref.commit).slice(0, 7)}</code>` : '') +
+      (Array.isArray(ref.not_matched) && ref.not_matched.length
+        ? ` &middot; not matched: ${ref.not_matched.join(', ')}` : '') +
+      `</div>`
+    : '';
   // Classic <script> executes before the deferred type="module" boot, so window.Matter is
   // set by the time the game source is eval'd — the browser analogue of game-env.mjs.
   const matterScript = needsMatter ? `<script>${matterBundle()}</script>\n` : '';
@@ -144,7 +165,9 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = 
 <div id="reset-row"><button id="reset">Reset</button>
   <label id="agentres-row"><input type="checkbox" id="agentres"> render at agent resolution (64&times;64)</label>
 </div>
-<div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (60fps)</div>
+<div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (${stepsPerSecond}fps)</div>
+${parityLabel}
+${controlsHtml}
 
 <!-- game source kept inert; the module boot evals it AFTER installing the shim globals -->
 <script type="text/plain" id="game-src">${source}</script>
@@ -214,7 +237,7 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
       'agent obs (64×64, exactly what the policy sees)';
   }
 
-  var FRAME_MS = 1000 / 60, last = 0;          // fixed-timestep games: pin to 60fps
+  var FRAME_MS = 1000 / ${stepsPerSecond}, last = 0;   // fixed-timestep games; sidecar may slow this
   function renderLoop(now) {
     requestAnimationFrame(renderLoop);
     if (now - last < FRAME_MS - 0.5) return;

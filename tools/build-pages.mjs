@@ -69,9 +69,28 @@ const gameHref = g => `/game/${g}/`;
 writeFile(join(OUT_DIR, 'index.html'), pickerPage(games, null, { gameHref, title: TITLE }));
 writeFile(join(OUT_DIR, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
 
+// A multi-file game's <name>.json sits beside its bundle and carries the human
+// tick rate, the controls overlay and the reference block the parity label is
+// built from. Catalog games have none and render exactly as before.
+function sidecarFor(name) {
+  const p = join(GAMES_DIR, `${name}.json`);
+  if (!existsSync(p)) return null;
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error(`  warning: ${name}.json is not valid JSON (${e.message}); ignoring`);
+    return null;
+  }
+}
+
+let withSidecar = 0;
 for (const name of games) {
   const source = readFileSync(join(GAMES_DIR, `${name}.js`), 'utf8');
-  writeFile(join(OUT_DIR, 'game', name, 'index.html'), playPage(name, source, { homeHref: '/' }));
+  const sidecar = sidecarFor(name);
+  if (sidecar) withSidecar++;
+  writeFile(join(OUT_DIR, 'game', name, 'index.html'),
+            playPage(name, source, { homeHref: '/', sidecar }));
 }
+if (withSidecar) console.log(`  ${withSidecar} with a sidecar (own pacing, controls, parity label)`);
 
 console.log(`built ${games.length} games → ${OUT_DIR}`);

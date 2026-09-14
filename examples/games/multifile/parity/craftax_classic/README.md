@@ -127,3 +127,38 @@ in-process, both at full precision.
 
 Record the outcome here when it is done: date, achievements unlocked, and the
 replay-verification line.
+
+## Website Play tab (handoff)
+
+The build side is done and gated (`tests/test_website.py`); what is left is
+someone looking at the page.
+
+```sh
+cd playtrain-website && ./build.sh && python3 -m http.server -d site 8000
+# then open http://localhost:8000/game/craftax_classic/
+```
+
+**What changed.** `build.sh` unions a third source directory — every
+`examples/games/multifile/*/*/dist/` — and copies the `<name>.json` sidecar
+next to the bundle. `tools/build-pages.mjs` reads that sidecar and passes it
+to `playPage`, which uses it for three things:
+
+- **pacing**: `FRAME_MS = 1000 / 8` instead of 60, from
+  `human.steps_per_second`;
+- **controls overlay**: `human.controls`, shown under the canvas because
+  `human.keymap_overlay` is true;
+- **parity label**: built from `manifest.reference` — "exact dynamics vs
+  PufferLib craftax_classic `6ffa5b1` · not matched: pixels, auto-reset RNG
+  continuation across episodes".
+
+Catalog games have no sidecar and are unaffected: all 38 still render at 60fps
+with no label and no overlay, which the gate asserts.
+
+**What to check by eye:**
+
+1. the game is playable at 8 steps/s — arrows move, SPACE interacts, and it
+   does not feel like it is dropping input;
+2. the 9x7 tile view and the two HUD rows fit the canvas without clipping;
+3. the controls overlay reads sensibly and does not overlap the canvas;
+4. the parity label is accurate and not overclaiming — in particular that the
+   `not matched` half is legible, not buried.
