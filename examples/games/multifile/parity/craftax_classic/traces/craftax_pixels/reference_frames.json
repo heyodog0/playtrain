@@ -142,5 +142,425 @@
   "frame": 132,
   "light": 0.6684203147888184,
   "timestep": 133
+ },
+ {
+  "seed": 11,
+  "frame": 147,
+  "light": 0.4946335554122925,
+  "timestep": 148,
+  "state_rng": [
+   2014469887,
+   2555279097
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 153,
+  "light": 0.42215418815612793,
+  "timestep": 154,
+  "state_rng": [
+   761215317,
+   2303586835
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 159,
+  "light": 0.35048073530197144,
+  "timestep": 160,
+  "state_rng": [
+   3802928043,
+   4197674805
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 165,
+  "light": 0.28137069940567017,
+  "timestep": 166,
+  "state_rng": [
+   2549673473,
+   3946244175
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 171,
+  "light": 0.21657150983810425,
+  "timestep": 172,
+  "state_rng": [
+   1296418903,
+   3694421345
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 177,
+  "light": 0.15776091814041138,
+  "timestep": 178,
+  "state_rng": [
+   43164333,
+   3443254907
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 182,
+  "light": 0.11445152759552002,
+  "timestep": 183,
+  "state_rng": [
+   430441290,
+   374492782
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 183,
+  "light": 0.10649120807647705,
+  "timestep": 184,
+  "state_rng": [
+   3084877059,
+   1043948445
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 184,
+  "light": 0.09877878427505493,
+  "timestep": 185,
+  "state_rng": [
+   1444345532,
+   3859051724
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 185,
+  "light": 0.09132033586502075,
+  "timestep": 186,
+  "state_rng": [
+   4098781301,
+   2412808691
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 186,
+  "light": 0.0841214656829834,
+  "timestep": 187,
+  "state_rng": [
+   2458249774,
+   3082788130
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 187,
+  "light": 0.0771874189376831,
+  "timestep": 188,
+  "state_rng": [
+   817718247,
+   1602926161
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 188,
+  "light": 0.07052373886108398,
+  "timestep": 189,
+  "state_rng": [
+   3472154016,
+   122801024
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 189,
+  "light": 0.06413495540618896,
+  "timestep": 190,
+  "state_rng": [
+   1831622489,
+   792517815
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 190,
+  "light": 0.05802637338638306,
+  "timestep": 191,
+  "state_rng": [
+   191090962,
+   3607884262
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 191,
+  "light": 0.05220264196395874,
+  "timestep": 192,
+  "state_rng": [
+   2845526731,
+   4040557845
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 192,
+  "light": 0.046667635440826416,
+  "timestep": 193,
+  "state_rng": [
+   1204995204,
+   2562530884
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 193,
+  "light": 0.04142642021179199,
+  "timestep": 194,
+  "state_rng": [
+   3859430973,
+   1082667883
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 194,
+  "light": 0.036482036113739014,
+  "timestep": 195,
+  "state_rng": [
+   2218899446,
+   1750549658
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 195,
+  "light": 0.03183889389038086,
+  "timestep": 196,
+  "state_rng": [
+   578367919,
+   270686665
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 196,
+  "light": 0.027500391006469727,
+  "timestep": 197,
+  "state_rng": [
+   3232803688,
+   940143352
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 197,
+  "light": 0.02346980571746826,
+  "timestep": 198,
+  "state_rng": [
+   1592272161,
+   3788867119
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 198,
+  "light": 0.019750118255615234,
+  "timestep": 199,
+  "state_rng": [
+   4246707930,
+   2309004126
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 199,
+  "light": 0.016344428062438965,
+  "timestep": 200,
+  "state_rng": [
+   2606176403,
+   2978983053
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 200,
+  "light": 0.013255000114440918,
+  "timestep": 201,
+  "state_rng": [
+   965644876,
+   1499120060
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 201,
+  "light": 0.010484576225280762,
+  "timestep": 202,
+  "state_rng": [
+   3620080645,
+   18995939
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 202,
+  "light": 0.008034825325012207,
+  "timestep": 203,
+  "state_rng": [
+   1979549118,
+   688713234
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 203,
+  "light": 0.0059081315994262695,
+  "timestep": 204,
+  "state_rng": [
+   339017591,
+   3537568577
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 204,
+  "light": 0.004105627536773682,
+  "timestep": 205,
+  "state_rng": [
+   2993453360,
+   4205188208
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 205,
+  "light": 0.002629101276397705,
+  "timestep": 206,
+  "state_rng": [
+   1352921833,
+   2727160231
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 206,
+  "light": 0.0014796853065490723,
+  "timestep": 207,
+  "state_rng": [
+   4007357602,
+   1247298262
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 207,
+  "light": 0.0006576776504516602,
+  "timestep": 208,
+  "state_rng": [
+   2366826075,
+   1915180549
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 213,
+  "light": 0.002629101276397705,
+  "timestep": 214,
+  "state_rng": [
+   1113571505,
+   1663750943
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 219,
+  "light": 0.016344428062438965,
+  "timestep": 220,
+  "state_rng": [
+   4155284231,
+   1411927089
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 119,
+  "light": 0.7969250082969666,
+  "timestep": 120,
+  "state_rng": [
+   704712379,
+   2488695669
+  ],
+  "sleeping": false,
+  "health": -5
  }
 ]

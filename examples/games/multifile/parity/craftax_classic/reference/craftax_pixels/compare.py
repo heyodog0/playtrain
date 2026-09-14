@@ -1,12 +1,24 @@
 """Compare our rendered frames against Craftax's, over a real trajectory.
 
-Exports N states from the C reference, renders each through Craftax's own
-pixel renderer, and diffs against what PlayTrainEnv produces for the same
-trajectory.
+Exports N states from the C reference together with our frames for the same
+trajectory; a second script renders those states through Craftax's own pixel
+renderer; then `--diff` reports the result.
 
-    uv run python .../compare.py --seed 3 --steps 60 --out /tmp/cmp
-    # then, in a venv with craftax installed:
-    uv run python .../render_craftax.py /tmp/cmp/state_XX.json
+    uv run python .../compare.py --seed 11 --steps 220 --out /tmp/night
+    # then, in a venv with craftax installed (see README.md):
+    uv run python .../render_craftax_batch.py /tmp/night
+    # back here:
+    uv run python .../compare.py --diff /tmp/night
+
+Night frames. Craftax's static below light_level 0.5 is drawn from
+`state.state_rng`, which the environment cannot derive (README.md). So this
+script CHOOSES a key per frame — any key will do, it only has to be the same
+on both sides — writes it into meta.json as `state_rng`, and renders our
+frames with that key installed via setNightKey(). Because no host can carry
+a key, our frames come from tests/jsrender.py: the same JS, run in node with
+a rasterizer stub. The stub is checked here against PlayTrainEnv on every
+daylight frame of the trajectory, so the comparison is still against what
+the shipped bundle draws.
 
 Handles the one-NOOP offset: GameEnv.reset() ticks draw() once before the
 first env.step(), so a PlayTrain episode is the C's episode with a NOOP
@@ -19,6 +31,43 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent.parent / "tests"))
 
 from ccref import layout, parse_run, run as crun          # noqa: E402
+from jsrender import render_frames                         # noqa: E402
+
+
+def night_key(seed: int, frame: int) -> list[int]:
+    """The state_rng we hand to both renderers for one frame. Arbitrary but
+    fixed, with both words exercised across their full range."""
+    k0 = (0x9E3779B9 * (frame + 1) + seed) & 0xFFFFFFFF
+    k1 = ((0x85EBCA6B * (seed + 1)) ^ (frame * 0x27D4EB2F)) & 0xFFFFFFFF
+    return [k0, k1]
+
+
+def diff(out: pathlib.Path) -> int:
+    """ours.npy vs craftax.npy (cast to uint8), split by light level."""
+    import numpy as np
+    meta = json.loads((out / 'meta.json').read_text())
+    ours = np.load(out / 'ours.npy')
+    cx = np.load(out / 'craftax.npy')
+    if cx.dtype != np.uint8:
+        cx = cx.astype(np.uint8)
+    n = min(len(ours), len(cx), len(meta))
+    day = night = day_ok = night_ok = 0
+    worst = None
+    for i in range(n):
+        same = np.array_equal(ours[i], cx[i])
+        if meta[i]['light'] >= 0.5:
+            day += 1; day_ok += same
+        else:
+            night += 1; night_ok += same
+        if not same:
+            d = np.abs(ours[i].astype(int) - cx[i].astype(int)).sum(axis=2) > 0
+            ys, xs = np.nonzero(d)
+            print(f"frame {i} light {meta[i]['light']:.3f} key {meta[i]['state_rng']}: "
+                  f"{int(d.sum())} px differ, first ({ys[0]}, {xs[0]}) "
+                  f"ours {ours[i][ys[0], xs[0]].tolist()} craftax {cx[i][ys[0], xs[0]].tolist()}")
+            worst = i
+    print(f"{n} frames: daylight {day_ok}/{day} byte-identical, night {night_ok}/{night} byte-identical")
+    return 0 if worst is None else 1
 
 FMT = {'u8': 'B', 'i8': 'b', 'i16': 'h', 'i32': 'i', 'u32': 'I', 'f32': 'f'}
 INV_NAMES = ['wood', 'stone', 'coal', 'iron', 'diamond', 'sapling',
@@ -74,8 +123,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--seed', type=int, default=3)
     ap.add_argument('--steps', type=int, default=60)
-    ap.add_argument('--out', type=pathlib.Path, required=True)
+    ap.add_argument('--out', type=pathlib.Path)
+    ap.add_argument('--diff', type=pathlib.Path, metavar='DIR',
+                    help='compare DIR/ours.npy with DIR/craftax.npy and exit')
     a = ap.parse_args()
+    if a.diff is not None:
+        return diff(a.diff)
+    if a.out is None:
+        ap.error('--out is required')
     a.out.mkdir(parents=True, exist_ok=True)
 
     import numpy as np
@@ -90,30 +145,44 @@ def main():
     idx = {r[4]: (r[0], r[1], r[2], r[3]) for r in rows}
     steps = parse_run(crun('run', str(a.seed), str(path), '--dump-every', '1')).steps
 
+    # What the shipped bundle draws, through a real host. No key can reach
+    # it, so these are the no-static frames; they anchor the stub below.
     env = PlayTrainEnv(game='craftax_classic', obs_size=64, max_steps=10000)
     try:
         obs, _ = env.reset(seed=a.seed)
-        frames = [obs[:63, :63].copy()]
+        host = [obs[:63, :63].copy()]
         for act in actions:
             o, _, term, trunc, _ = env.step(int(act))
-            frames.append(o[:63, :63].copy())
+            host.append(o[:63, :63].copy())
             if term or trunc:
                 break
     finally:
         env.close()
 
-    n = min(len(frames), len(steps))
+    n = min(len(host), len(steps))
+    keys = [night_key(a.seed, i) for i in range(n)]
+    frames = render_frames(a.seed, actions[:n - 1], keys)
+    assert len(frames) == n, (len(frames), n)
+
     meta = []
     for i in range(n):
         st = to_json(steps[i].state, idx)
         (a.out / f'state_{i:03d}.json').write_text(json.dumps(st))
-        meta.append({'i': i, 'light': st['light_level'], 'timestep': st['timestep']})
-    np.save(a.out / 'ours.npy', np.stack(frames[:n]))
+        meta.append({'i': i, 'light': st['light_level'], 'timestep': st['timestep'],
+                     'state_rng': keys[i]})
+        # The stub must draw exactly what the host draws wherever the key
+        # cannot matter. Any difference here is a harness bug, not a finding.
+        if st['light_level'] >= 0.5 and not np.array_equal(frames[i], host[i]):
+            raise SystemExit(f'frame {i}: node stub differs from PlayTrainEnv at light '
+                             f'{st["light_level"]:.3f} — the harness is not faithful')
+    np.save(a.out / 'ours.npy', frames)
+    np.save(a.out / 'ours_host.npy', np.stack(host[:n]))
     (a.out / 'meta.json').write_text(json.dumps(meta, indent=1))
     print(f'{n} frames + states -> {a.out}')
     day = sum(1 for m in meta if m['light'] >= 0.5)
-    print(f'  {day} at light >= 0.5 (reproducible), {n - day} below (RNG static)')
+    print(f'  {day} at light >= 0.5, {n - day} below (rendered with the keys in meta.json)')
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

@@ -3,13 +3,14 @@
 Answers one question: is the port's observation byte-identical to the
 published JAX benchmark's?
 
-**Above `light_level` 0.5 it is. Below, it cannot be.** Numbers below are
+**Yes, at every light level — given Craftax's night key.** Numbers below are
 measured, not estimated.
 
 | condition | result |
 |---|---|
-| `light_level >= 0.5` | **byte-identical** — 147/147 and 81/81 consecutive frames |
-| `light_level < 0.5` | not reproducible — the frame depends on the caller's PRNG key, not on the state |
+| `light_level >= 0.5` | **byte-identical** — 147/147 frames (seed 11) and 120/120 (seed 3, through the death frame) |
+| `light_level < 0.5`, renderer given `state_rng` | **byte-identical** — 74/74 frames (seed 11), 26 of them asleep |
+| `light_level < 0.5`, through a host | the static is omitted — no host can supply the key, and the environment cannot derive it |
 
 ## Why you cannot just compare by seed
 
@@ -19,21 +20,30 @@ to take a state **our** port produced, inject it into Craftax's `EnvState`,
 and render both. That is what these scripts do.
 
 ```sh
-# 1. export one of our canonical states
-uv run python reference/craftax_pixels/export_state.py <seed> <nsteps> /tmp/state.json
+# 1. export the C states for a trajectory, plus our frames for it, with a
+#    night key chosen per frame and recorded in meta.json
+uv run python reference/craftax_pixels/compare.py --seed 11 --steps 220 --out /tmp/night
 
-# 2. render it through Craftax (needs jax + craftax; use a separate venv)
+# 2. render the same states through Craftax, with the same keys
+#    (needs jax + craftax; use a separate venv)
 cd /tmp && uv init cxtest && cd cxtest && uv add craftax
-uv run python <repo>/reference/craftax_pixels/render_craftax.py /tmp/state.json
-# -> /tmp/craftax_ref.npy, a (63, 63, 3) float32 frame
+uv run python <repo>/reference/craftax_pixels/render_craftax_batch.py /tmp/night
 
-# 3. diff against ours (obs[:63, :63])
+# 3. diff, split by light level
+uv run python reference/craftax_pixels/compare.py --diff /tmp/night
+
+# 4. (optional) pin verified frames in the committed fixture
+uv run python reference/craftax_pixels/make_fixture.py /tmp/night --seed 11 --below 0.5 --every 6 --sleeping
 ```
+
+`export_state.py` and `render_craftax.py` are the single-state versions of
+steps 1 and 2. `night_rng_probe.py` is the experiment that established that
+the night frame depends on the key (below).
 
 ## What it took
 
 The first measurement showed 128 of 3969 pixels differing (terrain already
-byte-identical). Three things closed that:
+byte-identical). Three things closed daylight:
 
 1. **Float32 compositing, truncated.** Craftax's observation is float32 and
    its composited pixels are not integral (13.447, 93.631 ...). Our uint8
@@ -56,22 +66,42 @@ byte-identical). Three things closed that:
    daylight — and almost no frame is, since the reset tick alone puts
    `light_level` at 0.806.
 
-## The one gap that stays open, and why
+Two more closed the rest:
 
-Below `light_level` 0.5 Craftax adds per-pixel random static:
+4. **The night static, given the key.** Below 0.5 Craftax draws
 
-```python
-night_with_static = jax.random.uniform(state.state_rng, map_pixels.shape[:2]) * 95 + 32
-night_pixels = jax.lax.select(daylight < 0.5, night_with_static, map_pixels)
-```
+   ```python
+   night_static_intensity = jnp.maximum(2 * (0.5 - daylight), 0.0)
+   night_with_static = jax.random.uniform(state.state_rng, map_pixels.shape[:2]) * 95 + 32
+   night_static_mask = night_static_intensity * textures["night_noise_intensity_texture"]
+   night_with_static = (1 - night_static_mask) * map_pixels + night_static_mask * night_with_static[:, :, None]
+   night_pixels = jax.lax.select(daylight < 0.5, night_with_static, map_pixels)
+   ```
 
-**The reason this cannot be reproduced is not that the PRNG is exotic.**
-`jax.random.uniform` is threefry-2x32: add/rotate/xor on uint32, fully
-specified, and no harder to port than the PCG already in `common/`. Given a
-key, the static is deterministic — rendering the same state twice gives
-identical frames.
+   `src/16_threefry.js` is JAX's threefry-2x32 and `uniform`, checked
+   against `jax.random.uniform` on 15,435 values over five keys. Two details
+   decide whether it matches: the installed JAX (0.11.1) runs the
+   **partitionable** layout (`jax_threefry_partitionable`, default since
+   0.5), where element *i* is hashed with the 64-bit counter *i* split into
+   two words and the two outputs XORed — not the older halves-of-an-iota
+   layout; and `uniform` builds the float from the top 23 bits
+   (`(bits >> 9) | 0x3f800000`, bitcast, minus 1). The noise texture is a
+   radial `1 - exp(...)` over a `linspace` meshgrid; it is baked in
+   `15_atlas.js` (bit-identical to Craftax's cached texture) because
+   `Math.exp` differs between QuickJS and V8, and only `cos`/`sin` are pinned
+   in PlayTrain's engines. `setNightKey(k0, k1)` installs a key; with none
+   installed the static is skipped.
 
-The reason is where the key comes from. In `game_logic.py`:
+5. **The death frame.** Health goes negative in PufferLib's C (int8, no
+   clamp; min 1 - 7 = -6) while Craftax's never does — and Craftax indexes
+   `number_textures[health]` unconditionally, a 10-entry table, so JAX's
+   negative indexing draws digit `10 + health`. Reproduced. This frame was
+   8 pixels off, and the earlier daylight runs had not reached a death.
+
+## Why the environment still cannot do it alone
+
+**The reason is not that the PRNG is exotic** — see item 4. The reason is
+where the key comes from. In `game_logic.py`:
 
 ```python
 rng, _rng = jax.random.split(rng)
@@ -80,9 +110,7 @@ state = state.replace(timestep=..., light_level=..., state_rng=_rng)
 
 `rng` there is the **step key the caller passes in** — the training loop's own
 PRNG. So `state_rng` is not derived from the environment state at all; it is
-threaded in from outside.
-
-Two consequences:
+threaded in from outside. Two consequences:
 
 1. **Craftax's night observation is not a function of its environment state.**
    Two runs from an identical state with different driver keys produce
@@ -93,24 +121,26 @@ Two consequences:
 2. There is therefore nothing for this port to derive the key *from*. Our
    dynamics follow PufferLib's C, which is not JAX-exact in the first place
    (it has its own PCG stream and derives from `Infatoshi/craftax.c` — see
-   PLAN section 0), so even a threefry implementation here would have no
-   correct key to feed it.
+   PLAN section 0). Making the environment produce Craftax's night frame
+   would mean porting Craftax's own game logic and driver key schedule — a
+   different port against a different reference.
 
-**What would close it**, for the record:
-
-- *As a renderer:* implement threefry-2x32 and accept `state_rng` as an
-  input. A comparison harness could then feed Craftax's key and match night
-  frames exactly. This is real work but entirely tractable, and it would make
-  the renderer complete.
-- *As an environment:* impossible without also making the dynamics JAX-exact,
-  i.e. porting Craftax's own game logic instead of PufferLib's C — a
-  different port against a different reference (PufferLib's own
-  `craftax_parity.h` is the analogue for full Craftax).
+That is why the hosts' night frames omit the static: PlayTrainEnv, qjs_host,
+the node GameEnv and the browser expose setup/draw/reset and nothing that
+could carry a key, so `setNightKey` is never called there. Our night frames
+for the comparison come from `tests/jsrender.py` instead — the same
+concatenated sources, in node, with a rasterizer stub — and `compare.py`
+refuses to proceed if that stub differs from PlayTrainEnv on any daylight
+frame of the trajectory.
 
 ## What can honestly be claimed
 
-With gaps 1 and 2 closed and the deterministic dusk blending implemented:
-**byte-identical to Craftax-Classic-Pixels whenever `light_level >= 0.5`,
-which is 59% of an episode.** Never at night — because Craftax's night
-frame depends on the caller's PRNG key rather than on the environment state,
-which no implementation can derive.
+**The renderer is byte-identical to Craftax-Classic-Pixels at every light
+level, given Craftax's `state_rng`.** Through a host — that is, as an
+environment — the frame is byte-identical whenever `light_level >= 0.5`,
+and at night it is Craftax's frame minus the static, because the key is the
+caller's and not the state's, which no implementation can derive.
+
+The committed fixture (`traces/craftax_pixels/`, 59 frames: 24 daylight
+from the original run, 34 night with their keys, and the seed-3 death frame)
+guards all of this in `tests/test_render.py` with node and no JAX.

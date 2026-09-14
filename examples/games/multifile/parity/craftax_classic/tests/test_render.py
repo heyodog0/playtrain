@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from jsrun import have_node
 from playtrain.runtime import PlayTrainEnv
 
 GAME = "craftax_classic"
@@ -109,30 +110,42 @@ def atlas_sprites():
     }, tile
 
 
+@pytest.mark.skipif(not have_node(), reason="node not on PATH")
 def test_frames_are_byte_identical_to_craftax():
     """The claim, checked against Craftax itself.
 
-    `traces/craftax_pixels/reference_frames.npz` holds 24 frames rendered by
+    `traces/craftax_pixels/reference_frames.npz` holds frames rendered by
     Craftax's OWN pixel renderer (`render_craftax_pixels`) from states this
     port produced — the JAX environment cannot be compared by seed, because
     its threefry worldgen makes seed *s* a different world, so the states are
     injected into its EnvState instead. Regenerate with
-    `reference/craftax_pixels/compare.py`; that needs jax, this test does not.
+    `reference/craftax_pixels/compare.py` + `render_craftax_batch.py` +
+    `make_fixture.py`; those need jax, this test does not.
 
     Craftax's observation is float32 and its composited pixels are not
     integral, so the target is that frame cast to uint8.
 
-    Every frame here has `light_level >= 0.5`. Below that Craftax adds
-    per-pixel static from `state_rng`, a JAX key with no counterpart in
-    PufferLib's C, and no implementation carrying this state can reproduce it
-    — see reference/craftax_pixels/README.md.
+    Night frames (`light_level < 0.5`) carry the `state_rng` Craftax was
+    given: its static is drawn from that key, which is the caller's and not
+    derivable from the state. The renderer reproduces it given the key
+    (setNightKey, 16_threefry.js). No host can carry a key, so those frames
+    are rendered by tests/jsrender.py — the same JS in node with a rasterizer
+    stub — and the stub is held to the shipped bundle here: on every daylight
+    frame of the replay it must equal what PlayTrainEnv draws.
     """
     import json
+
+    from jsrender import render_frames
 
     base = Path(__file__).resolve().parent.parent / "traces" / "craftax_pixels"
     ref = np.load(base / "reference_frames.npz")["frames"]
     meta = json.loads((base / "reference_frames.json").read_text())
     assert len(ref) == len(meta) >= 20
+    night = [m for m in meta if m["light"] < 0.5]
+    assert len(night) >= 8, "the fixture must cover night frames"
+    assert all("state_rng" in m for m in night), "a night frame without its key"
+    assert any(m.get("sleeping") for m in night), "no sleeping night frame"
+    assert any(m.get("health", 1) <= 0 for m in meta), "no death frame"
 
     # Replay each recorded trajectory once and pick the frames out of it.
     by_seed = {}
@@ -141,28 +154,48 @@ def test_frames_are_byte_identical_to_craftax():
 
     for seed, wanted in by_seed.items():
         last = max(w["frame"] for w in wanted)
+        actions = [(i * 5 + 2) % 17 for i in range(last)]
+
+        # The shipped bundle, through a real host: no key, no static.
         env = PlayTrainEnv(game=GAME, obs_size=OBS, max_steps=10000)
         try:
             obs, _ = env.reset(seed=seed)
-            got = [obs[:63, :63].copy()]
-            for i in range(last):
-                o, _, term, trunc, _ = env.step((i * 5 + 2) % 17)
-                got.append(o[:63, :63].copy())
+            host = [obs[:63, :63].copy()]
+            for a in actions:
+                o, _, term, trunc, _ = env.step(a)
+                host.append(o[:63, :63].copy())
                 if term or trunc:
                     break
         finally:
             env.close()
 
+        # The same JS in node, with each recorded frame's key installed.
+        keys = [None] * (last + 1)
+        for w in wanted:
+            keys[w["frame"]] = w.get("state_rng")
+        stub = render_frames(seed, actions, keys)
+        assert len(stub) == len(host), "the stub and the host disagree on episode length"
+
+        # Faithfulness: wherever the key cannot matter, stub == host.
+        for w in wanted:
+            if w["light"] >= 0.5:
+                assert np.array_equal(stub[w["frame"]], host[w["frame"]]), (
+                    f"seed {seed} frame {w['frame']}: the node stub differs from PlayTrainEnv"
+                )
+
         for w in wanted:
             k = meta.index(w)
-            assert w["light"] >= 0.5, "fixture contains a night frame"
-            ours = got[w["frame"]]
+            ours = stub[w["frame"]]
             want = ref[k]
+            if w["light"] >= 0.5:
+                # The daylight claim is about the shipped bundle itself.
+                ours = host[w["frame"]]
             if not np.array_equal(ours, want):
                 d = np.abs(ours.astype(int) - want.astype(int)).sum(axis=2) > 0
                 ys, xs = np.nonzero(d)
                 pytest.fail(
-                    f"seed {seed} frame {w['frame']} (light {w['light']:.3f}): "
+                    f"seed {seed} frame {w['frame']} (light {w['light']:.3f}, "
+                    f"key {w.get('state_rng')}): "
                     f"{int(d.sum())} of 3969 px differ from Craftax, first at "
                     f"({ys[0]}, {xs[0]}): ours {ours[ys[0], xs[0]]} "
                     f"vs craftax {want[ys[0], xs[0]]}"

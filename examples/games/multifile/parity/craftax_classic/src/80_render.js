@@ -23,10 +23,16 @@
 // buffer is uploaded once per region and blitted 1:1.
 //
 // WHAT THIS BUYS. Our uint8 frame equals Craftax's float32 frame cast to
-// uint8 — `render_craftax_pixels(state).astype(uint8)` — whenever
-// light_level >= 0.5. Below that Craftax adds per-pixel static drawn from
-// state_rng, a JAX key PufferLib's C has no counterpart for, so those frames
-// cannot be reproduced by anything with this state. See
+// uint8 — `render_craftax_pixels(state).astype(uint8)` — at every light
+// level, PROVIDED the night key is supplied. Below light_level 0.5 Craftax
+// adds per-pixel static drawn with jax.random.uniform from state_rng, and
+// state_rng is set from the CALLER's step key, not from anything in the
+// environment state — so the state does not determine the frame, and this
+// renderer cannot derive the key. It can accept one: setNightKey(k0, k1)
+// installs the two uint32 words of Craftax's state_rng, and the static is
+// then reproduced bit for bit (16_threefry.js). With no key installed
+// (the default, and what every host does) the static is skipped and the
+// frame is the deterministic dusk image. See
 // reference/craftax_pixels/README.md.
 
 const RENDER_TILE = 7;              // BLOCK_PIXEL_SIZE_AGENT
@@ -45,6 +51,35 @@ const ENHANCE = 0.4;
 let _atlasRaw = null, _iconRaw = null, _digitRaw = null;
 let _mapBmp = -1, _invBmp = -1;
 let _mapPx = null, _invPx = null;
+
+// --- night static -----------------------------------------------------------
+// Craftax's state_rng, as two uint32 words, or null for "no key": the static
+// branch is then skipped and the frame is the deterministic dusk image. This
+// is render-only state — it is not part of the game state, never touches the
+// PCG, and nothing in the host contract sets it. A comparison harness calls
+// setNightKey() with the key Craftax was given for the same frame.
+let _nightKey = null;
+let _nightNoise = null;             // float32 (49 x 63) night_noise_intensity_texture
+let _nightStatic = null;            // float32 (49 x 63) scratch for the uniform draw
+
+function setNightKey(k0, k1) {
+  _nightKey = [k0 >>> 0, k1 >>> 0];
+}
+
+function clearNightKey() {
+  _nightKey = null;
+}
+
+// float32 little-endian bytes -> Float32Array, byte by byte so the result
+// does not depend on the host's endianness.
+function _decodeF32(bytes, n) {
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    out[i] = bitsToF32((bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) >>> 0);
+  }
+  return out;
+}
 
 function _decodeB64(s) {
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -69,6 +104,8 @@ function initRender() {
   _atlasRaw = _decodeB64(ATLAS_B64);
   _iconRaw = _decodeB64(ICONS_B64);
   _digitRaw = _decodeB64(DIGITS_B64);
+  _nightNoise = _decodeF32(_decodeB64(NIGHT_NOISE_B64), NIGHT_NOISE_ROWS * NIGHT_NOISE_COLS);
+  _nightStatic = new Float32Array(RENDER_W * RENDER_MAP_H);
   // float32 working buffers, one channel triple per pixel
   _mapPx = new Float32Array(RENDER_W * RENDER_MAP_H * 3);
   _invPx = new Float32Array(RENDER_W * RENDER_INV_H * 3);
@@ -233,19 +270,43 @@ function renderGame(st) {
   }
 
   // --- dusk ---------------------------------------------------------------
-  // Runs for any daylight < 1. The static branch (daylight < 0.5) is NOT
-  // implemented: it draws from state_rng, which this state does not have.
+  // Runs for any daylight < 1. Craftax, in order:
+  //   night_pixels = daylight < 0.5 ? static-blended map : map
+  //   enhance + tint on night_pixels
+  //   map = daylight * map + (1 - daylight) * night_pixels
+  // The static branch needs state_rng; with no key installed it is skipped
+  // and night_pixels is the map itself (see setNightKey above).
   const daylight = st.lightLevel[0];
   if (daylight < 1.0) {
     const inv = F(1 - daylight);
     const n = RENDER_W * RENDER_MAP_H;
+    const withStatic = daylight < 0.5 && _nightKey !== null;
+    let intensity = 0;
+    if (withStatic) {
+      // night_static_intensity = max(2 * (0.5 - daylight), 0); positive here
+      intensity = F(2 * F(0.5 - daylight));
+      // jax.random.uniform(state_rng, (49, 63)), row-major like the buffer
+      threefryUniformF32(_nightKey[0], _nightKey[1], n, _nightStatic);
+    }
     for (let i = 0; i < n; i++) {
       const o = i * 3;
       const r0 = _mapPx[o], g0 = _mapPx[o + 1], b0 = _mapPx[o + 2];
-      const lum = F(F(F(0.299 * r0) + F(0.587 * g0)) + F(0.114 * b0));
-      let nr = F(F(r0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let ng = F(F(g0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let nb = F(F(b0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      let r1 = r0, g1 = g0, b1 = b0;
+      if (withStatic) {
+        // night_with_static = uniform * 95 + 32
+        // mask = intensity * night_noise_intensity_texture
+        // night_pixels = (1 - mask) * map + mask * night_with_static
+        const s = F(F(_nightStatic[i] * 95) + 32);
+        const m = F(intensity * _nightNoise[i]);
+        const im = F(1 - m);
+        r1 = F(F(im * r0) + F(m * s));
+        g1 = F(F(im * g0) + F(m * s));
+        b1 = F(F(im * b0) + F(m * s));
+      }
+      const lum = F(F(F(0.299 * r1) + F(0.587 * g1)) + F(0.114 * b1));
+      let nr = F(F(r1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      let ng = F(F(g1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      let nb = F(F(b1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
       nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
       ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
       nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
@@ -283,9 +344,19 @@ function renderGame(st) {
   for (let i = 0; i < INV_SLOTS.length; i++) {
     const key = INV_SLOTS[i][0], col = INV_SLOTS[i][1], row = INV_SLOTS[i][2];
     const n = counts[key];
-    if (n <= 0) continue;              // Craftax draws the empty texture: black
-    _putIcon(key, col, row);
-    _putDigit(n > 9 ? 9 : n, col, row);
+    // Icon: Craftax selects the empty (black) texture unless the count is > 0.
+    if (n > 0) _putIcon(key, col, row);
+    // Digit: Craftax always indexes number_textures[n], a 10-entry table
+    // (blank, then 1..9), with JAX's indexing rules — above 9 clamps to 9,
+    // and a NEGATIVE index counts from the end, so -5 draws the digit 5.
+    // Negative only happens on the death frame: health is int8 and the C
+    // does not clamp it (min 1 - 7 = -6). Craftax itself never has negative
+    // health, so this is its renderer's behaviour on our state, reproduced
+    // so the terminal frame matches too.
+    let d = n > 9 ? 9 : n;
+    if (d < 0) d += 10;
+    if (d <= 0) continue;              // the blank entry
+    _putDigit(d, col, row);
   }
   _upload(_invPx, _invBmp, RENDER_W, RENDER_INV_H, 0, RENDER_MAP_H);
 }

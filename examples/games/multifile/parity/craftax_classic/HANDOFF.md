@@ -13,11 +13,17 @@ as float32 bits, and the done flag against PufferLib's C over **210 episodes
 seeds) are green. The 1345-float symbolic observation matches the C on every
 step of every episode.
 
-**Pixel parity holds in daylight.** Verified against Craftax itself by
-injecting our states into its `EnvState` and calling its own
-`render_craftax_pixels`: at `light_level >= 0.5` our frame is byte-identical
-to `render_craftax_pixels(state).astype(uint8)` — 147/147 and 81/81
-consecutive frames on two trajectories.
+**Pixel parity holds, given the night key.** Verified against Craftax
+itself by injecting our states into its `EnvState` and calling its own
+`render_craftax_pixels`: our frame is byte-identical to
+`render_craftax_pixels(state).astype(uint8)` on 147/147 daylight and 74/74
+night frames of one trajectory (seed 11, 220 steps) and 120/120 frames of
+another (seed 3, to the death frame). The night frames need Craftax's
+`state_rng` handed to the renderer (`setNightKey`); no host does that, so
+what the hosts draw at night is the dusk image without Craftax's static.
+The fixture in `traces/craftax_pixels/` holds 59 of those frames, 34 at
+night with their keys, and `tests/test_render.py` checks them with node
+and no JAX.
 
 | gate | state |
 |---|---|
@@ -30,29 +36,36 @@ consecutive frames on two trajectories.
 | G6 human session | **handoff** — prerequisites built and verified |
 | symbolic obs, all three hosts | green |
 | Craftax pixels, `light >= 0.5` | green |
-| Craftax pixels, `light < 0.5` | **open — this is the next task** |
+| Craftax pixels, `light < 0.5`, renderer given `state_rng` | green |
+| Craftax pixels, `light < 0.5`, through a host | **not possible** — the key is the caller's, not the state's |
 
-## The next task: night frames
+## Night frames: closed as far as they can be
 
-See `reference/craftax_pixels/README.md` for the full analysis. Summary:
+See `reference/craftax_pixels/README.md`. Craftax's static below
+`light_level` 0.5 is `jax.random.uniform(state.state_rng, (49, 63))`, and
+`state_rng` is set in `game_logic.py` from the **caller's** step key. Two
+consequences, both measured:
 
-Craftax's night rendering adds per-pixel static:
+- the environment cannot derive the key — the C has no counterpart, and the
+  frame is not a function of the state (two Craftax runs with different
+  driver seeds differ in 3086 of 3969 pixels);
+- the renderer can take one. `src/16_threefry.js` is JAX's threefry-2x32
+  plus `uniform`, under the partitionable layout the installed JAX (0.11.1)
+  uses; `setNightKey(k0, k1)` installs a key and the static then matches
+  bit for bit. `night_noise_intensity_texture` is baked in `15_atlas.js`
+  because `Math.exp` is not the same function in QuickJS and V8.
 
-```python
-night_with_static = jax.random.uniform(state.state_rng, map_pixels.shape[:2]) * 95 + 32
-night_pixels = jax.lax.select(daylight < 0.5, night_with_static, map_pixels)
-```
+The comparison loop is `compare.py` (exports states + our frames, chooses a
+key per frame) -> `render_craftax_batch.py` (Craftax, in the jax venv)
+-> `compare.py --diff`; `make_fixture.py` appends verified frames to the
+trace. Our night frames come from `tests/jsrender.py` — the same JS in node
+with a rasterizer stub, since no host carries a key — and that stub is held
+equal to PlayTrainEnv on every daylight frame.
 
-`state_rng` is set in `game_logic.py` from the **caller's** step key
-(`rng, _rng = jax.random.split(rng)`), so Craftax's night frame is not a
-function of its environment state — two Craftax runs with different driver
-seeds differ in 3086 of 3969 pixels.
-
-**The environment therefore cannot derive the key. The renderer can still
-accept one.** Implement threefry-2x32 + `jax.random.uniform` in JS, take
-`state_rng` as an input, and the night path becomes reproducible for any
-supplied key — which is what a comparison harness needs and what makes the
-renderer complete.
+Found on the way: the **death frame**. Health goes negative in the C (int8,
+no clamp) and Craftax indexes `number_textures[health]` unconditionally, so
+JAX's negative indexing draws digit `10 + health`. Reproduced; that frame
+was 8 pixels off before.
 
 ## The other open items
 
@@ -81,6 +94,12 @@ renderer complete.
   Missing it costs 3087 of 3969 pixels on nearly every frame.
 - Craftax's observation is float32 and its composited pixels are not
   integral; the uint8 target is `.astype(uint8)`, i.e. truncation.
+- JAX's `jax_threefry_partitionable` defaults to True since 0.5: element i
+  is hashed with counter (0, i) and the two words XORed. The older layout
+  (halves of a flat iota, concatenated) gives different bits.
+- The engine gate never installs a night key. To exercise the static path
+  across engines, append `setNightKey(...)` to a scratch copy of the bundle
+  and run `gate_qjs.sh` on that.
 - Textures must be baked to 7x7 at build time: Craftax resizes with PIL
   NEAREST (`floor((x+0.5)*16/7)`), the rasterizer blits with
   `floor(x*16/7)` — different pixels.

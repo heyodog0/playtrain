@@ -44,19 +44,23 @@ Integer logic and the RNG are untouched by any of this.
 
 ## What is not matched
 
-- **Pixels.** PufferLib's textures are a raylib viewer; training there is
-  symbolic. We render in house style. Craftax-Classic-Pixels (JAX) is a
-  different observation again, and our comparison row says so.
-- **Craftax-Classic-Pixels, above light 0.5 only.** Verified against Craftax
-  itself, by injecting our states into its `EnvState` and calling its own
-  `render_craftax_pixels` (the JAX env cannot be compared by seed — different
-  worldgen). At `light_level >= 0.5` our frame is **byte-identical** to
-  `render_craftax_pixels(state).astype(uint8)`: 147 of 147 consecutive
-  daylight frames on one trajectory, 81 of 81 on another. Below 0.5 it is **not
-  reproducible by anything** — Craftax draws per-pixel static from
-  `state_rng`, which `game_logic.py` sets from the *caller's* step key, so
-  that frame is not a function of the environment state and differs between
-  two Craftax runs with different driver seeds. That is 41% of an episode. Detail and the harness:
+- **PufferLib's pixels.** Its textures are a raylib viewer; training there
+  is symbolic. Our frame is Craftax-Classic-Pixels' instead (next item).
+- **Craftax-Classic-Pixels at night, as an environment.** Verified against
+  Craftax itself, by injecting our states into its `EnvState` and calling its
+  own `render_craftax_pixels` (the JAX env cannot be compared by seed —
+  different worldgen). At `light_level >= 0.5` our frame is
+  **byte-identical** to `render_craftax_pixels(state).astype(uint8)`: 147 of
+  147 daylight frames on one trajectory, 120 of 120 on another including the
+  death frame. Below 0.5 Craftax adds per-pixel static drawn with
+  `jax.random.uniform` from `state_rng`, which `game_logic.py` sets from the
+  *caller's* step key — so that frame is not a function of the environment
+  state, and no environment can derive the key. **The renderer reproduces
+  it given the key**: `setNightKey(k0, k1)` installs Craftax's `state_rng`
+  and the static is drawn with a bit-exact threefry-2x32 (`16_threefry.js`);
+  74 of 74 night frames byte-identical that way, sleeping frames included.
+  What the hosts draw at night — no key is ever supplied through them — is
+  the deterministic dusk image without the static. Detail and the harness:
   `reference/craftax_pixels/README.md`.
 - **Auto-reset RNG continuation.** PufferLib does not reset the PCG stream
   between episodes; `resetGame(seed)` does.
