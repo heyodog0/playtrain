@@ -109,39 +109,64 @@ def atlas_sprites():
     }, tile
 
 
-def test_tiles_are_byte_identical_to_the_atlas():
-    """The claim the whole baked-atlas design exists to support.
+def test_frames_are_byte_identical_to_craftax():
+    """The claim, checked against Craftax itself.
 
-    Craftax downsamples its 16x16 assets to 7x7 with PIL NEAREST, whose index
-    mapping differs from the rasterizer's blit. So the downscale is done at
-    build time and the runtime blit is 1:1 — which means a rendered tile must
-    equal the atlas sprite EXACTLY, not approximately. If this drifts, the
-    frame is no longer Craftax's image.
+    `traces/craftax_pixels/reference_frames.npz` holds 24 frames rendered by
+    Craftax's OWN pixel renderer (`render_craftax_pixels`) from states this
+    port produced — the JAX environment cannot be compared by seed, because
+    its threefry worldgen makes seed *s* a different world, so the states are
+    injected into its EnvState instead. Regenerate with
+    `reference/craftax_pixels/compare.py`; that needs jax, this test does not.
 
-    Checked on an all-grass corner of the view, away from the player and any
-    mob overlay.
+    Craftax's observation is float32 and its composited pixels are not
+    integral, so the target is that frame cast to uint8.
+
+    Every frame here has `light_level >= 0.5`. Below that Craftax adds
+    per-pixel static from `state_rng`, a JAX key with no counterpart in
+    PufferLib's C, and no implementation carrying this state can reproduce it
+    — see reference/craftax_pixels/README.md.
     """
-    sprites, tile = atlas_sprites()
-    grass = sprites["block_2"][:, :, :3]
+    import json
 
-    env = PlayTrainEnv(game=GAME, obs_size=OBS)
-    try:
-        obs, _ = env.reset(seed=3)
-    finally:
-        env.close()
+    base = Path(__file__).resolve().parent.parent / "traces" / "craftax_pixels"
+    ref = np.load(base / "reference_frames.npz")["frames"]
+    meta = json.loads((base / "reference_frames.json").read_text())
+    assert len(ref) == len(meta) >= 20
 
-    matches = 0
-    for vr in range(VIEW_ROWS):
-        for vc in range(VIEW_COLS):
-            if (vr, vc) == (3, 4):
-                continue                      # the player tile
-            got = obs[vr * tile : (vr + 1) * tile, vc * tile : (vc + 1) * tile]
-            if np.array_equal(got, grass):
-                matches += 1
-    assert matches >= 10, (
-        f"only {matches} tiles are byte-identical to the grass sprite; "
-        "blits are being resampled or the atlas is stale"
-    )
+    # Replay each recorded trajectory once and pick the frames out of it.
+    by_seed = {}
+    for m in meta:
+        by_seed.setdefault(m["seed"], []).append(m)
+
+    for seed, wanted in by_seed.items():
+        last = max(w["frame"] for w in wanted)
+        env = PlayTrainEnv(game=GAME, obs_size=OBS, max_steps=10000)
+        try:
+            obs, _ = env.reset(seed=seed)
+            got = [obs[:63, :63].copy()]
+            for i in range(last):
+                o, _, term, trunc, _ = env.step((i * 5 + 2) % 17)
+                got.append(o[:63, :63].copy())
+                if term or trunc:
+                    break
+        finally:
+            env.close()
+
+        for w in wanted:
+            k = meta.index(w)
+            assert w["light"] >= 0.5, "fixture contains a night frame"
+            ours = got[w["frame"]]
+            want = ref[k]
+            if not np.array_equal(ours, want):
+                d = np.abs(ours.astype(int) - want.astype(int)).sum(axis=2) > 0
+                ys, xs = np.nonzero(d)
+                pytest.fail(
+                    f"seed {seed} frame {w['frame']} (light {w['light']:.3f}): "
+                    f"{int(d.sum())} of 3969 px differ from Craftax, first at "
+                    f"({ys[0]}, {xs[0]}): ours {ours[ys[0], xs[0]]} "
+                    f"vs craftax {want[ys[0], xs[0]]}"
+                )
 
 
 def test_the_padding_column_and_row_are_black(frames):

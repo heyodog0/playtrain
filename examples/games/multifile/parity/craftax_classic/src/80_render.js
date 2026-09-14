@@ -1,44 +1,55 @@
-// 80_render.js — Craftax's own textures, at Craftax's own geometry.
+// 80_render.js — Craftax's frame, reproduced.
 //
 // The observation is 63x63: a 9-wide by 7-tall map view plus 2 inventory
-// rows, every tile 7x7. That is BLOCK_PIXEL_SIZE_AGENT and OBS_DIM from
-// craftax_classic/constants.py, not a layout of ours.
+// rows, every tile 7x7. That is OBS_DIM and BLOCK_PIXEL_SIZE_AGENT from
+// craftax_classic/constants.py, and the textures are Craftax's own, baked to
+// 7x7 (icons 5x5, digits 4x4) at build time by tools/craftax_atlas.py.
 //
-// The textures are Craftax's, baked to 7x7 at build time by
-// tools/craftax_atlas.py and carried in 15_atlas.js. They are uploaded once
-// at setup into rasterizer bitmaps, and every tile is then a 1:1 blit — no
-// resampling at runtime, so the image is identical on every backend.
+// This mirrors Craftax's renderer step for step, including the parts that are
+// easy to miss:
 //
-// WHAT IS AND IS NOT VERIFIED. The geometry, the textures and the tile
-// placement follow Craftax. Whether the finished frame is byte-identical to
-// Craftax-Classic-Pixels has NOT been checked — that needs a comparison run
-// against the JAX environment, which nothing here can do. In particular the
-// overlay compositing below uses integer arithmetic, while Craftax blends in
-// float; those can differ by a unit on edge pixels. See README.
+//   * the dusk pass runs for ANY light_level < 1.0, not just at night — a
+//     luminance "enhance", a blue tint, then a blend back toward the lit
+//     image. Skipping it left 3087 of 3969 pixels wrong on every frame that
+//     was not exactly full daylight;
+//   * the player and mobs alpha-blend in float32; the result is NOT integral
+//     (13.447, 93.631 ...) because Craftax's observation is float32;
+//   * inventory icons are a hard overwrite and the count digits a stencil —
+//     neither is ever blended — and the slot order is fixed, with diamond
+//     starting the second row.
 //
-// The dynamics parity claim (G0-G2) is unaffected either way: it compares
-// state, never pixels.
+// Composition happens in a JS buffer rather than tile-by-tile blits, because
+// the dusk and sleep passes are per-pixel over the whole map region. The
+// buffer is uploaded once per region and blitted 1:1.
+//
+// WHAT THIS BUYS. Our uint8 frame equals Craftax's float32 frame cast to
+// uint8 — `render_craftax_pixels(state).astype(uint8)` — whenever
+// light_level >= 0.5. Below that Craftax adds per-pixel static drawn from
+// state_rng, a JAX key PufferLib's C has no counterpart for, so those frames
+// cannot be reproduced by anything with this state. See
+// reference/craftax_pixels/README.md.
 
 const RENDER_TILE = 7;              // BLOCK_PIXEL_SIZE_AGENT
 const RENDER_COLS = 9;              // OBS_DIM[1]
 const RENDER_ROWS = 7;              // OBS_DIM[0]
 const RENDER_INV_ROWS = 2;          // INVENTORY_OBS_HEIGHT
-const RENDER_W = RENDER_TILE * RENDER_COLS;                        // 63
-const RENDER_H = RENDER_TILE * (RENDER_ROWS + RENDER_INV_ROWS);    // 63
+const RENDER_W = RENDER_TILE * RENDER_COLS;              // 63
+const RENDER_MAP_H = RENDER_TILE * RENDER_ROWS;          // 49
+const RENDER_INV_H = RENDER_TILE * RENDER_INV_ROWS;      // 14
 
-// One rasterizer bitmap per sprite, filled at setup from the baked atlas.
-let _atlasBmp = null;
-// A 7x7 scratch bitmap for a sprite composited over its background tile.
-let _scratchBmp = -1;
-const _scratchPx = new Uint8Array(RENDER_TILE * RENDER_TILE * 4);
-let _atlasRaw = null;
+// Craftax's night constants.
+const NIGHT_TINT = [0, 16, 64];     // night_texture
+const SLEEP_TINT = [0, 0, 16];
+const ENHANCE = 0.4;
 
-function _decodeAtlas() {
-  // base64 -> bytes, without atob (QuickJS has no DOM) and without BigInt.
+let _atlasRaw = null, _iconRaw = null, _digitRaw = null;
+let _mapBmp = -1, _invBmp = -1;
+let _mapPx = null, _invPx = null;
+
+function _decodeB64(s) {
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   const lut = new Int16Array(256).fill(-1);
   for (let i = 0; i < 64; i++) lut[B64.charCodeAt(i)] = i;
-  const s = ATLAS_B64;
   let pad = 0;
   for (let i = s.length - 1; i >= 0 && s[i] === '='; i--) pad++;
   const out = new Uint8Array((s.length / 4) * 3 - pad);
@@ -54,54 +65,46 @@ function _decodeAtlas() {
   return out;
 }
 
-function _spriteBytes(index) {
-  const off = index * ATLAS_STRIDE;
-  return _atlasRaw.subarray(off, off + ATLAS_STRIDE);
-}
-
 function initRender() {
-  _atlasRaw = _decodeAtlas();
-  _atlasBmp = new Int32Array(ATLAS_COUNT);
-  for (let i = 0; i < ATLAS_COUNT; i++) {
-    const h = createBitmap(RENDER_TILE, RENDER_TILE);
-    loadBitmap(h, _spriteBytes(i));
-    _atlasBmp[i] = h;
-  }
-  _scratchBmp = createBitmap(RENDER_TILE, RENDER_TILE);
+  _atlasRaw = _decodeB64(ATLAS_B64);
+  _iconRaw = _decodeB64(ICONS_B64);
+  _digitRaw = _decodeB64(DIGITS_B64);
+  // float32 working buffers, one channel triple per pixel
+  _mapPx = new Float32Array(RENDER_W * RENDER_MAP_H * 3);
+  _invPx = new Float32Array(RENDER_W * RENDER_INV_H * 3);
+  _mapBmp = createBitmap(RENDER_W, RENDER_MAP_H);
+  _invBmp = createBitmap(RENDER_W, RENDER_INV_H);
 }
 
-// Draw sprite `idx` at tile (col, row) of the grid, 1:1.
-function _blit(idx, col, row) {
-  image(_atlasBmp[idx], col * RENDER_TILE, row * RENDER_TILE, RENDER_TILE, RENDER_TILE);
-}
+// --- map composition --------------------------------------------------------
 
-// Composite an alpha sprite over a background sprite and blit the result.
-//
-// rs_draw_image is a straight byte copy with no blending — deliberately, so
-// that blits stay integer-only and bit-exact — so anything with an alpha
-// edge has to be composited before it is uploaded. Integer arithmetic with
-// round-half-up; see the honesty note at the top of this file.
-function _blitOver(bgIdx, fgIdx, col, row) {
-  const bg = _spriteBytes(bgIdx);
-  const fg = _spriteBytes(fgIdx);
-  for (let i = 0; i < ATLAS_STRIDE; i += 4) {
-    const a = fg[i + 3];
-    if (a === 255) {
-      _scratchPx[i] = fg[i]; _scratchPx[i + 1] = fg[i + 1];
-      _scratchPx[i + 2] = fg[i + 2];
-    } else if (a === 0) {
-      _scratchPx[i] = bg[i]; _scratchPx[i + 1] = bg[i + 1];
-      _scratchPx[i + 2] = bg[i + 2];
-    } else {
-      const ia = 255 - a;
-      _scratchPx[i] = ((fg[i] * a + bg[i] * ia + 127) / 255) | 0;
-      _scratchPx[i + 1] = ((fg[i + 1] * a + bg[i + 1] * ia + 127) / 255) | 0;
-      _scratchPx[i + 2] = ((fg[i + 2] * a + bg[i + 2] * ia + 127) / 255) | 0;
+function _putTile(buf, bufW, px, py, spriteIdx) {
+  const off = spriteIdx * ATLAS_STRIDE;
+  for (let y = 0; y < RENDER_TILE; y++) {
+    for (let x = 0; x < RENDER_TILE; x++) {
+      const s = off + (y * RENDER_TILE + x) * 4;
+      const d = ((py + y) * bufW + (px + x)) * 3;
+      buf[d] = _atlasRaw[s];
+      buf[d + 1] = _atlasRaw[s + 1];
+      buf[d + 2] = _atlasRaw[s + 2];
     }
-    _scratchPx[i + 3] = 255;
   }
-  loadBitmap(_scratchBmp, _scratchPx);
-  image(_scratchBmp, col * RENDER_TILE, row * RENDER_TILE, RENDER_TILE, RENDER_TILE);
+}
+
+// Craftax: pixels * (1 - alpha) + texture * alpha, float32, alpha = a / 255.
+function _overTile(buf, bufW, px, py, spriteIdx) {
+  const off = spriteIdx * ATLAS_STRIDE;
+  for (let y = 0; y < RENDER_TILE; y++) {
+    for (let x = 0; x < RENDER_TILE; x++) {
+      const s = off + (y * RENDER_TILE + x) * 4;
+      const d = ((py + y) * bufW + (px + x)) * 3;
+      const a = F(_atlasRaw[s + 3] / 255);
+      const ia = F(1 - a);
+      buf[d] = F(F(buf[d] * ia) + F(_atlasRaw[s] * a));
+      buf[d + 1] = F(F(buf[d + 1] * ia) + F(_atlasRaw[s + 1] * a));
+      buf[d + 2] = F(F(buf[d + 2] * ia) + F(_atlasRaw[s + 2] * a));
+    }
+  }
 }
 
 function _playerSprite(dir, asleep) {
@@ -119,52 +122,155 @@ function _arrowSprite(dr, dc) {
   return ATLAS.arrow_right;
 }
 
-// Inventory rows. Craftax shows the four intrinsics then the items and
-// tools, each with its count as a digit. The exact slot order here is ours,
-// not verified against Craftax's renderer — see the note at the top.
-const _INV_ROW_A = ['health', 'food', 'drink', 'energy',
-                    'inv_wood', 'inv_stone', 'inv_coal', 'inv_iron', 'inv_diamond'];
-const _INV_ROW_B = ['inv_sapling', 'inv_wpick', 'inv_spick', 'inv_ipick',
-                    'inv_wsword', 'inv_ssword', 'inv_isword'];
+// --- inventory --------------------------------------------------------------
+// left  = (7 - int(0.8 * 7)) // 2 - 1 = 0    icon 5x5 at (0, 0) in the tile
+// number_size = int(0.6 * 7) = 4, drawn at offset (7 - 4) - 1 = 2
+const INV_LEFT = 0;
+const INV_NUM_OFF = 2;
+
+// Craftax's slot coordinates. Row 0 ends at iron and diamond starts row 1 —
+// not a left-to-right fill.
+const INV_SLOTS = [
+  ['health', 0, 0], ['food', 1, 0], ['drink', 2, 0], ['energy', 3, 0],
+  ['inv_sapling', 4, 0], ['inv_wood', 5, 0], ['inv_stone', 6, 0],
+  ['inv_coal', 7, 0], ['inv_iron', 8, 0],
+  ['inv_diamond', 0, 1], ['inv_wpick', 1, 1], ['inv_spick', 2, 1],
+  ['inv_ipick', 3, 1], ['inv_wsword', 4, 1], ['inv_ssword', 5, 1],
+  ['inv_isword', 6, 1],
+];
+
+function _putIcon(key, col, row) {
+  const off = ICONS[key] * ICON_STRIDE;
+  const px = col * RENDER_TILE + INV_LEFT;
+  const py = row * RENDER_TILE + INV_LEFT;
+  for (let y = 0; y < ICON_TILE; y++) {
+    for (let x = 0; x < ICON_TILE; x++) {
+      const s = off + (y * ICON_TILE + x) * 4;
+      const d = ((py + y) * RENDER_W + (px + x)) * 3;
+      _invPx[d] = _iconRaw[s];
+      _invPx[d + 1] = _iconRaw[s + 1];
+      _invPx[d + 2] = _iconRaw[s + 2];
+    }
+  }
+}
+
+// Stencil: multiply by (1 - alpha), then add the premultiplied texture. With
+// alpha clamped to 0/1 upstream this is a hard replace where the digit is
+// opaque and a no-op elsewhere.
+function _putDigit(n, col, row) {
+  const off = (n - 1) * DIGIT_STRIDE;
+  const px = col * RENDER_TILE + INV_NUM_OFF;
+  const py = row * RENDER_TILE + INV_NUM_OFF;
+  for (let y = 0; y < DIGIT_TILE; y++) {
+    for (let x = 0; x < DIGIT_TILE; x++) {
+      const s = off + (y * DIGIT_TILE + x) * 4;
+      if (_digitRaw[s + 3] !== 255) continue;
+      const d = ((py + y) * RENDER_W + (px + x)) * 3;
+      _invPx[d] = _digitRaw[s];
+      _invPx[d + 1] = _digitRaw[s + 1];
+      _invPx[d + 2] = _digitRaw[s + 2];
+    }
+  }
+}
+
+// --- upload -----------------------------------------------------------------
+// float32 -> uint8 with truncation, which is what .astype(uint8) does to
+// Craftax's float frame.
+const _rgba = new Uint8Array(RENDER_W * RENDER_MAP_H * 4);
+
+function _upload(buf, bmp, w, h, x, y) {
+  const n = w * h;
+  for (let i = 0; i < n; i++) {
+    const s = i * 3, d = i * 4;
+    _rgba[d] = buf[s] | 0;
+    _rgba[d + 1] = buf[s + 1] | 0;
+    _rgba[d + 2] = buf[s + 2] | 0;
+    _rgba[d + 3] = 255;
+  }
+  loadBitmap(bmp, _rgba.subarray(0, n * 4));
+  image(bmp, x, y, w, h);
+}
 
 function renderGame(st) {
-  if (_atlasBmp === null) initRender();
+  if (_atlasRaw === null) initRender();
 
   const pr = st.playerR[0];
   const pc = st.playerC[0];
-
   background(0, 0, 0);
 
-  // --- the 9x7 map view --------------------------------------------------
+  // --- map ----------------------------------------------------------------
   for (let vr = 0; vr < RENDER_ROWS; vr++) {
     for (let vc = 0; vc < RENDER_COLS; vc++) {
       const r = pr + vr - 3;
       const c = pc + vc - 4;
       const blk = inBounds(r, c) ? mapGet(st, r, c) : BLK_OUT_OF_BOUNDS;
-      const bgIdx = ATLAS['block_' + blk];
-
-      if (!inBounds(r, c)) { _blit(bgIdx, vc, vr); continue; }
-
-      let fg = -1;
-      if (mbGet(st.zombieBits, r, c)) fg = ATLAS.zombie;
-      else if (mbGet(st.cowBits, r, c)) fg = ATLAS.cow;
-      else if (mbGet(st.skelBits, r, c)) fg = ATLAS.skeleton;
-      if (fg < 0 && mbGet(st.arrowBits, r, c)) {
-        for (let i = 0; i < MAX_ARROWS; i++) {
-          if (st.arrowMask[i] && st.arrowR[i] === r && st.arrowC[i] === c) {
-            fg = _arrowSprite(st.arrowDr[i], st.arrowDc[i]);
-            break;
-          }
-        }
-      }
-      if (vr === 3 && vc === 4) fg = _playerSprite(st.playerDir[0], st.isSleeping[0]);
-
-      if (fg < 0) _blit(bgIdx, vc, vr);
-      else _blitOver(bgIdx, fg, vc, vr);
+      _putTile(_mapPx, RENDER_W, vc * RENDER_TILE, vr * RENDER_TILE, ATLAS['block_' + blk]);
     }
   }
 
-  // --- the two inventory rows --------------------------------------------
+  // Player first, then mobs, then arrows — Craftax's order.
+  _overTile(_mapPx, RENDER_W, 4 * RENDER_TILE, 3 * RENDER_TILE,
+            _playerSprite(st.playerDir[0], st.isSleeping[0]));
+
+  const drawMob = (bits, sprite) => {
+    for (let vr = 0; vr < RENDER_ROWS; vr++) {
+      for (let vc = 0; vc < RENDER_COLS; vc++) {
+        const r = pr + vr - 3, c = pc + vc - 4;
+        if (!inBounds(r, c) || !mbGet(bits, r, c)) continue;
+        _overTile(_mapPx, RENDER_W, vc * RENDER_TILE, vr * RENDER_TILE, sprite);
+      }
+    }
+  };
+  drawMob(st.zombieBits, ATLAS.zombie);
+  drawMob(st.cowBits, ATLAS.cow);
+  drawMob(st.skelBits, ATLAS.skeleton);
+  for (let i = 0; i < MAX_ARROWS; i++) {
+    if (!st.arrowMask[i]) continue;
+    const vr = st.arrowR[i] - pr + 3, vc = st.arrowC[i] - pc + 4;
+    if (vr < 0 || vr >= RENDER_ROWS || vc < 0 || vc >= RENDER_COLS) continue;
+    _overTile(_mapPx, RENDER_W, vc * RENDER_TILE, vr * RENDER_TILE,
+              _arrowSprite(st.arrowDr[i], st.arrowDc[i]));
+  }
+
+  // --- dusk ---------------------------------------------------------------
+  // Runs for any daylight < 1. The static branch (daylight < 0.5) is NOT
+  // implemented: it draws from state_rng, which this state does not have.
+  const daylight = st.lightLevel[0];
+  if (daylight < 1.0) {
+    const inv = F(1 - daylight);
+    const n = RENDER_W * RENDER_MAP_H;
+    for (let i = 0; i < n; i++) {
+      const o = i * 3;
+      const r0 = _mapPx[o], g0 = _mapPx[o + 1], b0 = _mapPx[o + 2];
+      const lum = F(F(F(0.299 * r0) + F(0.587 * g0)) + F(0.114 * b0));
+      let nr = F(F(r0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      let ng = F(F(g0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      let nb = F(F(b0 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
+      ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
+      nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
+      _mapPx[o] = F(F(daylight * r0) + F(inv * nr));
+      _mapPx[o + 1] = F(F(daylight * g0) + F(inv * ng));
+      _mapPx[o + 2] = F(F(daylight * b0) + F(inv * nb));
+    }
+  }
+
+  // --- sleep --------------------------------------------------------------
+  if (st.isSleeping[0]) {
+    const n = RENDER_W * RENDER_MAP_H;
+    for (let i = 0; i < n; i++) {
+      const o = i * 3;
+      const lum = F(F(F(0.299 * _mapPx[o]) + F(0.587 * _mapPx[o + 1])) + F(0.114 * _mapPx[o + 2]));
+      _mapPx[o] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[0]));
+      _mapPx[o + 1] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[1]));
+      _mapPx[o + 2] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[2]));
+    }
+  }
+
+  _upload(_mapPx, _mapBmp, RENDER_W, RENDER_MAP_H, 0, 0);
+
+  // --- inventory ----------------------------------------------------------
+  _invPx.fill(0);
   const counts = {
     health: st.health[0], food: st.food[0], drink: st.drink[0], energy: st.energy[0],
     inv_wood: st.inv[INV_WOOD], inv_stone: st.inv[INV_STONE], inv_coal: st.inv[INV_COAL],
@@ -174,15 +280,12 @@ function renderGame(st) {
     inv_wsword: st.inv[INV_WSWORD], inv_ssword: st.inv[INV_SSWORD],
     inv_isword: st.inv[INV_ISWORD],
   };
-
-  const drawSlot = (key, col, row) => {
+  for (let i = 0; i < INV_SLOTS.length; i++) {
+    const key = INV_SLOTS[i][0], col = INV_SLOTS[i][1], row = INV_SLOTS[i][2];
     const n = counts[key];
-    if (!n || n <= 0) return;              // empty slots stay black, as in Craftax
-    const icon = ATLAS[key];
-    const d = n > 9 ? 9 : n;
-    _blitOver(icon, ATLAS['digit_' + d], col, row);
-  };
-
-  for (let i = 0; i < _INV_ROW_A.length; i++) drawSlot(_INV_ROW_A[i], i, RENDER_ROWS);
-  for (let i = 0; i < _INV_ROW_B.length; i++) drawSlot(_INV_ROW_B[i], i, RENDER_ROWS + 1);
+    if (n <= 0) continue;              // Craftax draws the empty texture: black
+    _putIcon(key, col, row);
+    _putDigit(n > 9 ? 9 : n, col, row);
+  }
+  _upload(_invPx, _invBmp, RENDER_W, RENDER_INV_H, 0, RENDER_MAP_H);
 }

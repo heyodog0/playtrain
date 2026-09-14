@@ -3,8 +3,13 @@
 Answers one question: is the port's observation byte-identical to the
 published JAX benchmark's?
 
-**It is not, and it cannot be at night.** Details below; the numbers were
+**Above `light_level` 0.5 it is. Below, it cannot be.** Numbers below are
 measured, not estimated.
+
+| condition | result |
+|---|---|
+| `light_level >= 0.5` | **byte-identical** — 147/147 and 81/81 consecutive frames |
+| `light_level < 0.5` | not reproducible, by anything carrying this state |
 
 ## Why you cannot just compare by seed
 
@@ -25,19 +30,33 @@ uv run python <repo>/reference/craftax_pixels/render_craftax.py /tmp/state.json
 # 3. diff against ours (obs[:63, :63])
 ```
 
-## Result, measured on seeds 3, 11 and 42 at t=0
+## What it took
 
-| region | pixels differing |
-|---|---|
-| terrain, excluding the player tile | **0 of 3381** |
-| player tile | 4 of 49 |
-| inventory rows | 124 of 567 |
-| **total** | **128 of 3969 (3.2%)** |
+The first measurement showed 128 of 3969 pixels differing (terrain already
+byte-identical). Three things closed that:
 
-So the tiles themselves — textures, geometry, placement — are **exactly**
-Craftax's. The gap is entirely in two overlays.
+1. **Float32 compositing, truncated.** Craftax's observation is float32 and
+   its composited pixels are not integral (13.447, 93.631 ...). Our uint8
+   frame can at best equal that frame cast to uint8, and `.astype(uint8)`
+   truncates — so the composite is done in float32, in Craftax's operation
+   order, and truncated. Rounding half-up was wrong on 4 px of the player.
 
-## The three gaps, and which are closable
+2. **The real inventory layout.** 5x5 icons (`int(0.8 * 7)`) at offset 0 and
+   4x4 digits (`int(0.6 * 7)`) at offset 2, with fixed slots — and the slot
+   order is not a left-to-right fill: row 0 ends at iron, and **diamond
+   starts row 1**. Icons are a hard overwrite, digits a stencil (alpha is
+   clamped to 0/1 upstream), neither ever blended. Upstream is also
+   inconsistent about which icons get `apply_alpha`, which is reproduced item
+   by item.
+
+3. **The dusk pass, which runs for ANY `light_level < 1.0`.** This was the
+   big one and it is easy to miss: a luminance "enhance" (0.4), a blue tint
+   toward `[0, 16, 64]`, then a blend back toward the lit image. Omitting it
+   left 3087 of 3969 pixels wrong on every frame that was not exactly full
+   daylight — and almost no frame is, since the reset tick alone puts
+   `light_level` at 0.806.
+
+## The one gap that stays open
 
 1. **Player tile, 4 px — closable.** Craftax composites with
    `pixels * (1 - alpha) + texture * alpha` in float32 and keeps the frame

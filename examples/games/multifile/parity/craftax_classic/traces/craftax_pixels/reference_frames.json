@@ -1,0 +1,146 @@
+[
+ {
+  "seed": 3,
+  "frame": 0,
+  "light": 0.8056125640869141,
+  "timestep": 1
+ },
+ {
+  "seed": 3,
+  "frame": 6,
+  "light": 0.8536737561225891,
+  "timestep": 7
+ },
+ {
+  "seed": 3,
+  "frame": 12,
+  "light": 0.8944774270057678,
+  "timestep": 13
+ },
+ {
+  "seed": 3,
+  "frame": 18,
+  "light": 0.9278628826141357,
+  "timestep": 19
+ },
+ {
+  "seed": 3,
+  "frame": 24,
+  "light": 0.9539756774902344,
+  "timestep": 25
+ },
+ {
+  "seed": 3,
+  "frame": 30,
+  "light": 0.9732581377029419,
+  "timestep": 31
+ },
+ {
+  "seed": 3,
+  "frame": 36,
+  "light": 0.986427903175354,
+  "timestep": 37
+ },
+ {
+  "seed": 3,
+  "frame": 42,
+  "light": 0.9944468140602112,
+  "timestep": 43
+ },
+ {
+  "seed": 3,
+  "frame": 48,
+  "light": 0.9984816312789917,
+  "timestep": 49
+ },
+ {
+  "seed": 3,
+  "frame": 54,
+  "light": 0.9998566508293152,
+  "timestep": 55
+ },
+ {
+  "seed": 3,
+  "frame": 60,
+  "light": 0.9999988675117493,
+  "timestep": 61
+ },
+ {
+  "seed": 3,
+  "frame": 66,
+  "light": 0.9996071457862854,
+  "timestep": 67
+ },
+ {
+  "seed": 11,
+  "frame": 0,
+  "light": 0.8056125640869141,
+  "timestep": 1
+ },
+ {
+  "seed": 11,
+  "frame": 12,
+  "light": 0.8944774270057678,
+  "timestep": 13
+ },
+ {
+  "seed": 11,
+  "frame": 24,
+  "light": 0.9539756774902344,
+  "timestep": 25
+ },
+ {
+  "seed": 11,
+  "frame": 36,
+  "light": 0.986427903175354,
+  "timestep": 37
+ },
+ {
+  "seed": 11,
+  "frame": 48,
+  "light": 0.9984816312789917,
+  "timestep": 49
+ },
+ {
+  "seed": 11,
+  "frame": 60,
+  "light": 0.9999988675117493,
+  "timestep": 61
+ },
+ {
+  "seed": 11,
+  "frame": 72,
+  "light": 0.9975003004074097,
+  "timestep": 73
+ },
+ {
+  "seed": 11,
+  "frame": 84,
+  "light": 0.9826623797416687,
+  "timestep": 85
+ },
+ {
+  "seed": 11,
+  "frame": 96,
+  "light": 0.9460580348968506,
+  "timestep": 97
+ },
+ {
+  "seed": 11,
+  "frame": 108,
+  "light": 0.8816986680030823,
+  "timestep": 109
+ },
+ {
+  "seed": 11,
+  "frame": 120,
+  "light": 0.7880513072013855,
+  "timestep": 121
+ },
+ {
+  "seed": 11,
+  "frame": 132,
+  "light": 0.6684203147888184,
+  "timestep": 133
+ }
+]

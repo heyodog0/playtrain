@@ -43,8 +43,10 @@ ASSETS = REPO / "games" / "craftax_assets"
 OUT = (REPO / "examples" / "games" / "multifile" / "parity" / "craftax_classic"
        / "src" / "15_atlas.js")
 
-TILE = 7          # BLOCK_PIXEL_SIZE_AGENT
-SRC_TILE = 16     # every Craftax asset is 16x16
+TILE = 7                    # BLOCK_PIXEL_SIZE_AGENT
+SRC_TILE = 16               # every Craftax asset is 16x16
+ICON = int(TILE * 0.8)      # 5 — inventory icons ("small_block_pixel_size")
+DIGIT = int(TILE * 0.6)     # 4 — the count digits ("number_size")
 
 # BlockType order, from craftax_classic/constants.py. Index 1 is a placeholder:
 # the renderer overwrites OUT_OF_BOUNDS with solid grey.
@@ -67,20 +69,33 @@ OVERLAYS = [
     ("arrow_left", "arrow-left.png"), ("arrow_right", "arrow-right.png"),
 ]
 
-# The two inventory rows: item icons, the four intrinsic icons, and digits.
+# Inventory icons, at ICON px. The third element is whether Craftax applies
+# its alpha mask (RGB * alpha, so transparent pixels go black) before drawing.
+# Upstream is NOT consistent about this — health/food/drink/energy, wood,
+# stone, coal, iron, diamond, sapling and wood_pickaxe are taken as
+# [:, :, :3] with no mask, while the other five tools go through
+# apply_alpha(). Reproduced item by item rather than tidied up.
 INVENTORY = [
-    ("inv_wood", "wood.png"), ("inv_stone", "stone.png"), ("inv_coal", "coal.png"),
-    ("inv_iron", "iron.png"), ("inv_diamond", "diamond.png"),
-    ("inv_sapling", "sapling.png"),
-    ("inv_wpick", "wood_pickaxe.png"), ("inv_spick", "stone_pickaxe.png"),
-    ("inv_ipick", "iron_pickaxe.png"), ("inv_wsword", "wood_sword.png"),
-    ("inv_ssword", "stone_sword.png"), ("inv_isword", "iron_sword.png"),
-    ("health", "health.png"), ("food", "food.png"),
-    ("drink", "drink.png"), ("energy", "energy.png"),
-] + [(f"digit_{d}", f"{d}.png") for d in range(1, 10)]
+    ("health", "health.png", False), ("food", "food.png", False),
+    ("drink", "drink.png", False), ("energy", "energy.png", False),
+    ("inv_sapling", "sapling.png", False), ("inv_wood", "wood.png", False),
+    ("inv_stone", "stone.png", False), ("inv_coal", "coal.png", False),
+    ("inv_iron", "iron.png", False), ("inv_diamond", "diamond.png", False),
+    ("inv_wpick", "wood_pickaxe.png", False),
+    ("inv_spick", "stone_pickaxe.png", True),
+    ("inv_ipick", "iron_pickaxe.png", True),
+    ("inv_wsword", "wood_sword.png", True),
+    ("inv_ssword", "stone_sword.png", True),
+    ("inv_isword", "iron_sword.png", True),
+]
+
+# Count digits, at DIGIT px. Craftax clamps their alpha to 0/1 and draws them
+# as a hard stencil (multiply the destination by 1-alpha, then add the
+# premultiplied texture), so these are never blended.
+DIGITS = [(f"digit_{d}", f"{d}.png") for d in range(1, 10)]
 
 
-def load(name: str, opaque: bool) -> Image.Image:
+def load(name: str, opaque: bool, size: int = TILE) -> Image.Image:
     """One texture, Craftax's way: 16x16 RGBA, NEAREST-resized to TILE.
 
     ``opaque`` is the block case. Craftax builds block textures as
@@ -95,8 +110,8 @@ def load(name: str, opaque: bool) -> Image.Image:
     img = Image.open(ASSETS / name).convert("RGBA")
     if img.size != (SRC_TILE, SRC_TILE):
         raise SystemExit(f"{name}: expected 16x16, got {img.size}")
-    if TILE != SRC_TILE:
-        img = img.resize((TILE, TILE), resample=Image.NEAREST)
+    if size != SRC_TILE:
+        img = img.resize((size, size), resample=Image.NEAREST)
     if opaque:
         r, g, b, _ = img.split()
         img = Image.merge("RGBA", (r, g, b, Image.new("L", img.size, 255)))
@@ -118,21 +133,57 @@ def main() -> int:
 
     for key, fname in OVERLAYS:
         sprites.append((key, load(fname, opaque=False).tobytes()))
-    for key, fname in INVENTORY:
-        sprites.append((key, load(fname, opaque=False).tobytes()))
+
+    # Icons and digits live in their own runs because they are not TILE-sized.
+    icons: list[tuple[str, bytes]] = []
+    for key, fname, masked in INVENTORY:
+        img = load(fname, opaque=False, size=ICON)
+        px = bytearray(img.tobytes())
+        # Craftax draws icons with .set() — a hard overwrite, no blending — so
+        # alpha is not used at draw time. Bake the two upstream variants in.
+        for i in range(0, len(px), 4):
+            a = px[i + 3]
+            if masked and a != 255:
+                px[i] = px[i + 1] = px[i + 2] = 0
+            px[i + 3] = 255
+        icons.append((key, bytes(px)))
+
+    digits: list[tuple[str, bytes]] = []
+    for key, fname in DIGITS:
+        img = load(fname, opaque=False, size=DIGIT)
+        px = bytearray(img.tobytes())
+        # clamp_alpha: 255 stays, anything else is transparent.
+        for i in range(0, len(px), 4):
+            px[i + 3] = 255 if px[i + 3] == 255 else 0
+        digits.append((key, bytes(px)))
 
     stride = TILE * TILE * 4
     for key, data in sprites:
         assert len(data) == stride, f"{key}: {len(data)} bytes, expected {stride}"
+    for key, data in icons:
+        assert len(data) == ICON * ICON * 4, key
+    for key, data in digits:
+        assert len(data) == DIGIT * DIGIT * 4, key
 
     blob = b"".join(d for _, d in sprites)
     index = {key: i for i, (key, _) in enumerate(sprites)}
+    icon_blob = b"".join(d for _, d in icons)
+    icon_index = {key: i for i, (key, _) in enumerate(icons)}
+    digit_blob = b"".join(d for _, d in digits)
+    def b64wrap(data):
+        t = base64.b64encode(data).decode()
+        parts = [t[i : i + 100] for i in range(0, len(t), 100)]
+        return "\n  '" + "' +\n  '".join(parts) + "'"
+
     b64 = base64.b64encode(blob).decode()
     # Wrap so the generated file stays readable in a diff.
     lines = [b64[i : i + 100] for i in range(0, len(b64), 100)]
     joined = "\n  '" + "' +\n  '".join(lines) + "'"
 
     entries = "\n".join(f"  {k}: {v}," for k, v in index.items())
+    icon_entries = "\n".join(f"  {k}: {v}," for k, v in icon_index.items())
+    icons_b64 = b64wrap(icon_blob)
+    digits_b64 = b64wrap(digit_blob)
     OUT.write_text(f"""// 15_atlas.js — GENERATED by tools/craftax_atlas.py. DO NOT EDIT.
 //
 // Craftax's own textures, baked to {TILE}x{TILE} RGBA and base64'd so the bundle
@@ -157,10 +208,25 @@ const ATLAS = {{
 }};
 
 const ATLAS_B64 ={joined};
+
+// Inventory icons, {ICON}x{ICON} (int(0.8 * {TILE})). Drawn with a hard overwrite,
+// so alpha is already resolved into the bytes here.
+const ICON_TILE = {ICON};
+const ICON_STRIDE = ICON_TILE * ICON_TILE * 4;
+const ICONS = {{
+{icon_entries}
+}};
+const ICONS_B64 ={icons_b64};
+
+// Count digits, {DIGIT}x{DIGIT} (int(0.6 * {TILE})), index 0 = digit 1. Drawn as a
+// stencil: alpha is 0 or 255 and never blended.
+const DIGIT_TILE = {DIGIT};
+const DIGIT_STRIDE = DIGIT_TILE * DIGIT_TILE * 4;
+const DIGITS_B64 ={digits_b64};
 """)
     print(f"wrote {OUT.relative_to(REPO)}")
-    print(f"  {len(sprites)} sprites at {TILE}x{TILE}, {len(blob)} bytes raw, "
-          f"{len(b64)} base64")
+    print(f"  {len(sprites)} tiles at {TILE}x{TILE}, {len(icons)} icons at "
+          f"{ICON}x{ICON}, {len(digits)} digits at {DIGIT}x{DIGIT}")
     return 0
 
 

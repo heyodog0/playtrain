@@ -47,14 +47,16 @@ Integer logic and the RNG are untouched by any of this.
 - **Pixels.** PufferLib's textures are a raylib viewer; training there is
   symbolic. We render in house style. Craftax-Classic-Pixels (JAX) is a
   different observation again, and our comparison row says so.
-- **Craftax-Classic-Pixels, partly.** Measured, not assumed: with one of our
-  states injected into Craftax's own renderer, the terrain is byte-identical
-  (0 of 3381 pixels differ across seeds 3, 11, 42) and the whole frame differs
-  in 128 of 3969 pixels — the player tile (4) and the inventory rows (124).
-  Both are closable. **Night is not:** below `light_level` 0.5 Craftax adds
-  per-pixel static drawn from `state_rng`, a JAX threefry key that PufferLib's
-  C does not have, affecting 3086 pixels for 41% of an episode. Full detail
-  and the repeatable harness: `reference/craftax_pixels/README.md`.
+- **Craftax-Classic-Pixels, above light 0.5 only.** Verified against Craftax
+  itself, by injecting our states into its `EnvState` and calling its own
+  `render_craftax_pixels` (the JAX env cannot be compared by seed — different
+  worldgen). At `light_level >= 0.5` our frame is **byte-identical** to
+  `render_craftax_pixels(state).astype(uint8)`: 147 of 147 consecutive
+  daylight frames on one trajectory, 81 of 81 on another. Below 0.5 it is
+  **not reproducible by anything carrying this state** — Craftax draws
+  per-pixel static from `state_rng`, a JAX threefry key PufferLib's C does not
+  have. That is 41% of an episode. Detail and the harness:
+  `reference/craftax_pixels/README.md`.
 - **Auto-reset RNG continuation.** PufferLib does not reset the PCG stream
   between episodes; `resetGame(seed)` does.
 - **One NOOP at reset.** `GameEnv.reset()` calls `resetGame(seed)` and then a
