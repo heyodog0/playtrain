@@ -12,6 +12,20 @@ set shell := ["bash", "-cu"]
 default:
     @just --list --unsorted
 
+# === multifile games ===
+
+# Bundle one multi-file game (examples/games/multifile/**) into dist/.
+bundle name:
+    uv run python tools/bundle_multifile.py {{name}}
+
+# Bundle every multi-file game.
+bundle-all:
+    uv run python tools/bundle_multifile.py --all
+
+# Fail if any committed dist/ is not what a fresh bundle would produce.
+bundle-check:
+    uv run python tools/bundle_multifile.py --all --check
+
 # === setup ===
 
 # Install deps AND build the native QuickJS backend (the default runtime engine).
