@@ -500,7 +500,17 @@ static void cc_step_player_only(CraftaxClassic* env, int action) {
     move_player(env, eff_action);
 }
 
-static int mode_player(unsigned int seed, const char* actions_path) {
+// The player half plus the mob half: lines 973-979, stopping before
+// update_plants.
+static void cc_step_mobs_only(CraftaxClassic* env, int action) {
+    cc_step_player_only(env, action);
+    update_mobs(env);
+    spawn_mobs(env);
+}
+
+// Shared body for the `player` and `mobs` probes; they differ only in which
+// sub-step they run.
+static int mode_probe(unsigned int seed, const char* actions_path, int with_mobs) {
     FILE* af = fopen(actions_path, "rb");
     if (!af) { fprintf(stderr, "cc_ref: cannot open %s\n", actions_path); return 2; }
     fseek(af, 0, SEEK_END);
@@ -522,7 +532,8 @@ static int mode_player(unsigned int seed, const char* actions_path) {
     fwrite(hdr, 4, 2, stdout);
 
     for (long t = 0; t < n_actions; t++) {
-        cc_step_player_only(env, actions[t]);
+        if (with_mobs) cc_step_mobs_only(env, actions[t]);
+        else           cc_step_player_only(env, actions[t]);
         cc_serialize(env, 0.0f, buf);
         uint64_t h = fnv1a64(buf, nb);
         uint32_t rb = 0;
@@ -546,6 +557,7 @@ static int usage(void) {
         "       cc_ref world <seed>\n"
         "       cc_ref serve <seed>\n"
         "       cc_ref player <seed> <actions.bin>\n"
+        "       cc_ref mobs  <seed> <actions.bin>\n"
         "       cc_ref run   <seed> <actions.bin> [--dump-every K]\n");
     return 2;
 }
@@ -568,7 +580,11 @@ int main(int argc, char** argv) {
     }
     if (strcmp(mode, "player") == 0) {
         if (argc != 4) return usage();
-        return mode_player((unsigned int)strtoul(argv[2], NULL, 10), argv[3]);
+        return mode_probe((unsigned int)strtoul(argv[2], NULL, 10), argv[3], 0);
+    }
+    if (strcmp(mode, "mobs") == 0) {
+        if (argc != 4) return usage();
+        return mode_probe((unsigned int)strtoul(argv[2], NULL, 10), argv[3], 1);
     }
     if (strcmp(mode, "run") == 0) {
         if (argc != 4 && argc != 6) return usage();
