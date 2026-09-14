@@ -54,7 +54,12 @@ const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
 const CONSENT_FIELDS = ['compensationRate', 'contactName', 'contactEmail', 'piName', 'piEmail',
                         'irbName', 'irbPhone', 'irbEmail'];
 const missing = CONSENT_FIELDS.filter(k => !(cfg.study || {})[k]);
-if (missing.length && UPLOAD_URL) {
+// A loopback upload URL is not collection: it is you capturing your own playtest on your
+// own machine, which is what study-serve.mjs and quickplay.mjs do. Refusing there made the
+// documented `node study/study-serve.mjs` impossible to run, since the shipped config's
+// consent fields are blank by design. Anything non-loopback is still refused.
+const LOCAL_UPLOAD = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(UPLOAD_URL);
+if (missing.length && UPLOAD_URL && !LOCAL_UPLOAD) {
   console.error(`refusing to build a collecting study with an incomplete consent form.`);
   console.error(`  unset in ${CONFIG_PATH}: ${missing.join(', ')}`);
   console.error(`  fill these in from your own ethics approval, and read the header of`);

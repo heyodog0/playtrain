@@ -10,7 +10,7 @@
 //   node study/verify-replay.mjs dist/study-sessions/<file>.json
 
 import { createServer } from 'http';
-import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync, statSync } from 'fs';
 import { join, extname, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
@@ -113,7 +113,11 @@ const server = createServer((req, res) => {
   }
 
   let p = join(SITE, decodeURIComponent(req.url.split('?')[0]));
-  if (!extname(p)) p = join(p, 'index.html');
+  // Directory -> index.html. Test the filesystem, not the extension: a game name with a
+  // dot in it (vvvvvv.v2, breakout.multi) makes extname() report '.v2', so the old
+  // extension test skipped the rewrite and readFileSync threw EISDIR on the directory,
+  // killing the server the moment the shell's iframe opened block/<game>/.
+  try { if (statSync(p).isDirectory()) p = join(p, 'index.html'); } catch { /* 404 below */ }
   if (!p.startsWith(SITE) || !existsSync(p)) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'content-type': MIME[extname(p)] || 'application/octet-stream',
                        'cache-control': 'no-store' });
