@@ -39,8 +39,8 @@ def run_js(snippet: str, sources: list[str] | None = None) -> str:
     names = COMMON_SOURCES if sources is None else sources
     parts = []
     for name in names:
-        path = COMMON / name
-        parts.append(f"// ---- common/{name} ----\n{path.read_text()}")
+        path = (COMMON / name).resolve()
+        parts.append(f"// ---- {name} ----\n{path.read_text()}")
     parts.append("// ---- test snippet ----\n" + snippet)
     with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False) as fh:
         fh.write("\n".join(parts))
