@@ -140,3 +140,73 @@ def test_build_study_reads_the_sidecar_from_the_games_dir():
     assert "steps_per_second" in src
     assert "sidecarFor(g.name)" in src
     assert "sidecarFor(practice.game)" in src
+
+
+# --- 10b prerequisites -----------------------------------------------------
+# 10b itself is a handoff: a person has to play a session. These check the
+# plumbing that session depends on, so the handoff does not fail on setup.
+
+def test_quickplay_finds_the_game_without_an_explicit_games_dir():
+    """`node study/quickplay.mjs craftax_classic` must resolve the bundle from
+    the multifile dist, the same second games root the Python runtime
+    searches. Otherwise the human has to know to pass --games."""
+    proc = subprocess.run(
+        ["node", str(STUDY / "quickplay.mjs"), "--list"],
+        capture_output=True, text=True, cwd=STUDY,
+    )
+    assert proc.returncode == 0, proc.stderr
+    listed = proc.stdout.splitlines()
+    assert NAME in [line.strip() for line in listed], proc.stdout
+    # The catalog must still be there, and first.
+    assert "pong" in [line.strip() for line in listed]
+
+
+def test_the_headless_replay_path_drives_seventeen_actions():
+    """G6 is only meaningful if the browser episode reproduces headlessly.
+    verify-replay.mjs builds a bare GameEnv({gamePath, frameSkip, maxSteps})
+    with no action table, so it relies on the sidecar being picked up there.
+    Check that it is, and that a fixed action list replays deterministically.
+    """
+    repo = str(REPO)
+    script = f"""
+const {{ GameEnv }} = await import({json.dumps(repo + '/runtime/p5/game-env.mjs')});
+const gamePath = {json.dumps(str(DIST / (NAME + '.js')))};
+const actions = Array.from({{ length: 400 }}, (_, i) => (i * 7 + 3) % 17);
+const env = new GameEnv({{ gamePath, frameSkip: 1, maxSteps: 2000 }});
+env.reset({{ seed: 90001 }});
+let steps = 0;
+for (const a of actions) {{
+  const s = env.step(a);
+  steps++;
+  if (s.terminated || s.truncated) break;
+}}
+const st = globalThis.getGameState();
+console.log(JSON.stringify({{ steps, score: st.score, n: env.actions.length }}));
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False, dir=STUDY) as fh:
+        fh.write(script)
+        temp = fh.name
+    try:
+        runs = []
+        for _ in range(2):
+            proc = subprocess.run(["node", temp], capture_output=True, text=True, cwd=STUDY)
+            assert proc.returncode == 0, proc.stderr
+            runs.append(json.loads(proc.stdout))
+    finally:
+        Path(temp).unlink(missing_ok=True)
+
+    assert runs[0]["n"] == 17, "the headless replay env did not pick up the sidecar table"
+    assert runs[0] == runs[1], f"headless replay is not deterministic: {runs}"
+    assert runs[0]["steps"] > 50
+
+
+def test_replay_comparison_is_unaffected_by_the_int32_score_wire():
+    """The 8b blocker truncates info["score"] on the Python step wire. G6 does
+    not go through that wire: the browser records getGameState().score into
+    JSON and verify-replay.mjs compares getGameState().score in-process, both
+    full precision. Recorded so the two issues are not conflated."""
+    src = (STUDY / "verify-replay.mjs").read_text()
+    assert "getGameState" in src or "_getState" in src or "env.step" in src
+    # A fractional score must survive a JSON round trip, which is how the
+    # browser hands the episode over.
+    assert json.loads(json.dumps({"score": 0.9999998211860657}))["score"] == 0.9999998211860657

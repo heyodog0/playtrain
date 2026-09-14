@@ -19,9 +19,14 @@
 // real protocol in study-config.json.
 //
 // Everything underneath is the study harness, unmodified: the same block page, the
-// same Discrete(8) quantizer, the same seed pool, the same 2000-step cap. So the
-// episode replays through the training environment and reproduces its score, and a
-// clip rendered from it is the same episode rather than a reconstruction.
+// same quantizer, the same seed pool, the same 2000-step cap. So the episode
+// replays through the training environment and reproduces its score, and a clip
+// rendered from it is the same episode rather than a reconstruction.
+//
+// "The same quantizer" means default8's for a catalog game. A game that ships a
+// <name>.json sidecar declares its own action table and its own human tick rate,
+// and the harness uses those instead (study-templates.mjs). Catalog games are
+// unaffected.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'fs';
 import { dirname, resolve, join } from 'path';
@@ -44,13 +49,44 @@ if (!GAME || (GAME.startsWith('-') && GAME !== '--list')) {
 }
 
 // Same default as build-study.mjs / verify-replay.mjs: what the trainers resolve.
-const GAMES_DIR = resolve(arg('--games',
+const CATALOG_DIR = resolve(arg('--games',
   process.env.PLAYTRAIN_GAMES_DIR || join(REPO_ROOT, 'examples', 'games', 'js')));
 
+// Multi-file games are bundled into examples/games/multifile/*/*/dist/, which is
+// a second games root the Python runtime already searches (_paths.py). Search it
+// here too so `quickplay.mjs craftax_classic` just works instead of needing an
+// explicit --games. The catalog is searched first, so nothing there is shadowed.
+function multifileDistDirs() {
+  const root = join(REPO_ROOT, 'examples', 'games', 'multifile');
+  if (!existsSync(root)) return [];
+  const out = [];
+  for (const kind of readdirSync(root)) {
+    const kindDir = join(root, kind);
+    let names;
+    try { names = readdirSync(kindDir); } catch { continue; }
+    for (const name of names) {
+      const d = join(kindDir, name, 'dist');
+      if (existsSync(d)) out.push(d);
+    }
+  }
+  return out.sort();
+}
+
+const SEARCH_DIRS = [CATALOG_DIR, ...multifileDistDirs()];
+
+function dirForGame(name) {
+  return SEARCH_DIRS.find(d => existsSync(join(d, `${name}.js`)));
+}
+
 if (GAME === '--list') {
-  const names = readdirSync(GAMES_DIR).filter(f => f.endsWith('.js'))
-    .map(f => f.slice(0, -3)).sort();
-  console.log(`${names.length} games in ${GAMES_DIR}\n`);
+  const seen = new Set();
+  for (const d of SEARCH_DIRS) {
+    for (const f of readdirSync(d)) {
+      if (f.endsWith('.js')) seen.add(f.slice(0, -3));
+    }
+  }
+  const names = [...seen].sort();
+  console.log(`${names.length} games in ${SEARCH_DIRS.join(', ')}\n`);
   console.log(names.join('\n'));
   process.exit(0);
 }
@@ -61,8 +97,10 @@ const SECONDS = parseFloat(arg('--seconds', '20'));
 const OUT = resolve(arg('--out', join(REPO_ROOT, 'dist', 'playtests')));
 const SITE = join(REPO_ROOT, 'dist', 'quickplay-site');
 
-if (!existsSync(join(GAMES_DIR, `${GAME}.js`))) {
-  console.error(`no such game: ${join(GAMES_DIR, `${GAME}.js`)}`);
+const GAMES_DIR = dirForGame(GAME);
+if (!GAMES_DIR) {
+  console.error(`no such game: ${GAME}.js`);
+  console.error(`  looked in: ${SEARCH_DIRS.join('\n             ')}`);
   console.error(`  run with --list to see what is there`);
   process.exit(1);
 }

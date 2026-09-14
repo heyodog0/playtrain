@@ -87,3 +87,43 @@ here until it has been confirmed against the vendored header.
 |---|---|---|---|
 | 1 | **Lava never generates.** A cell becomes `BLK_LAVA` only when `mountain_val > 0.85` *and* `tree_noise > 0.7` (line 450). Scanning 500 seeds found **zero** lava cells in any world. The `done` branch for "standing on lava" (line 1000) and the lava rejection in `can_move_mob` (line 649) are therefore unreachable in play. | `generate_world`, `puf_step`, `can_move_mob` | Ported as written. The corpus's `lava` policy searches for lava and never finds any, so every one of its episodes ends by health instead — recorded honestly in `traces/corpus.json`. The JS keeps the branch so that if a future seed or a future Craftax does generate lava, the two sides still agree. |
 | 2 | **The sand band's upper bound is dead.** Line 444 reads `else if (water_val > 0.6f && water_val <= 0.75f) blk = BLK_SAND;`, but the preceding `if (water_val > 0.7f)` has already claimed everything above 0.7. The effective sand range is `(0.6, 0.7]` and the `<= 0.75` test can never fail when reached. | `generate_world` | Ported as written, including the redundant comparison, so the two implementations stay line-comparable. |
+
+## G6: the human session (handoff)
+
+G6 is one recorded human session that replays through the training environment
+to the same score. It needs a person to actually play; the harness work is
+done and checked (task 10a, and the 10b prerequisite tests in
+`tests/test_study_harness.py`).
+
+**To run it:**
+
+```sh
+node study/quickplay.mjs craftax_classic --seconds 100
+```
+
+No `--games` needed — quickplay searches the multifile dists as well as the
+catalog. It opens the game in a browser, you play one 100-second block, and the
+session JSON lands in `dist/playtests/` and is replay-verified on the spot.
+
+**What to expect.** The game ticks at **8 steps/s**, not 60, from the sidecar's
+`human.steps_per_second` — Craftax is turn-based and 60 is unplayable. 100
+seconds is therefore about 800 steps. Controls come from the sidecar:
+
+> Arrows move and face. SPACE interacts. TAB sleeps. 1-4 place
+> stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand
+> next to a table; iron needs a furnace too).
+
+In ~800 steps expect to collect wood, place a table, make wood tools, and maybe
+reach stone. **Report achievements unlocked, not score** (PLAN 7): the score is
+dominated by health changes and is not a good summary of what a player did.
+
+**What counts as a pass.** `verify-replay.mjs` runs automatically and must say
+every episode reproduces. If it does not, the browser and headless runtimes
+have diverged and human scores are not comparable to agent scores.
+
+**Not affected by the G5 blocker.** That one truncates `info["score"]` on the
+Python step wire; G6 records `getGameState().score` in the page and compares it
+in-process, both at full precision.
+
+Record the outcome here when it is done: date, achievements unlocked, and the
+replay-verification line.
