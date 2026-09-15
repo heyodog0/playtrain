@@ -23,7 +23,7 @@ field or pixel, expected, actual) and stop.
 | T7a | Throughput, Mac: `qjs_host bench` + a new V8 `tests/envprof.mjs`, fp vs classic; `bench.json` + README §Throughput | done | QuickJS **fp 5,935 SPS vs classic 397 = 14.9×**; V8 fp 11,020 vs classic 10,962 (a wash); fp suite `37 passed`, repo `106 passed, 3 skipped` | a657e02 | Target (≥8k) NOT met — see "T7a findings". Two render-side fixes landed here. |
 | T7b | Throughput, cluster: one exclusive job (`test` partition, `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`) on fp and classic | blocked | not run | | **No checkout of this branch exists on FASRC.** Only tree is `/n/home06/truong/node-gym-smoke/playtrain`, on `main` at `29e1e7f`, 69 dirty files, no `examples/games/multifile/variants/`. `release` is 75 commits unpushed and pushing it is the user's call. Same wall as classic PROGRESS 9b/12. |
 | T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | handoff | build side gated: `37 passed` (`tests/test_render_fp.py`); page builds, carries the JS voxel port, paces at 8 steps/s | 67f30f3 | **Ready for a person. Do not simulate.** Instructions in the variant README under "Playing it in the browser". See "T8 findings" for what is NOT checkable. |
-| T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES` if needed, memory note | todo | | | |
+| T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES`, memory note | done | full sweep: repo `106 passed, 3 skipped`, fp `37 passed`, classic `117 passed`, `cargo test --release` `29 passed`, wasm check `PASS` ×8 | 7fc20bc | README covers frame layout, world geometry, absolute controls, exact/not-exact, gates, hand-off, throughput. |
 
 ## T0 findings (what T1+ must know)
 
@@ -719,10 +719,76 @@ solid blocks; and the day/night cycle around step 150, plus TAB to sleep.
 
 **Nothing was simulated.** No browser session was run or reported.
 
+## T9 findings
+
+**The variant README is now the document to read**, in this order: the frame
+layout (with a diagram), world geometry and the derived solid set, why the
+controls are absolute, **what is exact and what is not**, the gates and how to
+run them, the browser hand-off, and throughput.
+
+**No new assets, so `THIRD_PARTY_LICENSES.md` needed only an amendment.** The
+first-person atlas bakes **the same vendored Craftax PNGs** as the classic
+port; `tools/craftax_atlas_fp.py` differs only in keeping the authored 16×16
+resolution instead of downscaling to 7×7. Same provenance, same MIT licence,
+same "baked in, nothing loaded at runtime". Both the table row and the Craftax
+section say so now.
+
+**One claim in the README intro was wrong and is fixed.** It said the frame is
+"wasm under V8 and in the browser". The browser runs the **pure-JS** port (T8),
+so it now reads: native under QuickJS, wasm32 under V8, a hand port in JS for
+the browser, all three producing the same bytes and gated rather than asserted.
+
+**A Gates section was added** with the exact commands, a table of what each
+gate holds, and the rebuild order after any Rust change — that last one
+because `native/build_qjs.sh` only builds the staticlib if the `.a` is
+missing, which silently compares stale code against stale code.
+
+**Memory note written** for the next agent at
+`~/.claude/projects/.../memory/craftax-fp-variant.md`, indexed in `MEMORY.md`:
+what is measured, the V8-is-a-wash caveat that must travel with the 14.9×
+number, the blocked cluster run, and the six traps that cost time here.
+
+## Final state
+
+**T0–T9 complete except T7b (cluster throughput), which is blocked.**
+
+Everything the plan asked for is built and gated on this machine:
+
+| claim | evidence |
+|---|---|
+| dynamics unchanged | 210 episodes / 49,061 steps, **zero differing bytes** of the 6,880-byte state and of the symbolic obs |
+| fp == classic == PufferLib's C | the above, plus G2 re-run here (`3 passed`) |
+| every engine agrees | `GATE PASS: craftax_fp`, 3000 steps × 3 seeds bit-exact |
+| native == wasm32 | 8 golden scenes, hash for hash |
+| all four backends agree | `tests/test_voxel.py`, `5 passed` |
+| inventory identical to classic | pixel-for-pixel over a trajectory that moves it |
+| throughput | QuickJS **5,935 vs 397 SPS = 14.9×**; V8 a wash (~11k both) |
+
+**The two things a reader must not lose:**
+
+1. The 14.9× is a **QuickJS** number. Under V8 the two games are the same
+   speed, because V8 JITs classic's per-pixel loops down to the wasm raycast's
+   cost. The win is real and it is where PlayTrain's native host runs, but it
+   is not a universal win.
+2. The plan's ≥8k SPS target is **not met** (5,935). Dynamics 69 µs + native
+   render 74 µs is a ~143 µs floor before any JS, so the budget was optimistic
+   about the render. Closing it means a cheaper raycast — fewer DDA steps or a
+   shorter view distance — which is a spec change, not an optimisation.
+
+**What is left for a human:** open the play page and look at it (T8, five
+checks listed in the variant README), and decide whether to push `release` so
+the cluster run (T7b) can happen.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T9 — wrote the variant README in full (frame diagram, world
+  geometry, absolute-controls caveat, exact/not-exact, gates + rebuild order,
+  throughput), amended `THIRD_PARTY_LICENSES.md` for the second atlas baker
+  (no new assets), fixed a wrong claim in the README intro about the browser
+  using wasm, and left a memory note for the next agent. Full gate sweep green.
+  Commit `7fc20bc`. **T0–T9 complete except T7b, blocked.**
 - 2026-09-15 — T8 — built the play page and gated its prerequisites: it
   carries the JS voxel port and the 8 steps/s pacing. Verified the pure-JS
   backend (which is what the browser runs, since the page does not inline
