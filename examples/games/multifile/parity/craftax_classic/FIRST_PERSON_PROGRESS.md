@@ -18,7 +18,8 @@ field or pixel, expected, actual) and stop.
 | T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `15_atlas_fp.js` + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | done | `uv run pytest examples/games/multifile/variants/craftax_fp/tests -q`: `18 passed in 0.44s`; bundle `--check` → `ok craftax_fp`; `built 1 games` | 8c57ca2 | See "T3 findings". Repo suite `106 passed, 3 skipped`. Both gates mutation-checked. |
 | T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | done | `uv run pytest .../craftax_fp/tests/test_same_dynamics.py -q`: `6 passed in 5.11s`; driver: `210 episodes, 49061 steps, 0 differing bytes` | f665b4f | Symbolic obs equal too. G2 re-run here: `3 passed` (classic == C). See "T4 findings" for the golden-chain anomaly. |
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | done | `8 passed in 8.56s`; `GATE PASS: craftax_fp`, 3× `3000 steps bit-exact` | f70b6d0 | Symbolic mode agrees too; vectorised host deterministic and equal to the single env. Whole variant suite `32 passed`. |
-| T6 | `rs_voxel_sprite` + `rs_dusk` (§4.4 option A) + night static with driver seed; goldens extended; wasm check; T5 rerun | todo | | | Also: a night frame at `light_level<0.5` must differ from its daylight twin. |
+| T6a | Sprites: `rs_voxel_sprite`, bindings, goldens extended, mobs/arrows wired into the game | done | `cargo test --release`: `22 passed; 0 failed; 2 ignored`; wasm check `PASS` ×7; `test_voxel.py` `5 passed`; fp suite `32 passed`; T5 `8 passed`; **49.08 µs/frame** | 896b25c | Found and fixed a real depth-units bug — see "T6a findings". |
+| T6b | Dusk (§4.4 option A: `rs_dusk`) + night static from the driver seed; threefry in Rust validated against `jax_uniform.json`; goldens extended; T5 rerun | todo | | | Gate: T1/T2/T5 green again, **and** a night frame at `light_level<0.5` differs from its daylight twin. Needs a 49×64 night-noise texture baked by `tools/craftax_atlas_fp.py` — the classic one is 49×63 and the fp view is 64 wide. |
 | T7 | Throughput: Mac `qjs_host bench` + V8 `envprof` for fp vs classic; one exclusive cluster job; `outputs/craftax_fp_bench.json` | todo | | | Cluster via `fasrc '<cmd>'`; `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`. Classic baseline from the same harness beside every fp number. |
 | T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | todo | | | Hand-off stays a hand-off — do not simulate a human session. |
 | T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES` if needed, memory note | todo | | | |
@@ -461,10 +462,86 @@ differential gate with its own history of catching exactly this. The vacuity
 risk that *is* specific to craftax_fp — a green gate over the wrong frame — is
 covered by the test above.
 
+## T6a findings
+
+**T6 was split.** Sprites (this row) and the dusk/night pass (T6b) are
+independent, and the plan's gate for T6 mixes both. T6a is done; T6b is the
+dusk half and still carries the "a night frame differs from its daylight twin"
+requirement.
+
+**Gates, all green after the change:** `cargo test --release` `22 passed`;
+`wasm_voxel_check.mjs` `PASS` on **7** scenes (the new `sprites` scene
+included), native hash == wasm hash; `tests/test_voxel.py` `5 passed` with
+billboards now in the smoke game, so all four backends including the pure-JS
+port are compared with sprites in frame; fp suite `32 passed`; T5's
+`gate_qjs.sh craftax_fp 3000` `8 passed`. Repo suite `106 passed, 3 skipped`;
+classic parity suite `117 passed`.
+
+**Measured: 49.08 µs/frame** (was 44.87 before sprites, same corridor scene —
+the scene has no sprites, so the delta is noise, not the sprite pass).
+
+**A real bug, found by asking why a mob three cells ahead drew nothing.**
+
+`rs_voxel_view` stored **Euclidean** distance along the ray; `rs_voxel_sprite`
+naturally computes a billboard's **forward** distance (camera-space z). Those
+differ by the ray's length, up to sqrt(3) at a frame corner with a 90° FOV in
+both axes. Comparing one against the other let a sprite draw **through a wall**
+near the edges of the frame: the wall's stored Euclidean depth can exceed the
+sprite's forward depth even when the wall is genuinely in front.
+
+Fixed by storing `t_hit / len` — the forward distance — in the depth buffer.
+`view_dist` is still compared against Euclidean t, so the draw distance stays a
+circle instead of becoming a slab. Mirrored in `raster.mjs`.
+
+Two tests pin it, and both fail if the line is reverted:
+- `wall_depth_is_constant_across_a_flat_wall` — a wall row perpendicular to the
+  view is the same forward distance at every pixel, so its stored depth must be
+  flat. Under Euclidean it fans out **4.504 .. 6.325**. The assertion is on the
+  *shape* of the error (`hi/lo < 1.0001`), not a bit compare, because `t / len`
+  rounds and the constant comes out as 4.4999995 on some pixels; a 1-ULP spread
+  and a 1.4x spread are five orders of magnitude apart, so the test still
+  discriminates. Cross-backend bit-exactness is a separate gate.
+- `a_sprite_behind_a_wall_is_occluded_off_axis`.
+
+**The original symptom was not a bug.** A zombie 3+ cells ahead in seed 1
+really is behind a tree. `sprite_falloff_is_smooth_in_an_open_field` exists so
+the next person can tell the two cases apart without spending an hour:
+800, 208, 90, 56, 30, 30, 12, 12 pixels at forward distances 1..8.
+
+**Game wiring.** `_fpSprites` reads the mob **arrays** (`zombieMask`/`R`/`C`
+etc.), not the per-row bitmaps `80_render.js` scans — a billboard needs the
+entity's actual cell, and the arrays are short (3 zombies, 3 cows, 2 skeletons,
+3 arrows), so it is at most 11 calls a frame with no search. Craftax's draw
+order is kept but does not matter: the depth buffer decides what is in front.
+**The player is deliberately not drawn** — you are the player.
+
+**Plants stay cubes.** `isSolid` includes `BLK_PLANT` and `BLK_RIPE_PLANT`, so
+the plan §4.3 aside about "plants that are not solid" does not match the code
+it points at. A plant you cannot walk through reads better as a block. T3
+flagged this for T6; it is decided.
+
+**`tests/fp_probe.mjs --mob <dRow> <dCol>`** injects a zombie at an offset from
+the player and reports the pixels it changed, rendering once with every mob
+mask cleared as the baseline. Mobs are rare and never where a test wants them,
+so this is the only way to gate the billboard pass through the game's own
+renderer. Three tests use it.
+
+**zsh does not word-split unquoted variables.** `for off in "-2 0"; do node ...
+--mob $off ...` passes ONE argument in zsh and two in bash. Use `bash -c` for
+loops like that; it cost a confusing "usage:" error.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T6a — added `rs_voxel_sprite` (upright billboards, depth-tested,
+  alpha-blended), bound it through both hosts, the shim and both JS backends,
+  extended the goldens to 7 scenes and the smoke game to draw sprites, and
+  wired mobs and arrows into the fp renderer. Found that the depth buffer held
+  Euclidean distance while sprites compare forward distance — sprites could
+  draw through walls near the frame edges — and switched the buffer to forward
+  depth, with two tests that catch the regression. 49.08 µs/frame. Commit
+  `896b25c`.
 - 2026-09-15 — T5 — ran `gate_qjs.sh craftax_fp 3000`: GATE PASS, 3 seeds ×
   3000 steps bit-exact, first run. Wrote `test_engines_fp.py` (8 tests):
   pixel gate, symbolic gate plus its non-vacuity check, an fp-vs-classic
