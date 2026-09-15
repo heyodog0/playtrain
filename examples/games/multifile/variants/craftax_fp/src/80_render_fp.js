@@ -304,6 +304,13 @@ function fpNotePose(st) {
   let d = FP_YAW_CUR[2] - FP_YAW_PREV[2];
   while (d > 2) { FP_YAW_PREV[2] += 4; d -= 4; }
   while (d < -2) { FP_YAW_PREV[2] -= 4; d += 4; }
+  // A HALF TURN IS SNAPPED, NOT SWEPT. At exactly +/-2 quarter turns there is
+  // no short way round — both directions are equally long — so the sweep
+  // picks one arbitrarily and the result is a 180-degree spin over one step,
+  // which reads as the camera lurching rather than as turning around. The game
+  // itself flips the facing instantly, so the honest animation is no animation:
+  // keep the position interpolating and let the yaw jump.
+  if (d === 2 || d === -2) FP_YAW_PREV[2] = FP_YAW_CUR[2];
 }
 
 // Ease-out: most of the motion happens early, so the camera arrives before the

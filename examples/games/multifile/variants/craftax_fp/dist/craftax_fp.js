@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 19 sources listed in
 // examples/games/multifile/variants/craftax_fp/manifest.json
-// Source hash (sha256 over the concatenated sources): 9b22283429b4e803317ffa4d0c575c9c1413397046f7386d02f363c45e592e73
+// Source hash (sha256 over the concatenated sources): ceaae54b97023aa9737684f8c6992bdc1c9604cabe2b756d986720586bd96093
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_fp
@@ -3407,6 +3407,13 @@ function fpNotePose(st) {
   let d = FP_YAW_CUR[2] - FP_YAW_PREV[2];
   while (d > 2) { FP_YAW_PREV[2] += 4; d -= 4; }
   while (d < -2) { FP_YAW_PREV[2] -= 4; d += 4; }
+  // A HALF TURN IS SNAPPED, NOT SWEPT. At exactly +/-2 quarter turns there is
+  // no short way round — both directions are equally long — so the sweep
+  // picks one arbitrarily and the result is a 180-degree spin over one step,
+  // which reads as the camera lurching rather than as turning around. The game
+  // itself flips the facing instantly, so the honest animation is no animation:
+  // keep the position interpolating and let the yaw jump.
+  if (d === 2 || d === -2) FP_YAW_PREV[2] = FP_YAW_CUR[2];
 }
 
 // Ease-out: most of the motion happens early, so the camera arrives before the

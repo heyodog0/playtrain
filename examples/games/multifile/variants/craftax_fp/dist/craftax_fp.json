@@ -103,7 +103,7 @@
     "symbolic": 1345,
     "rgb_size": 64,
     "frame": "rows 0-48 are the first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide, byte-identical to craftax_classic), row 63 black padding",
-    "controls_note": "the arrow KEYMAP is facing-relative for human play only; the 17-action space is Craftax's own absolute one and training never goes through the keymap"
+    "controls_note": "the arrow keymap is facing-relative for HUMAN play only, applied by the play page through the game's relativeArrow(); the 17-action space an agent sees is Craftax's own absolute one and currentAction() is unchanged"
   },
   "max_steps": 10000,
   "human": {
@@ -123,5 +123,5 @@
       "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
     ]
   },
-  "source_sha256": "9b22283429b4e803317ffa4d0c575c9c1413397046f7386d02f363c45e592e73"
+  "source_sha256": "ceaae54b97023aa9737684f8c6992bdc1c9604cabe2b756d986720586bd96093"
 }
