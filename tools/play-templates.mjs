@@ -23,6 +23,10 @@ export const baseStyle = `
 const playStyle = `
 #parity-label { margin: 8px auto 0; max-width: 900px; font-size: 13px; opacity: .75; }
 #parity-label code { opacity: .9; }
+#parity-label details { display: inline-block; vertical-align: top; text-align: left; }
+#parity-label summary { cursor: pointer; display: inline; }
+#parity-label ul { margin: 6px 0 0; padding-left: 18px; }
+#parity-label li { margin: 4px 0; }
 #controls-overlay { margin: 8px auto 0; max-width: 900px; font-size: 13px; line-height: 1.5; opacity: .85; }
 ${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
@@ -144,8 +148,16 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sid
   const parityLabel = ref
     ? `<div id="parity-label">exact dynamics vs ${ref.name || 'the reference'}` +
       (ref.commit ? ` <code>${String(ref.commit).slice(0, 7)}</code>` : '') +
+      // manifest.not_matched holds the full prose caveats. They belong on the page
+      // -- the claim without the caveats is the dishonest half -- but they are
+      // paragraphs, not a label, so they sit collapsed behind a disclosure. No
+      // nested <div>: the parity-label gate matches up to the first </div>.
       (Array.isArray(ref.not_matched) && ref.not_matched.length
-        ? ` &middot; not matched: ${ref.not_matched.join(', ')}` : '') +
+        ? ` &middot; <details><summary>${ref.not_matched.length} documented caveat`
+          + (ref.not_matched.length === 1 ? '' : 's')
+          + `</summary><ul>`
+          + ref.not_matched.map((c) => `<li>${c}</li>`).join('')
+          + `</ul></details>` : '') +
       `</div>`
     : '';
   // Classic <script> executes before the deferred type="module" boot, so window.Matter is
