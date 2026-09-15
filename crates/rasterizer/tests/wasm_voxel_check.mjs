@@ -64,7 +64,7 @@ function render(sc) {
   for (const [sx, sz, tile] of sc.sprites || []) {
     x.rs_voxel_sprite(
       h, sc.eye[0], sc.eye[1], sc.eye[2], sc.yaw, sc.view, sx, sz,
-      ap, sc.tile_px, sc.n_tiles, tile,
+      ap, sc.tile_px, sc.n_tiles, tile, sc.sky,
       sc.dst[0], sc.dst[1], sc.dst[2], sc.dst[3],
     );
   }

@@ -97,14 +97,19 @@ def test_sky_is_above_the_horizon_and_world_below(env):
     still is, is FLAT: every pixel above the horizon is one colour, because
     nothing is drawn there. The ground is not."""
     obs, _ = env.reset(seed=1)
-    band = obs[:8]
-    colours = {tuple(px) for row in band for px in row}
-    assert len(colours) == 1, f"the sky above the horizon is not flat: {colours}"
-    sky = colours.pop()
-    assert tuple(obs[46, 32]) != sky, "below the horizon is not world"
-    # And it is the sky colour DARKENED, not something unrelated: the tint
-    # only ever pulls a channel down or toward blue.
-    assert all(c <= s for c, s in zip(sky, SKY)), f"sky {sky} is brighter than SKY_RGB {SKY}"
+    # The sky is a vertical GRADIENT (T9 follow-up), so it is flat across each
+    # row and brightens downward toward the horizon — not one flat colour.
+    rows = [{tuple(px) for px in obs[r]} for r in range(8)]
+    for r, colours in enumerate(rows):
+        assert len(colours) == 1, f"sky row {r} is not flat across the row: {colours}"
+    top = rows[0].pop()
+    lower = rows[7].pop()
+    assert top[2] < lower[2], f"sky should brighten toward the horizon: {top} vs {lower}"
+    assert tuple(obs[46, 32]) != lower, "below the horizon is not world"
+    # And it is SKY_RGB darkened — by the gradient and by the dusk pass, which
+    # runs at any light_level below 1 and the reset frame sits at about 0.81 —
+    # not something unrelated.
+    assert all(c <= s for c, s in zip(lower, SKY)), f"sky {lower} is brighter than SKY_RGB {SKY}"
 
 
 def test_the_frame_layout_is_the_plan_s(env):

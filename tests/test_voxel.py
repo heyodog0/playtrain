@@ -76,8 +76,20 @@ def wasm_frame() -> np.ndarray:
 
 def test_the_view_actually_reaches_the_canvas(wasm_frame):
     """Without this every comparison below passes vacuously: two backends that
-    both drew nothing still agree."""
-    assert tuple(wasm_frame[2, 32]) == SKY, "above the horizon is not sky"
+    both drew nothing still agree.
+
+    The sky is a vertical gradient, not a flat SKY_RGB fill, so the assertion
+    is that the sky band is flat ACROSS a row, darkens going up, and is never
+    brighter than SKY_RGB."""
+    # Rows 0..11 are well above the horizon (row 24) and clear of the room's
+    # walls in this scene, so they are all sky.
+    rows = [{tuple(px) for px in wasm_frame[r]} for r in range(12)]
+    for r, colours in enumerate(rows):
+        assert len(colours) == 1, f"sky row {r} is not flat: {colours}"
+    top = rows[0].pop()
+    bottom = rows[11].pop()
+    assert top[2] < bottom[2], f"sky should brighten toward the horizon: {top} vs {bottom}"
+    assert all(c <= s for c, s in zip(bottom, SKY)), f"sky {bottom} is brighter than SKY_RGB {SKY}"
     assert tuple(wasm_frame[46, 32]) != SKY, "below the horizon is not textured"
     colours = {tuple(px) for row in wasm_frame[:VIEW_H] for px in row}
     assert len(colours) > 50, f"only {len(colours)} distinct colours — this is a stub"

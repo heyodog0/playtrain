@@ -142,7 +142,7 @@ function _fpSpriteAt(st, r, c, tile) {
     st.playerC[0] + 0.5, FP_EYE_Y, st.playerR[0] + 0.5,
     FP_YAW[st.playerDir[0]], FP_VIEW_DIST,
     c + 0.5, r + 0.5,
-    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile,
+    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile, FP_SKY_RGB,
     0, 0, FP_VIEW_W, FP_VIEW_H,
   );
 }

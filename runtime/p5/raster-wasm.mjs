@@ -128,10 +128,10 @@ export function makeWasmBackend(ex) {
         ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
     }
 
-    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
+    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, skyRgb, dx, dy, dw, dh) {
       const ap = this._stage('atlas', atlas, Uint8Array);
       ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
-        ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+        ap, tilePx, nTiles, tile, skyRgb, dx, dy, dw, dh);
     }
 
     voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {

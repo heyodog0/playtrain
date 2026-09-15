@@ -156,7 +156,7 @@ void voxelView(const uint16_t* grid, int gw, int gh,
 void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
                  double spriteX, double spriteZ,
                  const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
-                 int dstX, int dstY, int dstW, int dstH);
+                 unsigned int skyRgb, int dstX, int dstY, int dstW, int dstH);
 
 // Craftax's dusk blend, its night static, and its sleep tint, over a rect of
 // the current target. Call after voxelView and voxelSprite. `intensity` is

@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 19 sources listed in
 // examples/games/multifile/variants/craftax_fp/manifest.json
-// Source hash (sha256 over the concatenated sources): 291a77983334b1aa852dd69d79787b6130a42095a22bc9b271e2d7052de0d975
+// Source hash (sha256 over the concatenated sources): 19c14dad8adc671506520386c68f6b062aa8d29a18a2398a4301f0a2b12b5d8c
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_fp
@@ -3245,7 +3245,7 @@ function _fpSpriteAt(st, r, c, tile) {
     st.playerC[0] + 0.5, FP_EYE_Y, st.playerR[0] + 0.5,
     FP_YAW[st.playerDir[0]], FP_VIEW_DIST,
     c + 0.5, r + 0.5,
-    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile,
+    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile, FP_SKY_RGB,
     0, 0, FP_VIEW_W, FP_VIEW_H,
   );
 }
