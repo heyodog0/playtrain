@@ -859,6 +859,53 @@ All gates re-run green: fp suite `38 passed`, cross-engine `8 passed`, repo
 `106 passed, 3 skipped`, `cargo test --release` `29 passed`, wasm check PASS on
 all 8 scenes, dynamics untouched.
 
+## T12 (post-plan, user-requested): facing-relative arrows
+
+Commit `faca7a6`. Asked for as "forward/back on up/down, turn on left/right".
+
+**What Craftax allows.** There is **no turn-in-place action**. `movePlayer`
+sets `playerDir` and then steps if the way is clear, so every direction action
+is a turn AND a move; turning without moving only happens incidentally when
+something blocks you. Pure turning would need a new action index — a different
+action space, different dynamics, a different game. So the arrows became
+facing-relative instead: UP forward, DOWN about-face and back, LEFT/RIGHT turn
+a quarter and step.
+
+**The mistake worth recording, because it was silent.** The obvious
+implementation — make `currentAction()` read the arrows relative to
+`playerDir` — is WRONG, and not in a way that shows up by looking at it.
+PlayTrain drives games **by synthesising keys**: `GameEnv.step(actionIndex)`
+looks the index up in the sidecar, presses those keys, and the game's own
+`currentAction()` reads them. So a facing-relative `currentAction()` silently
+redefines what every action index means **for training**, not just for a human.
+
+It was caught by a gate, not by review: `test_the_inventory_strip_is_byte_
+identical_to_classic` failed at **step 24, row 51, col 4, fp (165,16,16) vs
+classic (255,255,255)** — fp and classic had diverged under identical action
+indices. I had written "training never goes through the keymap" in a comment
+one commit earlier; that was simply false, and the gate said so.
+
+**The fix.** The translation is `relativeArrow(code)`, a pure function the
+**play page** calls before sending keys; `currentAction()` is back to Craftax's
+absolute mapping. Agent action index → sidecar keys → absolute action, exactly
+as before. The page hook is opt-in per game (all 38 catalog pages rebuilt and
+`test_website.py` green).
+
+**Both halves are now gated** by
+`test_arrows_are_facing_relative_for_a_human_but_absolute_for_an_agent`: for
+each of the four facings, UP maps to the forward world direction, the four
+arrows remain a permutation (no direction lost), facing north is the identity,
+and **a raw UP key is north whatever the player faces** — that last assertion
+is the one that would have caught the original mistake immediately.
+
+A probe gotcha found on the way: `fp_probe.mjs` passes the p5 surface functions
+**by value** into the bundle's scope, so reassigning `surface.keyIsDown` after
+construction does nothing. It now calls through a mutable `_keyDown`
+indirection.
+
+All gates green: fp suite `39 passed`, cross-engine `8 passed`, repo
+`106 passed, 3 skipped`, website `6 passed`, 38 catalog pages build.
+
 ## Final state
 
 **T0–T9 complete except T7b (cluster throughput), which is blocked.**
