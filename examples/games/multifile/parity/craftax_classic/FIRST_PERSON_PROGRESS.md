@@ -811,6 +811,54 @@ height, trees taller than stone — is a render-only change (the grid is 2D and
 the dynamics never see it) and would do more for the look than all three
 changes above combined. Not done; not asked for.
 
+## T11 (post-plan, user-requested): smooth display camera; fog reverted
+
+Commit `d283759`.
+
+**Distance fog reverted** at the user's request. Face shading and the sky
+gradient stay — shading was the change that actually made cubes legible. The
+`sky_rgb` argument that `rs_voxel_sprite` had grown purely to fog billboards
+was removed again, so that ABI is back to the plan's shape.
+
+**Smooth camera, display only.** The play page already ran a 60fps
+`requestAnimationFrame` loop and skipped the game step between ticks; those
+spare frames now call `renderInterpolated(alpha)` if the game defines it, with
+alpha running 0→1 across the gap. The camera eases from its pre-step pose to
+its current one. Yaw is unwrapped to the nearest branch first, so west→east
+sweeps through north instead of spinning 270° the wrong way.
+
+**The training path is untouched and that is gated, not asserted.** `draw()`
+still renders the snapped frame once per step. The new test asserts (a) the
+five sampled alphas give five DIFFERENT frames, so something is actually
+interpolating, and (b) **alpha=1 is byte-identical to the frame `draw()`
+produces**, so the animation ends in the state the game is really in.
+
+**How free yaw was added without disturbing the goldens.** New entry points
+`rs_voxel_view_free` / `rs_voxel_sprite_free` take a yaw in radians and derive
+the camera basis with the rasterizer's own `psin`/`pcos` — the pair
+`raster.mjs` already mirrors exactly as `_rsin`/`_rcos`, so wasm and pure-JS
+still agree. The quarter-turn entry points keep their exact 0/±1 basis.
+
+The refactor that made this possible — pulling the four hard-coded direction
+cases out into a `(fwd, rgt)` basis — was **proved bit-identical before being
+kept**: with fog removed, hashes were dumped with the basis version and with
+the original `match` restored, and the two files were identical. Worth
+repeating that method; "it should be exact because multiplying by 1.0 is
+exact" is an argument, not evidence.
+
+**Page hook is opt-in per game.** `tools/play-templates.mjs` calls
+`renderInterpolated` only when the game defines it. Verified all **38 catalog
+pages still build**, and `tests/test_website.py` is green, because that file is
+shared by every game's page.
+
+**Cost: 5,285 SPS** (from 5,935 before any look work). Reverting fog did *not*
+recover the difference — the free-yaw basis refactor costs about what fog did.
+Still 13.3× classic.
+
+All gates re-run green: fp suite `38 passed`, cross-engine `8 passed`, repo
+`106 passed, 3 skipped`, `cargo test --release` `29 passed`, wasm check PASS on
+all 8 scenes, dynamics untouched.
+
 ## Final state
 
 **T0–T9 complete except T7b (cluster throughput), which is blocked.**
