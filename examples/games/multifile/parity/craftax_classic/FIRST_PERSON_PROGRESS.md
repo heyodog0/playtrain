@@ -22,7 +22,7 @@ field or pixel, expected, actual) and stop.
 | T6b | Dusk (§4.4 option A: `rs_dusk`) + night static from the driver seed; threefry ported to Rust; goldens extended; T5 rerun | done | `cargo test --release`: `29 passed; 0 failed; 2 ignored`; wasm check `PASS` ×8; `test_voxel.py` `5 passed`; fp suite `37 passed`; T5 `8 passed`; **49.09 µs/frame** | 9bbc453 | Night frame differs from its daylight twin on all 3136 pixels; static depends on the driver seed. Plan §4.4 corrected in the same commit. |
 | T7a | Throughput, Mac: `qjs_host bench` + a new V8 `tests/envprof.mjs`, fp vs classic; `bench.json` + README §Throughput | done | QuickJS **fp 5,935 SPS vs classic 397 = 14.9×**; V8 fp 11,020 vs classic 10,962 (a wash); fp suite `37 passed`, repo `106 passed, 3 skipped` | a657e02 | Target (≥8k) NOT met — see "T7a findings". Two render-side fixes landed here. |
 | T7b | Throughput, cluster: one exclusive job (`test` partition, `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`) on fp and classic | blocked | not run | | **No checkout of this branch exists on FASRC.** Only tree is `/n/home06/truong/node-gym-smoke/playtrain`, on `main` at `29e1e7f`, 69 dirty files, no `examples/games/multifile/variants/`. `release` is 75 commits unpushed and pushing it is the user's call. Same wall as classic PROGRESS 9b/12. |
-| T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | todo | | | Hand-off stays a hand-off — do not simulate a human session. |
+| T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | handoff | build side gated: `37 passed` (`tests/test_render_fp.py`); page builds, carries the JS voxel port, paces at 8 steps/s | 67f30f3 | **Ready for a person. Do not simulate.** Instructions in the variant README under "Playing it in the browser". See "T8 findings" for what is NOT checkable. |
 | T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES` if needed, memory note | todo | | | |
 
 ## T0 findings (what T1+ must know)
@@ -676,10 +676,59 @@ branch on FASRC and there is none — `main` at `29e1e7f`, 69 dirty files, no
 PROGRESS records that pushing it is the user's call. Nothing was pushed and
 the live tree was not touched.
 
+## T8 findings
+
+**Built and gated; the page needs eyes.** Instructions are in the variant
+`README.md` under "Playing it in the browser (hand-off)": build with
+`tools/build-pages.mjs`, serve with `uv run python -m http.server`. `dist/` is
+gitignored, so it is built fresh each time (about a second).
+
+**The page runs the PURE-JS rasterizer, not wasm.** `tools/play-templates.mjs`
+inlines `rasterizer.wasm` only for games whose source matches `/\bWEBGL\b/`,
+and craftax_fp does not — it calls `voxelView`/`voxelSprite`/`voxelDusk`. This
+is safe: the JS port is bit-identical to the Rust, gated by
+`tests/test_voxel.py` and verified again **for this game specifically** over 41
+frames through `PLAYTRAIN_RASTERIZER=js` vs `=wasm` (identical, including the
+dusk pass). So what the human sees IS the training frame. It is the slow path,
+but at 8 steps/s there is enormous headroom.
+
+Widening that `WEBGL` test to cover voxel games would let the page use the real
+Rust. It touches `tools/play-templates.mjs`, which affects **every** game's
+page, so it was left alone — a note, not a change. If it is ever done, the gate
+is that all 38 catalog pages still build unchanged.
+
+`test_the_play_page_builds` now asserts the page carries the JS bodies of all
+three voxel functions and the sidecar's `1000 / 8` pacing, because a page
+missing either is a blank canvas and a console error for the human.
+
+**What the human CANNOT check, stated plainly in the README rather than left as
+a trap:** the **night static is not visible in the browser**. Craftax draws it
+from `state_rng`, derived from the *driver's* seed, and no host — this page
+included — passes one. Below `light_level` 0.5 the page shows the
+deterministic dusk image without the static. The plan's T8 row lists "night
+static present with driver seed" as something to check; it is not checkable
+through any host today, so it is gated in `tests/test_render_fp.py` instead
+(three driver seeds, three distinct frames) and the README says so.
+
+**The five things that ARE worth a human's eyes**, in the README: facing
+centred on the interact cell (face a tree, press SPACE, the block you chop
+should be the middle of the screen); the inventory strip identical to
+craftax_classic's side by side; walls with a visible top edge that grow and
+shrink correctly and do not swim; mobs upright at cell centres and occluded by
+solid blocks; and the day/night cycle around step 150, plus TAB to sleep.
+
+**Nothing was simulated.** No browser session was run or reported.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T8 — built the play page and gated its prerequisites: it
+  carries the JS voxel port and the 8 steps/s pacing. Verified the pure-JS
+  backend (which is what the browser runs, since the page does not inline
+  wasm) renders craftax_fp identically to wasm over 41 frames. Wrote the
+  hand-off note in the README with the five things to check by eye and the one
+  thing — the night static — that no host can show. Commit `67f30f3`.
 - 2026-09-15 — T7a — benched fp vs classic on the Mac: QuickJS 5,935 vs 397
   SPS (14.9×), V8 a wash at ~11k both. Wrote `tests/envprof.mjs` with a
   dynamics-only column. Profiled the QuickJS step and cut it 346 → 168 µs by
