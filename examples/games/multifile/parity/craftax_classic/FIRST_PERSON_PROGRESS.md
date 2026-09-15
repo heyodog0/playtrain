@@ -20,7 +20,8 @@ field or pixel, expected, actual) and stop.
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | done | `8 passed in 8.56s`; `GATE PASS: craftax_fp`, 3× `3000 steps bit-exact` | f70b6d0 | Symbolic mode agrees too; vectorised host deterministic and equal to the single env. Whole variant suite `32 passed`. |
 | T6a | Sprites: `rs_voxel_sprite`, bindings, goldens extended, mobs/arrows wired into the game | done | `cargo test --release`: `22 passed; 0 failed; 2 ignored`; wasm check `PASS` ×7; `test_voxel.py` `5 passed`; fp suite `32 passed`; T5 `8 passed`; **49.08 µs/frame** | 896b25c | Found and fixed a real depth-units bug — see "T6a findings". |
 | T6b | Dusk (§4.4 option A: `rs_dusk`) + night static from the driver seed; threefry ported to Rust; goldens extended; T5 rerun | done | `cargo test --release`: `29 passed; 0 failed; 2 ignored`; wasm check `PASS` ×8; `test_voxel.py` `5 passed`; fp suite `37 passed`; T5 `8 passed`; **49.09 µs/frame** | 9bbc453 | Night frame differs from its daylight twin on all 3136 pixels; static depends on the driver seed. Plan §4.4 corrected in the same commit. |
-| T7 | Throughput: Mac `qjs_host bench` + V8 `envprof` for fp vs classic; one exclusive cluster job; `outputs/craftax_fp_bench.json` | todo | | | Cluster via `fasrc '<cmd>'`; `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`. Classic baseline from the same harness beside every fp number. |
+| T7a | Throughput, Mac: `qjs_host bench` + a new V8 `tests/envprof.mjs`, fp vs classic; `bench.json` + README §Throughput | done | QuickJS **fp 5,935 SPS vs classic 397 = 14.9×**; V8 fp 11,020 vs classic 10,962 (a wash); fp suite `37 passed`, repo `106 passed, 3 skipped` | a657e02 | Target (≥8k) NOT met — see "T7a findings". Two render-side fixes landed here. |
+| T7b | Throughput, cluster: one exclusive job (`test` partition, `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`) on fp and classic | blocked | not run | | **No checkout of this branch exists on FASRC.** Only tree is `/n/home06/truong/node-gym-smoke/playtrain`, on `main` at `29e1e7f`, 69 dirty files, no `examples/games/multifile/variants/`. `release` is 75 commits unpushed and pushing it is the user's call. Same wall as classic PROGRESS 9b/12. |
 | T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | todo | | | Hand-off stays a hand-off — do not simulate a human session. |
 | T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES` if needed, memory note | todo | | | |
 
@@ -600,10 +601,94 @@ right thing. What must hold — and is gated — is that every backend agrees.
 
 **T6 is now complete** (T6a sprites + T6b dusk). Next is T7, throughput.
 
+## T7a findings
+
+**The headline, with its baseline beside it.** QuickJS (the native host, no
+JIT): **craftax_fp 5,935 SPS vs craftax_classic 397 SPS — 14.9×**, both from
+`qjs_host bench 1 20000` on this Mac. That is what the variant exists for.
+
+**Under V8 the two are a wash, and that is the honest result.** fp 11,020 SPS
+vs classic 10,962 in pixel mode, ~14 µs of render each. V8 JITs classic's
+per-pixel float loops down to roughly the cost of the wasm raycast, so the
+first-person render is a large win exactly where there is no JIT and neutral
+where there is one. Do not quote the QuickJS speedup without this beside it.
+
+**`tests/envprof.mjs` is new** (the plan names `envprof` but no such file
+existed). It drives the node `GameEnv` in-process — Python's `PlayTrainEnv`
+adds an IPC round trip per step that would swamp what is being measured — and
+reports three columns per game: pixel, symbolic, and **dynamics only**
+(stepping the bundle's own `stepGame` with no host, observation or renderer).
+That third column matters: `symbolic` is NOT no-draw, it still computes the
+1,345-float vector. Dynamics alone are **1.6 µs/step** under V8; the gap up to
+77 µs is host and observation overhead, not the game.
+
+**Where the QuickJS step went, before and after (µs):** dynamics 69.1 → 69.1,
+grid repack **108.7 → ~12**, inventory strip **109.9 → ~5**, `voxelView` 60.6,
+`voxelDusk` 13.1; total **345.9 → 168.5**. Measured by disabling one stage at a
+time in a scratch copy of the bundle.
+
+**Two fixes, both of which plan §5 or the profile asked for.**
+
+1. **The grid repack now covers a 21×21 window around the player**, not all
+   4,096 cells. Plan §5 deferred this to T7 to decide; the profile says it was
+   a third of the whole step. It is **exact, not an approximation**: rays
+   terminate at `FP_VIEW_DIST` (9.0) and sprites are skipped past it, so
+   nothing outside a radius-10 window can be sampled. Cells outside keep stale
+   values that nothing reads.
+2. **The inventory strip is recomposed only when one of its 20 counts
+   changes.** The blit still happens every frame — `background()` clears the
+   canvas — but `loadBitmap` and the 2,646-float clear are what cost.
+
+Frames are **bit-identical before and after**: checked by hashing all four
+facings and both night frames against the pre-change bundle from `git show
+HEAD:`. All 37 fp tests and the repo suite stay green.
+
+**A third fix, in `raster-wasm.mjs`: the atlas was re-copied into wasm memory
+on every call**, including once per sprite — about 300 KB a frame for a 24 KB
+atlas across one view call and up to eleven sprite calls. It is now staged
+once and keyed by array identity (the native hosts never copy at all; they
+read the caller's memory). Worth ~0.5 µs/step under V8, but it was making the
+wasm backend look worse than it is and would have been much worse on a bigger
+atlas.
+
+**A test of mine had been passing for the wrong reason since T6b, and this
+task caught it.** `test_solid_blocks_are_actually_cubes` counted pixels above
+the horizon that differ from the raw `SKY_RGB` constant. From T6b the dusk
+pass tints the sky at any `light_level` below 1 — and the reset frame sits at
+about 0.81 — so **every** above-horizon pixel differed and the count was always
+1536, whatever the grid contained. It now counts **distinct colours** above the
+horizon: an all-floor world shows exactly one (the sky), any block in view
+shows more. Re-mutation-checked: making nothing solid now fails 7 tests again.
+The lesson is the general one — a metric written against a constant stops
+measuring when the pipeline starts transforming that constant.
+
+**The plan's ≥8k SPS target is NOT met, and the budget was optimistic about
+the render, not wrong about the approach.** §8 assumed dynamics ~78 µs +
+render ≲40 µs. Dynamics are 69 µs and the *native* render is 74 µs
+(`voxelView` 61 + `voxelDusk` 13), so the floor is ~143 µs ≈ 7.0k SPS before
+any JS at all. At 168.5 µs we are 26% short of 8k and ~15% above that floor.
+Closing the rest would mean making the raycast itself cheaper (fewer DDA steps
+or a coarser view distance), which is a spec change, not an optimisation.
+
+**T7b is blocked, not skipped.** The cluster half needs a checkout of this
+branch on FASRC and there is none — `main` at `29e1e7f`, 69 dirty files, no
+`variants/` directory. `release` is 75 commits unpushed and the classic
+PROGRESS records that pushing it is the user's call. Nothing was pushed and
+the live tree was not touched.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T7a — benched fp vs classic on the Mac: QuickJS 5,935 vs 397
+  SPS (14.9×), V8 a wash at ~11k both. Wrote `tests/envprof.mjs` with a
+  dynamics-only column. Profiled the QuickJS step and cut it 346 → 168 µs by
+  windowing the grid repack (plan §5's open question) and caching the
+  inventory composition, both verified frame-identical; also stopped
+  `raster-wasm.mjs` re-copying the atlas per call. Found that
+  `test_solid_blocks_are_actually_cubes` had been vacuous since T6b and fixed
+  the metric. Target ≥8k not met and the shortfall is explained. T7b (cluster)
+  blocked: no checkout of this branch on FASRC. Commit `a657e02`.
 - 2026-09-15 — T6b — added `rs_dusk` (Craftax's dusk blend, the threefry night
   static, and the sleep tint) plus `rs_voxel_noise_ptr`, ported JAX's
   threefry-2x32 to Rust and pinned it to the JS by float bits, baked a 49×64
