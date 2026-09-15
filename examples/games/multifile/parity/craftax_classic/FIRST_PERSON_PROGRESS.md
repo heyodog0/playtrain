@@ -906,6 +906,57 @@ indirection.
 All gates green: fp suite `39 passed`, cross-engine `8 passed`, repo
 `106 passed, 3 skipped`, website `6 passed`, 38 catalog pages build.
 
+## T13 (post-plan, user-requested): craftax_fp_free, the playable sibling
+
+Commit `1e311ee`. A NEW GAME at
+`examples/games/multifile/variants/craftax_fp_free/`. **craftax_fp is
+untouched** — 39 tests still pass — and that was the point of forking rather
+than editing.
+
+**Why.** Craftax's `movePlayer` does `st.playerDir[0] = action` unconditionally
+before moving, so every direction action is a turn AND a move. There is no
+turn-in-place and no walking backwards. craftax_fp lives with that because its
+claim is exactness; a human in a first-person view cannot.
+
+**Six added actions** (17-22): move forward/back, strafe left/right, turn
+left/right in place. Every move goes through Craftax's own guards in Craftax's
+order (bounds, solid, occupied), so a step is always one cell.
+
+**What is still gated, and it is a narrower claim than craftax_fp's.** Over the
+whole corpus — 210 episodes, 49,061 steps, every action in 0..16 — this game
+produces craftax_classic's 6,880-byte state **byte for byte**, plus the same
+symbolic obs. That says *adding actions did not perturb the existing ones and
+the step order is intact*. It does **not** say it is the same task. The sidecar
+says "NOT a parity port" and points at craftax_fp for the exact one; a test
+asserts that it says so.
+
+**Two constraints that shaped the implementation.**
+
+- `stepGame` **clamps** `action >= NUM_ACTIONS` to `NUM_ACTIONS - 1`, and
+  `NUM_ACTIONS` is a `const` — redeclaring it is a SyntaxError. So new indices
+  cannot simply be appended; `stepGame` itself had to be overridden (by
+  redeclaration, which works because the bundle is a plain concatenation of
+  function declarations and the later one wins). Two lines differ from
+  `70_step.js`: the clamp bound and the mover. The call order is untouched
+  because it IS the RNG specification.
+- **Every action needs its own key binding.** A host drives an action index by
+  pressing that action's keys and letting the game read them, so an unbound
+  action silently becomes a NOOP — and the corpus gate would then pass for the
+  wrong reason. Craftax's four absolute moves were rebound to I/J/K/L to free
+  the arrows, and a test asserts all 23 bindings are present and distinct.
+
+`movePlayerFree` **delegates actions 1-4 to Craftax's own `movePlayer`** rather
+than reimplementing them, so their behaviour is upstream's by construction
+instead of by a copy that could drift.
+
+This game deliberately does **not** define `relativeArrow()`: its actions are
+already relative, so remapping would turn a turn into a turn-and-step. A test
+asserts its absence.
+
+Gates: `11 passed`, `GATE PASS: craftax_fp_free` (3000 steps × 3 seeds), repo
+`107 passed, 3 skipped` (the new game is now in the boots-everything smoke
+test), craftax_fp `39 passed`, classic `117 passed`.
+
 ## Final state
 
 **T0–T9 complete except T7b (cluster throughput), which is blocked.**

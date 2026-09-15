@@ -14,6 +14,10 @@ Craftax anywhere to be exact against. `PLAN.md` for the classic port is next
 door; `FIRST_PERSON_PLAN.md` is the design for this one and
 `FIRST_PERSON_PROGRESS.md` is the task ledger.
 
+**Looking for one you can actually play first-person?** `craftax_fp_free` next
+door adds turn-in-place, walk-backwards and strafe. It is Craftax-derived
+rather than exact — that is the trade — and this one stays exact.
+
 ## Status
 
 See `FIRST_PERSON_PROGRESS.md` for the task ledger. T0-T8 are done or handed
