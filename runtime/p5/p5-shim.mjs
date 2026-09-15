@@ -252,6 +252,18 @@ function image(handle, x, y, w, h) {
   );
 }
 
+// First-person voxel raycast (FIRST_PERSON_PLAN.md §4.2). Mirrors p5::voxelView
+// in native/runtime/p5.cpp. The dst rect is in DEVICE pixels — the view is
+// authored at observation resolution, so unlike image() there is no logical
+// scale to apply — and the call goes straight at the current target's pixels.
+function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.voxelView !== 'function') {
+    throw new Error('voxelView: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist,
+    atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH);
+}
+
 // ---- Drawing primitives ----
 function background(...args) {
   _ctx.save();
@@ -664,7 +676,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

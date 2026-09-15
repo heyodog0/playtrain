@@ -256,6 +256,144 @@ class Context2D {
     // assumes full-surface reads (the only use in the shim)
     return { data: this.px, width: this.w, height: this.h };
   }
+
+  // ---- first-person voxel raycast ----------------------------------------
+  // A LINE-FOR-LINE port of rs_voxel_view (crates/rasterizer/src/voxel.rs),
+  // which is the spec. This is the browser fallback for a machine without the
+  // wasm backend, and the only per-pixel JS loop FIRST_PERSON_PLAN.md allows —
+  // it exists to be bit-identical, not to be fast.
+  //
+  // Every float op is wrapped in Math.fround, in the SAME association order as
+  // the Rust, because that is what makes f64 JS arithmetic reproduce f32. A
+  // missing fround here is not a rounding difference, it is a different image,
+  // and tests/test_voxel.py compares the two hash for hash.
+  voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+    if (!grid || !atlas) return;
+    if (gw === 0 || gh === 0 || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+
+    // f32 images of every scalar that crosses the boundary: the Rust takes
+    // these as f32 parameters, so the conversion happens before any arithmetic.
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const BIG = F(1.0e30);
+    const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
+    const tpx = F(tilePx), tmax = tilePx - 1;
+    const tstride = tilePx * tilePx * 4;
+    const fw = F(dstW), fh = F(dstH);
+    const q = yawQ & 3;
+
+    // floor() as the Rust does it: truncate, then correct the negative case.
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+
+        let rdx, rdz;
+        if (q === 0) { rdx = sx; rdz = -1; }
+        else if (q === 1) { rdx = 1; rdz = sx; }
+        else if (q === 2) { rdx = F(-sx); rdz = 1; }
+        else { rdx = -1; rdz = F(-sx); }
+        const rdy = sy;
+
+        const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
+        const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
+
+        let mx = ffloor(ex), mz = ffloor(ez);
+        const adx = dx < 0 ? F(-dx) : dx;
+        const adz = dz < 0 ? F(-dz) : dz;
+        const ddx = adx > 0 ? F(1 / adx) : BIG;
+        const ddz = adz > 0 ? F(1 / adz) : BIG;
+        const stepx = dx > 0 ? 1 : -1;
+        const stepz = dz > 0 ? 1 : -1;
+        let sidex = adx > 0
+          ? (dx > 0 ? F(F(F(mx + 1) - ex) * ddx) : F(F(ex - F(mx)) * ddx))
+          : BIG;
+        let sidez = adz > 0
+          ? (dz > 0 ? F(F(F(mz + 1) - ez) * ddz) : F(F(ez - F(mz)) * ddz))
+          : BIG;
+
+        let tIn = 0, tOut = BIG, tFloor = BIG, tTop = BIG;
+        if (dy < 0) {
+          const t0 = F(F(0 - ey) / dy);
+          const t1 = F(F(1 - ey) / dy);
+          if (t1 > 0) { tIn = t1; tTop = t1; }
+          if (t0 > 0) { tOut = t0; tFloor = t0; } else { tOut = 0; }
+        } else if (dy > 0) {
+          const t0 = F(F(0 - ey) / dy);
+          const t1 = F(F(1 - ey) / dy);
+          if (t0 > 0) tIn = t0;
+          if (t1 > 0) tOut = t1; else tOut = 0;
+        } else if (ey < 0 || ey >= 1) {
+          tOut = 0;
+        }
+
+        let hit = 0, tHit = 0, tile = 0, tEnter = 0, axisX = true, first = true;
+        for (;;) {
+          if (mx < 0 || mz < 0 || mx >= gw || mz >= gh) break;
+          if (tEnter > vd) break;
+          const cell = grid[mz * gw + mx];
+          const solid = (cell & 1) !== 0;
+          const ctile = cell >>> 1;
+          const tExit = sidex < sidez ? sidex : sidez;
+
+          if (!first && solid && tEnter >= tIn && tEnter < tOut) {
+            hit = axisX ? 1 : 2; tHit = tEnter; tile = ctile; break;
+          }
+          if (solid && tTop >= tEnter && tTop < tExit) { hit = 3; tHit = tTop; tile = ctile; break; }
+          if (tFloor >= tEnter && tFloor < tExit) { hit = 4; tHit = tFloor; tile = ctile; break; }
+
+          if (sidex < sidez) { tEnter = sidex; sidex = F(sidex + ddx); mx += stepx; axisX = true; }
+          else { tEnter = sidez; sidez = F(sidez + ddz); mz += stepz; axisX = false; }
+          first = false;
+        }
+        if (hit !== 0 && tHit > vd) hit = 0;
+
+        let r, g, b, depth;
+        if (hit === 0) {
+          r = skyR; g = skyG; b = skyB; depth = Infinity;
+        } else {
+          const xh = F(ex + F(dx * tHit));
+          const yh = F(ey + F(dy * tHit));
+          const zh = F(ez + F(dz * tHit));
+          let u, v;
+          if (hit === 1) {
+            const f = F(zh - F(ffloor(zh)));
+            u = stepx > 0 ? f : F(1 - f);
+            v = F(1 - F(yh - F(ffloor(yh))));
+          } else if (hit === 2) {
+            const f = F(xh - F(ffloor(xh)));
+            u = stepz > 0 ? F(1 - f) : f;
+            v = F(1 - F(yh - F(ffloor(yh))));
+          } else {
+            u = F(xh - F(ffloor(xh)));
+            v = F(zh - F(ffloor(zh)));
+          }
+          const t = tile < nTiles ? tile : 0;
+          let tx = F(u * tpx) | 0;
+          let ty = F(v * tpx) | 0;
+          if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+          if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+          const o = t * tstride + (ty * tilePx + tx) * 4;
+          r = atlas[o]; g = atlas[o + 1]; b = atlas[o + 2]; depth = tHit;
+        }
+
+        const i = cyp * cw + cxp;
+        const o = i * 4;
+        px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+        this.depth[i] = depth;
+      }
+    }
+  }
 }
 
 class Canvas {

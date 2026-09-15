@@ -83,6 +83,23 @@ export function makeWasmBackend(ex) {
       return { data: new Uint8ClampedArray(mem(), ptr, len).slice(), width: this.canvasW, height: this.canvasH };
     }
 
+    // ---- first-person voxel raycast (crates/rasterizer/src/voxel.rs) ----
+    // The grid and atlas have to be IN linear memory before the call: JS cannot
+    // make a pointer into it, so the rasterizer hands out staging buffers and we
+    // write through them, exactly as loadRGBA writes through rs_pixels_ptr.
+    // Re-fetch mem() after every call that can grow the heap, and take the
+    // pointers last, once nothing more will resize.
+    voxelView(grid, gw, gh, ex_, ey, ez, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dx, dy, dw, dh) {
+      ex.rs_voxel_grid_ptr(grid.length);
+      ex.rs_voxel_atlas_ptr(atlas.length);
+      const gp = ex.rs_voxel_grid_ptr(grid.length);
+      const ap = ex.rs_voxel_atlas_ptr(atlas.length);
+      new Uint16Array(mem(), gp, grid.length).set(grid);
+      new Uint8Array(mem(), ap, atlas.length).set(atlas);
+      ex.rs_voxel_view(this._h, gp, gw, gh, ex_, ey, ez, yawQ, viewDist,
+        ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+    }
+
     // ---- 3D (p5 WEBGL mode). Mirrors native/runtime/p5.cpp call for call. ----
     begin3d(lw, lh) { ex.rs_3d_begin(this._h, lw, lh); ex.rs_3d_frame_begin(); }
     frame3dBegin() { ex.rs_3d_frame_begin(); }

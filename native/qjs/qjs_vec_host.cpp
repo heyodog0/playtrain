@@ -213,6 +213,34 @@ FN(js_loadBitmap) {
   JS_FreeValue(ctx, ab);
   return JS_NewInt32(ctx, n);
 }
+// voxelView(gridU16, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist,
+//           atlasU8, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH)
+// Like loadBitmap, this writes canvas memory directly, so the command buffer
+// has to land first. The two typed arrays are read in place — no copy, no
+// staging: a native host already has real pointers.
+FN(js_voxelView) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t goff = 0, glen = 0, gper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue gab = JS_GetTypedArrayBuffer(ctx, argv[0], &goff, &glen, &gper);
+  if (JS_IsException(gab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[8], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, gab); return JS_UNDEFINED; }
+  size_t gsz = 0, asz = 0;
+  uint8_t* gsrc = JS_GetArrayBuffer(ctx, &gsz, gab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (gsrc && asrc && goff + glen <= gsz && aoff + alen <= asz) {
+    p5::voxelView((const uint16_t*)(gsrc + goff), (int)argd(ctx, argv[1]), (int)argd(ctx, argv[2]),
+                  argd(ctx, argv[3]), argd(ctx, argv[4]), argd(ctx, argv[5]),
+                  (int)argd(ctx, argv[6]), argd(ctx, argv[7]),
+                  asrc + aoff, (int)argd(ctx, argv[9]), (int)argd(ctx, argv[10]),
+                  (unsigned int)argd(ctx, argv[11]),
+                  (int)argd(ctx, argv[12]), (int)argd(ctx, argv[13]),
+                  (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, gab);
+  return JS_UNDEFINED;
+}
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
@@ -247,6 +275,7 @@ static const Binding BINDINGS[] = {
   {"noLights", js_noop, 0}, {"normalMaterial", js_noop, 0}, {"emissiveMaterial", js_noop, 3},
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
   {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
+  {"voxelView", js_voxelView, 16},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},

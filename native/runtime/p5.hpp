@@ -139,6 +139,17 @@ void setTarget(int handle);
 void clearTarget();
 void image(int srcHandle, double x, double y, double w, double h);
 
+// First-person voxel raycast (FIRST_PERSON_PLAN.md §4.2). Renders a view of a
+// grid of unit blocks straight into the current target's pixels, and fills the
+// canvas's depth buffer for a later sprite pass. `grid` is gh rows of gw cells,
+// each (atlas_tile << 1) | solid; `atlas` is nTiles RGBA tiles of tilePx square,
+// tile-major; skyRgb is 0xRRGGBB. Coordinates are f32 on the rasterizer side —
+// the doubles here are the JS number surface, converted once at the boundary.
+void voxelView(const uint16_t* grid, int gw, int gh,
+               double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH);
+
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is
 // a no-op, so headless obs already omits text. Matches env behavior.)

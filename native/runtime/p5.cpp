@@ -213,6 +213,29 @@ void clearTarget() {
   if (!_targetStack.empty()) { _h = _targetStack.back(); _targetStack.pop_back(); }
   invalidateCache();
 }
+// Declared here rather than in raster_abi.h: FIRST_PERSON_PLAN.md §3 authorises
+// exactly nine files for the voxel primitive and that header is not one of them.
+// Keep this signature in step with crates/rasterizer/src/voxel.rs.
+extern "C" void rs_voxel_view(uint32_t canvas, const uint16_t* grid, uint32_t gw, uint32_t gh,
+                              float eyeX, float eyeY, float eyeZ, uint32_t yawQ, float viewDist,
+                              const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles,
+                              uint32_t skyRgb,
+                              uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+
+void voxelView(const uint16_t* grid, int gw, int gh,
+               double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH) {
+  // Writes the target canvas's pixels directly, exactly like loadBitmap, so the
+  // caller (qjs_host) drains the command buffer before getting here. The dst
+  // rect is in DEVICE pixels: the voxel view is authored at observation
+  // resolution, so there is no logical->device scale to apply.
+  rs_voxel_view(_h, grid, (uint32_t)gw, (uint32_t)gh,
+                (float)eyeX, (float)eyeY, (float)eyeZ, (uint32_t)yawQ, (float)viewDist,
+                atlas, (uint32_t)tilePx, (uint32_t)nTiles, skyRgb,
+                (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
+}
+
 void image(int srcHandle, double x, double y, double w, double h) {
   // p5 image() honors the current transform; here we map logical->device via the
   // MAIN canvas base scale (image is only ever called at identity transform in
