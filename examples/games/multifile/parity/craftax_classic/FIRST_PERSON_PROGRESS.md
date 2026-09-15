@@ -748,6 +748,69 @@ missing, which silently compares stale code against stale code.
 what is measured, the V8-is-a-wash caveat that must travel with the 14.9×
 number, the blocked cluster run, and the six traps that cost time here.
 
+## T10 (post-plan, user-requested): look, and the vectorised-host plateau
+
+Not in the plan's §7; asked for after T9. Commits `b810694` (look) and
+`b378e8f` (plateau).
+
+**Three additions to `rs_voxel_view`, all literals in `voxel.rs`, so no ABI
+change and no re-binding:**
+
+- **Face shading** — `SHADE_X = 0.62` for x-normal faces, `SHADE_Z = 0.80` for
+  z-normal, `1.0` for block tops and floors. This was the real fix: Craftax has
+  no side-face art, so a cube was the same texture at the same brightness on
+  every visible face and two faces meeting at an edge were indistinguishable.
+  A stone wall read as a field of noise rather than as blocks.
+- **Distance fog** — starts at `0.55 * view_dist`, full at `view_dist`, blending
+  toward the sky. The world used to end in a hard circle.
+- **Sky gradient** — zenith at `0.66` of the sky colour, horizon at the sky
+  colour.
+
+Sprites gained fog too (so a far mob fades with the terrain rather than staying
+crisp and popping), which required **one new argument, `sky_rgb`**, on
+`rs_voxel_sprite` — the only ABI change, threaded through both hosts, the shim
+and both JS backends. Face shading is deliberately NOT applied to sprites: a
+billboard always faces the eye, so it has no face to shade.
+
+**Cost: 5,935 → 5,315 SPS** under QuickJS, about 20 µs a step, still 13.4×
+classic. All gates re-run green, goldens re-pinned (all 8 changed, as expected),
+native == wasm on all 8, four backends still agree, dynamics untouched.
+
+**Three of my own tests asserted a flat sky and broke** — `test_voxel.py`'s
+smoke check, the fp `test_sky_is_above_the_horizon_and_world_below`, and the
+Rust `open_field_is_floor_below_sky_above`. All three now assert the gradient's
+SHAPE (flat across each row, brightening downward, never brighter than
+`SKY_RGB`) instead of equality with a constant. **That is the third time a
+test written against `SKY_RGB` has gone wrong as the pipeline grew** — first
+vacuous after the dusk pass in T6b, now broken by the gradient. The lesson is
+worth keeping: do not assert against a constant that later stages transform.
+
+**The vectorised-host plateau, profiled.** Worker threads are
+`min(num_envs, P-cores)` = 4 here. Throughput saturates at ~18.5k SPS from
+**two** envs upward even though four cores are busy at four envs — per-core
+throughput halves between 2 and 4.
+
+The discriminating experiment: **four separate processes with one env each
+total 33,522 SPS** (9442 + 8736 + 7793 + 7551); one process with four envs gets
+**18,493**. So the cap is **intra-process**, and the vectorised host reaches
+about 55% of what the same cores deliver across processes. Likely the per-step
+spin barrier (it waits for the slowest shard, and Python dispatches every step)
+plus shared-cache pressure from four ~64 KB per-env working sets on the M4's
+single P-core cluster — the same family as the glibc arena convoys that hit the
+async AOT host, fixed there by env pinning.
+
+**Not fixed:** that means changing `native/qjs/qjs_vec_host.cpp`, which this
+plan authorises only for the voxel bindings. Recorded in `bench.json` and the
+README for whoever picks it up; ~1.8× is on the table.
+
+**Open, and the obvious next visual lever:** every block is exactly 1 unit
+tall, so from an eye at y=0.5 a block three cells away subtends about 7° and
+the world reads as a flat plain with pebbles on it rather than somewhere you
+are standing. Giving blocks a height greater than 1 — or a per-block-type
+height, trees taller than stone — is a render-only change (the grid is 2D and
+the dynamics never see it) and would do more for the look than all three
+changes above combined. Not done; not asked for.
+
 ## Final state
 
 **T0–T9 complete except T7b (cluster throughput), which is blocked.**
