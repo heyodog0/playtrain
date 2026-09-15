@@ -1,0 +1,146 @@
+{
+  "name": "craftax_fp",
+  "version": "0.1.0",
+  "title": "Craftax-Classic (first person)",
+  "sources": [
+    "../../common/f32.js",
+    "../../common/rng_pcg32.js",
+    "../../common/u64bits.js",
+    "../../common/parity.js",
+    "../../parity/craftax_classic/src/00_header.js",
+    "../../parity/craftax_classic/src/10_constants.js",
+    "../../parity/craftax_classic/src/15_atlas.js",
+    "../../parity/craftax_classic/src/16_threefry.js",
+    "../../parity/craftax_classic/src/20_state.js",
+    "../../parity/craftax_classic/src/30_worldgen.js",
+    "../../parity/craftax_classic/src/40_player.js",
+    "../../parity/craftax_classic/src/50_mobs.js",
+    "../../parity/craftax_classic/src/60_world_tick.js",
+    "../../parity/craftax_classic/src/70_step.js",
+    "../../parity/craftax_classic/src/80_render.js",
+    "../../parity/craftax_classic/src/85_obs_symbolic.js",
+    "src/15_atlas_fp.js",
+    "src/80_render_fp.js",
+    "src/90_playtrain_fp.js"
+  ],
+  "action_space": "craftax17",
+  "actions": [
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "DO",
+      "held": [],
+      "press": 32
+    },
+    {
+      "name": "SLEEP",
+      "held": [],
+      "press": 9
+    },
+    {
+      "name": "PLACE_STONE",
+      "held": [],
+      "press": 49
+    },
+    {
+      "name": "PLACE_TABLE",
+      "held": [],
+      "press": 50
+    },
+    {
+      "name": "PLACE_FURNACE",
+      "held": [],
+      "press": 51
+    },
+    {
+      "name": "PLACE_PLANT",
+      "held": [],
+      "press": 52
+    },
+    {
+      "name": "MAKE_WOOD_PICK",
+      "held": [],
+      "press": 53
+    },
+    {
+      "name": "MAKE_STONE_PICK",
+      "held": [],
+      "press": 54
+    },
+    {
+      "name": "MAKE_IRON_PICK",
+      "held": [],
+      "press": 55
+    },
+    {
+      "name": "MAKE_WOOD_SWORD",
+      "held": [],
+      "press": 56
+    },
+    {
+      "name": "MAKE_STONE_SWORD",
+      "held": [],
+      "press": 57
+    },
+    {
+      "name": "MAKE_IRON_SWORD",
+      "held": [],
+      "press": 48
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "symbolic": 1345,
+    "rgb_size": 64,
+    "frame": "rows 0-48 are the first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide, byte-identical to craftax_classic), row 63 black padding"
+  },
+  "max_steps": 10000,
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move and face in WORLD directions (not relative to the camera) - the camera snaps to the way you face. SPACE interacts with the cell ahead. TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand next to a table; iron needs a furnace too).",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "craftax_classic (this repo) + PufferLib craftax_classic 6ffa5b1 dynamics",
+    "repo": "https://github.com/PufferAI/PufferLib",
+    "commit": "6ffa5b10dbbbe4d1e8288367c7d9d3acd3bad4a2",
+    "file": "ocean/craftax_classic/craftax_classic.h",
+    "license": "MIT",
+    "parity": "dynamics are craftax_classic's, unchanged and reused by manifest path: the same source files produce the same 6880-byte canonical state every step, which is what tests/test_same_dynamics.py asserts over the whole corpus",
+    "not_matched": [
+      "observation is first-person; not Craftax-Classic-Pixels, and there is no first-person Craftax to be exact against. This is a VARIANT of Craftax-Classic - same task, different observation function - and must never be described as Craftax parity",
+      "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
+    ]
+  }
+}
