@@ -12,7 +12,7 @@ field or pixel, expected, actual) and stop.
 
 | # | Task | Status | Gate result (last line) | Commit | Notes |
 |---|---|---|---|---|---|
-| T0 | Read §1–6 + classic README/PLAN/render/host/rasterizer sources; write this file; confirm hosts + wasm toolchain | done | `cargo test --release`: `test result: ok. 7 passed; 0 failed; 1 ignored`; wasm three-check `PASS` ×3 | 0a8d91e | See "T0 findings" below. |
+| T0 | Read §1–6 + classic README/PLAN/render/host/rasterizer sources; write this file; confirm hosts + wasm toolchain | done | `cargo test --release`: `test result: ok. 7 passed; 0 failed; 1 ignored`; wasm three-check `PASS` ×3 | 2a0b714 | See "T0 findings" below. |
 | T1 | `rs_voxel_view` in new `crates/rasterizer/src/voxel.rs`; 3 golden scenes (open field, corridor, wall at each yaw); `tests/wasm_voxel_check.mjs` | todo | | | Copy the two-part shape at the bottom of `three.rs` (`#[cfg(test)]` goldens + `THREE_SCENES_OUT` dump) and `tests/wasm_three_check.mjs`. Record µs/frame. |
 | T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | todo | | | Gate: `uv run pytest tests/test_voxel.py -q`, all three backends hash-equal. Must rebuild + commit `runtime/p5/rasterizer.wasm`. |
 | T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | todo | | | Gate: `bundle_multifile.py --check` clean, `build-pages.mjs` builds, 64×64 frame has > 50 distinct colours. |
