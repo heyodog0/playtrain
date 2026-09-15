@@ -122,5 +122,5 @@
       "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
     ]
   },
-  "source_sha256": "735171e19f2696046a81253824bebb16886e170d65229e07dcae59be96863ad4"
+  "source_sha256": "291a77983334b1aa852dd69d79787b6130a42095a22bc9b271e2d7052de0d975"
 }

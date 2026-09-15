@@ -141,18 +141,24 @@ def test_solid_blocks_are_actually_cubes(seed):
     renders as a floor you cannot walk into.
 
     Only a cube can put anything above the horizon: floors all sit at y=0,
-    below eye height. So a build that packed every cell as floor reports zero
-    here. Measured across these seeds and all four facings, the count is never
-    zero — Craftax scatters trees and stone densely enough that something is
-    always in view."""
+    below eye height. So an all-floor world shows exactly ONE colour up there,
+    the sky, and any block in view makes it more than one. Measured across
+    these seeds and all four facings it is always more than one — Craftax
+    scatters trees and stone densely enough that something is always in view.
+
+    The metric counts COLOURS, not "pixels unlike SKY_RGB". The dusk pass
+    tints the sky at any light_level below 1 and the reset frame sits at about
+    0.81, so the sky on screen is never the raw constant; the earlier version
+    of this test compared against it and passed for the wrong reason from T6b
+    until T7 caught it."""
     proc = subprocess.run(
         ["node", "tests/fp_probe.mjs", "dist/craftax_fp.js", str(seed), "1", "2", "3", "4"],
         cwd=GAME_DIR, capture_output=True, text=True,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    counts = [int(ln.split("above=")[1]) for ln in proc.stdout.strip().splitlines()]
+    counts = [int(ln.split("abovecolours=")[1]) for ln in proc.stdout.strip().splitlines()]
     assert len(counts) == 4, proc.stdout
-    assert all(c > 0 for c in counts), (
+    assert all(c > 1 for c in counts), (
         f"seed {seed}: no block rises above the horizon in some facing: {counts}"
     )
 

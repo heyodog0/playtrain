@@ -84,13 +84,39 @@ function initRenderFp() {
   _fpReady = true;
 }
 
-// Repack the whole 64x64 map every frame. Craftax mutates very few cells per
-// step, so this is more work than it needs to be (§5 suggests a dirty flag),
-// but it is obviously correct and it is one table lookup and one store per
-// cell. T7 measures whether it is worth the state a dirty flag would add.
+// Repack only the cells a ray can reach this frame.
+//
+// T3 packed all 4,096 cells every frame and left the question to T7, which
+// measured it at **109 of 346 us a step** — a third of the whole step, in a
+// JS loop, which is exactly what this variant exists to avoid. §5 suggests a
+// dirty flag; a window is better, because it needs no extra state and cannot
+// go stale by accident.
+//
+// Why it is exact rather than an approximation: rays terminate at
+// FP_VIEW_DIST (9.0) and sprites are skipped past it, so no ray can leave the
+// player's cell by more than 9 blocks in any axis. Repacking a
+// (2*FP_PACK_R+1)^2 window centred on the player therefore refreshes every
+// cell that can possibly be sampled; cells outside it keep stale values that
+// nothing reads. FP_PACK_R is 10, one more than the view distance, so the
+// margin survives the half-cell eye offset and any rounding at the edge.
+//
+// 441 cells instead of 4,096.
+const FP_PACK_R = 10;
+
 function _fpPackGrid(st) {
-  const n = MAP_SIZE * MAP_SIZE;
-  for (let i = 0; i < n; i++) _fpGrid[i] = FP_PACK[st.mapPacked[i]];
+  const pr = st.playerR[0], pc = st.playerC[0];
+  let r0 = pr - FP_PACK_R, r1 = pr + FP_PACK_R;
+  let c0 = pc - FP_PACK_R, c1 = pc + FP_PACK_R;
+  if (r0 < 0) r0 = 0;
+  if (c0 < 0) c0 = 0;
+  if (r1 > MAP_SIZE - 1) r1 = MAP_SIZE - 1;
+  if (c1 > MAP_SIZE - 1) c1 = MAP_SIZE - 1;
+  for (let r = r0; r <= r1; r++) {
+    const row = r * MAP_SIZE;
+    for (let c = c0; c <= c1; c++) {
+      _fpGrid[row + c] = FP_PACK[st.mapPacked[row + c]];
+    }
+  }
 }
 
 // Mobs and arrows, as upright billboards (FIRST_PERSON_PLAN.md §4.3).
@@ -180,8 +206,35 @@ function _fpDusk(st) {
 // sizes — comes from 80_render.js itself, so only the slot loop is duplicated.
 // The comments explaining WHY each line is what it is live there; read them
 // there, and keep the two in step.
+// The inventory strip only changes when one of its 20 numbers changes, and
+// those change rarely. Recomposing it is another **110 us a step** (T7), all
+// of it JS: a 2,646-float clear, 16 icon blits, up to 16 digit stencils, and
+// an 882-pixel float->uint8 conversion.
+//
+// So the composition is skipped when the counts are unchanged. The BLIT is
+// not: background() clears the canvas every frame, so image() has to be
+// re-issued regardless — but the bitmap it blits still holds the last
+// composition, and loadBitmap is what costs. Pixels are identical either way,
+// which tests/test_same_dynamics.py checks against craftax_classic's own strip.
+const _fpInvPrev = new Int32Array(16);
+// Hoisted: building this per frame would allocate 16 strings a step.
+const _fpInvKeys = INV_SLOTS.map((sl) => sl[0]);
+
+function _fpInvChanged(counts) {
+  let changed = false;
+  for (let i = 0; i < _fpInvKeys.length; i++) {
+    const v = counts[_fpInvKeys[i]];
+    if (_fpInvPrev[i] !== v) {
+      _fpInvPrev[i] = v;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+let _fpInvDrawn = false;
+
 function _fpInventory(st) {
-  _invPx.fill(0);
   const counts = {
     health: st.health[0], food: st.food[0], drink: st.drink[0], energy: st.energy[0],
     inv_wood: st.inv[INV_WOOD], inv_stone: st.inv[INV_STONE], inv_coal: st.inv[INV_COAL],
@@ -191,16 +244,23 @@ function _fpInventory(st) {
     inv_wsword: st.inv[INV_WSWORD], inv_ssword: st.inv[INV_SSWORD],
     inv_isword: st.inv[INV_ISWORD],
   };
-  for (let i = 0; i < INV_SLOTS.length; i++) {
-    const key = INV_SLOTS[i][0], col = INV_SLOTS[i][1], row = INV_SLOTS[i][2];
-    const n = counts[key];
-    if (n > 0) _putIcon(key, col, row);
-    let d = n > 9 ? 9 : n;
-    if (d < 0) d += 10;
-    if (d <= 0) continue;
-    _putDigit(d, col, row);
+  if (_fpInvChanged(counts) || !_fpInvDrawn) {
+    _invPx.fill(0);
+    for (let i = 0; i < INV_SLOTS.length; i++) {
+      const key = INV_SLOTS[i][0], col = INV_SLOTS[i][1], row = INV_SLOTS[i][2];
+      const n = counts[key];
+      if (n > 0) _putIcon(key, col, row);
+      let d = n > 9 ? 9 : n;
+      if (d < 0) d += 10;
+      if (d <= 0) continue;
+      _putDigit(d, col, row);
+    }
+    _upload(_invPx, _invBmp, RENDER_W, RENDER_INV_H, 0, RENDER_MAP_H);
+    _fpInvDrawn = true;
+  } else {
+    // Composition unchanged; the bitmap still holds it, so just blit.
+    image(_invBmp, 0, RENDER_MAP_H, RENDER_W, RENDER_INV_H);
   }
-  _upload(_invPx, _invBmp, RENDER_W, RENDER_INV_H, 0, RENDER_MAP_H);
 }
 
 function renderGameFp(st) {

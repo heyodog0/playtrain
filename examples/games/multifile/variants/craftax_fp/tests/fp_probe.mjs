@@ -53,7 +53,6 @@ if (!bundlePath || !seedArg || dirArgs.length === 0) {
 
 const CANVAS = 64;
 const VIEW_H = 49;
-const SKY_R = 0x87, SKY_G = 0xCE, SKY_B = 0xEB;
 const canvas = createCanvas(CANVAS, CANVAS, CANVAS, CANVAS);
 const ctx = canvas.getContext('2d');
 const bitmaps = [];
@@ -159,14 +158,22 @@ for (const d of dirArgs) {
   }
   game.renderGameFp(game.state);
   const px = ctx.getImageData().data;
-  // Pixels above the horizon (rows 0..23) that are not sky. Only a CUBE can
-  // put anything there: floors are all at y=0, which is below eye height, so a
-  // build that forgot to make solid blocks solid reports 0 here on every seed.
-  let aboveHorizon = 0;
+  // DISTINCT colours above the horizon (rows 0..23). Only a CUBE can put
+  // anything up there: floors all sit at y=0, below eye height. So an
+  // all-floor world shows exactly ONE colour — the sky — and any solid block
+  // in view makes it more than one.
+  //
+  // Counting colours rather than "pixels that are not SKY_RGB" is deliberate.
+  // The dusk pass tints the sky at ANY light_level below 1, and light_level at
+  // the reset frame is about 0.81, so the sky on screen is never the raw
+  // constant. The earlier version of this metric compared against SKY_RGB and
+  // reported the whole region as non-sky from T6b onward, which made the
+  // solid-blocks test pass for the wrong reason.
+  const seen = new Set();
   for (let i = 0; i < CANVAS * 24; i++) {
     const o = i * 4;
-    if (px[o] !== SKY_R || px[o + 1] !== SKY_G || px[o + 2] !== SKY_B) aboveHorizon++;
+    seen.add((px[o] << 16) | (px[o + 1] << 8) | px[o + 2]);
   }
   // view region only: the inventory strip does not depend on facing
-  console.log(`dir ${d} ${fnv1a(px.subarray(0, CANVAS * VIEW_H * 4))} above=${aboveHorizon}`);
+  console.log(`dir ${d} ${fnv1a(px.subarray(0, CANVAS * VIEW_H * 4))} abovecolours=${seen.size}`);
 }

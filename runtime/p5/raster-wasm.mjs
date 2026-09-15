@@ -36,6 +36,9 @@ export function makeWasmBackend(ex) {
       this._h = h;
       this._fill = null;
       this._stroke = null;
+      // Last arrays staged into wasm memory, by identity; see _stage.
+      this._atlasStaged = null;
+      this._noiseStaged = null;
     }
     // style setters (shim assigns rgba strings; cache-gated upstream so reparse is rare)
     set fillStyle(v) { const c = parseColor(v); ex.rs_set_fill(this._h, c[0], c[1], c[2], c[3]); }
@@ -84,36 +87,55 @@ export function makeWasmBackend(ex) {
     }
 
     // ---- first-person voxel raycast (crates/rasterizer/src/voxel.rs) ----
-    // The grid and atlas have to be IN linear memory before the call: JS cannot
-    // make a pointer into it, so the rasterizer hands out staging buffers and we
-    // write through them, exactly as loadRGBA writes through rs_pixels_ptr.
-    // Re-fetch mem() after every call that can grow the heap, and take the
-    // pointers last, once nothing more will resize.
+    // The grid, atlas and noise texture have to be IN linear memory before the
+    // call: JS cannot make a pointer into it, so the rasterizer hands out
+    // staging buffers and we write through them, exactly as loadRGBA writes
+    // through rs_pixels_ptr. Re-fetch mem() after anything that can grow the
+    // heap, and take the pointer last, once nothing more will resize.
+    //
+    // The ATLAS and the NOISE texture are uploaded once, not every call. A
+    // game builds each at setup and then passes the same array for the rest of
+    // the run, so re-copying them per call is pure waste — and it is a lot of
+    // waste: the first-person game's atlas is 24 KB and it issues one view
+    // call plus up to eleven sprite calls a frame, so the naive version moved
+    // ~300 KB per frame and made the wasm backend no faster than doing the
+    // whole render in JS. Identity is the right test here: these are long-lived
+    // arrays, and a game that mutates one in place would have to hand over a
+    // new array for any backend to see it (the native hosts read the caller's
+    // memory directly, so they never copy at all).
+    //
+    // The GRID is copied every call, because its contents genuinely change
+    // every frame. It is 8 KB.
+    _stage(which, arr, ViewType) {
+      const bytes = arr.length * ViewType.BYTES_PER_ELEMENT;
+      const fn = which === 'atlas' ? ex.rs_voxel_atlas_ptr : ex.rs_voxel_noise_ptr;
+      const cache = which === 'atlas' ? '_atlasStaged' : '_noiseStaged';
+      fn(which === 'atlas' ? bytes : arr.length);
+      const p = fn(which === 'atlas' ? bytes : arr.length);
+      if (this[cache] !== arr) {
+        new ViewType(mem(), p, arr.length).set(arr);
+        this[cache] = arr;
+      }
+      return p;
+    }
+
     voxelView(grid, gw, gh, ex_, ey, ez, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
       ex.rs_voxel_grid_ptr(grid.length);
-      ex.rs_voxel_atlas_ptr(atlas.length);
       const gp = ex.rs_voxel_grid_ptr(grid.length);
-      const ap = ex.rs_voxel_atlas_ptr(atlas.length);
       new Uint16Array(mem(), gp, grid.length).set(grid);
-      new Uint8Array(mem(), ap, atlas.length).set(atlas);
       ex.rs_voxel_view(this._h, gp, gw, gh, ex_, ey, ez, yawQ, viewDist,
         ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
     }
 
-    // The atlas is already staged by the voxelView call that precedes this in
-    // the frame, but re-staging is cheap and makes a sprite-only frame work.
     voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
-      ex.rs_voxel_atlas_ptr(atlas.length);
-      const ap = ex.rs_voxel_atlas_ptr(atlas.length);
-      new Uint8Array(mem(), ap, atlas.length).set(atlas);
+      const ap = this._stage('atlas', atlas, Uint8Array);
       ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
         ap, tilePx, nTiles, tile, dx, dy, dw, dh);
     }
 
     voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
-      ex.rs_voxel_noise_ptr(noise.length);
-      const np = ex.rs_voxel_noise_ptr(noise.length);
-      new Float32Array(mem(), np, noise.length).set(noise);
+      const np = this._stage('noise', noise, Float32Array);
       ex.rs_dusk(this._h, x, y, w, h, daylight, key0, key1, useStatic, np, sleeping);
     }
 
