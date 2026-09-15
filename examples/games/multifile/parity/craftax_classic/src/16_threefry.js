@@ -98,3 +98,51 @@ function threefryUniformF32(k0, k1, n, out) {
   }
   return out;
 }
+
+// jax.random.PRNGKey(seed) for a 32-bit seed: `_threefry_seed` puts the
+// seed's high 32 bits in the first word and the low 32 in the second, so a
+// seed below 2^32 is [0, seed].
+function threefryPRNGKey(seed) {
+  return [0, seed >>> 0];
+}
+
+// jax.random.split(key) under the partitionable layout
+// (`_threefry_split_foldlike`): output key j is the two words of
+// threefry(key, counter (0, j)). Writes [a0, a1, b0, b1] into out, where
+// [a0, a1] is split(key)[0] and [b0, b1] is split(key)[1].
+function threefrySplit(k0, k1, out) {
+  _threefry2x32(k0, k1, 0, 0);
+  out[0] = _tfOut[0]; out[1] = _tfOut[1];
+  _threefry2x32(k0, k1, 0, 1);
+  out[2] = _tfOut[0]; out[3] = _tfOut[1];
+  return out;
+}
+
+// Craftax's state_rng for one step, from the DRIVER's key.
+//
+// JAX cannot branch control flow on values, so craftax_step performs the same
+// number of splits every step whatever the action or the world. Measured
+// (reference/craftax_pixels/README.md): state_rng after a step is the second
+// output of the fifth `rng, _rng = split(rng)` starting from the key the
+// driver passed to that step, and the driver's own pattern is
+// `dk, sk = split(dk)` once per step. So the whole chain is
+//
+//   dk, sk = split(dk); rng = sk
+//   repeat 5: rng, sub = split(rng)
+//   state_rng = sub
+//
+// `dk` holds the driver key [d0, d1] and is advanced in place; the step's
+// state_rng is written into `out` (two words).
+const _splitTmp = new Uint32Array(4);
+
+function craftaxStateRng(dk, out) {
+  threefrySplit(dk[0], dk[1], _splitTmp);
+  dk[0] = _splitTmp[0]; dk[1] = _splitTmp[1];          // dk = split(dk)[0]
+  let r0 = _splitTmp[2], r1 = _splitTmp[3];             // rng = split(dk)[1]
+  for (let i = 0; i < 5; i++) {
+    threefrySplit(r0, r1, _splitTmp);
+    r0 = _splitTmp[0]; r1 = _splitTmp[1];
+    out[0] = _splitTmp[2]; out[1] = _splitTmp[3];
+  }
+  return out;
+}

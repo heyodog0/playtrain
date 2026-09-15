@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 17 sources listed in
 // examples/games/multifile/parity/craftax_classic/manifest.json
-// Source hash (sha256 over the concatenated sources): cdc9d360157c80d19646720868d36f8c6fcdf44ef7b959bf9f17dd2b1ef3e8c3
+// Source hash (sha256 over the concatenated sources): 1ae251b61c8e0a898ed8115b0b4f4de50b26be6a1e5abca3d58611e13bd0b805
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_classic
@@ -316,9 +316,10 @@ function fnv1a64Hex(bytes) {
 // ocean/craftax_classic/craftax_classic.h at commit 6ffa5b10, built scalar,
 // no FMA, with cosf/sinf bound to V8's ieee754. What is NOT matched:
 // PufferLib's auto-reset RNG continuation across episodes. The pixels are
-// Craftax-Classic-Pixels', byte-identical given Craftax's night key — which
-// no host supplies, so the hosts' night frames omit Craftax's static. See
-// README.md and manifest.json.
+// Craftax-Classic-Pixels', byte-identical at every light level given the
+// driver seed Craftax itself needs (setDriverSeed). No host passes one yet,
+// so the hosts' night frames omit Craftax's static. See README.md and
+// manifest.json.
 //
 // conforms-to: GAME_TEMPLATE.md
 
@@ -902,6 +903,54 @@ function threefryUniformF32(k0, k1, n, out) {
     const bits = threefryRandomBits32(k0, k1, i);
     const fb = ((bits >>> 9) | 0x3f800000) >>> 0;
     out[i] = F(bitsToF32(fb) - 1);
+  }
+  return out;
+}
+
+// jax.random.PRNGKey(seed) for a 32-bit seed: `_threefry_seed` puts the
+// seed's high 32 bits in the first word and the low 32 in the second, so a
+// seed below 2^32 is [0, seed].
+function threefryPRNGKey(seed) {
+  return [0, seed >>> 0];
+}
+
+// jax.random.split(key) under the partitionable layout
+// (`_threefry_split_foldlike`): output key j is the two words of
+// threefry(key, counter (0, j)). Writes [a0, a1, b0, b1] into out, where
+// [a0, a1] is split(key)[0] and [b0, b1] is split(key)[1].
+function threefrySplit(k0, k1, out) {
+  _threefry2x32(k0, k1, 0, 0);
+  out[0] = _tfOut[0]; out[1] = _tfOut[1];
+  _threefry2x32(k0, k1, 0, 1);
+  out[2] = _tfOut[0]; out[3] = _tfOut[1];
+  return out;
+}
+
+// Craftax's state_rng for one step, from the DRIVER's key.
+//
+// JAX cannot branch control flow on values, so craftax_step performs the same
+// number of splits every step whatever the action or the world. Measured
+// (reference/craftax_pixels/README.md): state_rng after a step is the second
+// output of the fifth `rng, _rng = split(rng)` starting from the key the
+// driver passed to that step, and the driver's own pattern is
+// `dk, sk = split(dk)` once per step. So the whole chain is
+//
+//   dk, sk = split(dk); rng = sk
+//   repeat 5: rng, sub = split(rng)
+//   state_rng = sub
+//
+// `dk` holds the driver key [d0, d1] and is advanced in place; the step's
+// state_rng is written into `out` (two words).
+const _splitTmp = new Uint32Array(4);
+
+function craftaxStateRng(dk, out) {
+  threefrySplit(dk[0], dk[1], _splitTmp);
+  dk[0] = _splitTmp[0]; dk[1] = _splitTmp[1];          // dk = split(dk)[0]
+  let r0 = _splitTmp[2], r1 = _splitTmp[3];             // rng = split(dk)[1]
+  for (let i = 0; i < 5; i++) {
+    threefrySplit(r0, r1, _splitTmp);
+    r0 = _splitTmp[0]; r1 = _splitTmp[1];
+    out[0] = _splitTmp[2]; out[1] = _splitTmp[3];
   }
   return out;
 }
@@ -2075,16 +2124,14 @@ function newEpisode(st, seed) {
 //
 // WHAT THIS BUYS. Our uint8 frame equals Craftax's float32 frame cast to
 // uint8 — `render_craftax_pixels(state).astype(uint8)` — at every light
-// level, PROVIDED the night key is supplied. Below light_level 0.5 Craftax
-// adds per-pixel static drawn with jax.random.uniform from state_rng, and
-// state_rng is set from the CALLER's step key, not from anything in the
-// environment state — so the state does not determine the frame, and this
-// renderer cannot derive the key. It can accept one: setNightKey(k0, k1)
-// installs the two uint32 words of Craftax's state_rng, and the static is
-// then reproduced bit for bit (16_threefry.js). With no key installed
-// (the default, and what every host does) the static is skipped and the
-// frame is the deterministic dusk image. See
-// reference/craftax_pixels/README.md.
+// level, given Craftax's driver seed. Below light_level 0.5 Craftax adds
+// per-pixel static drawn with jax.random.uniform from state_rng, which its
+// step derives from the DRIVER's key and the step index. 90_playtrain.js
+// derives the same key (setDriverSeed, nightTick) and installs it here with
+// setNightKey(k0, k1); the static is then reproduced bit for bit
+// (16_threefry.js). With no key installed (no driver seed, which is what
+// every host does today) the static is skipped and the frame is the
+// deterministic dusk image. See reference/craftax_pixels/README.md.
 
 const RENDER_TILE = 7;              // BLOCK_PIXEL_SIZE_AGENT
 const RENDER_COLS = 9;              // OBS_DIM[1]
@@ -2094,10 +2141,18 @@ const RENDER_W = RENDER_TILE * RENDER_COLS;              // 63
 const RENDER_MAP_H = RENDER_TILE * RENDER_ROWS;          // 49
 const RENDER_INV_H = RENDER_TILE * RENDER_INV_ROWS;      // 14
 
-// Craftax's night constants.
+// Craftax's night constants, AS FLOAT32. JAX converts a Python literal to
+// the array's dtype before the multiply, so `0.299 * r` is float32(0.299)
+// times r, rounded once. `F(0.299 * r)` in JS is not that: it multiplies the
+// double 0.299 in double precision and rounds the result, which differs in
+// the last bit often enough to flip a truncated channel (seen on 1 pixel in
+// 74 night frames). With both operands already float32 the double product is
+// exact and F() gives the correctly rounded float32 product.
 const NIGHT_TINT = [0, 16, 64];     // night_texture
 const SLEEP_TINT = [0, 0, 16];
-const ENHANCE = 0.4;
+const ENHANCE = F(0.4);
+const ENHANCE_INV = F(1 - 0.4);     // Python computes 1 - 0.4 in double, then float32
+const LUM_R = F(0.299), LUM_G = F(0.587), LUM_B = F(0.114);
 
 let _atlasRaw = null, _iconRaw = null, _digitRaw = null;
 let _mapBmp = -1, _invBmp = -1;
@@ -2106,9 +2161,8 @@ let _mapPx = null, _invPx = null;
 // --- night static -----------------------------------------------------------
 // Craftax's state_rng, as two uint32 words, or null for "no key": the static
 // branch is then skipped and the frame is the deterministic dusk image. This
-// is render-only state — it is not part of the game state, never touches the
-// PCG, and nothing in the host contract sets it. A comparison harness calls
-// setNightKey() with the key Craftax was given for the same frame.
+// is render-only state — it is not part of the game state and never touches
+// the PCG. 90_playtrain.js sets it once per step from the driver seed.
 let _nightKey = null;
 let _nightNoise = null;             // float32 (49 x 63) night_noise_intensity_texture
 let _nightStatic = null;            // float32 (49 x 63) scratch for the uniform draw
@@ -2354,10 +2408,10 @@ function renderGame(st) {
         g1 = F(F(im * g0) + F(m * s));
         b1 = F(F(im * b0) + F(m * s));
       }
-      const lum = F(F(F(0.299 * r1) + F(0.587 * g1)) + F(0.114 * b1));
-      let nr = F(F(r1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let ng = F(F(g1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let nb = F(F(b1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      const lum = F(F(F(LUM_R * r1) + F(LUM_G * g1)) + F(LUM_B * b1));
+      let nr = F(F(r1 * ENHANCE) + F(ENHANCE_INV * lum));
+      let ng = F(F(g1 * ENHANCE) + F(ENHANCE_INV * lum));
+      let nb = F(F(b1 * ENHANCE) + F(ENHANCE_INV * lum));
       nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
       ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
       nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
@@ -2372,7 +2426,7 @@ function renderGame(st) {
     const n = RENDER_W * RENDER_MAP_H;
     for (let i = 0; i < n; i++) {
       const o = i * 3;
-      const lum = F(F(F(0.299 * _mapPx[o]) + F(0.587 * _mapPx[o + 1])) + F(0.114 * _mapPx[o + 2]));
+      const lum = F(F(F(LUM_R * _mapPx[o]) + F(LUM_G * _mapPx[o + 1])) + F(LUM_B * _mapPx[o + 2]));
       _mapPx[o] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[0]));
       _mapPx[o + 1] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[1]));
       _mapPx[o + 2] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[2]));
@@ -2524,6 +2578,42 @@ const CANVAS_SIZE = 64;
 let gameState = null;
 let gameOver = false;
 
+// --- Craftax's driver key --------------------------------------------------
+// Craftax's night static is drawn from state_rng, which its step sets from
+// the key the CALLER passes in — the training loop's own PRNG — and the
+// number of splits per step is fixed, so state_rng is a function of the
+// driver's seed and the step index alone (16_threefry.js, craftaxStateRng).
+// Supplying that seed here makes the frame Craftax's at every light level;
+// Craftax needs the same input, so this is the same interface, not an extra.
+//
+// This is render-side state. It is not in the parity buffer — G0-G2 compare
+// state against PufferLib's C, which has no such field — and it never touches
+// the game's PCG. With no driver seed (the default, and every host today)
+// no key is derived and the static is skipped, as before.
+let driverSeed = null;
+const driverKey = new Uint32Array(2);
+const stateRng = new Uint32Array(2);
+
+// jax.random.PRNGKey(seed) for the driver; null clears it. Takes effect at
+// the next resetGame, so an episode is reproducible from (seed, driverSeed).
+function setDriverSeed(seed) {
+  driverSeed = seed === null || seed === undefined ? null : (seed >>> 0);
+}
+
+// One driver step: advance the chain and hand the renderer this step's
+// state_rng. Called once per draw(), i.e. once per host step including the
+// reset tick, which is Craftax's step 0.
+function nightTick() {
+  if (driverSeed === null) return;
+  craftaxStateRng(driverKey, stateRng);
+  setNightKey(stateRng[0], stateRng[1]);
+}
+
+// The state_rng the last frame was rendered with, or null. For the gates.
+function getStateRng() {
+  return driverSeed === null ? null : [stateRng[0], stateRng[1]];
+}
+
 function setup() {
   createCanvas(CANVAS_SIZE, CANVAS_SIZE);
   if (gameState === null) resetGame(0);
@@ -2559,6 +2649,7 @@ function draw() {
     const res = stepGame(gameState, currentAction());
     if (res.done) gameOver = true;
   }
+  nightTick();
   if (typeof renderGame === 'function') {
     renderGame(gameState);
   } else {
@@ -2575,6 +2666,12 @@ function resetGame(seed) {
   if (gameState === null) gameState = createState();
   newEpisode(gameState, (seed >>> 0));
   gameOver = false;
+  if (driverSeed === null) {
+    clearNightKey();
+  } else {
+    const k = threefryPRNGKey(driverSeed);
+    driverKey[0] = k[0]; driverKey[1] = k[1];
+  }
 }
 
 // PLAN 3.6: the symbolic observation mode. The host calls this with no

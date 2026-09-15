@@ -6,9 +6,10 @@
 Takes DIR/craftax.npy (Craftax's own render, from render_craftax_batch.py)
 and DIR/meta.json, and appends the selected frames — cast to uint8, which is
 the target — to traces/craftax_pixels/reference_frames.{npz,json}, each
-entry carrying the seed, the frame index, the light level and the state_rng
-used. tests/test_render.py replays the trajectory and checks byte identity;
-that needs node, not JAX.
+entry carrying the seed, the frame index, the light level, the driver seed
+the run used and the state_rng derived from it. tests/test_render.py replays
+the trajectory with that driver seed and checks byte identity; that needs
+node, not JAX. --replace drops the seed's existing entries first.
 
 Only frames that ARE byte-identical to ours are appended: the fixture
 records verified agreement, and a disagreement belongs in a bug report, not
@@ -32,6 +33,7 @@ def main() -> int:
     ap.add_argument('--frames', type=int, nargs='*', default=None, help='explicit frame indices')
     ap.add_argument('--sleeping', action='store_true', help='also take every sleeping frame that qualifies')
     ap.add_argument('--force', action='store_true')
+    ap.add_argument('--replace', action='store_true', help="drop this seed's existing entries first")
     a = ap.parse_args()
 
     meta = json.loads((a.dir / 'meta.json').read_text())
@@ -59,6 +61,10 @@ def main() -> int:
 
     ref = np.load(TRACES / 'reference_frames.npz')['frames']
     entries = json.loads((TRACES / 'reference_frames.json').read_text())
+    if a.replace:
+        keep = [k for k, e in enumerate(entries) if e['seed'] != a.seed]
+        ref = ref[keep]
+        entries = [entries[k] for k in keep]
     have = {(e['seed'], e['frame']) for e in entries}
     added = []
     for i in picked:
@@ -68,13 +74,17 @@ def main() -> int:
             raise SystemExit(f'frame {i} is not byte-identical to Craftax; not recording it')
         st = json.loads((a.dir / f'state_{i:03d}.json').read_text())
         entries.append({'seed': a.seed, 'frame': i, 'light': meta[i]['light'],
-                        'timestep': meta[i]['timestep'], 'state_rng': meta[i]['state_rng'],
+                        'timestep': meta[i]['timestep'], 'driver_seed': meta[i]['driver_seed'],
+                        'state_rng': meta[i]['state_rng'],
                         'sleeping': bool(st['is_sleeping']), 'health': int(st['health'])})
         added.append(cx[i])
-    if not added:
+    if not added and not a.replace:
         print('nothing new to add')
         return 0
-    frames = np.concatenate([ref, np.stack(added)])
+    if not added:
+        frames = ref
+    else:
+        frames = np.concatenate([ref, np.stack(added)])
     np.savez_compressed(TRACES / 'reference_frames.npz', frames=frames)
     (TRACES / 'reference_frames.json').write_text(json.dumps(entries, indent=1) + '\n')
     print(f'added {len(added)} frames from seed {a.seed}: {[e["frame"] for e in entries[-len(added):]]}')

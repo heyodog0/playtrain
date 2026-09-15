@@ -4,21 +4,24 @@ Exports N states from the C reference together with our frames for the same
 trajectory; a second script renders those states through Craftax's own pixel
 renderer; then `--diff` reports the result.
 
-    uv run python .../compare.py --seed 11 --steps 220 --out /tmp/night
+    uv run python .../compare.py --seed 11 --steps 220 --driver-seed 7 --out /tmp/night
     # then, in a venv with craftax installed (see README.md):
     uv run python .../render_craftax_batch.py /tmp/night
     # back here:
     uv run python .../compare.py --diff /tmp/night
 
 Night frames. Craftax's static below light_level 0.5 is drawn from
-`state.state_rng`, which the environment cannot derive (README.md). So this
-script CHOOSES a key per frame — any key will do, it only has to be the same
-on both sides — writes it into meta.json as `state_rng`, and renders our
-frames with that key installed via setNightKey(). Because no host can carry
-a key, our frames come from tests/jsrender.py: the same JS, run in node with
-a rasterizer stub. The stub is checked here against PlayTrainEnv on every
-daylight frame of the trajectory, so the comparison is still against what
-the shipped bundle draws.
+`state.state_rng`, which its step derives from the DRIVER's key and the
+step index alone (README.md). So both sides get the same driver seed and
+nothing else: our game derives state_rng itself (setDriverSeed, then
+nightTick per step), and render_craftax_batch.py derives it with JAX's own
+split from the same seed. meta.json records the driver seed and, for the
+record, the key our JS derived per frame; the JAX side checks it agrees.
+Because no host can carry a driver seed, our frames come from
+tests/jsrender.py: the same JS, run in node with a rasterizer stub. The stub
+is checked here against PlayTrainEnv on every daylight frame of the
+trajectory, so the comparison is still against what the shipped bundle
+draws.
 
 Handles the one-NOOP offset: GameEnv.reset() ticks draw() once before the
 first env.step(), so a PlayTrain episode is the C's episode with a NOOP
@@ -32,14 +35,6 @@ sys.path.insert(0, str(HERE.parent.parent / "tests"))
 
 from ccref import layout, parse_run, run as crun          # noqa: E402
 from jsrender import render_frames                         # noqa: E402
-
-
-def night_key(seed: int, frame: int) -> list[int]:
-    """The state_rng we hand to both renderers for one frame. Arbitrary but
-    fixed, with both words exercised across their full range."""
-    k0 = (0x9E3779B9 * (frame + 1) + seed) & 0xFFFFFFFF
-    k1 = ((0x85EBCA6B * (seed + 1)) ^ (frame * 0x27D4EB2F)) & 0xFFFFFFFF
-    return [k0, k1]
 
 
 def diff(out: pathlib.Path) -> int:
@@ -123,6 +118,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--seed', type=int, default=3)
     ap.add_argument('--steps', type=int, default=60)
+    ap.add_argument('--driver-seed', type=int, default=7,
+                    help="Craftax's driver PRNGKey seed; both sides derive state_rng from it")
     ap.add_argument('--out', type=pathlib.Path)
     ap.add_argument('--diff', type=pathlib.Path, metavar='DIR',
                     help='compare DIR/ours.npy with DIR/craftax.npy and exit')
@@ -160,8 +157,7 @@ def main():
         env.close()
 
     n = min(len(host), len(steps))
-    keys = [night_key(a.seed, i) for i in range(n)]
-    frames = render_frames(a.seed, actions[:n - 1], keys)
+    frames, keys = render_frames(a.seed, actions[:n - 1], a.driver_seed)
     assert len(frames) == n, (len(frames), n)
 
     meta = []
@@ -169,7 +165,7 @@ def main():
         st = to_json(steps[i].state, idx)
         (a.out / f'state_{i:03d}.json').write_text(json.dumps(st))
         meta.append({'i': i, 'light': st['light_level'], 'timestep': st['timestep'],
-                     'state_rng': keys[i]})
+                     'driver_seed': a.driver_seed, 'state_rng': keys[i]})
         # The stub must draw exactly what the host draws wherever the key
         # cannot matter. Any difference here is a harness bug, not a finding.
         if st['light_level'] >= 0.5 and not np.array_equal(frames[i], host[i]):
@@ -180,7 +176,7 @@ def main():
     (a.out / 'meta.json').write_text(json.dumps(meta, indent=1))
     print(f'{n} frames + states -> {a.out}')
     day = sum(1 for m in meta if m['light'] >= 0.5)
-    print(f'  {day} at light >= 0.5, {n - day} below (rendered with the keys in meta.json)')
+    print(f'  {day} at light >= 0.5, {n - day} below (state_rng derived from driver seed {a.driver_seed})')
     return 0
 
 

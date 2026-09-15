@@ -125,13 +125,15 @@ def test_frames_are_byte_identical_to_craftax():
     Craftax's observation is float32 and its composited pixels are not
     integral, so the target is that frame cast to uint8.
 
-    Night frames (`light_level < 0.5`) carry the `state_rng` Craftax was
-    given: its static is drawn from that key, which is the caller's and not
-    derivable from the state. The renderer reproduces it given the key
-    (setNightKey, 16_threefry.js). No host can carry a key, so those frames
-    are rendered by tests/jsrender.py — the same JS in node with a rasterizer
-    stub — and the stub is held to the shipped bundle here: on every daylight
-    frame of the replay it must equal what PlayTrainEnv draws.
+    Night frames (`light_level < 0.5`) carry the DRIVER seed Craftax was
+    run with: its static is drawn from state_rng, which its step derives
+    from the driver's key and the step index alone. The game derives the
+    same key itself (setDriverSeed, 16_threefry.js) and the recorded
+    state_rng is checked against what it derives. No host can carry a
+    driver seed, so those frames are rendered by tests/jsrender.py — the
+    same JS in node with a rasterizer stub — and the stub is held to the
+    shipped bundle here: on every daylight frame of the replay it must equal
+    what PlayTrainEnv draws.
     """
     import json
 
@@ -143,7 +145,7 @@ def test_frames_are_byte_identical_to_craftax():
     assert len(ref) == len(meta) >= 20
     night = [m for m in meta if m["light"] < 0.5]
     assert len(night) >= 8, "the fixture must cover night frames"
-    assert all("state_rng" in m for m in night), "a night frame without its key"
+    assert all(m.get("driver_seed") is not None for m in night), "a night frame without its driver seed"
     assert any(m.get("sleeping") for m in night), "no sleeping night frame"
     assert any(m.get("health", 1) <= 0 for m in meta), "no death frame"
 
@@ -169,12 +171,18 @@ def test_frames_are_byte_identical_to_craftax():
         finally:
             env.close()
 
-        # The same JS in node, with each recorded frame's key installed.
-        keys = [None] * (last + 1)
-        for w in wanted:
-            keys[w["frame"]] = w.get("state_rng")
-        stub = render_frames(seed, actions, keys)
+        # The same JS in node, deriving state_rng from the recorded driver seed.
+        drivers = {w["driver_seed"] for w in wanted if w.get("driver_seed") is not None}
+        assert len(drivers) <= 1, f"seed {seed}: mixed driver seeds {drivers}"
+        driver = drivers.pop() if drivers else None
+        stub, keys = render_frames(seed, actions, driver)
         assert len(stub) == len(host), "the stub and the host disagree on episode length"
+        for w in wanted:
+            if w.get("state_rng") is not None and driver is not None:
+                assert keys[w["frame"]] == w["state_rng"], (
+                    f"seed {seed} frame {w['frame']}: derived state_rng {keys[w['frame']]} "
+                    f"!= recorded {w['state_rng']}"
+                )
 
         # Faithfulness: wherever the key cannot matter, stub == host.
         for w in wanted:
@@ -195,7 +203,7 @@ def test_frames_are_byte_identical_to_craftax():
                 ys, xs = np.nonzero(d)
                 pytest.fail(
                     f"seed {seed} frame {w['frame']} (light {w['light']:.3f}, "
-                    f"key {w.get('state_rng')}): "
+                    f"driver seed {driver}, key {w.get('state_rng')}): "
                     f"{int(d.sum())} of 3969 px differ from Craftax, first at "
                     f"({ys[0]}, {xs[0]}): ours {ours[ys[0], xs[0]]} "
                     f"vs craftax {want[ys[0], xs[0]]}"

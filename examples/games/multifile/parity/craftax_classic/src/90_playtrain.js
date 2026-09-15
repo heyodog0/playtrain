@@ -30,6 +30,42 @@ const CANVAS_SIZE = 64;
 let gameState = null;
 let gameOver = false;
 
+// --- Craftax's driver key --------------------------------------------------
+// Craftax's night static is drawn from state_rng, which its step sets from
+// the key the CALLER passes in — the training loop's own PRNG — and the
+// number of splits per step is fixed, so state_rng is a function of the
+// driver's seed and the step index alone (16_threefry.js, craftaxStateRng).
+// Supplying that seed here makes the frame Craftax's at every light level;
+// Craftax needs the same input, so this is the same interface, not an extra.
+//
+// This is render-side state. It is not in the parity buffer — G0-G2 compare
+// state against PufferLib's C, which has no such field — and it never touches
+// the game's PCG. With no driver seed (the default, and every host today)
+// no key is derived and the static is skipped, as before.
+let driverSeed = null;
+const driverKey = new Uint32Array(2);
+const stateRng = new Uint32Array(2);
+
+// jax.random.PRNGKey(seed) for the driver; null clears it. Takes effect at
+// the next resetGame, so an episode is reproducible from (seed, driverSeed).
+function setDriverSeed(seed) {
+  driverSeed = seed === null || seed === undefined ? null : (seed >>> 0);
+}
+
+// One driver step: advance the chain and hand the renderer this step's
+// state_rng. Called once per draw(), i.e. once per host step including the
+// reset tick, which is Craftax's step 0.
+function nightTick() {
+  if (driverSeed === null) return;
+  craftaxStateRng(driverKey, stateRng);
+  setNightKey(stateRng[0], stateRng[1]);
+}
+
+// The state_rng the last frame was rendered with, or null. For the gates.
+function getStateRng() {
+  return driverSeed === null ? null : [stateRng[0], stateRng[1]];
+}
+
 function setup() {
   createCanvas(CANVAS_SIZE, CANVAS_SIZE);
   if (gameState === null) resetGame(0);
@@ -65,6 +101,7 @@ function draw() {
     const res = stepGame(gameState, currentAction());
     if (res.done) gameOver = true;
   }
+  nightTick();
   if (typeof renderGame === 'function') {
     renderGame(gameState);
   } else {
@@ -81,6 +118,12 @@ function resetGame(seed) {
   if (gameState === null) gameState = createState();
   newEpisode(gameState, (seed >>> 0));
   gameOver = false;
+  if (driverSeed === null) {
+    clearNightKey();
+  } else {
+    const k = threefryPRNGKey(driverSeed);
+    driverKey[0] = k[0]; driverKey[1] = k[1];
+  }
 }
 
 // PLAN 3.6: the symbolic observation mode. The host calls this with no

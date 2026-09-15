@@ -46,22 +46,23 @@ Integer logic and the RNG are untouched by any of this.
 
 - **PufferLib's pixels.** Its textures are a raylib viewer; training there
   is symbolic. Our frame is Craftax-Classic-Pixels' instead (next item).
-- **Craftax-Classic-Pixels at night, as an environment.** Verified against
-  Craftax itself, by injecting our states into its `EnvState` and calling its
-  own `render_craftax_pixels` (the JAX env cannot be compared by seed —
-  different worldgen). At `light_level >= 0.5` our frame is
-  **byte-identical** to `render_craftax_pixels(state).astype(uint8)`: 147 of
-  147 daylight frames on one trajectory, 120 of 120 on another including the
-  death frame. Below 0.5 Craftax adds per-pixel static drawn with
-  `jax.random.uniform` from `state_rng`, which `game_logic.py` sets from the
-  *caller's* step key — so that frame is not a function of the environment
-  state, and no environment can derive the key. **The renderer reproduces
-  it given the key**: `setNightKey(k0, k1)` installs Craftax's `state_rng`
-  and the static is drawn with a bit-exact threefry-2x32 (`16_threefry.js`);
-  74 of 74 night frames byte-identical that way, sleeping frames included.
-  What the hosts draw at night — no key is ever supplied through them — is
-  the deterministic dusk image without the static. Detail and the harness:
-  `reference/craftax_pixels/README.md`.
+- **Craftax-Classic-Pixels at night, through today's hosts.** Verified
+  against Craftax itself, by injecting our states into its `EnvState` and
+  calling its own `render_craftax_pixels` (the JAX env cannot be compared by
+  seed — different worldgen). Below `light_level` 0.5 Craftax adds per-pixel
+  static drawn with `jax.random.uniform` from `state_rng`, which its step
+  derives from the *driver's* `PRNGKey` and the step index: JAX cannot
+  branch on values, so the split count per step is fixed, and the key is
+  independent of actions and world (measured). Given that driver seed the
+  game derives `state_rng` itself (`setDriverSeed`; threefry-2x32 and
+  `split` in `16_threefry.js`) and the frame is **byte-identical** to
+  `render_craftax_pixels(state).astype(uint8)` at every light level: 147/147
+  daylight and 74/74 night frames on one trajectory (26 asleep), 120/120 on
+  another through the death frame. Craftax needs the same driver seed, so
+  this is the same interface. What is not matched: no host passes a driver
+  seed yet, so through `PlayTrainEnv` the night frame is the deterministic
+  dusk image without the static, and daylight is byte-identical. Detail and
+  the harness: `reference/craftax_pixels/README.md`.
 - **Auto-reset RNG continuation.** PufferLib does not reset the PCG stream
   between episodes; `resetGame(seed)` does.
 - **One NOOP at reset.** `GameEnv.reset()` calls `resetGame(seed)` and then a

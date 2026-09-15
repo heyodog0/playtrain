@@ -8,8 +8,9 @@
 // ocean/craftax_classic/craftax_classic.h at commit 6ffa5b10, built scalar,
 // no FMA, with cosf/sinf bound to V8's ieee754. What is NOT matched:
 // PufferLib's auto-reset RNG continuation across episodes. The pixels are
-// Craftax-Classic-Pixels', byte-identical given Craftax's night key — which
-// no host supplies, so the hosts' night frames omit Craftax's static. See
-// README.md and manifest.json.
+// Craftax-Classic-Pixels', byte-identical at every light level given the
+// driver seed Craftax itself needs (setDriverSeed). No host passes one yet,
+// so the hosts' night frames omit Craftax's static. See README.md and
+// manifest.json.
 //
 // conforms-to: GAME_TEMPLATE.md

@@ -24,16 +24,14 @@
 //
 // WHAT THIS BUYS. Our uint8 frame equals Craftax's float32 frame cast to
 // uint8 — `render_craftax_pixels(state).astype(uint8)` — at every light
-// level, PROVIDED the night key is supplied. Below light_level 0.5 Craftax
-// adds per-pixel static drawn with jax.random.uniform from state_rng, and
-// state_rng is set from the CALLER's step key, not from anything in the
-// environment state — so the state does not determine the frame, and this
-// renderer cannot derive the key. It can accept one: setNightKey(k0, k1)
-// installs the two uint32 words of Craftax's state_rng, and the static is
-// then reproduced bit for bit (16_threefry.js). With no key installed
-// (the default, and what every host does) the static is skipped and the
-// frame is the deterministic dusk image. See
-// reference/craftax_pixels/README.md.
+// level, given Craftax's driver seed. Below light_level 0.5 Craftax adds
+// per-pixel static drawn with jax.random.uniform from state_rng, which its
+// step derives from the DRIVER's key and the step index. 90_playtrain.js
+// derives the same key (setDriverSeed, nightTick) and installs it here with
+// setNightKey(k0, k1); the static is then reproduced bit for bit
+// (16_threefry.js). With no key installed (no driver seed, which is what
+// every host does today) the static is skipped and the frame is the
+// deterministic dusk image. See reference/craftax_pixels/README.md.
 
 const RENDER_TILE = 7;              // BLOCK_PIXEL_SIZE_AGENT
 const RENDER_COLS = 9;              // OBS_DIM[1]
@@ -43,10 +41,18 @@ const RENDER_W = RENDER_TILE * RENDER_COLS;              // 63
 const RENDER_MAP_H = RENDER_TILE * RENDER_ROWS;          // 49
 const RENDER_INV_H = RENDER_TILE * RENDER_INV_ROWS;      // 14
 
-// Craftax's night constants.
+// Craftax's night constants, AS FLOAT32. JAX converts a Python literal to
+// the array's dtype before the multiply, so `0.299 * r` is float32(0.299)
+// times r, rounded once. `F(0.299 * r)` in JS is not that: it multiplies the
+// double 0.299 in double precision and rounds the result, which differs in
+// the last bit often enough to flip a truncated channel (seen on 1 pixel in
+// 74 night frames). With both operands already float32 the double product is
+// exact and F() gives the correctly rounded float32 product.
 const NIGHT_TINT = [0, 16, 64];     // night_texture
 const SLEEP_TINT = [0, 0, 16];
-const ENHANCE = 0.4;
+const ENHANCE = F(0.4);
+const ENHANCE_INV = F(1 - 0.4);     // Python computes 1 - 0.4 in double, then float32
+const LUM_R = F(0.299), LUM_G = F(0.587), LUM_B = F(0.114);
 
 let _atlasRaw = null, _iconRaw = null, _digitRaw = null;
 let _mapBmp = -1, _invBmp = -1;
@@ -55,9 +61,8 @@ let _mapPx = null, _invPx = null;
 // --- night static -----------------------------------------------------------
 // Craftax's state_rng, as two uint32 words, or null for "no key": the static
 // branch is then skipped and the frame is the deterministic dusk image. This
-// is render-only state — it is not part of the game state, never touches the
-// PCG, and nothing in the host contract sets it. A comparison harness calls
-// setNightKey() with the key Craftax was given for the same frame.
+// is render-only state — it is not part of the game state and never touches
+// the PCG. 90_playtrain.js sets it once per step from the driver seed.
 let _nightKey = null;
 let _nightNoise = null;             // float32 (49 x 63) night_noise_intensity_texture
 let _nightStatic = null;            // float32 (49 x 63) scratch for the uniform draw
@@ -303,10 +308,10 @@ function renderGame(st) {
         g1 = F(F(im * g0) + F(m * s));
         b1 = F(F(im * b0) + F(m * s));
       }
-      const lum = F(F(F(0.299 * r1) + F(0.587 * g1)) + F(0.114 * b1));
-      let nr = F(F(r1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let ng = F(F(g1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
-      let nb = F(F(b1 * ENHANCE) + F(F(1 - ENHANCE) * lum));
+      const lum = F(F(F(LUM_R * r1) + F(LUM_G * g1)) + F(LUM_B * b1));
+      let nr = F(F(r1 * ENHANCE) + F(ENHANCE_INV * lum));
+      let ng = F(F(g1 * ENHANCE) + F(ENHANCE_INV * lum));
+      let nb = F(F(b1 * ENHANCE) + F(ENHANCE_INV * lum));
       nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
       ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
       nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
@@ -321,7 +326,7 @@ function renderGame(st) {
     const n = RENDER_W * RENDER_MAP_H;
     for (let i = 0; i < n; i++) {
       const o = i * 3;
-      const lum = F(F(F(0.299 * _mapPx[o]) + F(0.587 * _mapPx[o + 1])) + F(0.114 * _mapPx[o + 2]));
+      const lum = F(F(F(LUM_R * _mapPx[o]) + F(LUM_G * _mapPx[o + 1])) + F(LUM_B * _mapPx[o + 2]));
       _mapPx[o] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[0]));
       _mapPx[o + 1] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[1]));
       _mapPx[o + 2] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[2]));

@@ -121,8 +121,8 @@
       "pixels",
       "auto-reset RNG continuation across episodes",
       "the host reset consumes one NOOP step before the first agent action (PlayTrain draws and steps in the same frame), so a PlayTrain episode is the C episode with a NOOP prepended",
-      "Craftax-Classic-Pixels below light_level 0.5, as drawn by the hosts: Craftax adds per-pixel static from state_rng, which game_logic.py sets from the CALLER's step key (rng, _rng = split(rng)) \u2014 so its night frame is not a function of the environment state and no environment can derive the key. The RENDERER reproduces it given the key: setNightKey(k0, k1) installs Craftax's state_rng and the static is drawn with a bit-exact threefry-2x32 (74/74 night frames byte-identical, sleeping frames included). No host supplies a key, so what they draw at night is the deterministic dusk image without the static. At light_level >= 0.5 the hosts' frame IS byte-identical to render_craftax_pixels(state).astype(uint8): 147/147 and 120/120 frames, death frame included. See reference/craftax_pixels/README.md"
+      "Craftax-Classic-Pixels below light_level 0.5, as drawn by the hosts: Craftax adds per-pixel static from state_rng, which its step derives from the DRIVER's PRNGKey and the step index (a fixed number of splits; independent of actions and world). Given that driver seed the game derives state_rng itself (setDriverSeed; threefry-2x32 + split in 16_threefry.js) and the frame is byte-identical at every light level: 147/147 daylight + 74/74 night frames (seed 11, driver seed 7) and 120/120 (seed 3, driver seed 2024, death frame included). Craftax needs the same driver seed, so this is the same interface. No host passes one yet, so what the hosts draw at night is the deterministic dusk image without the static; at light_level >= 0.5 the hosts' frame IS byte-identical to render_craftax_pixels(state).astype(uint8). See reference/craftax_pixels/README.md"
     ]
   },
-  "source_sha256": "cdc9d360157c80d19646720868d36f8c6fcdf44ef7b959bf9f17dd2b1ef3e8c3"
+  "source_sha256": "1ae251b61c8e0a898ed8115b0b4f4de50b26be6a1e5abca3d58611e13bd0b805"
 }

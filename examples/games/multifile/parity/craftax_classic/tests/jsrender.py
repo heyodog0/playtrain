@@ -1,13 +1,15 @@
-"""Render frames through the game's own JS, in node, with a night key.
+"""Render frames through the game's own JS, in node, with a driver seed.
 
 The hosts (qjs_host, the node GameEnv, the browser) expose setup/draw/reset
-and nothing else, so there is no way to hand Craftax's `state_rng` to the
-renderer through PlayTrainEnv. This module runs the same concatenated
-sources the bundle is made of, replaces the five rasterizer calls
-80_render.js makes with a stub that pastes bitmaps into a 64x64 buffer, and
-drives the game the way GameEnv does: resetGame(seed), one NOOP step for the
-reset tick, then one stepGame per action, rendering after each. Frames come
-back as (n, 63, 63, 3) uint8 — the Craftax frame, obs[:63, :63].
+and nothing else, so there is no way to pass Craftax's driver seed to the
+game through PlayTrainEnv. This module runs the same concatenated sources
+the bundle is made of, replaces the five rasterizer calls 80_render.js makes
+with a stub that pastes bitmaps into a 64x64 buffer, and drives the game the
+way GameEnv does: setDriverSeed, resetGame(seed), one NOOP step for the
+reset tick, then one stepGame per action, with nightTick() and a render
+after each — exactly draw()'s sequence. Frames come back as (n, 63, 63, 3)
+uint8, the Craftax frame obs[:63, :63], with the state_rng the game derived
+for each.
 
 The stub is faithful because 80_render.js uploads each region once and
 blits it 1:1 at integer coordinates; there is nothing to resample. The gate
@@ -79,25 +81,22 @@ function snapshot() {
   }
   return Buffer.from(crop).toString('base64');
 }
-function keyFor(i) {
-  const k = job.keys ? job.keys[i] : null;
-  if (k) setNightKey(k[0], k[1]); else clearNightKey();
-}
-const frames = [];
+const frames = [], keys = [];
+setDriverSeed(job.driver_seed);
 resetGame(job.seed);
 // GameEnv.reset() ticks draw() once before the first env.step(): a NOOP.
 stepGame(gameState, ACT_NOOP);
-keyFor(0);
+nightTick();
 renderGame(gameState);
-frames.push(snapshot());
+frames.push(snapshot()); keys.push(getStateRng());
 for (let t = 0; t < job.actions.length; t++) {
   const res = stepGame(gameState, job.actions[t]);
-  keyFor(t + 1);
+  nightTick();
   renderGame(gameState);
-  frames.push(snapshot());
+  frames.push(snapshot()); keys.push(getStateRng());
   if (res.done) break;
 }
-process.stdout.write(JSON.stringify(frames));
+process.stdout.write(JSON.stringify({ frames, keys }));
 """ % {"w": CRAFTAX_W, "h": CRAFTAX_H}
 
 
@@ -108,14 +107,11 @@ def sources() -> list[Path]:
 
 
 def render_frames(seed: int, actions: list[int],
-                  keys: list[list[int] | None] | None = None) -> np.ndarray:
-    """Frames 0..len(actions) (fewer if the episode ends), as (n, 63, 63, 3).
-
-    `keys[i]` is the two-word state_rng to install before rendering frame i,
-    or None for no key (the static is then skipped, as in every host).
+                  driver_seed: int | None = None) -> tuple[np.ndarray, list]:
+    """Frames 0..len(actions) (fewer if the episode ends), as (n, 63, 63, 3),
+    plus the state_rng the game derived for each frame (None without a
+    driver seed — the static is then skipped, as in every host).
     """
-    if keys is not None and len(keys) != len(actions) + 1:
-        raise ValueError("keys must have one entry per frame, len(actions) + 1")
     parts = [STUB_JS]
     for path in sources():
         parts.append(f"// ---- {path.name} ----\n{path.read_text()}")
@@ -125,10 +121,11 @@ def render_frames(seed: int, actions: list[int],
         script.write_text("\n".join(parts))
         job = Path(tmp) / "job.json"
         job.write_text(json.dumps({"seed": int(seed), "actions": [int(a) for a in actions],
-                                   "keys": keys}))
+                                   "driver_seed": None if driver_seed is None else int(driver_seed)}))
         proc = subprocess.run(["node", str(script), str(job)], capture_output=True, text=True)
         if proc.returncode != 0:
             raise AssertionError(f"node exited {proc.returncode}:\n{proc.stderr}")
+    res = json.loads(proc.stdout)
     out = [np.frombuffer(base64.b64decode(f), np.uint8).reshape(CRAFTAX_H, CRAFTAX_W, 3)
-           for f in json.loads(proc.stdout)]
-    return np.stack(out)
+           for f in res["frames"]]
+    return np.stack(out), res["keys"]
