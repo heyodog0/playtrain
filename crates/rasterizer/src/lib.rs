@@ -18,6 +18,10 @@
 pub mod three;
 pub use three::*;
 
+// First-person voxel raycast (rs_voxel_* ABI). See voxel.rs.
+pub mod voxel;
+pub use voxel::*;
+
 struct SubPath {
     pts: Vec<(f64, f64)>,
     closed: bool,
@@ -102,6 +106,11 @@ pub(crate) struct Canvas {
     path: Vec<SubPath>,
     escratch: Vec<Edge>,   // reused per-fill flattened-edge buffer (fill_subpaths)
     xscratch: Vec<(f64, i32)>,   // reused per-scanline crossing buffer
+    // Per-pixel ray depth, written by rs_voxel_view and read by the sprite
+    // pass (FIRST_PERSON_PLAN.md §4.3). Empty until the first voxel call, so
+    // a 2D game's canvases cost exactly what they always did. APPENDED last,
+    // same codegen-hygiene reason as RState::ell_cache.
+    pub(crate) depth: Vec<f32>,
 }
 
 // ---- per-env rasterizer state ----
@@ -141,6 +150,9 @@ pub(crate) struct RState {
     // WEBGL-mode state (None for 2D games). APPENDED last, same codegen-
     // hygiene reason as ell_cache. Boxed so 2D RState layout barely moves.
     pub(crate) three: Option<Box<three::Three>>,
+    // Grid/atlas staging for the voxel primitive (voxel.rs). None until the
+    // first rs_voxel_*_ptr call. APPENDED last, same reason as `three`.
+    pub(crate) voxel: Option<Box<voxel::Voxel>>,
 }
 
 impl RState {
@@ -157,6 +169,7 @@ impl RState {
             forceskip: false,
             ell_cache: Vec::new(),
             three: None,
+            voxel: None,
         }
     }
 }
@@ -352,6 +365,7 @@ pub extern "C" fn rs_new_canvas(lw: f64, lh: f64, dw: f64, dh: f64) -> u32 {
         path: Vec::new(),
         escratch: Vec::new(),
         xscratch: Vec::new(),
+        depth: Vec::new(),
     };
     let s = rs();
     s.canvases.push(c);
