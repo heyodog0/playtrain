@@ -14,7 +14,7 @@ field or pixel, expected, actual) and stop.
 |---|---|---|---|---|---|
 | T0 | Read §1–6 + classic README/PLAN/render/host/rasterizer sources; write this file; confirm hosts + wasm toolchain | done | `cargo test --release`: `test result: ok. 7 passed; 0 failed; 1 ignored`; wasm three-check `PASS` ×3 | 2a0b714 | See "T0 findings" below. |
 | T1 | `rs_voxel_view` in new `crates/rasterizer/src/voxel.rs`; 6 golden scenes (open field, corridor, wall at each of 4 yaws); `tests/wasm_voxel_check.mjs` | done | `cargo test --release`: `13 passed; 0 failed; 2 ignored`; wasm check `PASS` ×6, native hash == wasm hash; **44.87 µs/frame** | 5b5ca36 | See "T1 findings" below for the ABI T2 must bind and the depth-buffer decision. |
-| T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | todo | | | Gate: `uv run pytest tests/test_voxel.py -q`, all three backends hash-equal. Must rebuild + commit `runtime/p5/rasterizer.wasm`. |
+| T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | done | `uv run pytest tests/test_voxel.py -q`: `5 passed in 1.20s`; `GATE PASS: voxel_smoke` (200 steps × 3 seeds bit-exact) | dcfdbf0 | See "T2 findings" below. Repo suite `105 passed, 3 skipped`; classic parity suite `117 passed` — no regressions from the wasm rebuild. |
 | T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | todo | | | Gate: `bundle_multifile.py --check` clean, `build-pages.mjs` builds, 64×64 frame has > 50 distinct colours. |
 | T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | todo | | | Zero differing bytes of the 6,880-byte dump, plus symbolic obs equal. **Any diff = dynamics changed: mark blocked and stop.** |
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | todo | | | GATE PASS ×3 "bit-exact". Never run two `gate_qjs.sh` at once (fixed `/tmp/gateq_*`). |
@@ -203,10 +203,84 @@ compute `inf * 0 = NaN`. No `mul_add` anywhere; Rust does not contract.
 rebuilt in this commit — that is T2's, together with the host bindings, so
 the committed artifact and the JS glue that calls it land together.
 
+## T2 findings
+
+**Gate.** `uv run pytest tests/test_voxel.py -q` → `5 passed in 1.20s`. The
+five cover the four backends the plan names plus the trajectory gate:
+wasm-under-node, the pure-JS port, native-Rust-under-QuickJS, and
+`gate_qjs.sh voxel_smoke 200` → `GATE PASS`, `200 steps bit-exact` on each of
+seeds 1, 42, 777.
+
+**The pure-JS port was bit-identical to Rust on the first run.** No pixel
+differs between `PLAYTRAIN_RASTERIZER=js` and `=wasm`. That is the one result
+worth not taking on trust later: the test compares full frames with no
+tolerance and reports the first differing pixel with both values, so if a
+future edit to either side drifts, it will say exactly where.
+
+**Regression checks.** Repo suite `105 passed, 3 skipped`; craftax_classic
+parity suite `117 passed in 120.34s`. The rebuilt `runtime/p5/rasterizer.wasm`
+(now `e544f141…`, built by this machine's rustc 1.97.1) changes nothing for
+the existing games.
+
+**The game-facing call** — this is what `80_render_fp.js` writes in T3:
+
+```js
+voxelView(gridU16, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist,
+          atlasU8, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH)
+```
+
+16 positional numeric args, one global, installed in `p5-shim.mjs` and in both
+QuickJS hosts' binding tables. `grid` must be a **Uint16Array** and `atlas` a
+**Uint8Array** — the native hosts read both typed arrays in place with
+`JS_GetTypedArrayBuffer`, so any other array type silently does nothing. The
+dst rect is in **device** pixels, unlike `image()`, which scales by
+`_devSx/_devSy`: the view is authored at observation resolution, so there is
+nothing to scale.
+
+**Where the declaration went, and why.** `rs_voxel_view`'s `extern "C"`
+prototype is declared **inside `native/runtime/p5.cpp`**, not in
+`native/runtime/raster_abi.h` where every other `rs_*` lives. `raster_abi.h`
+is not one of the nine files plan §3 authorises, and a local prototype is the
+smallest thing that respects that. If a later task earns the right to touch
+that header, moving the declaration there is the tidier home — keep the two
+signatures in step either way.
+
+**Both hosts flush before rendering.** `js_voxelView` drains the p5 command
+buffer first, exactly as `js_loadBitmap` does, because it writes canvas memory
+directly; recorded draws to that canvas must land before the pixels do. It is
+**not** added to the `p5cb` record/replay op set — same treatment as
+`loadBitmap`, and for the same reason.
+
+**Rebuild order that actually works.** `native/build_qjs.sh` only builds the
+rasterizer staticlib **if the `.a` is missing**, so after changing Rust you
+must force it or the host links yesterday's code and the gate compares two
+stale things:
+
+```sh
+cd crates/rasterizer && cargo rustc --release --lib --crate-type staticlib
+cargo build --release --target wasm32-unknown-unknown
+cp target/wasm32-unknown-unknown/release/playtrain_rasterizer.wasm ../../runtime/p5/rasterizer.wasm
+cd ../../native && bash build_qjs.sh && bash build_qjs_vec.sh
+```
+
+(all with `PATH=~/.cargo/bin:$PATH`). T6 changes Rust again and will need the
+whole sequence.
+
+**Depth buffer in the JS backends.** `raster.mjs`'s `Context2D` grows a
+`this.depth` `Float32Array` lazily on the first `voxelView`, mirroring
+`Canvas::depth` in Rust. `raster-wasm.mjs` has no JS-side copy — the depth
+lives in wasm memory where `rs_voxel_sprite` will read it. T6 needs a way to
+reach it from the JS fallback but not from wasm; plan for that asymmetry.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T2 — bound `voxelView` into `p5.hpp`/`p5.cpp`, both QuickJS
+  hosts, the shim, and both JS rasterizer backends; hand-ported the ray march
+  into `raster.mjs` and it matched Rust bit for bit first try; rebuilt the
+  wasm artifact and both native hosts. `tests/games/voxel_smoke.js` +
+  `tests/test_voxel.py`, 5 passed, `GATE PASS`. Commit `dcfdbf0`.
 - 2026-09-15 — T1 — wrote `crates/rasterizer/src/voxel.rs` (`rs_voxel_view`
   + two staging-pointer exports), added `Canvas::depth` and `RState::voxel`,
   six golden scenes with four behavioural tests beside them, and
