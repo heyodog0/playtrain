@@ -274,6 +274,15 @@ function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, 
     atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH);
 }
 
+// Craftax's dusk blend, night static and sleep tint over a rect.
+// Mirrors p5::voxelDusk in native/runtime/p5.cpp.
+function voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+  if (typeof _ctx.voxelDusk !== 'function') {
+    throw new Error('voxelDusk: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping);
+}
+
 // ---- Drawing primitives ----
 function background(...args) {
   _ctx.save();
@@ -686,7 +695,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite, voxelDusk,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

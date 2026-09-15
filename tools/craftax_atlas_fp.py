@@ -32,6 +32,7 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 REPO = Path(__file__).resolve().parents[1]
@@ -40,6 +41,9 @@ OUT = (REPO / "examples" / "games" / "multifile" / "variants" / "craftax_fp"
        / "src" / "15_atlas_fp.js")
 
 TILE = 16                   # Craftax's assets, as authored — no resize
+
+# The first-person view region, in pixels (FIRST_PERSON_PLAN.md §4.5).
+VIEW_ROWS, VIEW_COLS = 49, 64
 
 # BlockType order, from craftax_classic/constants.py; identical to the classic
 # baker's list, because the grid the raycast walks is indexed by block id.
@@ -67,6 +71,26 @@ def load(name: str, opaque: bool) -> Image.Image:
         r, g, b, _ = img.split()
         img = Image.merge("RGBA", (r, g, b, Image.new("L", img.size, 255)))
     return img
+
+
+def night_noise_f32() -> bytes:
+    """Craftax's night_noise_intensity_texture, at the FIRST-PERSON view's size.
+
+    Same expression as tools/craftax_atlas.py — a radial falloff,
+    ``1 - exp(-0.5 * (x^2 + y^2) / 0.25)`` over a ``linspace(-1, 1)``
+    meshgrid, transposed — but evaluated at (49, 64) rather than (49, 63),
+    because the first-person view is one column wider than the classic map
+    region. Baked rather than computed at runtime for the same reason as the
+    classic one: ``Math.exp`` is QuickJS's libm in one engine and ieee754's in
+    another, and only sin/cos are pinned across PlayTrain's engines.
+    """
+    xs, ys = np.meshgrid(
+        np.linspace(-1, 1, VIEW_ROWS),
+        np.linspace(-1, 1, VIEW_COLS),
+    )
+    tex = 1 - np.exp(-0.5 * (xs**2 + ys**2) / (0.5**2)).T
+    assert tex.shape == (VIEW_ROWS, VIEW_COLS), tex.shape
+    return tex.astype(np.float32).astype("<f4").tobytes()
 
 
 def b64wrap(data: bytes) -> str:
@@ -124,6 +148,13 @@ const ATLAS_FP = {{
 }};
 
 const ATLAS_FP_B64 ={b64wrap(blob)};
+
+// Craftax's night_noise_intensity_texture at the first-person view's size:
+// {VIEW_ROWS} rows x {VIEW_COLS} cols of float32, little-endian, row-major.
+// The classic port bakes the same falloff at {VIEW_ROWS}x63 for its map region.
+const NIGHT_NOISE_FP_ROWS = {VIEW_ROWS};
+const NIGHT_NOISE_FP_COLS = {VIEW_COLS};
+const NIGHT_NOISE_FP_B64 ={b64wrap(night_noise_f32())};
 """)
     print(f"wrote {OUT.relative_to(REPO)}: {len(sprites)} tiles, {len(blob)} bytes")
     return 0

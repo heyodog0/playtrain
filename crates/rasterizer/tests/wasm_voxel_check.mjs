@@ -68,6 +68,16 @@ function render(sc) {
       sc.dst[0], sc.dst[1], sc.dst[2], sc.dst[3],
     );
   }
+  if (sc.dusk) {
+    const [daylight, k0, k1, useStatic, sleeping] = sc.dusk;
+    const noise = Buffer.from(sc.noise, 'base64');
+    const n = noise.length / 4;
+    x.rs_voxel_noise_ptr(n);
+    const np = x.rs_voxel_noise_ptr(n);
+    new Uint8Array(mem(), np, noise.length).set(noise);
+    x.rs_dusk(h, sc.dst[0], sc.dst[1], sc.dst[2], sc.dst[3],
+      daylight, k0, k1, useStatic, np, sleeping);
+  }
   const ptr = x.rs_pixels_ptr(h);
   const len = x.rs_buf_len(h);
   return new Uint8Array(mem(), ptr, len);

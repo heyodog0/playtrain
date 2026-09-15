@@ -67,6 +67,7 @@ const FP_PACK = new Uint16Array(17);
 
 let _fpGrid = null;                // Uint16Array(64*64), rebuilt per frame
 let _fpAtlas = null;               // Uint8Array, 16x16 RGBA tiles
+let _fpNoise = null;               // Float32Array(49*64), night_noise_intensity
 let _fpReady = false;
 
 function initRenderFp() {
@@ -76,6 +77,8 @@ function initRenderFp() {
   if (_atlasRaw === null) initRender();
 
   _fpAtlas = _decodeB64(ATLAS_FP_B64);
+  _fpNoise = _decodeF32(_decodeB64(NIGHT_NOISE_FP_B64),
+                        NIGHT_NOISE_FP_ROWS * NIGHT_NOISE_FP_COLS);
   _fpGrid = new Uint16Array(MAP_SIZE * MAP_SIZE);
   for (let b = 0; b < 17; b++) FP_PACK[b] = (b << 1) | (_fpIsCube(b) ? 1 : 0);
   _fpReady = true;
@@ -138,6 +141,36 @@ function _fpSprites(st) {
   }
 }
 
+// Dusk, the night static, and the sleep tint (FIRST_PERSON_PLAN.md §4.4).
+//
+// Runs over the first-person region only, AFTER the world and the mobs, which
+// is the order 80_render.js composes the classic frame in — Craftax darkens
+// the composited scene, mobs included. The inventory strip below is drawn
+// afterwards and is never darkened, exactly as in classic.
+//
+// The static needs Craftax's state_rng, which 90_playtrain_fp.js installs via
+// setNightKey() once per step from the driver seed. `_nightKey` lives in
+// 80_render.js, which this bundle carries; with no driver seed it is null, no
+// key is passed, and the frame is the deterministic dusk image — which is what
+// every host does today.
+//
+// The whole pass is one call into the rasterizer. Doing it in JS was option B
+// in the plan; it is the slowest part of the classic renderer under QuickJS,
+// and this is the variant that exists to not do that.
+function _fpDusk(st) {
+  const daylight = st.lightLevel[0];
+  const sleeping = st.isSleeping[0] ? 1 : 0;
+  if (daylight >= 1.0 && sleeping === 0) return;
+  const useStatic = (daylight < 0.5 && _nightKey !== null) ? 1 : 0;
+  voxelDusk(
+    0, 0, FP_VIEW_W, FP_VIEW_H,
+    daylight,
+    useStatic ? _nightKey[0] : 0,
+    useStatic ? _nightKey[1] : 0,
+    useStatic, _fpNoise, sleeping,
+  );
+}
+
 // The inventory strip, drawn exactly as craftax_classic draws it.
 //
 // This IS a copy of the tail of classic's renderGame, and there is no way
@@ -188,5 +221,6 @@ function renderGameFp(st) {
   );
 
   _fpSprites(st);
+  _fpDusk(st);
   _fpInventory(st);
 }

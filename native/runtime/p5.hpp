@@ -158,6 +158,13 @@ void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDis
                  const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
                  int dstX, int dstY, int dstW, int dstH);
 
+// Craftax's dusk blend, its night static, and its sleep tint, over a rect of
+// the current target. Call after voxelView and voxelSprite. `intensity` is
+// w*h float32s: the night-noise mask. See FIRST_PERSON_PLAN.md §4.4.
+void voxelDusk(int x, int y, int w, int h, double daylight,
+               unsigned int key0, unsigned int key1, int useStatic,
+               const float* intensity, int sleeping);
+
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is
 // a no-op, so headless obs already omits text. Matches env behavior.)

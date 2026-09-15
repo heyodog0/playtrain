@@ -253,6 +253,17 @@ void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDis
                   (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
 }
 
+extern "C" void rs_dusk(uint32_t canvas, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                        float daylight, uint32_t key0, uint32_t key1, uint32_t useStatic,
+                        const float* intensity, uint32_t sleeping);
+
+void voxelDusk(int x, int y, int w, int h, double daylight,
+               unsigned int key0, unsigned int key1, int useStatic,
+               const float* intensity, int sleeping) {
+  rs_dusk(_h, (uint32_t)x, (uint32_t)y, (uint32_t)w, (uint32_t)h,
+          (float)daylight, key0, key1, (uint32_t)useStatic, intensity, (uint32_t)sleeping);
+}
+
 void image(int srcHandle, double x, double y, double w, double h) {
   // p5 image() honors the current transform; here we map logical->device via the
   // MAIN canvas base scale (image is only ever called at identity transform in

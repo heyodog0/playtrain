@@ -478,6 +478,97 @@ class Context2D {
       }
     }
   }
+
+  // A LINE-FOR-LINE port of rs_dusk, including JAX's threefry-2x32. Same rule
+  // again: Math.fround after every float op, in the Rust's association order.
+  // The uint32 half needs no fround but does need `>>> 0` after every add, or
+  // the values leave the uint32 range and stop matching.
+  voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+    if (w === 0 || h === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+
+    const dl = F(daylight);
+    const withStatic = dl < 0.5 && useStatic !== 0 && !!noise;
+    const doDusk = dl < 1.0;
+    if (!doDusk && sleeping === 0) return;
+    const inv = F(1 - dl);
+    const si = F(2 * F(0.5 - dl));
+
+    const ENHANCE = F(0.4), ENHANCE_INV = F(0.6);
+    const LUM_R = F(0.299), LUM_G = F(0.587), LUM_B = F(0.114);
+    const NIGHT_TINT = [0, 16, 64];
+    const SLEEP_TINT = [0, 0, 16];
+    const C240 = 0x1BD11BDA;
+    const ROT = [[13, 15, 26, 6], [17, 29, 16, 24]];
+    const fbuf = new ArrayBuffer(4);
+    const fu32 = new Uint32Array(fbuf);
+    const ff32 = new Float32Array(fbuf);
+
+    const uniformAt = (k0, k1, i) => {
+      const ks0 = k0 >>> 0, ks1 = k1 >>> 0;
+      const ks2 = (ks0 ^ ks1 ^ C240) >>> 0;
+      const ks = [ks0, ks1, ks2];
+      let v0 = (i * 0 + 0 + ks0) >>> 0;       // counter high word is always 0
+      let v1 = (i + ks1) >>> 0;
+      for (let g = 0; g < 5; g++) {
+        const rots = ROT[g & 1];
+        for (let r = 0; r < 4; r++) {
+          v0 = (v0 + v1) >>> 0;
+          v1 = ((v1 << rots[r]) | (v1 >>> (32 - rots[r]))) >>> 0;
+          v1 = (v0 ^ v1) >>> 0;
+        }
+        v0 = (v0 + ks[(g + 1) % 3]) >>> 0;
+        v1 = (v1 + ks[(g + 2) % 3] + g + 1) >>> 0;
+      }
+      fu32[0] = (((v0 ^ v1) >>> 9) | 0x3f800000) >>> 0;
+      return F(ff32[0] - 1);
+    };
+
+    for (let py = 0; py < h; py++) {
+      const cyp = y + py;
+      if (cyp >= ch) continue;
+      for (let pxi = 0; pxi < w; pxi++) {
+        const cxp = x + pxi;
+        if (cxp >= cw) continue;
+        const i = py * w + pxi;
+        const o = (cyp * cw + cxp) * 4;
+
+        if (doDusk) {
+          const r0 = px[o], g0 = px[o + 1], b0 = px[o + 2];
+          let r1 = r0, g1 = g0, b1 = b0;
+          if (withStatic) {
+            const u = uniformAt(key0, key1, i);
+            const sv = F(F(u * 95) + 32);
+            const m = F(si * noise[i]);
+            const im = F(1 - m);
+            r1 = F(F(im * r0) + F(m * sv));
+            g1 = F(F(im * g0) + F(m * sv));
+            b1 = F(F(im * b0) + F(m * sv));
+          }
+          const lum = F(F(F(LUM_R * r1) + F(LUM_G * g1)) + F(LUM_B * b1));
+          let nr = F(F(r1 * ENHANCE) + F(ENHANCE_INV * lum));
+          let ng = F(F(g1 * ENHANCE) + F(ENHANCE_INV * lum));
+          let nb = F(F(b1 * ENHANCE) + F(ENHANCE_INV * lum));
+          nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
+          ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
+          nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
+          px[o] = F(F(dl * r0) + F(inv * nr)) | 0;
+          px[o + 1] = F(F(dl * g0) + F(inv * ng)) | 0;
+          px[o + 2] = F(F(dl * b0) + F(inv * nb)) | 0;
+        }
+
+        if (sleeping !== 0) {
+          const r = px[o], g = px[o + 1], b = px[o + 2];
+          const lum = F(F(F(LUM_R * r) + F(LUM_G * g)) + F(LUM_B * b));
+          px[o] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[0])) | 0;
+          px[o + 1] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[1])) | 0;
+          px[o + 2] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[2])) | 0;
+        }
+      }
+    }
+  }
 }
 
 class Canvas {

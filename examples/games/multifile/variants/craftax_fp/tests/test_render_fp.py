@@ -89,10 +89,22 @@ def test_the_frame_is_not_a_stub(seed, env):
 def test_sky_is_above_the_horizon_and_world_below(env):
     """Pitch is fixed at 0 and the vertical FOV is 90 degrees, so the horizon
     sits at the middle row of the view region. A camera that lost its yaw or
-    its eye height would not keep this."""
+    its eye height would not keep this.
+
+    The sky is NOT raw SKY_RGB here. Craftax's light_level at the reset frame
+    is about 0.81, not 1.0, so the dusk pass has already tinted the whole
+    region — it runs at any daylight below 1, not just at night. What the sky
+    still is, is FLAT: every pixel above the horizon is one colour, because
+    nothing is drawn there. The ground is not."""
     obs, _ = env.reset(seed=1)
-    assert tuple(obs[2, 32]) == SKY, "above the horizon is not sky"
-    assert tuple(obs[46, 32]) != SKY, "below the horizon is not world"
+    band = obs[:8]
+    colours = {tuple(px) for row in band for px in row}
+    assert len(colours) == 1, f"the sky above the horizon is not flat: {colours}"
+    sky = colours.pop()
+    assert tuple(obs[46, 32]) != sky, "below the horizon is not world"
+    # And it is the sky colour DARKENED, not something unrelated: the tint
+    # only ever pulls a channel down or toward blue.
+    assert all(c <= s for c, s in zip(sky, SKY)), f"sky {sky} is brighter than SKY_RGB {SKY}"
 
 
 def test_the_frame_layout_is_the_plan_s(env):
@@ -184,6 +196,40 @@ def test_a_nearer_mob_covers_more_of_the_frame():
 
 def test_a_mob_behind_the_player_is_not_drawn():
     assert _mob_pixels(1, 3, 2, 0) == 0, "a zombie behind the player drew"
+
+
+def _night(driver_seed=None) -> dict:
+    args = ["node", "tests/fp_probe.mjs", "--night"]
+    if driver_seed is not None:
+        args.append(str(driver_seed))
+    args += ["dist/craftax_fp.js", "1", "3"]
+    proc = subprocess.run(args, cwd=GAME_DIR, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    return dict(kv.split("=", 1) for kv in proc.stdout.strip().split())
+
+
+def test_a_night_frame_differs_from_its_daylight_twin():
+    """The plan's gate for the dusk pass, and the non-vacuous version of it.
+
+    The probe walks forward until light_level drops below 0.5, renders, then
+    renders the SAME state with light_level forced to 1.0 — where the dusk
+    pass is a no-op — and diffs. Comparing two different states would prove
+    nothing; comparing one state at two light levels isolates the pass."""
+    out = _night()
+    assert float(out["light"]) < 0.5, f"never reached night: {out}"
+    assert int(out["nightvsday"]) > 0, f"the dusk pass changed nothing: {out}"
+
+
+def test_the_night_static_needs_a_driver_seed_and_depends_on_it():
+    """Below light_level 0.5 Craftax adds per-pixel static drawn from
+    state_rng, which the game derives from the DRIVER's seed. With no seed
+    there is no key and the static is skipped — which is what every host does
+    today — so these three frames must all differ."""
+    none = _night()["nighthash"]
+    seven = _night(7)["nighthash"]
+    ninetynine = _night(99)["nighthash"]
+    assert none != seven, "installing a driver seed did not add static"
+    assert seven != ninetynine, "two different driver seeds gave the same static"
 
 
 def test_the_play_page_builds(tmp_path):

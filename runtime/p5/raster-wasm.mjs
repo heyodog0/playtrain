@@ -110,6 +110,13 @@ export function makeWasmBackend(ex) {
         ap, tilePx, nTiles, tile, dx, dy, dw, dh);
     }
 
+    voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+      ex.rs_voxel_noise_ptr(noise.length);
+      const np = ex.rs_voxel_noise_ptr(noise.length);
+      new Float32Array(mem(), np, noise.length).set(noise);
+      ex.rs_dusk(this._h, x, y, w, h, daylight, key0, key1, useStatic, np, sleeping);
+    }
+
     // ---- 3D (p5 WEBGL mode). Mirrors native/runtime/p5.cpp call for call. ----
     begin3d(lw, lh) { ex.rs_3d_begin(this._h, lw, lh); ex.rs_3d_frame_begin(); }
     frame3dBegin() { ex.rs_3d_frame_begin(); }

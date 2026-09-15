@@ -262,6 +262,25 @@ FN(js_voxelSprite) {
   JS_FreeValue(ctx, aab);
   return JS_UNDEFINED;
 }
+// voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noiseF32, sleeping)
+FN(js_voxelDusk) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t noff = 0, nlen = 0, nper = 0;
+  JSValue nab = JS_GetTypedArrayBuffer(ctx, argv[8], &noff, &nlen, &nper);
+  if (JS_IsException(nab)) return JS_UNDEFINED;
+  size_t nsz = 0;
+  uint8_t* nsrc = JS_GetArrayBuffer(ctx, &nsz, nab);
+  if (nsrc && noff + nlen <= nsz) {
+    p5::voxelDusk((int)argd(ctx, argv[0]), (int)argd(ctx, argv[1]),
+                  (int)argd(ctx, argv[2]), (int)argd(ctx, argv[3]),
+                  argd(ctx, argv[4]),
+                  (unsigned int)argd(ctx, argv[5]), (unsigned int)argd(ctx, argv[6]),
+                  (int)argd(ctx, argv[7]),
+                  (const float*)(nsrc + noff), (int)argd(ctx, argv[9]));
+  }
+  JS_FreeValue(ctx, nab);
+  return JS_UNDEFINED;
+}
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
@@ -298,6 +317,7 @@ static const Binding BINDINGS[] = {
   {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
   {"voxelView", js_voxelView, 16},
   {"voxelSprite", js_voxelSprite, 15},
+  {"voxelDusk", js_voxelDusk, 10},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},

@@ -23,6 +23,22 @@ import { createCanvas } from '../../../../../../runtime/p5/raster-wasm.mjs';
 // rare and never where you want them, so injecting one is the only way to
 // test the billboard pass end to end through the game's own renderer.
 const argv = process.argv.slice(2);
+// `--night [driverSeed]` steps until light_level < 0.5 and reports how the
+// night frame differs from the same state rendered at full daylight, and
+// (with a driver seed) how the static changes it again.
+const nightAt = argv.indexOf('--night');
+let nightSeed = null;
+let night = false;
+if (nightAt >= 0) {
+  night = true;
+  const next = argv[nightAt + 1];
+  if (next !== undefined && /^\d+$/.test(next)) {
+    nightSeed = Number(next);
+    argv.splice(nightAt, 2);
+  } else {
+    argv.splice(nightAt, 1);
+  }
+}
 const mobAt = argv.indexOf('--mob');
 let mob = null;
 if (mobAt >= 0) {
@@ -59,6 +75,7 @@ const surface = {
   image(id, x, y, w, h) { ctx.drawImage(bitmaps[id], x, y, w, h); },
   voxelView(...args) { ctx.voxelView(...args); },
   voxelSprite(...args) { ctx.voxelSprite(...args); },
+  voxelDusk(...args) { ctx.voxelDusk(...args); },
   keyIsDown() { return false; },
   print(...a) { console.error(...a); },
 };
@@ -67,10 +84,11 @@ const src = fs.readFileSync(bundlePath, 'utf8');
 // The bundle is a plain concatenation, so evaluating it in a function scope
 // with the surface in scope is exactly how a host presents those globals.
 const names = Object.keys(surface);
-const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, get state() { return gameState; } };`);
+const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, setDriverSeed, get state() { return gameState; } };`);
 const game = run(...names.map((n) => surface[n]));
 
 game.setup();
+if (night && nightSeed !== null) game.setDriverSeed(nightSeed);
 game.resetGame(Number(seedArg));
 game.draw();                      // the reset tick, as every host does
 
@@ -81,6 +99,39 @@ function fnv1a(bytes) {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h.toString(16).padStart(8, '0');
+}
+
+function frameBytes() {
+  return Uint8Array.from(ctx.getImageData().data.subarray(0, CANVAS * VIEW_H * 4));
+}
+function diff(a, b) {
+  let n = 0;
+  for (let i = 0; i < CANVAS * VIEW_H; i++) {
+    const o = i * 4;
+    if (a[o] !== b[o] || a[o + 1] !== b[o + 1] || a[o + 2] !== b[o + 2]) n++;
+  }
+  return n;
+}
+
+if (night) {
+  // Craftax's light_level cycles with the timestep; walk forward until it
+  // drops below 0.5, which is where the static branch turns on.
+  let steps = 0;
+  while (game.state.lightLevel[0] >= 0.5 && steps < 400) {
+    game.draw();
+    steps++;
+  }
+  const light = game.state.lightLevel[0];
+  game.renderGameFp(game.state);
+  const nightFrame = frameBytes();
+  // The same state, forced to full daylight: the dusk pass then does nothing.
+  const saved = game.state.lightLevel[0];
+  game.state.lightLevel[0] = 1.0;
+  game.renderGameFp(game.state);
+  const dayFrame = frameBytes();
+  game.state.lightLevel[0] = saved;
+  console.log(`steps=${steps} light=${light.toFixed(4)} nightvsday=${diff(nightFrame, dayFrame)} nighthash=${fnv1a(nightFrame)} driverseed=${nightSeed === null ? 'none' : nightSeed}`);
+  process.exit(0);
 }
 
 for (const d of dirArgs) {

@@ -147,7 +147,18 @@ Second pass, JS-side list → one call per sprite: `rs_voxel_sprite(canvas, eye.
 
 ### 4.4 Dusk / night
 After the world+sprites are in the canvas, apply Craftax's dusk pass over the 3D region using the **same** f32 formula as `80_render.js` (luma → enhance → tint → daylight lerp; static from `state_rng` when `daylight < 0.5` and a driver seed is set). Two options, pick A unless measured otherwise:
-- **A (native):** `rs_dusk(canvas, x,y,w,h, daylight: f32, key0,key1, use_static, intensity_tex...)` — port the formula in the same op order; threefry uniform per pixel already exists in JS (`16_threefry.js`); porting it to Rust is mechanical and must be validated against `jax_uniform.json` the same way the JS was.
+- **A (native):** `rs_dusk(canvas, x,y,w,h, daylight: f32, key0,key1, use_static, intensity_tex...)` — port the formula in the same op order; threefry uniform per pixel already exists in JS (`16_threefry.js`); porting it to Rust is mechanical and must be validated against the JS, which is itself validated against Craftax.
+
+  **Correction (T6b, 2026-09-15).** This line used to say "validated against
+  `jax_uniform.json` the same way the JS was". There is no such file anywhere
+  in the repo, and that is not how the JS was validated: `16_threefry.js` is
+  checked by `tests/test_render.py`, which renders whole NIGHT frames and
+  compares them byte for byte against Craftax's own `render_craftax_pixels`
+  output in `traces/craftax_pixels/` (at least 8 night frames, each carrying
+  the driver seed Craftax was run with). The static is inside those pixels, so
+  that test is the ground truth. The Rust port is therefore pinned to the JS
+  with a vector printed from `threefryUniformF32` itself, which makes the chain
+  Rust == JS == Craftax.
 - **B (JS):** keep it in JS as today (`readPixels` → loop → upload). It is the slowest part of the classic renderer under QuickJS; only acceptable as a first cut.
 
 ### 4.5 Frame layout (64×64 canvas)

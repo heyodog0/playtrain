@@ -46,13 +46,18 @@ use crate::{cv, rs};
 pub(crate) struct Voxel {
     grid: Vec<u16>,
     atlas: Vec<u8>,
+    noise: Vec<f32>,
 }
 
 #[inline]
 fn vx() -> &'static mut Voxel {
     let s = rs();
     if s.voxel.is_none() {
-        s.voxel = Some(Box::new(Voxel { grid: Vec::new(), atlas: Vec::new() }));
+        s.voxel = Some(Box::new(Voxel {
+            grid: Vec::new(),
+            atlas: Vec::new(),
+            noise: Vec::new(),
+        }));
     }
     s.voxel.as_mut().unwrap()
 }
@@ -543,6 +548,203 @@ pub extern "C" fn rs_voxel_sprite(
     }
 }
 
+
+// ------------------------------------------------------------------ dusk ---
+// Craftax's dusk pass, and the per-pixel night static it draws below
+// light_level 0.5 (FIRST_PERSON_PLAN.md §4.4, option A).
+//
+// The formula and its operation ORDER come from `80_render.js`, which is in
+// turn Craftax's `render_craftax_pixels` reproduced bit for bit. The order is
+// load-bearing: f32 addition is not associative, and the classic port's
+// comments record a case where regrouping one product flipped a truncated
+// channel on 1 pixel in 74 night frames. Do not "simplify" any expression here.
+//
+// One thing is NOT Craftax's, unavoidably: Craftax composites into a float32
+// buffer that stays float for the whole frame, while this reads and writes the
+// uint8 canvas, so each pass is quantised at its boundary. The first-person
+// frame has nothing to be exact against, so the simpler thing is the right
+// thing; what has to hold is that every backend agrees, which is what the
+// goldens and the wasm check assert.
+
+// Craftax's night constants, as f32 literals. `ENHANCE_INV` is 1 - 0.4
+// computed in double and then rounded, which is what Python does before JAX
+// sees it — not `1.0f32 - 0.4f32`.
+const ENHANCE: f32 = 0.4;
+const ENHANCE_INV: f32 = 0.6;
+const LUM_R: f32 = 0.299;
+const LUM_G: f32 = 0.587;
+const LUM_B: f32 = 0.114;
+const NIGHT_TINT: [f32; 3] = [0.0, 16.0, 64.0];
+const SLEEP_TINT: [f32; 3] = [0.0, 0.0, 16.0];
+
+// --- JAX's threefry-2x32, ported from 16_threefry.js -----------------------
+// Pure u32 arithmetic, so native and wasm agree by construction. The JS is the
+// spec; `dusk_threefry_matches_the_js_port` pins a vector of its output.
+const THREEFRY_C240: u32 = 0x1BD1_1BDA;
+
+#[inline]
+fn rotl32(x: u32, r: u32) -> u32 {
+    (x << r) | (x >> (32 - r))
+}
+
+/// Threefry-2x32 of counter (x0, x1) under key (k0, k1): 20 rounds in five
+/// groups of four, with the key injected after each group.
+#[inline]
+fn threefry2x32(k0: u32, k1: u32, x0: u32, x1: u32) -> (u32, u32) {
+    let ks0 = k0;
+    let ks1 = k1;
+    let ks2 = ks0 ^ ks1 ^ THREEFRY_C240;
+    let mut v0 = x0.wrapping_add(ks0);
+    let mut v1 = x1.wrapping_add(ks1);
+
+    const ROT: [[u32; 4]; 2] = [[13, 15, 26, 6], [17, 29, 16, 24]];
+    // Key schedule: after group g (0-based) inject (ks[(g+1)%3], ks[(g+2)%3])
+    // and add g+1 to the second word.
+    let ks = [ks0, ks1, ks2];
+    let mut g = 0usize;
+    while g < 5 {
+        let rots = ROT[g & 1];
+        let mut i = 0usize;
+        while i < 4 {
+            v0 = v0.wrapping_add(v1);
+            v1 = rotl32(v1, rots[i]);
+            v1 = v0 ^ v1;
+            i += 1;
+        }
+        v0 = v0.wrapping_add(ks[(g + 1) % 3]);
+        v1 = v1.wrapping_add(ks[(g + 2) % 3]).wrapping_add(g as u32 + 1);
+        g += 1;
+    }
+    (v0, v1)
+}
+
+/// `jax.random.uniform(key, (n,))[i]` as f32 in [0, 1), partitionable layout:
+/// element i is threefry(key, 0, i) with the two output words XORed, then the
+/// top 23 bits become the mantissa of a float in [1, 2), minus 1.
+#[inline]
+fn threefry_uniform_at(k0: u32, k1: u32, i: u32) -> f32 {
+    let (a, b) = threefry2x32(k0, k1, 0, i);
+    let bits = a ^ b;
+    f32::from_bits((bits >> 9) | 0x3f80_0000) - 1.0f32
+}
+
+/// Pointer to a staging buffer of at least `n` f32s, for the night-noise
+/// intensity texture. Same reason as `rs_voxel_grid_ptr`: JS cannot make a
+/// pointer into wasm linear memory.
+#[no_mangle]
+pub extern "C" fn rs_voxel_noise_ptr(n: u32) -> *mut f32 {
+    let v = vx();
+    if v.noise.len() < n as usize {
+        v.noise.resize(n as usize, 0.0);
+    }
+    v.noise.as_mut_ptr()
+}
+
+/// Apply Craftax's dusk pass, and then its sleep tint, over the rect
+/// (`x`, `y`, `w`, `h`) of `canvas`.
+///
+/// `daylight` is the state's `light_level`. Below 1.0 the dusk blend runs;
+/// below 0.5, and only when `use_static` is non-zero (the host has a driver
+/// seed), the per-pixel static is drawn from `jax.random.uniform` under key
+/// (`key0`, `key1`) and masked by `intensity`, which must hold `w * h` f32s
+/// row-major. `sleeping` applies the sleep tint afterwards, as a separate
+/// pass, exactly as `80_render.js` does.
+///
+/// Call after `rs_voxel_view` and `rs_voxel_sprite`: Craftax darkens the
+/// composited world, mobs included.
+#[no_mangle]
+pub extern "C" fn rs_dusk(
+    canvas: u32,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+    daylight: f32,
+    key0: u32,
+    key1: u32,
+    use_static: u32,
+    intensity: *const f32,
+    sleeping: u32,
+) {
+    if w == 0 || h == 0 {
+        return;
+    }
+    let c = cv(canvas);
+    let cw = c.dw;
+    let ch = c.dh;
+    if cw == 0 || ch == 0 {
+        return;
+    }
+    let with_static = daylight < 0.5f32 && use_static != 0 && !intensity.is_null();
+    let do_dusk = daylight < 1.0f32;
+    if !do_dusk && sleeping == 0 {
+        return;
+    }
+    let inv = 1.0f32 - daylight;
+    // night_static_intensity = max(2 * (0.5 - daylight), 0); positive here.
+    let si = 2.0f32 * (0.5f32 - daylight);
+
+    let mut py = 0u32;
+    while py < h {
+        let cyp = y + py;
+        if cyp as usize >= ch {
+            py += 1;
+            continue;
+        }
+        let mut px = 0u32;
+        while px < w {
+            let cxp = x + px;
+            if cxp as usize >= cw {
+                px += 1;
+                continue;
+            }
+            let i = (py * w + px) as usize;
+            let o = ((cyp as usize) * cw + (cxp as usize)) * 4;
+
+            if do_dusk {
+                let r0 = c.px[o] as f32;
+                let g0 = c.px[o + 1] as f32;
+                let b0 = c.px[o + 2] as f32;
+                let (mut r1, mut g1, mut b1) = (r0, g0, b0);
+                if with_static {
+                    // night_with_static = uniform * 95 + 32
+                    // mask = intensity * night_noise_intensity_texture
+                    // night_pixels = (1 - mask) * map + mask * night_with_static
+                    let u = threefry_uniform_at(key0, key1, i as u32);
+                    let sv = u * 95.0f32 + 32.0f32;
+                    let m = si * unsafe { *intensity.add(i) };
+                    let im = 1.0f32 - m;
+                    r1 = im * r0 + m * sv;
+                    g1 = im * g0 + m * sv;
+                    b1 = im * b0 + m * sv;
+                }
+                let lum = LUM_R * r1 + LUM_G * g1 + LUM_B * b1;
+                let mut nr = r1 * ENHANCE + ENHANCE_INV * lum;
+                let mut ng = g1 * ENHANCE + ENHANCE_INV * lum;
+                let mut nb = b1 * ENHANCE + ENHANCE_INV * lum;
+                nr = 0.5f32 * nr + 0.5f32 * NIGHT_TINT[0];
+                ng = 0.5f32 * ng + 0.5f32 * NIGHT_TINT[1];
+                nb = 0.5f32 * nb + 0.5f32 * NIGHT_TINT[2];
+                c.px[o] = (daylight * r0 + inv * nr) as u8;
+                c.px[o + 1] = (daylight * g0 + inv * ng) as u8;
+                c.px[o + 2] = (daylight * b0 + inv * nb) as u8;
+            }
+
+            if sleeping != 0 {
+                let r = c.px[o] as f32;
+                let g = c.px[o + 1] as f32;
+                let b = c.px[o + 2] as f32;
+                let lum = LUM_R * r + LUM_G * g + LUM_B * b;
+                c.px[o] = (0.5f32 * lum + 0.5f32 * SLEEP_TINT[0]) as u8;
+                c.px[o + 1] = (0.5f32 * lum + 0.5f32 * SLEEP_TINT[1]) as u8;
+                c.px[o + 2] = (0.5f32 * lum + 0.5f32 * SLEEP_TINT[2]) as u8;
+            }
+            px += 1;
+        }
+        py += 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -587,7 +789,7 @@ mod tests {
             // One near, one far, one behind the eye (must not draw), and one
             // tucked behind the north wall (must be occluded by the depth
             // buffer, which is the whole point of the pass).
-            "sprites" => vec![
+            "sprites" | "night_static" => vec![
                 (8.5, 7.5, 1),
                 (8.5, 4.5, 2),
                 (8.5, 12.5, 3),
@@ -625,13 +827,14 @@ mod tests {
                     g[(r * GW + 11) as usize] = cell(1, true); // east
                     g[(r * GW + 5) as usize] = cell(3, true); // west
                 }
-                let q = if name == "sprites" { 0 } else { (name.as_bytes()[name.len() - 1] - b'0') as u32 };
+                let q = if name == "sprites" || name == "night_static" { 0 }
+                        else { (name.as_bytes()[name.len() - 1] - b'0') as u32 };
                 (g, eye, q)
             }
         }
     }
 
-    const SCENES: [&str; 7] = [
+    const SCENES: [&str; 8] = [
         "open_field",
         "corridor",
         "wall_yaw0",
@@ -639,7 +842,32 @@ mod tests {
         "wall_yaw2",
         "wall_yaw3",
         "sprites",
+        "night_static",
     ];
+
+    // Dusk parameters per scene: (daylight, key, sleeping). None = no dusk
+    // pass at all, which is what a fully lit frame does.
+    fn dusk_params(name: &str) -> Option<(f32, Option<(u32, u32)>, u32)> {
+        match name {
+            // Below 0.5 with a key, so the static branch runs, and asleep, so
+            // the second pass runs too — one scene covering both.
+            "night_static" => Some((0.2, Some((0x12345678, 0x9abcdef0)), 1)),
+            _ => None,
+        }
+    }
+
+    // A night-noise intensity texture with structure, so a transposed or
+    // mis-strided index changes the image instead of hiding in a flat field.
+    fn noise_bytes() -> Vec<f32> {
+        let mut v = vec![0.0f32; (DST.2 * DST.3) as usize];
+        for row in 0..DST.3 {
+            for col in 0..DST.2 {
+                let i = (row * DST.2 + col) as usize;
+                v[i] = ((row * 7 + col * 13) % 100) as f32 / 100.0f32;
+            }
+        }
+        v
+    }
 
     fn fnv(px: &[u8]) -> u64 {
         let mut h: u64 = 1469598103934665603;
@@ -688,6 +916,14 @@ mod tests {
                 a.as_ptr(), TILE_PX, N_TILES, tile, DST.0, DST.1, DST.2, DST.3,
             );
         }
+        if let Some((daylight, key, sleeping)) = dusk_params(name) {
+            let noise = noise_bytes();
+            let (k0, k1) = key.unwrap_or((0, 0));
+            rs_dusk(
+                h, DST.0, DST.1, DST.2, DST.3, daylight, k0, k1,
+                key.is_some() as u32, noise.as_ptr(), sleeping,
+            );
+        }
     }
 
     fn scene_hash(name: &str) -> u64 {
@@ -701,13 +937,26 @@ mod tests {
             let line = format!(
                 "{{\"name\":\"{}\",\"hash\":\"{}\",\"gw\":{},\"gh\":{},\"grid\":[{}],\
                  \"eye\":[{},{},{}],\"yaw\":{},\"view\":{},\"tile_px\":{},\"n_tiles\":{},\
-                 \"sky\":{},\"dst\":[{},{},{},{}],\"sprites\":[{}],\"atlas\":\"{}\"}}\n",
+                 \"sky\":{},\"dst\":[{},{},{},{}],\"sprites\":[{}],\"dusk\":{},\"noise\":\"{}\",\"atlas\":\"{}\"}}\n",
                 name, hh, GW, GH,
                 g.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
                 eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY,
                 DST.0, DST.1, DST.2, DST.3,
                 sprites(name).iter().map(|s| format!("[{},{},{}]", s.0, s.1, s.2))
                     .collect::<Vec<_>>().join(","),
+                match dusk_params(name) {
+                    None => "null".to_string(),
+                    Some((d, k, sl)) => format!(
+                        "[{},{},{},{},{}]", d,
+                        k.map(|x| x.0).unwrap_or(0), k.map(|x| x.1).unwrap_or(0),
+                        k.is_some() as u32, sl),
+                },
+                if dusk_params(name).is_some() {
+                    let n = noise_bytes();
+                    let mut raw = Vec::with_capacity(n.len() * 4);
+                    for v in &n { raw.extend_from_slice(&v.to_bits().to_le_bytes()); }
+                    b64(&raw)
+                } else { String::new() },
                 b64(&a),
             );
             use std::io::Write;
@@ -963,10 +1212,132 @@ mod tests {
         assert_eq!(n, 0, "{} pixels of a sprite behind the wall drew off-axis", n);
     }
 
+    // --- dusk and the night static ------------------------------------------
+
+    // The Rust threefry must be the JS one, bit for bit.
+    //
+    // FIRST_PERSON_PLAN.md §4.4 says to validate this "against jax_uniform.json
+    // the same way the JS was". There is no such file, and that is not how the
+    // JS was validated: `16_threefry.js` is checked by
+    // craftax_classic/tests/test_render.py, which renders whole NIGHT frames
+    // and compares them byte for byte with Craftax's own
+    // `render_craftax_pixels` output in traces/craftax_pixels/ (>= 8 night
+    // frames, each carrying the driver seed Craftax was run with). The static
+    // is inside those pixels, so that test is the ground truth.
+    //
+    // So the chain is Rust == JS == Craftax, and this is the first link: these
+    // vectors were printed by the JS `threefryUniformF32` itself. The plan has
+    // been corrected in the same commit.
+    #[test]
+    fn threefry_uniform_matches_the_js_port() {
+        let cases: [((u32, u32), [u32; 8]); 4] = [
+            ((0x00000000, 0x00000001), [0x3ee09470, 0x3f08a408, 0x3ee44f68, 0x3ee0757c, 0x3f65b992, 0x3f0f1716, 0x3f7bdfec, 0x3f578cb8]),
+            ((0x00000000, 0x0000002a), [0x3efa3824, 0x3f2e0730, 0x3f1dc3f8, 0x3f0f9ec0, 0x3ee6bae4, 0x3f15fb4e, 0x3d9935b0, 0x3f466f24]),
+            ((0x12345678, 0x9abcdef0), [0x3e9b26e0, 0x3e144320, 0x3f4940ec, 0x3f0bff38, 0x3ddaec10, 0x3f44597e, 0x3e90663c, 0x3e256878]),
+            ((0xffffffff, 0xffffffff), [0x3d761820, 0x3f5c33f6, 0x3ee35944, 0x3eb3969c, 0x3f13a254, 0x3e4c9c90, 0x3bfef700, 0x3a846400]),
+        ];
+        for ((k0, k1), want) in cases {
+            for i in 0..8u32 {
+                let got = threefry_uniform_at(k0, k1, i).to_bits();
+                assert_eq!(
+                    got, want[i as usize],
+                    "uniform(key {:08x}{:08x})[{}] = {:08x}, JS says {:08x}",
+                    k0, k1, i, got, want[i as usize],
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn uniform_is_in_range_and_not_constant() {
+        let mut lo = f32::INFINITY;
+        let mut hi = f32::NEG_INFINITY;
+        for i in 0..4096u32 {
+            let v = threefry_uniform_at(7, 9, i);
+            assert!((0.0..1.0).contains(&v), "uniform out of [0,1): {}", v);
+            if v < lo { lo = v; }
+            if v > hi { hi = v; }
+        }
+        assert!(lo < 0.01 && hi > 0.99, "uniform spans only {}..{}", lo, hi);
+    }
+
+    // Helper: render the corridor, then run dusk over the view rect.
+    fn dusk_frame(daylight: f32, key: Option<(u32, u32)>, sleeping: u32) -> Vec<u8> {
+        let (g, eye, yaw) = scene("corridor");
+        let a = atlas_bytes();
+        let h = fresh();
+        render(h, &g, eye, yaw, &a);
+        let noise = vec![1.0f32; (DST.2 * DST.3) as usize];
+        let (k0, k1) = key.unwrap_or((0, 0));
+        rs_dusk(
+            h, DST.0, DST.1, DST.2, DST.3, daylight, k0, k1,
+            key.is_some() as u32, noise.as_ptr(), sleeping,
+        );
+        crate::cv(h).px.clone()
+    }
+
+    #[test]
+    fn full_daylight_leaves_the_frame_alone() {
+        let plain = {
+            let (g, eye, yaw) = scene("corridor");
+            let a = atlas_bytes();
+            let h = fresh();
+            render(h, &g, eye, yaw, &a);
+            crate::cv(h).px.clone()
+        };
+        assert_eq!(plain, dusk_frame(1.0, None, 0), "dusk at daylight 1.0 changed pixels");
+    }
+
+    #[test]
+    fn dusk_darkens_and_tints_blue() {
+        let day = dusk_frame(1.0, None, 0);
+        let night = dusk_frame(0.2, None, 0);
+        assert_ne!(day, night, "dusk at daylight 0.2 changed nothing");
+        // The tint is [0, 16, 64]: blue survives best, red least.
+        let sum = |px: &[u8], c: usize| px.chunks_exact(4).map(|p| p[c] as u64).sum::<u64>();
+        assert!(sum(&night, 0) < sum(&day, 0), "dusk did not darken red");
+        assert!(sum(&night, 2) * 100 > sum(&night, 0) * 100, "blue should survive dusk better than red");
+    }
+
+    // The gate the plan names: a night frame with static must differ from the
+    // same frame without it. Without the driver seed there is no key and the
+    // static is skipped, which is exactly what every host does today.
+    #[test]
+    fn the_night_static_actually_changes_the_frame() {
+        let no_key = dusk_frame(0.2, None, 0);
+        let with_key = dusk_frame(0.2, Some((12345, 67890)), 0);
+        assert_ne!(no_key, with_key, "the night static changed nothing at daylight 0.2");
+        let other_key = dusk_frame(0.2, Some((99, 100)), 0);
+        assert_ne!(with_key, other_key, "two different state_rng keys gave the same static");
+    }
+
+    #[test]
+    fn the_static_is_skipped_at_and_above_half_daylight() {
+        // night_static_intensity is max(2 * (0.5 - daylight), 0), so at 0.5 and
+        // above there is no static even with a key.
+        assert_eq!(
+            dusk_frame(0.5, None, 0),
+            dusk_frame(0.5, Some((12345, 67890)), 0),
+            "static drew at daylight 0.5, where its intensity is zero",
+        );
+    }
+
+    #[test]
+    fn sleeping_greys_the_frame_toward_blue() {
+        let awake = dusk_frame(1.0, None, 0);
+        let asleep = dusk_frame(1.0, None, 1);
+        assert_ne!(awake, asleep, "the sleep tint changed nothing");
+        // SLEEP_TINT is [0, 0, 16]: r and g become lum/2, b becomes lum/2 + 8.
+        for p in asleep.chunks_exact(4).take(2000) {
+            assert_eq!(p[0], p[1], "sleep pass should leave r == g");
+            assert!(p[2] >= p[0], "sleep pass should not make blue the darkest channel");
+        }
+    }
+
     // --- the goldens -------------------------------------------------------
     // Recorded 2026-09-15 on aarch64-apple-darwin (rustc 1.97.1) and matched
     // by the wasm32 build the same day (tests/wasm_voxel_check.mjs).
-    const GOLD: [u64; 7] = [
+    const GOLD: [u64; 8] = [
         13989049085383848347,
         14152573310928964130,
         577179221746013019,
@@ -974,6 +1345,7 @@ mod tests {
         955063394357532235,
         13551030726708363713,
         16159111820662843791,
+        18296629085777967671,
     ];
 
     // All six are hashed before anything is asserted, so a real regression

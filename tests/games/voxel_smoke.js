@@ -12,6 +12,7 @@ const VIEW_H = 49;
 
 let grid = null;
 let atlas = null;
+let noise = null;
 let yaw = 0;
 let tick = 0;
 
@@ -49,6 +50,12 @@ function setup() {
   createCanvas(64, 64);
   grid = makeGrid();
   atlas = makeAtlas();
+  // A night-noise mask with structure, so a transposed or mis-strided index
+  // shows up as a different image instead of hiding in a flat field.
+  noise = new Float32Array(64 * VIEW_H);
+  for (let r = 0; r < VIEW_H; r++) {
+    for (let c = 0; c < 64; c++) noise[r * 64 + c] = ((r * 7 + c * 13) % 100) / 100;
+  }
 }
 
 function draw() {
@@ -66,6 +73,15 @@ function draw() {
     voxelSprite(8.5, 0.5, 9.5, yaw, VIEW, sx, sz,
       atlas, TILE_PX, N_TILES, tile, 0, 0, 64, VIEW_H);
   }
+  // Dusk, cycling through daylight, the static branch and the sleep tint, so
+  // the differential gate covers all three. The key is fixed: this is a smoke
+  // game, not Craftax, and it only has to be the same on every backend.
+  const phase = tick % 32;
+  const daylight = phase < 8 ? 1.0 : phase < 16 ? 0.7 : phase < 24 ? 0.2 : 0.3;
+  const useStatic = phase >= 16 ? 1 : 0;
+  const sleeping = phase >= 24 ? 1 : 0;
+  voxelDusk(0, 0, 64, VIEW_H, daylight, 0x12345678, 0x9abcdef0,
+    useStatic, noise, sleeping);
 }
 
 function resetGame(_seed) { yaw = 0; tick = 0; }
