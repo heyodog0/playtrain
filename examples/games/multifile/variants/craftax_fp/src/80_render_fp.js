@@ -137,25 +137,24 @@ function _fpPackGrid(st) {
 // BLK_RIPE_PLANT, so they are cubes in the grid, and the plan's §4.3 aside
 // about "plants that are not solid" does not match the code it points at. A
 // plant you cannot walk through reads better as a block than as a billboard.
-function _fpSpriteAt(st, r, c, tile) {
+function _fpSpriteAt(st, r, c, tile, eyeX, eyeZ, yaw) {
   voxelSprite(
-    st.playerC[0] + 0.5, FP_EYE_Y, st.playerR[0] + 0.5,
-    FP_YAW[st.playerDir[0]], FP_VIEW_DIST,
+    eyeX, FP_EYE_Y, eyeZ, yaw, FP_VIEW_DIST,
     c + 0.5, r + 0.5,
-    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile, FP_SKY_RGB,
+    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile,
     0, 0, FP_VIEW_W, FP_VIEW_H,
   );
 }
 
-function _fpSprites(st) {
+function _fpSprites(st, eyeX, eyeZ, yaw) {
   for (let i = 0; i < MAX_ZOMBIES; i++) {
-    if (st.zombieMask[i]) _fpSpriteAt(st, st.zombieR[i], st.zombieC[i], ATLAS_FP.zombie);
+    if (st.zombieMask[i]) _fpSpriteAt(st, st.zombieR[i], st.zombieC[i], ATLAS_FP.zombie, eyeX, eyeZ, yaw);
   }
   for (let i = 0; i < MAX_COWS; i++) {
-    if (st.cowMask[i]) _fpSpriteAt(st, st.cowR[i], st.cowC[i], ATLAS_FP.cow);
+    if (st.cowMask[i]) _fpSpriteAt(st, st.cowR[i], st.cowC[i], ATLAS_FP.cow, eyeX, eyeZ, yaw);
   }
   for (let i = 0; i < MAX_SKELETONS; i++) {
-    if (st.skelMask[i]) _fpSpriteAt(st, st.skelR[i], st.skelC[i], ATLAS_FP.skeleton);
+    if (st.skelMask[i]) _fpSpriteAt(st, st.skelR[i], st.skelC[i], ATLAS_FP.skeleton, eyeX, eyeZ, yaw);
   }
   for (let i = 0; i < MAX_ARROWS; i++) {
     if (!st.arrowMask[i]) continue;
@@ -163,7 +162,7 @@ function _fpSprites(st) {
     const tile = dr < 0 ? ATLAS_FP.arrow_up
       : dr > 0 ? ATLAS_FP.arrow_down
       : dc < 0 ? ATLAS_FP.arrow_left : ATLAS_FP.arrow_right;
-    _fpSpriteAt(st, st.arrowR[i], st.arrowC[i], tile);
+    _fpSpriteAt(st, st.arrowR[i], st.arrowC[i], tile, eyeX, eyeZ, yaw);
   }
 }
 
@@ -263,24 +262,88 @@ function _fpInventory(st) {
   }
 }
 
+// --- smooth camera (display only) -----------------------------------------
+//
+// The TRAINING observation is what renderGameFp draws: camera snapped to the
+// player's cell centre and one of four facings, exactly once per step. None of
+// what follows touches that path, and none of it is in any gate's frame.
+//
+// A human at 8 steps/s sees that snapping as a teleport plus a 90-degree jump.
+// The play page already runs a 60fps requestAnimationFrame loop and simply
+// skips the game step between ticks, so there is a render budget going spare:
+// renderGameFpSmooth(alpha) draws the SAME state with the camera interpolated
+// from where it was before the last step toward where it is now.
+//
+// Yaw is interpolated the short way round, so turning from facing 3 (west) to
+// facing 1 (east) sweeps through north rather than spinning 270 degrees the
+// wrong way. voxelView takes a fractional yawQ for this and routes to the
+// free-yaw entry point; an integer yawQ still goes to the exact quarter-turn
+// path, which is the one with pinned goldens.
+const FP_YAW_PREV = new Float64Array(3);   // x, z, yaw (quarter-turn units)
+const FP_YAW_CUR = new Float64Array(3);
+let _fpPoseInit = false;
+
+function _fpPose(st) {
+  return [st.playerC[0] + 0.5, st.playerR[0] + 0.5, FP_YAW[st.playerDir[0]]];
+}
+
+// Called once per STEP, after the state has moved, to roll current -> previous.
+function fpNotePose(st) {
+  const [x, z, yaw] = _fpPose(st);
+  if (!_fpPoseInit) {
+    FP_YAW_PREV[0] = x; FP_YAW_PREV[1] = z; FP_YAW_PREV[2] = yaw;
+    _fpPoseInit = true;
+  } else {
+    FP_YAW_PREV[0] = FP_YAW_CUR[0];
+    FP_YAW_PREV[1] = FP_YAW_CUR[1];
+    FP_YAW_PREV[2] = FP_YAW_CUR[2];
+  }
+  FP_YAW_CUR[0] = x; FP_YAW_CUR[1] = z; FP_YAW_CUR[2] = yaw;
+  // Unwrap: carry the previous yaw to whichever branch is nearest the current
+  // one, so the lerp below always takes the short way round.
+  let d = FP_YAW_CUR[2] - FP_YAW_PREV[2];
+  while (d > 2) { FP_YAW_PREV[2] += 4; d -= 4; }
+  while (d < -2) { FP_YAW_PREV[2] -= 4; d += 4; }
+}
+
+// Ease-out: most of the motion happens early, so the camera arrives before the
+// next step rather than still gliding into it. Pure display sugar.
+function _fpEase(a) {
+  if (a <= 0) return 0;
+  if (a >= 1) return 1;
+  return 1 - (1 - a) * (1 - a);
+}
+
+function renderGameFpSmooth(st, alpha) {
+  if (!_fpReady) initRenderFp();
+  if (!_fpPoseInit) fpNotePose(st);
+  const a = _fpEase(alpha);
+  const x = FP_YAW_PREV[0] + (FP_YAW_CUR[0] - FP_YAW_PREV[0]) * a;
+  const z = FP_YAW_PREV[1] + (FP_YAW_CUR[1] - FP_YAW_PREV[1]) * a;
+  const yaw = FP_YAW_PREV[2] + (FP_YAW_CUR[2] - FP_YAW_PREV[2]) * a;
+  _fpRender(st, x, z, yaw);
+}
+
 function renderGameFp(st) {
   if (!_fpReady) initRenderFp();
-
-  background(0, 0, 0);
-  _fpPackGrid(st);
 
   // Eye at the centre of the player's cell. Cell (r, c) is x in [c, c+1),
   // z in [r, r+1), so the centre is (c + 0.5, z = r + 0.5) — which is what
   // puts the cell the player would interact with dead centre on screen.
+  // An INTEGER yaw here is what keeps this on the exact quarter-turn path.
+  _fpRender(st, st.playerC[0] + 0.5, st.playerR[0] + 0.5, FP_YAW[st.playerDir[0]]);
+}
+
+function _fpRender(st, eyeX, eyeZ, yaw) {
+  background(0, 0, 0);
+  _fpPackGrid(st);
   voxelView(
     _fpGrid, MAP_SIZE, MAP_SIZE,
-    st.playerC[0] + 0.5, FP_EYE_Y, st.playerR[0] + 0.5,
-    FP_YAW[st.playerDir[0]], FP_VIEW_DIST,
+    eyeX, FP_EYE_Y, eyeZ, yaw, FP_VIEW_DIST,
     _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, FP_SKY_RGB,
     0, 0, FP_VIEW_W, FP_VIEW_H,
   );
-
-  _fpSprites(st);
+  _fpSprites(st, eyeX, eyeZ, yaw);
   _fpDusk(st);
   _fpInventory(st);
 }

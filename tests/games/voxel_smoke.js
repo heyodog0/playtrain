@@ -71,7 +71,7 @@ function draw() {
   // frame so the differential gate covers the sprite pass as well.
   for (const [sx, sz, tile] of [[8.5, 7.5, 1], [10.5, 8.5, 2], [8.5, 3.5, 3]]) {
     voxelSprite(8.5, 0.5, 9.5, yaw, VIEW, sx, sz,
-      atlas, TILE_PX, N_TILES, tile, SKY, 0, 0, 64, VIEW_H);
+      atlas, TILE_PX, N_TILES, tile, 0, 0, 64, VIEW_H);
   }
   // Dusk, cycling through daylight, the static branch and the sleep tint, so
   // the differential gate covers all three. The key is fixed: this is a smoke

@@ -283,20 +283,27 @@ class Context2D {
     // Look constants, mirroring voxel.rs. See the long comment there for why
     // each exists; the values must stay in step with the Rust literals.
     const SHADE_X = F(0.62), SHADE_Z = F(0.80), SHADE_TOP = F(1.0);
-    const FOG_START_FRAC = F(0.55);
     const SKY_ZENITH_SCALE = F(0.66);
-    const fogAt = (d) => {
-      const start = F(vd * FOG_START_FRAC);
-      const span = F(vd - start);
-      if (!(span > 0) || d <= start) return 0;
-      const f = F(F(d - start) / span);
-      return f > 1 ? 1 : f;
-    };
-    const fogged = (c, sky, f) => F(F(c * F(1 - f)) + F(sky * f));
+    // Camera basis. yawQ is a quarter turn when it is an integer 0..3; a
+    // fractional value is a FREE yaw in quarter-turn units, used only by the
+    // smooth-camera display path (see rs_voxel_view_free). Trig is _rsin/_rcos,
+    // which mirror the Rust psin/pcos exactly.
+    let fwdX, fwdZ, rgtX, rgtZ;
+    if (Number.isInteger(yawQ)) {
+      switch (yawQ & 3) {
+        case 0: fwdX = 0; fwdZ = -1; rgtX = 1; rgtZ = 0; break;
+        case 1: fwdX = 1; fwdZ = 0; rgtX = 0; rgtZ = 1; break;
+        case 2: fwdX = 0; fwdZ = 1; rgtX = -1; rgtZ = 0; break;
+        default: fwdX = -1; fwdZ = 0; rgtX = 0; rgtZ = -1; break;
+      }
+    } else {
+      const a = yawQ * (Math.PI / 2);
+      const sn = F(_rsin(a)), cs = F(_rcos(a));
+      fwdX = sn; fwdZ = F(-cs); rgtX = cs; rgtZ = sn;
+    }
     const tpx = F(tilePx), tmax = tilePx - 1;
     const tstride = tilePx * tilePx * 4;
     const fw = F(dstW), fh = F(dstH);
-    const q = yawQ & 3;
 
     // floor() as the Rust does it: truncate, then correct the negative case.
     const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
@@ -311,11 +318,8 @@ class Context2D {
         if (cxp >= cw) continue;
         const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
 
-        let rdx, rdz;
-        if (q === 0) { rdx = sx; rdz = -1; }
-        else if (q === 1) { rdx = 1; rdz = sx; }
-        else if (q === 2) { rdx = F(-sx); rdz = 1; }
-        else { rdx = -1; rdz = F(-sx); }
+        const rdx = F(F(sx * rgtX) + fwdX);
+        const rdz = F(F(sx * rgtZ) + fwdZ);
         const rdy = sy;
 
         const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
@@ -406,10 +410,9 @@ class Context2D {
           if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
           const o = t * tstride + (ty * tilePx + tx) * 4;
           const shade = hit === 1 ? SHADE_X : hit === 2 ? SHADE_Z : SHADE_TOP;
-          const fw = fogAt(tHit);
-          r = fogged(F(atlas[o] * shade), skyR, fw) | 0;
-          g = fogged(F(atlas[o + 1] * shade), skyG, fw) | 0;
-          b = fogged(F(atlas[o + 2] * shade), skyB, fw) | 0;
+          r = F(atlas[o] * shade) | 0;
+          g = F(atlas[o + 1] * shade) | 0;
+          b = F(atlas[o + 2] * shade) | 0;
           // Forward distance, not Euclidean — see rs_voxel_view's doc comment.
           depth = F(tHit / len);
         }
@@ -424,7 +427,7 @@ class Context2D {
 
   // A LINE-FOR-LINE port of rs_voxel_sprite. Same rule as voxelView above:
   // Math.fround after every float op, in the Rust's association order.
-  voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, skyRgb, dstX, dstY, dstW, dstH) {
+  voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
     if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
     const F = Math.fround;
     const cw = this.w, ch = this.h, px = this.px;
@@ -435,11 +438,17 @@ class Context2D {
     const sxw = F(spriteX), szw = F(spriteZ);
 
     let fx, fz, rx, rz;
-    switch (yawQ & 3) {
-      case 0: fx = 0; fz = -1; rx = 1; rz = 0; break;
-      case 1: fx = 1; fz = 0; rx = 0; rz = 1; break;
-      case 2: fx = 0; fz = 1; rx = -1; rz = 0; break;
-      default: fx = -1; fz = 0; rx = 0; rz = -1; break;
+    if (Number.isInteger(yawQ)) {
+      switch (yawQ & 3) {
+        case 0: fx = 0; fz = -1; rx = 1; rz = 0; break;
+        case 1: fx = 1; fz = 0; rx = 0; rz = 1; break;
+        case 2: fx = 0; fz = 1; rx = -1; rz = 0; break;
+        default: fx = -1; fz = 0; rx = 0; rz = -1; break;
+      }
+    } else {
+      const a = yawQ * (Math.PI / 2);
+      const sn = F(_rsin(a)), cs = F(_rcos(a));
+      fx = sn; fz = F(-cs); rx = cs; rz = sn;
     }
     const dx = F(sxw - ex);
     const dz = F(szw - ez);
@@ -470,18 +479,6 @@ class Context2D {
     const tpx = F(tilePx), tmax = tilePx - 1;
     const tstride = tilePx * tilePx * 4;
 
-    // Fog, once per sprite — see rs_voxel_sprite.
-    const FOG_START_FRAC = F(0.55);
-    const skyRf = (skyRgb >>> 16) & 255, skyGf = (skyRgb >>> 8) & 255, skyBf = skyRgb & 255;
-    const fstart = F(vd * FOG_START_FRAC);
-    const fspan = F(vd - fstart);
-    let fogw = 0;
-    if (fspan > 0 && depth > fstart) {
-      fogw = F(F(depth - fstart) / fspan);
-      if (fogw > 1) fogw = 1;
-    }
-    const fogged = (c, sky) => F(F(c * F(1 - fogw)) + F(sky * fogw));
-
     for (let py = iy0; py <= iy1; py++) {
       const cyp = dstY + py;
       if (cyp < 0 || cyp >= ch) continue;
@@ -501,17 +498,16 @@ class Context2D {
         const o = t * tstride + (ty * tilePx + tx) * 4;
         const sr = atlas[o], sg = atlas[o + 1], sb = atlas[o + 2], sa = atlas[o + 3];
         if (sa === 0) continue;
-        const fr = fogged(sr, skyRf), fg = fogged(sg, skyGf), fb = fogged(sb, skyBf);
         const d = i * 4;
         if (sa === 255) {
-          px[d] = fr | 0; px[d + 1] = fg | 0; px[d + 2] = fb | 0; px[d + 3] = 255;
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
           this.depth[i] = depth;
         } else {
           const a = F(sa / 255);
           const ia = F(1 - a);
-          px[d] = F(F(px[d] * ia) + F(fr * a)) | 0;
-          px[d + 1] = F(F(px[d + 1] * ia) + F(fg * a)) | 0;
-          px[d + 2] = F(F(px[d + 2] * ia) + F(fb * a)) | 0;
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
           px[d + 3] = 255;
         }
       }

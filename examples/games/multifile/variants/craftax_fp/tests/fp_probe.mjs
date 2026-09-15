@@ -39,6 +39,12 @@ if (nightAt >= 0) {
     argv.splice(nightAt, 1);
   }
 }
+// `--smooth` steps once and hashes the interpolated frame at several alphas,
+// plus the snapped frame draw() produces, so a test can prove the camera
+// really moves between steps AND that alpha=1 lands on the training frame.
+const smoothAt = argv.indexOf('--smooth');
+const smooth = smoothAt >= 0;
+if (smooth) argv.splice(smoothAt, 1);
 const mobAt = argv.indexOf('--mob');
 let mob = null;
 if (mobAt >= 0) {
@@ -83,7 +89,7 @@ const src = fs.readFileSync(bundlePath, 'utf8');
 // The bundle is a plain concatenation, so evaluating it in a function scope
 // with the surface in scope is exactly how a host presents those globals.
 const names = Object.keys(surface);
-const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, setDriverSeed, get state() { return gameState; } };`);
+const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, renderInterpolated, fpNotePose, setDriverSeed, get state() { return gameState; } };`);
 const game = run(...names.map((n) => surface[n]));
 
 game.setup();
@@ -110,6 +116,23 @@ function diff(a, b) {
     if (a[o] !== b[o] || a[o + 1] !== b[o + 1] || a[o + 2] !== b[o + 2]) n++;
   }
   return n;
+}
+
+if (smooth) {
+  // Actions 1..4 are LEFT/RIGHT/UP/DOWN; they set the facing and, when the
+  // way is clear, move a cell. Step twice with different directions so the
+  // camera has both a translation and a turn to interpolate across.
+  game.stepGame(game.state, 3);
+  game.fpNotePose(game.state);
+  game.stepGame(game.state, 2);
+  game.fpNotePose(game.state);
+  for (const a of [0, 0.25, 0.5, 0.75, 1]) {
+    game.renderInterpolated(a);
+    console.log(`alpha ${a} ${fnv1a(frameBytes())}`);
+  }
+  game.renderGameFp(game.state);
+  console.log(`snapped ${fnv1a(frameBytes())}`);
+  process.exit(0);
 }
 
 if (night) {

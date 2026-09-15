@@ -108,6 +108,7 @@ function draw() {
     if (res.done) gameOver = true;
   }
   nightTick();
+  fpNotePose(gameState);
   renderGameFp(gameState);
 }
 
@@ -115,6 +116,14 @@ function draw() {
 // "episode with seed s" mean the same world on both sides. PufferLib's
 // auto-reset continues its stream across episodes instead; that difference
 // is declared in the manifest's not_matched.
+// The smooth-camera hook the play page looks for. Pages that do not know
+// about it, and every host, simply never call it — draw() is unchanged, so the
+// training observation is exactly what it was.
+function renderInterpolated(alpha) {
+  if (gameState === null) return;
+  renderGameFpSmooth(gameState, alpha);
+}
+
 function resetGame(seed) {
   if (gameState === null) gameState = createState();
   newEpisode(gameState, (seed >>> 0));

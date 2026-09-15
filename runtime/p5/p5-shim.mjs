@@ -266,12 +266,12 @@ function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx
 
 // One upright billboard, depth-tested against the voxel view's ray depths.
 // Mirrors p5::voxelSprite in native/runtime/p5.cpp.
-function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, skyRgb, dstX, dstY, dstW, dstH) {
+function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
   if (typeof _ctx.voxelSprite !== 'function') {
     throw new Error('voxelSprite: this rasterizer backend has no voxel primitive');
   }
   _ctx.voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
-    atlas, tilePx, nTiles, atlasTile, skyRgb, dstX, dstY, dstW, dstH);
+    atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH);
 }
 
 // Craftax's dusk blend, night static and sleep tint over a rect.

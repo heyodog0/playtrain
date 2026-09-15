@@ -72,6 +72,34 @@ and the two backends resample differently. The classic port's
 - **Sky is a choice, not a reproduction**: `0x87CEEB`. Craftax's view is
   top-down and its asset set has no sky texture and no palette entry for one.
 
+## The camera glides; the game does not
+
+A human at 8 steps/s used to see every move as a teleport plus a 90-degree
+snap. The play page now animates between states: it already ran a 60 fps
+`requestAnimationFrame` loop and simply skipped the game step between ticks, so
+those spare frames call `renderInterpolated(alpha)` with alpha running 0→1
+across the gap, easing the camera from where it was toward where it is. Yaw is
+interpolated the short way round, so turning west→east sweeps through north
+rather than spinning 270° the wrong way.
+
+**Nothing about the game changed.** `draw()` still renders the snapped frame
+exactly once per step, so the agent's observation is what it always was; the
+smooth frames exist only on the page and only between steps. Two properties
+are gated: the intermediate frames must differ from each other, and `alpha=1`
+must be **byte-identical** to the frame `draw()` produces, so the animation
+ends in the state the game is actually in.
+
+The renderer grew `rs_voxel_view_free` / `rs_voxel_sprite_free` for this —
+free-yaw entry points using the rasterizer's own `psin`/`pcos`, which
+`raster.mjs` mirrors exactly as `_rsin`/`_rcos`. The quarter-turn entry points
+are untouched and still take exact 0/±1 swaps, which is what keeps the pinned
+goldens and the training path bit-exact. An integer yaw routes to the exact
+path, a fractional one to the free path.
+
+The hook is **opt-in per game**: `tools/play-templates.mjs` calls it only if
+the game defines it, so all 38 catalog pages build and behave exactly as
+before.
+
 ## Controls are absolute, and that is the price of "same task"
 
 Arrows move and face in **world** directions, not relative to the camera. Left
@@ -240,10 +268,12 @@ the observation mode, so it measures pixel throughput and nothing else.
 | `craftax_fp` | **5,935** | 168.5 |
 | `craftax_classic` | 397 | 2,518.9 |
 
-**13.4× faster.** This is the number the variant exists for: the classic
+**13.3× faster.** This is the number the variant exists for: the classic
 renderer spends almost its whole step in per-pixel JS loops, and an
-interpreter runs those slowly. (It was 14.9× before face shading, fog and the
-sky gradient were added; the look costs about 20 µs a step.)
+interpreter runs those slowly. (It was 14.9× before the look work; face
+shading, the sky gradient and the free-yaw camera basis together cost about
+20 µs a step. Reverting distance fog did not recover that — the basis refactor
+costs about what fog did.)
 
 ### Vectorised host — `NativeVecEnv`
 

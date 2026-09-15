@@ -124,14 +124,27 @@ export function makeWasmBackend(ex) {
       ex.rs_voxel_grid_ptr(grid.length);
       const gp = ex.rs_voxel_grid_ptr(grid.length);
       new Uint16Array(mem(), gp, grid.length).set(grid);
-      ex.rs_voxel_view(this._h, gp, gw, gh, ex_, ey, ez, yawQ, viewDist,
-        ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+      // An integer yawQ is a quarter turn and goes to the exact entry point
+      // whose goldens are pinned; a fractional one is a free yaw in
+      // quarter-turn units, used only by the smooth-camera display path.
+      if (Number.isInteger(yawQ)) {
+        ex.rs_voxel_view(this._h, gp, gw, gh, ex_, ey, ez, yawQ, viewDist,
+          ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+      } else {
+        ex.rs_voxel_view_free(this._h, gp, gw, gh, ex_, ey, ez, yawQ * (Math.PI / 2), viewDist,
+          ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+      }
     }
 
-    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, skyRgb, dx, dy, dw, dh) {
+    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
       const ap = this._stage('atlas', atlas, Uint8Array);
-      ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
-        ap, tilePx, nTiles, tile, skyRgb, dx, dy, dw, dh);
+      if (Number.isInteger(yawQ)) {
+        ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
+          ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+      } else {
+        ex.rs_voxel_sprite_free(this._h, ex_, ey, ez, yawQ * (Math.PI / 2), viewDist, sx, sz,
+          ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+      }
     }
 
     voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {

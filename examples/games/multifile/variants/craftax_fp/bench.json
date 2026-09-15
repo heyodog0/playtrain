@@ -12,15 +12,15 @@
     "harness": "native/build/qjs_host <game.js> bench 1 20000",
     "note": "always renders; ignores PLAYTRAIN_QJS_OBS_MODE, so this is pixel-mode throughput only",
     "craftax_fp": {
-      "sps": 5315,
-      "us_per_step": 188.2,
-      "note": "after face shading + distance fog + sky gradient (was 5935 before; the look costs ~20us/step)"
+      "sps": 5285,
+      "us_per_step": 189.2,
+      "note": "with face shading + sky gradient (fog was added then reverted at the user's request). 5935 before any look work; removing fog did NOT recover the difference, because the free-yaw basis refactor costs about as much as fog did."
     },
     "craftax_classic": {
       "sps": 397,
       "us_per_step": 2518.9
     },
-    "speedup_fp_over_classic": 13.39
+    "speedup_fp_over_classic": 13.31
   },
   "v8": {
     "harness": "examples/games/multifile/variants/craftax_fp/tests/envprof.mjs (node GameEnv, in-process)",

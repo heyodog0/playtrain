@@ -40,7 +40,7 @@
 // through `rs_pixels_ptr`. The staging buffers live in the per-env RState, not
 // in a global, so a multi-env host (qjs_vec_host) keeps one grid per env.
 
-use crate::{cv, rs};
+use crate::{cv, pcos, psin, rs};
 
 /// Per-env staging for the grid and atlas the JS side writes through.
 pub(crate) struct Voxel {
@@ -125,25 +125,6 @@ const FOG_START_FRAC: f32 = 0.55;
 // colour scaled down; the horizon is the sky colour itself.
 const SKY_ZENITH_SCALE: f32 = 0.66;
 
-/// Fog weight at Euclidean distance `d`: 0 out to `FOG_START_FRAC * view_dist`,
-/// then rising linearly to 1 at `view_dist`.
-#[inline]
-fn fog_at(d: f32, view_dist: f32) -> f32 {
-    let start = view_dist * FOG_START_FRAC;
-    let span = view_dist - start;
-    if !(span > 0.0f32) || d <= start {
-        return 0.0f32;
-    }
-    let f = (d - start) / span;
-    if f > 1.0f32 { 1.0f32 } else { f }
-}
-
-/// Blend a channel toward the sky by the fog weight.
-#[inline]
-fn fogged(c: f32, sky: f32, f: f32) -> f32 {
-    c * (1.0f32 - f) + sky * f
-}
-
 /// Render a first-person view of `grid` into the rect (`dst_x`, `dst_y`,
 /// `dst_w`, `dst_h`) of canvas `canvas`, and fill that rect of the canvas's
 /// depth buffer for `rs_voxel_sprite` to test against.
@@ -175,6 +156,96 @@ pub extern "C" fn rs_voxel_view(
     eye_y: f32,
     eye_z: f32,
     yaw_q: u32,
+    view_dist: f32,
+    atlas: *const u8,
+    tile_px: u32,
+    n_tiles: u32,
+    sky_rgb: u32,
+    dst_x: u32,
+    dst_y: u32,
+    dst_w: u32,
+    dst_h: u32,
+) {
+    let (fx, fz, rx, rz) = quarter_basis(yaw_q);
+    view_with_basis(
+        canvas, grid, gw, gh, eye_x, eye_y, eye_z, fx, fz, rx, rz, view_dist,
+        atlas, tile_px, n_tiles, sky_rgb, dst_x, dst_y, dst_w, dst_h,
+    )
+}
+
+/// The same view, with a FREE yaw in radians instead of a quarter turn.
+///
+/// Display only. The training observation goes through `rs_voxel_view`, whose
+/// quarter-turn basis is exact swaps and whose goldens are pinned; this exists
+/// so a human-facing page can animate the camera smoothly between the four
+/// facings the game actually has. Trig is the rasterizer's own `psin`/`pcos`,
+/// which `runtime/p5/raster.mjs` mirrors exactly as `_rsin`/`_rcos`, so the
+/// wasm and pure-JS backends still agree with each other.
+///
+/// Yaw 0 faces -z and increases toward +x, matching `quarter_basis`.
+#[no_mangle]
+pub extern "C" fn rs_voxel_view_free(
+    canvas: u32,
+    grid: *const u16,
+    gw: u32,
+    gh: u32,
+    eye_x: f32,
+    eye_y: f32,
+    eye_z: f32,
+    yaw: f32,
+    view_dist: f32,
+    atlas: *const u8,
+    tile_px: u32,
+    n_tiles: u32,
+    sky_rgb: u32,
+    dst_x: u32,
+    dst_y: u32,
+    dst_w: u32,
+    dst_h: u32,
+) {
+    let (fx, fz, rx, rz) = free_basis(yaw);
+    view_with_basis(
+        canvas, grid, gw, gh, eye_x, eye_y, eye_z, fx, fz, rx, rz, view_dist,
+        atlas, tile_px, n_tiles, sky_rgb, dst_x, dst_y, dst_w, dst_h,
+    )
+}
+
+/// Camera basis (forward_x, forward_z, right_x, right_z) for a quarter turn.
+/// q0 faces -z (row decreasing), q1 +x, q2 +z, q3 -x.
+#[inline]
+fn quarter_basis(yaw_q: u32) -> (f32, f32, f32, f32) {
+    match yaw_q & 3 {
+        0 => (0.0, -1.0, 1.0, 0.0),
+        1 => (1.0, 0.0, 0.0, 1.0),
+        2 => (0.0, 1.0, -1.0, 0.0),
+        _ => (-1.0, 0.0, 0.0, -1.0),
+    }
+}
+
+/// The same basis for an arbitrary yaw. At exact multiples of pi/2 this is not
+/// bit-identical to `quarter_basis` (psin(pi/2) is not exactly 1), which is
+/// why the two are separate entry points rather than one.
+#[inline]
+fn free_basis(yaw: f32) -> (f32, f32, f32, f32) {
+    let s = psin(yaw as f64) as f32;
+    let c = pcos(yaw as f64) as f32;
+    // forward = (sin, -cos): yaw 0 -> (0, -1), yaw pi/2 -> (1, 0).
+    (s, -c, c, s)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn view_with_basis(
+    canvas: u32,
+    grid: *const u16,
+    gw: u32,
+    gh: u32,
+    eye_x: f32,
+    eye_y: f32,
+    eye_z: f32,
+    fwd_x: f32,
+    fwd_z: f32,
+    rgt_x: f32,
+    rgt_z: f32,
     view_dist: f32,
     atlas: *const u8,
     tile_px: u32,
@@ -230,14 +301,12 @@ pub extern "C" fn rs_voxel_view(
             }
             let sx = 2.0f32 * ((px as f32 + 0.5f32) / fw) - 1.0f32;
 
-            // Quarter-turn yaw, as exact swaps. q0 faces -z (row-), q1 +x,
-            // q2 +z, q3 -x; the right-hand vector follows from that.
-            let (rdx, rdz) = match yaw_q & 3 {
-                0 => (sx, -1.0f32),
-                1 => (1.0f32, sx),
-                2 => (-sx, 1.0f32),
-                _ => (-1.0f32, -sx),
-            };
+            // The ray in world terms: screen-x along the camera's right
+            // vector, plus one unit forward. With the quarter-turn basis the
+            // components are 0 and +/-1, so each product is exact and this is
+            // the same arithmetic as writing the four cases out by hand.
+            let rdx = sx * rgt_x + fwd_x;
+            let rdz = sx * rgt_z + fwd_z;
             let rdy = sy;
 
             // Normalise so t is a Euclidean distance: `view_dist` then means
@@ -424,10 +493,8 @@ pub extern "C" fn rs_voxel_view(
                 let (tr, tg, tb) = unsafe {
                     (*atlas.add(o), *atlas.add(o + 1), *atlas.add(o + 2))
                 };
-                // Face shading, then fog toward the sky. Fog uses the
-                // EUCLIDEAN distance, which is what "far from the eye" means;
-                // the depth buffer separately holds forward distance for the
-                // sprite pass (see this function's doc comment). The ray was
+                // Face shading. The depth buffer holds FORWARD distance for the
+                // sprite pass (see this function's doc comment): the ray was
                 // normalised by `len` and the unnormalised direction's forward
                 // component is exactly 1, so forward = t / len.
                 let shade = match hit {
@@ -435,11 +502,10 @@ pub extern "C" fn rs_voxel_view(
                     2 => SHADE_Z,
                     _ => SHADE_TOP,
                 };
-                let f = fog_at(t_hit, view_dist);
                 (
-                    fogged((tr as f32) * shade, sky_r as f32, f) as u8,
-                    fogged((tg as f32) * shade, sky_g as f32, f) as u8,
-                    fogged((tb as f32) * shade, sky_b as f32, f) as u8,
+                    ((tr as f32) * shade) as u8,
+                    ((tg as f32) * shade) as u8,
+                    ((tb as f32) * shade) as u8,
                     t_hit / len,
                 )
             };
@@ -477,11 +543,8 @@ pub extern "C" fn rs_voxel_view(
 /// Only a fully opaque texel writes depth. A partially transparent one blends
 /// without occluding, so two overlapping sprites still compose.
 ///
-/// Distance fog is applied to match the world pass, so a far mob fades into
-/// the sky instead of staying crisp against fogged terrain and popping out.
-/// `sky_rgb` is needed for that, and is the one argument this takes that the
-/// plan's sketch did not. Face shading is NOT applied: a billboard always
-/// faces the eye, so it has no face to shade.
+/// Face shading is NOT applied: a billboard always faces the eye, so it has no
+/// face to shade.
 #[no_mangle]
 pub extern "C" fn rs_voxel_sprite(
     canvas: u32,
@@ -496,7 +559,63 @@ pub extern "C" fn rs_voxel_sprite(
     tile_px: u32,
     n_tiles: u32,
     atlas_tile: u32,
-    sky_rgb: u32,
+    dst_x: u32,
+    dst_y: u32,
+    dst_w: u32,
+    dst_h: u32,
+) {
+    let (fx, fz, rx, rz) = quarter_basis(yaw_q);
+    sprite_with_basis(
+        canvas, eye_x, eye_y, eye_z, fx, fz, rx, rz, view_dist, sprite_x, sprite_z,
+        atlas, tile_px, n_tiles, atlas_tile, dst_x, dst_y, dst_w, dst_h,
+    )
+}
+
+/// The same billboard, with a free yaw in radians. Display only — see
+/// `rs_voxel_view_free`.
+#[no_mangle]
+pub extern "C" fn rs_voxel_sprite_free(
+    canvas: u32,
+    eye_x: f32,
+    eye_y: f32,
+    eye_z: f32,
+    yaw: f32,
+    view_dist: f32,
+    sprite_x: f32,
+    sprite_z: f32,
+    atlas: *const u8,
+    tile_px: u32,
+    n_tiles: u32,
+    atlas_tile: u32,
+    dst_x: u32,
+    dst_y: u32,
+    dst_w: u32,
+    dst_h: u32,
+) {
+    let (fx, fz, rx, rz) = free_basis(yaw);
+    sprite_with_basis(
+        canvas, eye_x, eye_y, eye_z, fx, fz, rx, rz, view_dist, sprite_x, sprite_z,
+        atlas, tile_px, n_tiles, atlas_tile, dst_x, dst_y, dst_w, dst_h,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn sprite_with_basis(
+    canvas: u32,
+    eye_x: f32,
+    eye_y: f32,
+    eye_z: f32,
+    fwd_x: f32,
+    fwd_z: f32,
+    rgt_x: f32,
+    rgt_z: f32,
+    view_dist: f32,
+    sprite_x: f32,
+    sprite_z: f32,
+    atlas: *const u8,
+    tile_px: u32,
+    n_tiles: u32,
+    atlas_tile: u32,
     dst_x: u32,
     dst_y: u32,
     dst_w: u32,
@@ -518,17 +637,10 @@ pub extern "C" fn rs_voxel_sprite(
         c.depth = vec![f32::INFINITY; cw * ch];
     }
 
-    // Camera basis for this quarter turn: forward and right, both exact.
-    let (fx, fz, rx, rz) = match yaw_q & 3 {
-        0 => (0.0f32, -1.0f32, 1.0f32, 0.0f32),
-        1 => (1.0f32, 0.0f32, 0.0f32, 1.0f32),
-        2 => (0.0f32, 1.0f32, -1.0f32, 0.0f32),
-        _ => (-1.0f32, 0.0f32, 0.0f32, -1.0f32),
-    };
     let dx = sprite_x - eye_x;
     let dz = sprite_z - eye_z;
-    let depth = dx * fx + dz * fz;
-    let lat = dx * rx + dz * rz;
+    let depth = dx * fwd_x + dz * fwd_z;
+    let lat = dx * rgt_x + dz * rgt_z;
 
     // Behind the eye, or past the draw distance.
     if !(depth > 0.0f32) || depth > view_dist {
@@ -570,15 +682,6 @@ pub extern "C" fn rs_voxel_sprite(
     let tmax = tile_px as i32 - 1;
     let tstride = (tile_px as usize) * (tile_px as usize) * 4;
 
-    // Fog is a property of the sprite's distance, not of the pixel, so it is
-    // computed once. `depth` is forward distance; the world pass fogs by
-    // Euclidean distance, and for a billboard at the centre of the view those
-    // agree, diverging only toward the edges where the sprite is small anyway.
-    let sky_rf = ((sky_rgb >> 16) & 255) as f32;
-    let sky_gf = ((sky_rgb >> 8) & 255) as f32;
-    let sky_bf = (sky_rgb & 255) as f32;
-    let fogw = fog_at(depth, view_dist);
-
     let mut py = iy0;
     while py <= iy1 {
         let cyp = dst_y as i32 + py;
@@ -617,22 +720,19 @@ pub extern "C" fn rs_voxel_sprite(
                 px += 1;
                 continue;
             }
-            let fr = fogged(sr as f32, sky_rf, fogw);
-            let fg = fogged(sg as f32, sky_gf, fogw);
-            let fb = fogged(sb as f32, sky_bf, fogw);
             let d = i * 4;
             if sa == 255 {
-                c.px[d] = fr as u8;
-                c.px[d + 1] = fg as u8;
-                c.px[d + 2] = fb as u8;
+                c.px[d] = sr;
+                c.px[d + 1] = sg;
+                c.px[d + 2] = sb;
                 c.px[d + 3] = 255;
                 c.depth[i] = depth;
             } else {
                 let a = (sa as f32) / 255.0f32;
                 let ia = 1.0f32 - a;
-                c.px[d] = ((c.px[d] as f32) * ia + fr * a) as u8;
-                c.px[d + 1] = ((c.px[d + 1] as f32) * ia + fg * a) as u8;
-                c.px[d + 2] = ((c.px[d + 2] as f32) * ia + fb * a) as u8;
+                c.px[d] = ((c.px[d] as f32) * ia + (sr as f32) * a) as u8;
+                c.px[d + 1] = ((c.px[d + 1] as f32) * ia + (sg as f32) * a) as u8;
+                c.px[d + 2] = ((c.px[d + 2] as f32) * ia + (sb as f32) * a) as u8;
                 c.px[d + 3] = 255;
             }
             px += 1;
@@ -1006,7 +1106,7 @@ mod tests {
         for (sx, sz, tile) in sprites(name) {
             rs_voxel_sprite(
                 h, eye.0, eye.1, eye.2, yaw, VIEW, sx, sz,
-                a.as_ptr(), TILE_PX, N_TILES, tile, SKY, DST.0, DST.1, DST.2, DST.3,
+                a.as_ptr(), TILE_PX, N_TILES, tile, DST.0, DST.1, DST.2, DST.3,
             );
         }
         if let Some((daylight, key, sleeping)) = dusk_params(name) {
@@ -1179,7 +1279,7 @@ mod tests {
         let before = crate::cv(h).px.clone();
         rs_voxel_sprite(
             h, eye.0, eye.1, eye.2, yaw, VIEW, sx, sz,
-            a.as_ptr(), TILE_PX, N_TILES, tile, SKY, DST.0, DST.1, DST.2, DST.3,
+            a.as_ptr(), TILE_PX, N_TILES, tile, DST.0, DST.1, DST.2, DST.3,
         );
         let after = &crate::cv(h).px;
         (0..before.len() / 4).filter(|i| before[i * 4..i * 4 + 3] != after[i * 4..i * 4 + 3]).count()
@@ -1224,7 +1324,7 @@ mod tests {
         let h = fresh();
         rs_voxel_sprite(
             h, 8.5, 0.5, 9.5, 0, VIEW, 8.5, 7.5,
-            a.as_ptr(), TILE_PX, N_TILES, 1, SKY, DST.0, DST.1, DST.2, DST.3,
+            a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
         );
         assert!(crate::cv(h).px.iter().any(|&b| b != 0), "nothing drew");
     }
@@ -1284,7 +1384,7 @@ mod tests {
             let before = crate::cv(h).px.clone();
             rs_voxel_sprite(
                 h, 8.5, 0.5, 9.5, 0, VIEW, 8.5, 9.5 - d as f32,
-                a.as_ptr(), TILE_PX, N_TILES, 1, SKY, DST.0, DST.1, DST.2, DST.3,
+                a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
             );
             let after = &crate::cv(h).px;
             let n = (0..before.len() / 4)
@@ -1313,7 +1413,7 @@ mod tests {
         // wall at forward 4.5.
         rs_voxel_sprite(
             h, 8.5, 0.5, 9.5, 0, VIEW, 11.5, 4.5,
-            a.as_ptr(), TILE_PX, N_TILES, 1, SKY, DST.0, DST.1, DST.2, DST.3,
+            a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
         );
         let after = &crate::cv(h).px;
         let n = (0..before.len() / 4)
@@ -1448,8 +1548,8 @@ mod tests {
     // Recorded 2026-09-15 on aarch64-apple-darwin (rustc 1.97.1) and matched
     // by the wasm32 build the same day (tests/wasm_voxel_check.mjs).
     const GOLD: [u64; 8] = [
-        15374844672846668856,
-        4413047735270333649,
+        8361616621424232347,
+        13946021819558816857,
         5794932247104989369,
         17953496414654206812,
         10543094387041738035,

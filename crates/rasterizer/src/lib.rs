@@ -55,7 +55,7 @@ const TWO_PI: f64 = 6.283185307179586;
 const PI_R: f64 = 3.141592653589793;
 const PI_H: f64 = 1.5707963267948966;
 #[inline]
-fn psin(x: f64) -> f64 {
+pub(crate) fn psin(x: f64) -> f64 {
     let x = x - TWO_PI * ((x + PI_R) / TWO_PI).floor();
     let x2 = x * x;
     x * (1.0
@@ -64,7 +64,7 @@ fn psin(x: f64) -> f64 {
                 + x2 * (-0.0001984126984126984 + x2 * 0.0000027557319223985893))))
 }
 #[inline]
-fn pcos(x: f64) -> f64 {
+pub(crate) fn pcos(x: f64) -> f64 {
     psin(x + PI_H)
 }
 

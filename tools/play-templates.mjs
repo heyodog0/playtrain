@@ -250,9 +250,32 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
   }
 
   var FRAME_MS = 1000 / ${stepsPerSecond}, last = 0;   // fixed-timestep games; sidecar may slow this
+
+  // Smooth-camera hook, opt-in and per-game. A turn-based game stepping at a
+  // few Hz has a 60fps render loop going spare between steps; if the game
+  // exposes renderInterpolated(alpha) it gets called on those spare frames
+  // with alpha running 0->1 across the gap, so the camera can glide instead of
+  // teleporting. draw() and the step rate are untouched, so the agent's
+  // observation is exactly what it was — this only changes what a HUMAN sees.
+  // Games without the hook (every catalog game) take the early return above
+  // and behave identically to before.
+  function drawToCanvas() {
+    var p = getPixelData();
+    vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
+    octx.drawImage(view, 0, 0, obsC.width, obsC.height);
+  }
+  var smooth = null;
   function renderLoop(now) {
     requestAnimationFrame(renderLoop);
-    if (now - last < FRAME_MS - 0.5) return;
+    if (now - last < FRAME_MS - 0.5) {
+      if (smooth === null) {
+        smooth = typeof window.renderInterpolated === 'function' ? window.renderInterpolated : false;
+      }
+      if (smooth && last > 0) {
+        try { smooth((now - last) / FRAME_MS); drawToCanvas(); } catch (e) { smooth = false; }
+      }
+      return;
+    }
     last = now;
     setKeysDown(Array.from(held));
     pressed.forEach(function (c) { simulateKeyPress(c); });   // one-shot keyPressed() events
@@ -260,9 +283,7 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
     setPointerPos(mq.x, mq.y);
     setButtons(mq.down ? 1 : 0);
     tick();
-    var p = getPixelData();
-    vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
-    octx.drawImage(view, 0, 0, obsC.width, obsC.height);       // obs preview from OUR render
+    drawToCanvas();                                            // obs preview from OUR render
     if (typeof window.getGameState === 'function') {
       try {
         var s = window.getGameState(); var parts = [];

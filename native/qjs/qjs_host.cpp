@@ -195,7 +195,7 @@ FN(js_voxelView) {
   return JS_UNDEFINED;
 }
 // voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
-//             atlasU8, tilePx, nTiles, atlasTile, skyRgb, dstX, dstY, dstW, dstH)
+//             atlasU8, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH)
 FN(js_voxelSprite) {
   if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
   size_t aoff = 0, alen = 0, aper = 0;
@@ -208,9 +208,9 @@ FN(js_voxelSprite) {
                     (int)argd(ctx, argv[3]), argd(ctx, argv[4]),
                     argd(ctx, argv[5]), argd(ctx, argv[6]),
                     asrc + aoff, (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]),
-                    (int)argd(ctx, argv[10]), (unsigned int)argd(ctx, argv[11]),
-                    (int)argd(ctx, argv[12]), (int)argd(ctx, argv[13]),
-                    (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]));
+                    (int)argd(ctx, argv[10]),
+                    (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                    (int)argd(ctx, argv[13]), (int)argd(ctx, argv[14]));
   }
   JS_FreeValue(ctx, aab);
   return JS_UNDEFINED;
@@ -272,7 +272,7 @@ static const Binding BINDINGS[] = {
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
   {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
   {"voxelView", js_voxelView, 16},
-  {"voxelSprite", js_voxelSprite, 16},
+  {"voxelSprite", js_voxelSprite, 15},
   {"voxelDusk", js_voxelDusk, 10},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},

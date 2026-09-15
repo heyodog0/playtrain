@@ -243,6 +243,33 @@ def test_the_night_static_needs_a_driver_seed_and_depends_on_it():
     assert seven != ninetynine, "two different driver seeds gave the same static"
 
 
+def test_the_smooth_camera_interpolates_and_lands_on_the_training_frame():
+    """The smooth camera is display-only, and this pins both halves of that.
+
+    renderInterpolated(alpha) glides the camera from where it was before the
+    last step toward where it is now, so a human at 8 steps/s sees motion
+    instead of a teleport plus a 90-degree snap. The agent never calls it:
+    draw() still renders the snapped frame, once per step.
+
+    Two things must hold. The intermediate frames must actually differ from
+    each other — otherwise nothing is being interpolated — and alpha=1 must be
+    byte-identical to the frame draw() produces, or the animation would end
+    somewhere other than the state the game is actually in."""
+    proc = subprocess.run(
+        ["node", "tests/fp_probe.mjs", "--smooth", "dist/craftax_fp.js", "1", "3"],
+        cwd=GAME_DIR, capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    lines = proc.stdout.strip().splitlines()
+    frames = {ln.split()[1]: ln.split()[2] for ln in lines if ln.startswith("alpha")}
+    snapped = [ln.split()[1] for ln in lines if ln.startswith("snapped")][0]
+    assert len(frames) == 5, proc.stdout
+    assert len(set(frames.values())) == 5, f"the camera did not move across the gap: {proc.stdout}"
+    assert frames["1"] == snapped, (
+        f"alpha=1 ({frames['1']}) is not the snapped training frame ({snapped})"
+    )
+
+
 def test_the_play_page_builds(tmp_path):
     out = tmp_path / "play"
     proc = subprocess.run(
@@ -266,3 +293,5 @@ def test_the_play_page_builds(tmp_path):
         assert fn in html, f"the play page is missing the JS {fn.split('(')[0]}"
     # Turn-based pacing from the sidecar; 60 fps would be unplayable.
     assert "1000 / 8" in html, "the page is not paced at the sidecar's 8 steps/s"
+    # The smooth-camera hook, and the page's opt-in call to it.
+    assert "renderInterpolated" in html, "the page lost the smooth-camera hook"
