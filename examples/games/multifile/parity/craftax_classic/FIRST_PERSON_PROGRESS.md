@@ -15,7 +15,7 @@ field or pixel, expected, actual) and stop.
 | T0 | Read §1–6 + classic README/PLAN/render/host/rasterizer sources; write this file; confirm hosts + wasm toolchain | done | `cargo test --release`: `test result: ok. 7 passed; 0 failed; 1 ignored`; wasm three-check `PASS` ×3 | 2a0b714 | See "T0 findings" below. |
 | T1 | `rs_voxel_view` in new `crates/rasterizer/src/voxel.rs`; 6 golden scenes (open field, corridor, wall at each of 4 yaws); `tests/wasm_voxel_check.mjs` | done | `cargo test --release`: `13 passed; 0 failed; 2 ignored`; wasm check `PASS` ×6, native hash == wasm hash; **44.87 µs/frame** | 5b5ca36 | See "T1 findings" below for the ABI T2 must bind and the depth-buffer decision. |
 | T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | done | `uv run pytest tests/test_voxel.py -q`: `5 passed in 1.20s`; `GATE PASS: voxel_smoke` (200 steps × 3 seeds bit-exact) | dcfdbf0 | See "T2 findings" below. Repo suite `105 passed, 3 skipped`; classic parity suite `117 passed` — no regressions from the wasm rebuild. |
-| T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | todo | | | Gate: `bundle_multifile.py --check` clean, `build-pages.mjs` builds, 64×64 frame has > 50 distinct colours. |
+| T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `15_atlas_fp.js` + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | done | `uv run pytest examples/games/multifile/variants/craftax_fp/tests -q`: `18 passed in 0.44s`; bundle `--check` → `ok craftax_fp`; `built 1 games` | 8c57ca2 | See "T3 findings". Repo suite `106 passed, 3 skipped`. Both gates mutation-checked. |
 | T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | todo | | | Zero differing bytes of the 6,880-byte dump, plus symbolic obs equal. **Any diff = dynamics changed: mark blocked and stop.** |
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | todo | | | GATE PASS ×3 "bit-exact". Never run two `gate_qjs.sh` at once (fixed `/tmp/gateq_*`). |
 | T6 | `rs_voxel_sprite` + `rs_dusk` (§4.4 option A) + night static with driver seed; goldens extended; wasm check; T5 rerun | todo | | | Also: a night frame at `light_level<0.5` must differ from its daylight twin. |
@@ -272,10 +272,93 @@ whole sequence.
 lives in wasm memory where `rs_voxel_sprite` will read it. T6 needs a way to
 reach it from the JS fallback but not from wasm; plan for that asymmetry.
 
+## T3 findings
+
+**Gate.** `uv run pytest examples/games/multifile/variants/craftax_fp/tests -q`
+→ `18 passed in 0.44s`. That covers the plan's three: `bundle_multifile.py
+--check` → `ok craftax_fp`, `build-pages.mjs` → `built 1 games`, and the
+64×64 frame's distinct-colour count on five seeds (59, 67, 59, 67, 63 — all
+over the plan's 50).
+
+**Read the colour count correctly.** The **whole 64×64 frame** clears 50 on
+every seed. The first-person region alone runs **20–28**, and that is honest,
+not broken: `grass.png` has exactly **three** colours in it, so a player who
+spawns in open grass is looking at three greens and a sky. Do not "fix" this,
+and do not quote the view-only number as a failure.
+
+**Two gates were mutation-checked, and the first one I wrote was useless.**
+
+- Replacing the yaw table with a constant `[0,0,0,0,0]` **passed** the obvious
+  test ("the four move actions give four different frames"). In Craftax a move
+  action changes the player's **position** as well as its facing, so the frames
+  differ for the wrong reason. Isolating yaw needs the facing changed and
+  nothing else, which no action can do.
+- So `tests/fp_probe.mjs` exists: it runs the bundle as one script with the six
+  rasterizer calls backed by the **real wasm rasterizer** (a stubbed
+  `voxelView` would test nothing), then sets `gameState.playerDir` by hand.
+  The yaw mutation now fails 1 test; making nothing solid fails 7.
+- The solid-set gate counts **non-sky pixels above the horizon**. Only a cube
+  can put anything there — floors are all at y=0, below eye height — so
+  "everything is floor" reports zero. Measured on seeds 1, 2, 3, 7, 11, 13, 21
+  × 4 facings: never zero, range 34–1536. Craftax scatters trees and stone
+  densely enough that something is always in view.
+
+**Decisions this task had to make, with the evidence.**
+
+- **Solid set is `isSolid()` from `40_player.js`, minus WATER.** Derived, not
+  guessed: `isSolid` is exactly the set that refuses a move, so it is exactly
+  the set that should stop a ray. Plan §4.1 carves out water — impassable, but
+  drawn as a floor — and that is what shipped. LAVA is not in `isSolid` at all
+  (you can walk onto it; it kills you) and Craftax never generates it anyway.
+  **Plants ARE cubes**, because `isSolid` includes `BLK_PLANT` and
+  `BLK_RIPE_PLANT`. Note plan §4.3 calls them "plants that are not solid" when
+  listing sprite candidates — that phrasing disagrees with the code. The code
+  won here; **T6 must decide** whether a plant should become a billboard
+  instead, and say so.
+- **playerDir → yaw is `FP_YAW = [0, 3, 1, 0, 2]`**, read off `DIR_DR`/`DIR_DC`
+  in `10_constants.js`: dir 1 left (dc −1) → yaw 3, dir 2 right (dc +1) → yaw
+  1, dir 3 up (dr −1) → yaw 0, dir 4 down (dr +1) → yaw 2. Index 0 is
+  unreachable and mirrors dir 3 so a corrupt value cannot index off the end.
+- **`SKY_RGB = 0x87CEEB`.** Craftax has no sky texture and no palette entry for
+  one, so this is a choice and the README must say so.
+- **A second atlas, `tools/craftax_atlas_fp.py` → `src/15_atlas_fp.js`.**
+  Craftax's assets are 16×16; the classic baker downscales to 7×7 because
+  Craftax's agent view uses 7px tiles, and that downscale is parity-critical
+  *there*. Here a wall face fills much of the screen, so 7×7 would be a smear.
+  The variant ships both: 15_atlas.js still supplies the inventory icons and
+  digits, 15_atlas_fp.js the 16×16 blocks and mob tiles. 24 tiles, 24,576 bytes.
+- **The field is `st.mapPacked`, not `st.map`** — cost one failed run; the
+  packer reads it directly rather than through `mapGet` to avoid 4,096 calls.
+
+**The bundler takes relative paths out of the directory** — plan §5 asked this
+to be confirmed, and it is: `build()` does `(root / rel).resolve()` with **no
+containment check**, so the 13 classic sources are single-sourced by path.
+Nothing was copied.
+
+**`80_render.js` is IN the fp manifest, and `renderGame` is never called.**
+The first-person renderer reuses classic's `_invPx`, `_putIcon`, `_putDigit`,
+`_upload`, `INV_SLOTS` and buffer sizes, so the inventory helpers are the same
+code rather than a copy of it. Only the ~20-line slot loop is duplicated, as
+`_fpInventory` — that code is inline in a function the variant must replace,
+and extracting it would mean editing craftax_classic, which plan §9 forbids.
+**Keep the two in step**; T4 is the natural place to add a gate asserting the
+fp inventory rows equal classic's for the same state.
+
+**Full grid repack every frame**, 4,096 cells, one table lookup and one store
+each (`FP_PACK`, 17 entries). Plan §5 suggests a dirty flag; correctness first,
+and T7 measures whether it is worth the state.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T3 — built `variants/craftax_fp`: manifest single-sourcing the
+  13 classic files by relative path, a 16×16 atlas from a new
+  `tools/craftax_atlas_fp.py`, `80_render_fp.js` (grid pack, eye/yaw,
+  `voxelView`, classic's inventory strip) and `90_playtrain_fp.js`. Bundle and
+  play page build; 18 tests pass. Mutation-checked the yaw map and the solid
+  set — the first yaw test was useless and was replaced with `fp_probe.mjs`.
+  Commit `8c57ca2`.
 - 2026-09-15 — T2 — bound `voxelView` into `p5.hpp`/`p5.cpp`, both QuickJS
   hosts, the shim, and both JS rasterizer backends; hand-ported the ray march
   into `raster.mjs` and it matched Rust bit for bit first try; rebuilt the
