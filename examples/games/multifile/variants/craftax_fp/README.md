@@ -18,6 +18,66 @@ door; `FIRST_PERSON_PLAN.md` is the design for this one and
 Under construction. See `FIRST_PERSON_PROGRESS.md` for what is built and what
 is not.
 
+## Playing it in the browser (hand-off)
+
+The build side is done and gated (`tests/test_render_fp.py`). What is left is
+someone opening the page and looking at it.
+
+```sh
+node tools/build-pages.mjs --games examples/games/multifile/variants/craftax_fp/dist \
+     --out dist/craftax-fp-play --title "Craftax first-person"
+uv run python -m http.server -d dist/craftax-fp-play 8000
+# then open http://localhost:8000/game/craftax_fp/
+```
+
+`dist/` is gitignored, so build it fresh; it takes about a second.
+
+**What to expect.** The game ticks at **8 steps/s**, not 60, from the
+sidecar's `human.steps_per_second` — Craftax is turn-based. Controls come from
+the sidecar and are the classic port's, with one caveat that matters here:
+
+> Arrows move and face in **world** directions, not relative to the camera —
+> the camera snaps to the way you face. SPACE interacts with the cell ahead.
+> TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes,
+> 8-9-0 craft swords.
+
+Absolute movement is deliberate and is the price of "same task": relative
+turn-and-walk controls would change the action space and therefore the
+dynamics. Pressing Left always steps west, whichever way you are looking.
+
+**What to check by eye.**
+
+1. **Facing is centred on the interact cell.** Face a tree and press SPACE;
+   the block you chop should be the one in the middle of the screen. If the
+   view is rotated 90° from where SPACE acts, the `playerDir` → yaw table in
+   `80_render_fp.js` is wrong.
+2. **The inventory strip is identical to craftax_classic's.** Open the classic
+   page side by side (same seed, same keys) and compare the bottom two rows.
+   A test asserts this already; eyes are the backstop for it.
+3. **Walls look like walls.** Blocks should be a fixed height with a visible
+   top edge against the sky, growing as you approach and shrinking as you back
+   away. Textures should not swim or shear.
+4. **Mobs stand upright at cell centres** and are hidden when something solid
+   is between you and them.
+5. **It gets dark and comes back.** Around 150 steps in, the frame should tint
+   blue and dim, then recover. Sleeping (TAB) should grey it further.
+
+**What you cannot check here, and why.** The **night static is not visible in
+the browser**. Craftax draws it from `state_rng`, which the game derives from
+the *driver's* seed, and no host — including this page — passes one. Below
+`light_level` 0.5 you get the deterministic dusk image without the static. The
+static itself is gated in `tests/test_render_fp.py` (three different driver
+seeds, three different frames) rather than by eye.
+
+**One thing worth knowing about the page.** It runs the **pure-JS** rasterizer,
+not wasm: `tools/play-templates.mjs` inlines `rasterizer.wasm` only for games
+whose source mentions `WEBGL`, and this one does not — it calls `voxelView`
+instead. That is safe, because the JS port is bit-identical to the Rust
+(`tests/test_voxel.py`, and verified again for this game over 41 frames), so
+what you see IS the training frame. It is the slow path, but at 8 steps/s
+there is a lot of headroom. Making the page use wasm would mean widening that
+`WEBGL` test, which touches every game's page and was left alone.
+
 ## Throughput
 
 Measured on this machine, single core, single env. Every first-person number

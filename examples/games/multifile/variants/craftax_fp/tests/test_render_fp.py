@@ -251,3 +251,13 @@ def test_the_play_page_builds(tmp_path):
     assert page.is_file(), f"no page at {page}"
     html = page.read_text()
     assert "first-person" in html, "the parity label lost the variant caveat"
+    # The browser runs the PURE-JS rasterizer, not wasm: play-templates.mjs
+    # inlines rasterizer.wasm only for games whose source mentions WEBGL, and
+    # this one does not — it calls voxelView/voxelSprite/voxelDusk instead. So
+    # the page must carry the JS port of all three, or the human gets a blank
+    # canvas and a console error.
+    for fn in ("voxelView(grid, gw, gh,", "voxelSprite(eyeX, eyeY, eyeZ,",
+               "voxelDusk(x, y, w, h, daylight"):
+        assert fn in html, f"the play page is missing the JS {fn.split('(')[0]}"
+    # Turn-based pacing from the sidecar; 60 fps would be unplayable.
+    assert "1000 / 8" in html, "the page is not paced at the sidecar's 8 steps/s"
