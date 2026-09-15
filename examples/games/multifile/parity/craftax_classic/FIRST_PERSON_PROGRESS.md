@@ -19,7 +19,7 @@ field or pixel, expected, actual) and stop.
 | T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | done | `uv run pytest .../craftax_fp/tests/test_same_dynamics.py -q`: `6 passed in 5.11s`; driver: `210 episodes, 49061 steps, 0 differing bytes` | f665b4f | Symbolic obs equal too. G2 re-run here: `3 passed` (classic == C). See "T4 findings" for the golden-chain anomaly. |
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | done | `8 passed in 8.56s`; `GATE PASS: craftax_fp`, 3× `3000 steps bit-exact` | f70b6d0 | Symbolic mode agrees too; vectorised host deterministic and equal to the single env. Whole variant suite `32 passed`. |
 | T6a | Sprites: `rs_voxel_sprite`, bindings, goldens extended, mobs/arrows wired into the game | done | `cargo test --release`: `22 passed; 0 failed; 2 ignored`; wasm check `PASS` ×7; `test_voxel.py` `5 passed`; fp suite `32 passed`; T5 `8 passed`; **49.08 µs/frame** | 896b25c | Found and fixed a real depth-units bug — see "T6a findings". |
-| T6b | Dusk (§4.4 option A: `rs_dusk`) + night static from the driver seed; threefry in Rust validated against `jax_uniform.json`; goldens extended; T5 rerun | todo | | | Gate: T1/T2/T5 green again, **and** a night frame at `light_level<0.5` differs from its daylight twin. Needs a 49×64 night-noise texture baked by `tools/craftax_atlas_fp.py` — the classic one is 49×63 and the fp view is 64 wide. |
+| T6b | Dusk (§4.4 option A: `rs_dusk`) + night static from the driver seed; threefry ported to Rust; goldens extended; T5 rerun | done | `cargo test --release`: `29 passed; 0 failed; 2 ignored`; wasm check `PASS` ×8; `test_voxel.py` `5 passed`; fp suite `37 passed`; T5 `8 passed`; **49.09 µs/frame** | 9bbc453 | Night frame differs from its daylight twin on all 3136 pixels; static depends on the driver seed. Plan §4.4 corrected in the same commit. |
 | T7 | Throughput: Mac `qjs_host bench` + V8 `envprof` for fp vs classic; one exclusive cluster job; `outputs/craftax_fp_bench.json` | todo | | | Cluster via `fasrc '<cmd>'`; `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`. Classic baseline from the same harness beside every fp number. |
 | T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | todo | | | Hand-off stays a hand-off — do not simulate a human session. |
 | T9 | Docs: variant `README.md` (layout diagram, absolute-controls caveat, exactness, throughput), `THIRD_PARTY_LICENSES` if needed, memory note | todo | | | |
@@ -530,10 +530,87 @@ renderer. Three tests use it.
 --mob $off ...` passes ONE argument in zsh and two in bash. Use `bash -c` for
 loops like that; it cost a confusing "usage:" error.
 
+## T6b findings
+
+**Gates.** `cargo test --release` `29 passed`; `wasm_voxel_check.mjs` `PASS`
+on **8** scenes (new: `night_static`, which runs dusk + static + sleep in one
+frame), native hash == wasm hash; `tests/test_voxel.py` `5 passed` with the
+smoke game now cycling daylight / static / sleep every 32 frames, so all four
+backends are compared through the dusk pass **including the pure-JS threefry**;
+fp suite `37 passed`; T5 `8 passed`. Repo suite `106 passed, 3 skipped`;
+classic parity `117 passed`. **49.09 µs/frame** (unchanged — the bench scene is
+full daylight, where dusk returns immediately).
+
+**The plan's §4.4 cited a fixture that does not exist, and the plan is now
+corrected in the same commit** (the loop's rule for a gate proving the plan
+wrong). It said to validate the Rust threefry "against `jax_uniform.json` the
+same way the JS was". There is no `jax_uniform.json` anywhere in the repo, and
+that is not how the JS was validated either: `16_threefry.js` is checked by
+`craftax_classic/tests/test_render.py`, which renders whole **night frames**
+and compares them byte for byte with Craftax's own `render_craftax_pixels`
+output in `traces/craftax_pixels/` — at least 8 night frames, each carrying the
+driver seed Craftax was run with. The static is inside those pixels, so that
+test is the ground truth. The Rust port is pinned to the JS with a vector
+printed from `threefryUniformF32` itself (4 keys × 8 elements, compared as
+float **bits**), making the chain **Rust == JS == Craftax**. It matched first
+run.
+
+**The night gate, and why it is not vacuous.** `fp_probe.mjs --night
+[driverSeed]` walks forward until `light_level < 0.5` (147 steps on seed 1,
+light 0.4946), renders, then renders **the same state** with `light_level`
+forced to 1.0 — where the dusk pass is a no-op — and diffs. Comparing two
+different states would prove nothing; one state at two light levels isolates
+the pass. Result: **3136 of 3136 pixels differ**. The static is checked
+separately by frame hash: no driver seed `5292e4b8`, seed 7 `c0d9fa82`, seed 99
+`e11ea595` — all three distinct, so the static both fires and depends on the
+key. With no driver seed there is no key and the static is skipped, which is
+what every host does today.
+
+**A test of mine was wrong and the dusk pass exposed it.**
+`test_sky_is_above_the_horizon_and_world_below` asserted the sky equals raw
+`SKY_RGB`. It does not, and never did after T6b: Craftax's `light_level` at the
+**reset** frame is about **0.81**, not 1.0, and the dusk pass runs at any
+daylight below 1 — not just at night. The test now asserts the sky band is
+**flat** (one colour, since nothing is drawn there), that the ground differs,
+and that the sky is `SKY_RGB` darkened rather than something unrelated. Worth
+remembering when reading any fp frame: **there is no untinted frame in normal
+play.**
+
+**New export `rs_voxel_noise_ptr`,** a third staging buffer alongside grid and
+atlas, for the same reason: JS cannot make a pointer into wasm linear memory.
+
+**A second night-noise texture is baked,** `NIGHT_NOISE_FP_*` in
+`15_atlas_fp.js`, at **49×64**. The classic one is 49×63 because that is the
+classic map region; the first-person view is one column wider. Same numpy
+expression, evaluated at the new size. Baked rather than computed at runtime
+for the classic port's reason: `Math.exp` is QuickJS's libm in one engine and
+ieee754's in another, and only sin/cos are pinned across PlayTrain's engines.
+
+**Composition order** is `voxelView` → `voxelSprite` → `voxelDusk` →
+inventory, matching `80_render.js`: Craftax darkens the composited world with
+its mobs in it, and the inventory strip is drawn afterwards and never darkened.
+The sleep tint is a **separate second pass inside `rs_dusk`**, after the dusk
+blend, as in classic.
+
+**Not Craftax-exact, by construction and on purpose.** Craftax composites into
+a float32 buffer that stays float for the whole frame; `rs_dusk` reads and
+writes the uint8 canvas, so each pass quantises at its boundary. The
+first-person frame has nothing to be exact against, so the simpler thing is the
+right thing. What must hold — and is gated — is that every backend agrees.
+
+**T6 is now complete** (T6a sprites + T6b dusk). Next is T7, throughput.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T6b — added `rs_dusk` (Craftax's dusk blend, the threefry night
+  static, and the sleep tint) plus `rs_voxel_noise_ptr`, ported JAX's
+  threefry-2x32 to Rust and pinned it to the JS by float bits, baked a 49×64
+  night-noise texture, bound it all through both hosts and both JS backends,
+  and added an 8th golden scene. Night frame differs from its daylight twin on
+  all 3136 pixels and the static tracks the driver seed. Corrected plan §4.4,
+  which cited a fixture that does not exist. Commit `9bbc453`.
 - 2026-09-15 — T6a — added `rs_voxel_sprite` (upright billboards, depth-tested,
   alpha-blended), bound it through both hosts, the shim and both JS backends,
   extended the goldens to 7 scenes and the smoke game to draw sprites, and
