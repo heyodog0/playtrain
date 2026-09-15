@@ -384,13 +384,97 @@ class Context2D {
           if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
           if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
           const o = t * tstride + (ty * tilePx + tx) * 4;
-          r = atlas[o]; g = atlas[o + 1]; b = atlas[o + 2]; depth = tHit;
+          // Forward distance, not Euclidean — see rs_voxel_view's doc comment.
+          r = atlas[o]; g = atlas[o + 1]; b = atlas[o + 2]; depth = F(tHit / len);
         }
 
         const i = cyp * cw + cxp;
         const o = i * 4;
         px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
         this.depth[i] = depth;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_voxel_sprite. Same rule as voxelView above:
+  // Math.fround after every float op, in the Rust's association order.
+  voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+    if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const sxw = F(spriteX), szw = F(spriteZ);
+
+    let fx, fz, rx, rz;
+    switch (yawQ & 3) {
+      case 0: fx = 0; fz = -1; rx = 1; rz = 0; break;
+      case 1: fx = 1; fz = 0; rx = 0; rz = 1; break;
+      case 2: fx = 0; fz = 1; rx = -1; rz = 0; break;
+      default: fx = -1; fz = 0; rx = 0; rz = -1; break;
+    }
+    const dx = F(sxw - ex);
+    const dz = F(szw - ez);
+    const depth = F(F(dx * fx) + F(dz * fz));
+    const lat = F(F(dx * rx) + F(dz * rz));
+    if (!(depth > 0) || depth > vd) return;
+
+    const fw = F(dstW), fh = F(dstH);
+    const hw = F(fw * 0.5), hh = F(fh * 0.5);
+    const x0f = F(F(F(F(lat - 0.5) / depth) + 1) * hw - 0.5);
+    const x1f = F(F(F(F(lat + 0.5) / depth) + 1) * hw - 0.5);
+    const y0f = F(F(F(1 - F(F(1 - ey) / depth)) * hh) - 0.5);
+    const y1f = F(F(F(1 - F(F(0 - ey) / depth)) * hh) - 0.5);
+    const wf = F(x1f - x0f), hf = F(y1f - y0f);
+    if (!(wf > 0) || !(hf > 0)) return;
+
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    let ix0 = -ffloor(F(-x0f));
+    let ix1 = ffloor(x1f);
+    let iy0 = -ffloor(F(-y0f));
+    let iy1 = ffloor(y1f);
+    if (ix0 < 0) ix0 = 0;
+    if (iy0 < 0) iy0 = 0;
+    if (ix1 > dstW - 1) ix1 = dstW - 1;
+    if (iy1 > dstH - 1) iy1 = dstH - 1;
+
+    const t = atlasTile < nTiles ? atlasTile : 0;
+    const tpx = F(tilePx), tmax = tilePx - 1;
+    const tstride = tilePx * tilePx * 4;
+
+    for (let py = iy0; py <= iy1; py++) {
+      const cyp = dstY + py;
+      if (cyp < 0 || cyp >= ch) continue;
+      const v = F(F(py - y0f) / hf);
+      let ty = F(v * tpx) | 0;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+
+      for (let pxi = ix0; pxi <= ix1; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp < 0 || cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        if (depth >= this.depth[i]) continue;
+        const u = F(F(pxi - x0f) / wf);
+        let tx = F(u * tpx) | 0;
+        if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+
+        const o = t * tstride + (ty * tilePx + tx) * 4;
+        const sr = atlas[o], sg = atlas[o + 1], sb = atlas[o + 2], sa = atlas[o + 3];
+        if (sa === 0) continue;
+        const d = i * 4;
+        if (sa === 255) {
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
+          this.depth[i] = depth;
+        } else {
+          const a = F(sa / 255);
+          const ia = F(1 - a);
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
+          px[d + 3] = 255;
+        }
       }
     }
   }

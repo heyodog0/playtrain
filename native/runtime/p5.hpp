@@ -150,6 +150,14 @@ void voxelView(const uint16_t* grid, int gw, int gh,
                const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
                int dstX, int dstY, int dstW, int dstH);
 
+// One upright 1x1 billboard at (spriteX, spriteZ), depth-tested against the
+// ray depths voxelView left behind. Call after voxelView, before the dusk
+// pass — the order 80_render.js composes the classic frame in.
+void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+                 double spriteX, double spriteZ,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH);
+
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is
 // a no-op, so headless obs already omits text. Matches env behavior.)

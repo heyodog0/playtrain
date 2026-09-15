@@ -61,6 +61,13 @@ function render(sc) {
     ap, sc.tile_px, sc.n_tiles, sc.sky,
     sc.dst[0], sc.dst[1], sc.dst[2], sc.dst[3],
   );
+  for (const [sx, sz, tile] of sc.sprites || []) {
+    x.rs_voxel_sprite(
+      h, sc.eye[0], sc.eye[1], sc.eye[2], sc.yaw, sc.view, sx, sz,
+      ap, sc.tile_px, sc.n_tiles, tile,
+      sc.dst[0], sc.dst[1], sc.dst[2], sc.dst[3],
+    );
+  }
   const ptr = x.rs_pixels_ptr(h);
   const len = x.rs_buf_len(h);
   return new Uint8Array(mem(), ptr, len);

@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 19 sources listed in
 // examples/games/multifile/variants/craftax_fp/manifest.json
-// Source hash (sha256 over the concatenated sources): c81fd69b8f040f4dc86c467fd09c2037390062cae8f7b7eda0ffea5b35266468
+// Source hash (sha256 over the concatenated sources): 36e2872a755595ebf7adf1239da8bbd25cebccc941497a8e9c29dcc78068d942
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_fp
@@ -3018,6 +3018,54 @@ function _fpPackGrid(st) {
   for (let i = 0; i < n; i++) _fpGrid[i] = FP_PACK[st.mapPacked[i]];
 }
 
+// Mobs and arrows, as upright billboards (FIRST_PERSON_PLAN.md §4.3).
+//
+// Drawn from the mob ARRAYS, not the per-row bitmaps 80_render.js scans: the
+// bitmaps only say "something is here", and a billboard needs the entity's
+// actual cell. The arrays are short (3 zombies, 3 cows, 2 skeletons, 3
+// arrows), so this is 11 calls a frame at most and no search.
+//
+// Order is Craftax's — zombies, cows, skeletons, arrows — but it does not
+// matter the way it does in the top-down renderer: the depth buffer
+// rs_voxel_view filled decides what is in front, so a far sprite drawn last
+// is still occluded by a near one drawn first.
+//
+// The PLAYER is deliberately absent. You are the player; this is their view.
+//
+// Plants are NOT sprites. `isSolid` in 40_player.js includes BLK_PLANT and
+// BLK_RIPE_PLANT, so they are cubes in the grid, and the plan's §4.3 aside
+// about "plants that are not solid" does not match the code it points at. A
+// plant you cannot walk through reads better as a block than as a billboard.
+function _fpSpriteAt(st, r, c, tile) {
+  voxelSprite(
+    st.playerC[0] + 0.5, FP_EYE_Y, st.playerR[0] + 0.5,
+    FP_YAW[st.playerDir[0]], FP_VIEW_DIST,
+    c + 0.5, r + 0.5,
+    _fpAtlas, ATLAS_FP_TILE, ATLAS_FP_COUNT, tile,
+    0, 0, FP_VIEW_W, FP_VIEW_H,
+  );
+}
+
+function _fpSprites(st) {
+  for (let i = 0; i < MAX_ZOMBIES; i++) {
+    if (st.zombieMask[i]) _fpSpriteAt(st, st.zombieR[i], st.zombieC[i], ATLAS_FP.zombie);
+  }
+  for (let i = 0; i < MAX_COWS; i++) {
+    if (st.cowMask[i]) _fpSpriteAt(st, st.cowR[i], st.cowC[i], ATLAS_FP.cow);
+  }
+  for (let i = 0; i < MAX_SKELETONS; i++) {
+    if (st.skelMask[i]) _fpSpriteAt(st, st.skelR[i], st.skelC[i], ATLAS_FP.skeleton);
+  }
+  for (let i = 0; i < MAX_ARROWS; i++) {
+    if (!st.arrowMask[i]) continue;
+    const dr = st.arrowDr[i], dc = st.arrowDc[i];
+    const tile = dr < 0 ? ATLAS_FP.arrow_up
+      : dr > 0 ? ATLAS_FP.arrow_down
+      : dc < 0 ? ATLAS_FP.arrow_left : ATLAS_FP.arrow_right;
+    _fpSpriteAt(st, st.arrowR[i], st.arrowC[i], tile);
+  }
+}
+
 // The inventory strip, drawn exactly as craftax_classic draws it.
 //
 // This IS a copy of the tail of classic's renderGame, and there is no way
@@ -3067,6 +3115,7 @@ function renderGameFp(st) {
     0, 0, FP_VIEW_W, FP_VIEW_H,
   );
 
+  _fpSprites(st);
   _fpInventory(st);
 }
 

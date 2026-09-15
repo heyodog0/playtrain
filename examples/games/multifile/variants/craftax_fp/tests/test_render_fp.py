@@ -155,6 +155,37 @@ def test_moving_changes_the_view(env):
     assert len(frames) == 4, f"expected 4 distinct frames, got {len(frames)}"
 
 
+def _mob_pixels(seed: int, facing: int, drow: int, dcol: int) -> int:
+    proc = subprocess.run(
+        ["node", "tests/fp_probe.mjs", "--mob", str(drow), str(dcol),
+         "dist/craftax_fp.js", str(seed), str(facing)],
+        cwd=GAME_DIR, capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    return int(proc.stdout.strip().split("mobpixels=")[1])
+
+
+def test_a_mob_in_front_of_the_player_is_drawn():
+    """Mobs are billboards drawn after the world pass (plan section 4.3).
+
+    The probe injects a zombie, because mobs are rare and never where a test
+    wants them: it renders once with every mob mask cleared and once with one
+    zombie placed, and counts the pixels that changed. Facing 3 is up, i.e.
+    decreasing row, so a negative row offset is straight ahead."""
+    assert _mob_pixels(1, 3, -1, 0) > 0, "a zombie one cell ahead drew nothing"
+    assert _mob_pixels(1, 3, -2, 0) > 0, "a zombie two cells ahead drew nothing"
+
+
+def test_a_nearer_mob_covers_more_of_the_frame():
+    near = _mob_pixels(1, 3, -1, 0)
+    far = _mob_pixels(1, 3, -2, 0)
+    assert near > far, f"near mob {near} px is not bigger than far mob {far} px"
+
+
+def test_a_mob_behind_the_player_is_not_drawn():
+    assert _mob_pixels(1, 3, 2, 0) == 0, "a zombie behind the player drew"
+
+
 def test_the_play_page_builds(tmp_path):
     out = tmp_path / "play"
     proc = subprocess.run(

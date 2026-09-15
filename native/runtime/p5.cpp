@@ -236,6 +236,23 @@ void voxelView(const uint16_t* grid, int gw, int gh,
                 (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
 }
 
+extern "C" void rs_voxel_sprite(uint32_t canvas,
+                                float eyeX, float eyeY, float eyeZ, uint32_t yawQ, float viewDist,
+                                float spriteX, float spriteZ,
+                                const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles,
+                                uint32_t atlasTile,
+                                uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+
+void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+                 double spriteX, double spriteZ,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH) {
+  rs_voxel_sprite(_h, (float)eyeX, (float)eyeY, (float)eyeZ, (uint32_t)yawQ, (float)viewDist,
+                  (float)spriteX, (float)spriteZ,
+                  atlas, (uint32_t)tilePx, (uint32_t)nTiles, (uint32_t)atlasTile,
+                  (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
+}
+
 void image(int srcHandle, double x, double y, double w, double h) {
   // p5 image() honors the current transform; here we map logical->device via the
   // MAIN canvas base scale (image is only ever called at identity transform in

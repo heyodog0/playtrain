@@ -97,8 +97,18 @@ const BIG: f32 = 1.0e30;
 
 /// Render a first-person view of `grid` into the rect (`dst_x`, `dst_y`,
 /// `dst_w`, `dst_h`) of canvas `canvas`, and fill that rect of the canvas's
-/// depth buffer with the Euclidean distance to each pixel's hit (+inf for
-/// sky) for `rs_voxel_sprite` to test against.
+/// depth buffer for `rs_voxel_sprite` to test against.
+///
+/// The depth written is the hit's **forward** distance — its camera-space z,
+/// not the Euclidean distance along the ray. Those differ by the ray's length
+/// (up to sqrt(3) at a frame corner, with a 90 degree FOV both ways), and a
+/// billboard's depth is naturally a forward distance, so storing Euclidean
+/// here would let a sprite draw through a wall near the edges of the frame:
+/// the wall's stored Euclidean depth can exceed the sprite's forward depth
+/// even when the wall is genuinely in front. Sky is +inf.
+///
+/// `view_dist` is still Euclidean, so the draw distance stays a circle rather
+/// than becoming a slab.
 ///
 /// `grid` is row-major `gh` rows of `gw` cells, each cell packed as
 /// `(atlas_tile << 1) | solid`. `atlas` is `n_tiles` tiles of
@@ -348,7 +358,11 @@ pub extern "C" fn rs_voxel_view(
                 if ty > tmax { ty = tmax; }
                 let o = (t as usize) * tstride
                     + ((ty as usize) * (tile_px as usize) + (tx as usize)) * 4;
-                unsafe { (*atlas.add(o), *atlas.add(o + 1), *atlas.add(o + 2), t_hit) }
+                // t_hit is Euclidean; the depth buffer holds forward distance
+                // (see this function's doc comment). The ray was normalised by
+                // `len`, and the unnormalised direction's forward component is
+                // exactly 1, so forward = t / len.
+                unsafe { (*atlas.add(o), *atlas.add(o + 1), *atlas.add(o + 2), t_hit / len) }
             };
 
             let i = (cyp as usize) * cw + (cxp as usize);
@@ -359,6 +373,173 @@ pub extern "C" fn rs_voxel_view(
             c.px[o + 3] = 255;
             c.depth[i] = depth;
         }
+    }
+}
+
+
+/// Draw an upright 1x1 billboard at cell centre (`sprite_x`, `sprite_z`),
+/// depth-tested against the ray depths `rs_voxel_view` left in the canvas.
+///
+/// Classic sprite casting: the quad always faces the eye, so there is no
+/// rotation and no perspective correction to get wrong — project the two
+/// horizontal edges and the two vertical ones, then walk the rectangle.
+///
+/// Call this AFTER `rs_voxel_view` and BEFORE `rs_dusk`, which is the order
+/// `80_render.js` composes the classic frame in (map, then sprites, then the
+/// dusk pass over both).
+///
+/// Alpha is the tile's own, blended in f32 as `dst*(1-a) + tex*a` — the same
+/// expression `_overTile` uses in `80_render.js`, though not the same
+/// arithmetic: Craftax blends into a float32 buffer that stays float until the
+/// end of the frame, while this blends into the uint8 canvas. Nothing here is
+/// Craftax-exact by construction, so the simpler thing is the right thing;
+/// what matters is that it is identical across backends.
+///
+/// Only a fully opaque texel writes depth. A partially transparent one blends
+/// without occluding, so two overlapping sprites still compose.
+#[no_mangle]
+pub extern "C" fn rs_voxel_sprite(
+    canvas: u32,
+    eye_x: f32,
+    eye_y: f32,
+    eye_z: f32,
+    yaw_q: u32,
+    view_dist: f32,
+    sprite_x: f32,
+    sprite_z: f32,
+    atlas: *const u8,
+    tile_px: u32,
+    n_tiles: u32,
+    atlas_tile: u32,
+    dst_x: u32,
+    dst_y: u32,
+    dst_w: u32,
+    dst_h: u32,
+) {
+    if atlas.is_null() || tile_px == 0 || n_tiles == 0 || dst_w == 0 || dst_h == 0 {
+        return;
+    }
+    let c = cv(canvas);
+    let cw = c.dw;
+    let ch = c.dh;
+    if cw == 0 || ch == 0 {
+        return;
+    }
+    // A sprite pass with no preceding view pass has nothing to test against.
+    // Define it as "everything is infinitely far" rather than silently
+    // drawing over whatever was in the buffer.
+    if c.depth.len() != cw * ch {
+        c.depth = vec![f32::INFINITY; cw * ch];
+    }
+
+    // Camera basis for this quarter turn: forward and right, both exact.
+    let (fx, fz, rx, rz) = match yaw_q & 3 {
+        0 => (0.0f32, -1.0f32, 1.0f32, 0.0f32),
+        1 => (1.0f32, 0.0f32, 0.0f32, 1.0f32),
+        2 => (0.0f32, 1.0f32, -1.0f32, 0.0f32),
+        _ => (-1.0f32, 0.0f32, 0.0f32, -1.0f32),
+    };
+    let dx = sprite_x - eye_x;
+    let dz = sprite_z - eye_z;
+    let depth = dx * fx + dz * fz;
+    let lat = dx * rx + dz * rz;
+
+    // Behind the eye, or past the draw distance.
+    if !(depth > 0.0f32) || depth > view_dist {
+        return;
+    }
+
+    let fw = dst_w as f32;
+    let fh = dst_h as f32;
+    let hw = fw * 0.5f32;
+    let hh = fh * 0.5f32;
+
+    // Horizontal: the quad spans lat-0.5 .. lat+0.5. Screen x for a camera-
+    // space lateral l is ((l/depth) + 1) * (w/2) - 0.5, the inverse of the
+    // pixel-centre mapping rs_voxel_view builds its rays from.
+    let x0f = ((lat - 0.5f32) / depth + 1.0f32) * hw - 0.5f32;
+    let x1f = ((lat + 0.5f32) / depth + 1.0f32) * hw - 0.5f32;
+    // Vertical: world y=1 is the top of the block, y=0 the floor.
+    let y0f = (1.0f32 - (1.0f32 - eye_y) / depth) * hh - 0.5f32;
+    let y1f = (1.0f32 - (0.0f32 - eye_y) / depth) * hh - 0.5f32;
+
+    let wf = x1f - x0f;
+    let hf = y1f - y0f;
+    if !(wf > 0.0f32) || !(hf > 0.0f32) {
+        return;
+    }
+
+    // Integer pixel centres inside the quad: ceil(lo) .. floor(hi).
+    let mut ix0 = -ffloor(-x0f);
+    let mut ix1 = ffloor(x1f);
+    let mut iy0 = -ffloor(-y0f);
+    let mut iy1 = ffloor(y1f);
+    if ix0 < 0 { ix0 = 0; }
+    if iy0 < 0 { iy0 = 0; }
+    if ix1 > dst_w as i32 - 1 { ix1 = dst_w as i32 - 1; }
+    if iy1 > dst_h as i32 - 1 { iy1 = dst_h as i32 - 1; }
+
+    let t = if atlas_tile < n_tiles { atlas_tile } else { 0 };
+    let tpx = tile_px as f32;
+    let tmax = tile_px as i32 - 1;
+    let tstride = (tile_px as usize) * (tile_px as usize) * 4;
+
+    let mut py = iy0;
+    while py <= iy1 {
+        let cyp = dst_y as i32 + py;
+        if cyp < 0 || cyp as usize >= ch {
+            py += 1;
+            continue;
+        }
+        let v = (py as f32 - y0f) / hf;
+        let mut ty = (v * tpx) as i32;
+        if ty < 0 { ty = 0; }
+        if ty > tmax { ty = tmax; }
+
+        let mut px = ix0;
+        while px <= ix1 {
+            let cxp = dst_x as i32 + px;
+            if cxp < 0 || cxp as usize >= cw {
+                px += 1;
+                continue;
+            }
+            let i = (cyp as usize) * cw + (cxp as usize);
+            if depth >= c.depth[i] {
+                px += 1;
+                continue;
+            }
+            let u = (px as f32 - x0f) / wf;
+            let mut tx = (u * tpx) as i32;
+            if tx < 0 { tx = 0; }
+            if tx > tmax { tx = tmax; }
+
+            let o = (t as usize) * tstride
+                + ((ty as usize) * (tile_px as usize) + (tx as usize)) * 4;
+            let (sr, sg, sb, sa) = unsafe {
+                (*atlas.add(o), *atlas.add(o + 1), *atlas.add(o + 2), *atlas.add(o + 3))
+            };
+            if sa == 0 {
+                px += 1;
+                continue;
+            }
+            let d = i * 4;
+            if sa == 255 {
+                c.px[d] = sr;
+                c.px[d + 1] = sg;
+                c.px[d + 2] = sb;
+                c.px[d + 3] = 255;
+                c.depth[i] = depth;
+            } else {
+                let a = (sa as f32) / 255.0f32;
+                let ia = 1.0f32 - a;
+                c.px[d] = ((c.px[d] as f32) * ia + (sr as f32) * a) as u8;
+                c.px[d + 1] = ((c.px[d + 1] as f32) * ia + (sg as f32) * a) as u8;
+                c.px[d + 2] = ((c.px[d + 2] as f32) * ia + (sb as f32) * a) as u8;
+                c.px[d + 3] = 255;
+            }
+            px += 1;
+        }
+        py += 1;
     }
 }
 
@@ -399,6 +580,23 @@ mod tests {
         (tile << 1) | (solid as u16)
     }
 
+    // Sprites drawn after the view, as (x, z, tile). Craftax's mobs stand at
+    // cell centres, so these do too.
+    fn sprites(name: &str) -> Vec<(f32, f32, u32)> {
+        match name {
+            // One near, one far, one behind the eye (must not draw), and one
+            // tucked behind the north wall (must be occluded by the depth
+            // buffer, which is the whole point of the pass).
+            "sprites" => vec![
+                (8.5, 7.5, 1),
+                (8.5, 4.5, 2),
+                (8.5, 12.5, 3),
+                (10.5, 6.5, 0),
+            ],
+            _ => Vec::new(),
+        }
+    }
+
     // (grid, eye, yaw) for each golden scene.
     fn scene(name: &str) -> (Vec<u16>, (f32, f32, f32), u32) {
         let eye = (8.5f32, 0.5f32, 9.5f32);
@@ -427,19 +625,20 @@ mod tests {
                     g[(r * GW + 11) as usize] = cell(1, true); // east
                     g[(r * GW + 5) as usize] = cell(3, true); // west
                 }
-                let q = name.as_bytes()[name.len() - 1] - b'0';
-                (g, eye, q as u32)
+                let q = if name == "sprites" { 0 } else { (name.as_bytes()[name.len() - 1] - b'0') as u32 };
+                (g, eye, q)
             }
         }
     }
 
-    const SCENES: [&str; 6] = [
+    const SCENES: [&str; 7] = [
         "open_field",
         "corridor",
         "wall_yaw0",
         "wall_yaw1",
         "wall_yaw2",
         "wall_yaw3",
+        "sprites",
     ];
 
     fn fnv(px: &[u8]) -> u64 {
@@ -481,22 +680,35 @@ mod tests {
         );
     }
 
+    fn render_all(h: u32, name: &str, g: &[u16], eye: (f32, f32, f32), yaw: u32, a: &[u8]) {
+        render(h, g, eye, yaw, a);
+        for (sx, sz, tile) in sprites(name) {
+            rs_voxel_sprite(
+                h, eye.0, eye.1, eye.2, yaw, VIEW, sx, sz,
+                a.as_ptr(), TILE_PX, N_TILES, tile, DST.0, DST.1, DST.2, DST.3,
+            );
+        }
+    }
+
     fn scene_hash(name: &str) -> u64 {
         let (g, eye, yaw) = scene(name);
         let a = atlas_bytes();
         let h = fresh();
-        render(h, &g, eye, yaw, &a);
+        render_all(h, name, &g, eye, yaw, &a);
         let px = &crate::cv(h).px;
         let hh = fnv(px);
         if let Ok(p) = std::env::var("VOXEL_SCENES_OUT") {
             let line = format!(
                 "{{\"name\":\"{}\",\"hash\":\"{}\",\"gw\":{},\"gh\":{},\"grid\":[{}],\
                  \"eye\":[{},{},{}],\"yaw\":{},\"view\":{},\"tile_px\":{},\"n_tiles\":{},\
-                 \"sky\":{},\"dst\":[{},{},{},{}],\"atlas\":\"{}\"}}\n",
+                 \"sky\":{},\"dst\":[{},{},{},{}],\"sprites\":[{}],\"atlas\":\"{}\"}}\n",
                 name, hh, GW, GH,
                 g.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
                 eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY,
-                DST.0, DST.1, DST.2, DST.3, b64(&a),
+                DST.0, DST.1, DST.2, DST.3,
+                sprites(name).iter().map(|s| format!("[{},{},{}]", s.0, s.1, s.2))
+                    .collect::<Vec<_>>().join(","),
+                b64(&a),
             );
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
@@ -594,16 +806,174 @@ mod tests {
         assert_eq!(a0, a1);
     }
 
+    // --- the sprite pass ---------------------------------------------------
+    // The golden above pins whatever the pass does; these say what it should
+    // do, in terms a human can check.
+
+    // Count the pixels a sprite of `tile` at (sx, sz) changes, from the room
+    // scene at yaw 0.
+    fn sprite_changed(sx: f32, sz: f32, tile: u32) -> usize {
+        let (g, eye, yaw) = scene("wall_yaw0");
+        let a = atlas_bytes();
+        let h = fresh();
+        render(h, &g, eye, yaw, &a);
+        let before = crate::cv(h).px.clone();
+        rs_voxel_sprite(
+            h, eye.0, eye.1, eye.2, yaw, VIEW, sx, sz,
+            a.as_ptr(), TILE_PX, N_TILES, tile, DST.0, DST.1, DST.2, DST.3,
+        );
+        let after = &crate::cv(h).px;
+        (0..before.len() / 4).filter(|i| before[i * 4..i * 4 + 3] != after[i * 4..i * 4 + 3]).count()
+    }
+
+    #[test]
+    fn a_sprite_in_front_of_the_eye_draws() {
+        // Eye is at z 9.5 facing -z, so z 7.5 is two blocks ahead.
+        assert!(sprite_changed(8.5, 7.5, 1) > 0, "a sprite ahead drew nothing");
+    }
+
+    #[test]
+    fn a_nearer_sprite_is_bigger() {
+        let near = sprite_changed(8.5, 8.5, 1);
+        let far = sprite_changed(8.5, 6.5, 1);
+        assert!(near > far, "near {} should cover more than far {}", near, far);
+    }
+
+    #[test]
+    fn a_sprite_behind_the_eye_does_not_draw() {
+        // Facing -z from z 9.5, so z 11.5 is behind.
+        assert_eq!(sprite_changed(8.5, 11.5, 1), 0, "a sprite behind the eye drew");
+    }
+
+    #[test]
+    fn a_sprite_beyond_view_dist_does_not_draw() {
+        assert_eq!(sprite_changed(8.5, -2.5, 1), 0, "a sprite past view_dist drew");
+    }
+
+    #[test]
+    fn a_sprite_behind_a_wall_is_occluded() {
+        // The room's north wall is the row at r = 5; anything past it is hidden.
+        // Without the depth test this would paint over the wall.
+        assert_eq!(sprite_changed(8.5, 3.5, 1), 0, "the depth test did not occlude a sprite");
+    }
+
+    #[test]
+    fn the_sprite_pass_needs_no_view_pass_to_be_safe() {
+        // Defined behaviour on a canvas rs_voxel_view never touched: the depth
+        // buffer is created as +inf and the sprite simply draws.
+        let a = atlas_bytes();
+        let h = fresh();
+        rs_voxel_sprite(
+            h, 8.5, 0.5, 9.5, 0, VIEW, 8.5, 7.5,
+            a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
+        );
+        assert!(crate::cv(h).px.iter().any(|&b| b != 0), "nothing drew");
+    }
+
+    // The depth buffer holds FORWARD distance, not Euclidean. A wall row
+    // perpendicular to the view is the same forward distance from the eye at
+    // every pixel that hits it, so its stored depth must be CONSTANT across
+    // the whole wall. Under Euclidean depth it would fan out by up to sqrt(3)
+    // toward the corners, and a billboard — whose depth is naturally a forward
+    // distance — could then draw through it near the frame edges.
+    #[test]
+    fn wall_depth_is_constant_across_a_flat_wall() {
+        let mut g = vec![cell(0, false); (GW * GH) as usize];
+        for c in 0..GW {
+            g[(4 * GW + c) as usize] = cell(1, true);
+        }
+        let a = atlas_bytes();
+        let h = fresh();
+        // Eye at z 9.5 facing -z; the wall's near face is z = 5, forward 4.5.
+        render(h, &g, (8.5, 0.5, 9.5), 0, &a);
+        let d = &crate::cv(h).depth;
+        let mut seen: Vec<f32> = Vec::new();
+        for py in 0..24 {
+            for px in 0..64 {
+                let v = d[py * 64 + px];
+                if v.is_finite() {
+                    seen.push(v);
+                }
+            }
+        }
+        assert!(seen.len() > 100, "only {} wall pixels above the horizon", seen.len());
+        let lo = seen.iter().cloned().fold(f32::INFINITY, f32::min);
+        let hi = seen.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        // Not a bit-for-bit compare, and deliberately so: `t / len` rounds, so
+        // the constant comes out as 4.4999995 on some pixels and 4.5 on
+        // others — one ULP. What the test discriminates is the SHAPE of the
+        // error. Forward depth is flat to within a few ULP; Euclidean depth
+        // would fan out toward the corners by up to sqrt(3) ~ 1.73x, which is
+        // five orders of magnitude bigger than anything rounding can explain.
+        // (Cross-backend bit-exactness is a separate gate: wasm_voxel_check.)
+        assert!(hi / lo < 1.0001, "wall depth fans out {}..{} across the wall — that is Euclidean depth, not forward", lo, hi);
+        assert!((lo - 4.5f32).abs() < 1.0e-4, "wall forward distance should be 4.5, got {}", lo);
+    }
+
+    // A billboard shrinks with distance and never vanishes inside view_dist.
+    // The d=3 case is the one worth having: in a real Craftax world a mob three
+    // cells away is often hidden behind a tree, which looks exactly like a
+    // broken sprite pass until you check it against an empty field.
+    #[test]
+    fn sprite_falloff_is_smooth_in_an_open_field() {
+        let a = atlas_bytes();
+        let g = vec![cell(0, false); (GW * GH) as usize];
+        let mut last = usize::MAX;
+        for d in 1..9 {
+            let h = fresh();
+            render(h, &g, (8.5, 0.5, 9.5), 0, &a);
+            let before = crate::cv(h).px.clone();
+            rs_voxel_sprite(
+                h, 8.5, 0.5, 9.5, 0, VIEW, 8.5, 9.5 - d as f32,
+                a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
+            );
+            let after = &crate::cv(h).px;
+            let n = (0..before.len() / 4)
+                .filter(|i| before[i * 4..i * 4 + 3] != after[i * 4..i * 4 + 3])
+                .count();
+            assert!(n > 0, "sprite at forward distance {} drew nothing in an open field", d);
+            assert!(n <= last, "sprite at distance {} covers {} px, more than {} at the step before", d, n, last);
+            last = n;
+        }
+    }
+
+    // Off-axis occlusion: a sprite beyond the wall, well away from the centre
+    // of the frame, must still be hidden. This is the case the forward-depth
+    // fix is for.
+    #[test]
+    fn a_sprite_behind_a_wall_is_occluded_off_axis() {
+        let mut g = vec![cell(0, false); (GW * GH) as usize];
+        for c in 0..GW {
+            g[(4 * GW + c) as usize] = cell(1, true);
+        }
+        let a = atlas_bytes();
+        let h = fresh();
+        render(h, &g, (8.5, 0.5, 9.5), 0, &a);
+        let before = crate::cv(h).px.clone();
+        // forward 5.0, lateral +3.0 -> screen x well off centre, and past the
+        // wall at forward 4.5.
+        rs_voxel_sprite(
+            h, 8.5, 0.5, 9.5, 0, VIEW, 11.5, 4.5,
+            a.as_ptr(), TILE_PX, N_TILES, 1, DST.0, DST.1, DST.2, DST.3,
+        );
+        let after = &crate::cv(h).px;
+        let n = (0..before.len() / 4)
+            .filter(|i| before[i * 4..i * 4 + 3] != after[i * 4..i * 4 + 3])
+            .count();
+        assert_eq!(n, 0, "{} pixels of a sprite behind the wall drew off-axis", n);
+    }
+
     // --- the goldens -------------------------------------------------------
     // Recorded 2026-09-15 on aarch64-apple-darwin (rustc 1.97.1) and matched
     // by the wasm32 build the same day (tests/wasm_voxel_check.mjs).
-    const GOLD: [u64; 6] = [
+    const GOLD: [u64; 7] = [
         13989049085383848347,
         14152573310928964130,
         577179221746013019,
         5707841934264548112,
         955063394357532235,
         13551030726708363713,
+        16159111820662843791,
     ];
 
     // All six are hashed before anything is asserted, so a real regression
@@ -639,3 +1009,4 @@ mod tests {
         eprintln!("BENCH_VOXEL {:.2} us/frame", us);
     }
 }
+

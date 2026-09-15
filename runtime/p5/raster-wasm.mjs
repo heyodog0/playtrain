@@ -100,6 +100,16 @@ export function makeWasmBackend(ex) {
         ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
     }
 
+    // The atlas is already staged by the voxelView call that precedes this in
+    // the frame, but re-staging is cheap and makes a sprite-only frame work.
+    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
+      ex.rs_voxel_atlas_ptr(atlas.length);
+      const ap = ex.rs_voxel_atlas_ptr(atlas.length);
+      new Uint8Array(mem(), ap, atlas.length).set(atlas);
+      ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
+        ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+    }
+
     // ---- 3D (p5 WEBGL mode). Mirrors native/runtime/p5.cpp call for call. ----
     begin3d(lw, lh) { ex.rs_3d_begin(this._h, lw, lh); ex.rs_3d_frame_begin(); }
     frame3dBegin() { ex.rs_3d_frame_begin(); }

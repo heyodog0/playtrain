@@ -194,6 +194,27 @@ FN(js_voxelView) {
   JS_FreeValue(ctx, gab);
   return JS_UNDEFINED;
 }
+// voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
+//             atlasU8, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH)
+FN(js_voxelSprite) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t aoff = 0, alen = 0, aper = 0;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[7], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) return JS_UNDEFINED;
+  size_t asz = 0;
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (asrc && aoff + alen <= asz) {
+    p5::voxelSprite(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]),
+                    (int)argd(ctx, argv[3]), argd(ctx, argv[4]),
+                    argd(ctx, argv[5]), argd(ctx, argv[6]),
+                    asrc + aoff, (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]),
+                    (int)argd(ctx, argv[10]),
+                    (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                    (int)argd(ctx, argv[13]), (int)argd(ctx, argv[14]));
+  }
+  JS_FreeValue(ctx, aab);
+  return JS_UNDEFINED;
+}
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
@@ -232,6 +253,7 @@ static const Binding BINDINGS[] = {
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
   {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
   {"voxelView", js_voxelView, 16},
+  {"voxelSprite", js_voxelSprite, 15},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},

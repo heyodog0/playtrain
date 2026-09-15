@@ -59,6 +59,13 @@ function draw() {
   tick++;
   voxelView(grid, GW, GH, 8.5, 0.5, 9.5, yaw, VIEW,
     atlas, TILE_PX, N_TILES, SKY, 0, 0, 64, VIEW_H);
+  // Billboards: one two cells ahead of the eye at yaw 0, one to the side, and
+  // one beyond the north wall that the depth test must hide. Drawn every
+  // frame so the differential gate covers the sprite pass as well.
+  for (const [sx, sz, tile] of [[8.5, 7.5, 1], [10.5, 8.5, 2], [8.5, 3.5, 3]]) {
+    voxelSprite(8.5, 0.5, 9.5, yaw, VIEW, sx, sz,
+      atlas, TILE_PX, N_TILES, tile, 0, 0, 64, VIEW_H);
+  }
 }
 
 function resetGame(_seed) { yaw = 0; tick = 0; }

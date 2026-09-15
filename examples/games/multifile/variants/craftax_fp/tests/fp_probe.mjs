@@ -18,9 +18,20 @@
 import fs from 'node:fs';
 import { createCanvas } from '../../../../../../runtime/p5/raster-wasm.mjs';
 
-const [bundlePath, seedArg, ...dirArgs] = process.argv.slice(2);
+// `--mob <dRow> <dCol>` puts a zombie at that offset from the player and
+// reports how many pixels it changed, instead of hashing facings. Mobs are
+// rare and never where you want them, so injecting one is the only way to
+// test the billboard pass end to end through the game's own renderer.
+const argv = process.argv.slice(2);
+const mobAt = argv.indexOf('--mob');
+let mob = null;
+if (mobAt >= 0) {
+  mob = [Number(argv[mobAt + 1]), Number(argv[mobAt + 2])];
+  argv.splice(mobAt, 3);
+}
+const [bundlePath, seedArg, ...dirArgs] = argv;
 if (!bundlePath || !seedArg || dirArgs.length === 0) {
-  console.error('usage: fp_probe.mjs <bundle.js> <seed> <dir> [dir...]');
+  console.error('usage: fp_probe.mjs [--mob <dRow> <dCol>] <bundle.js> <seed> <dir> [dir...]');
   process.exit(2);
 }
 
@@ -47,6 +58,7 @@ const surface = {
   loadBitmap(id, bytes) { return bitmaps[id].getContext('2d').loadRGBA(bytes); },
   image(id, x, y, w, h) { ctx.drawImage(bitmaps[id], x, y, w, h); },
   voxelView(...args) { ctx.voxelView(...args); },
+  voxelSprite(...args) { ctx.voxelSprite(...args); },
   keyIsDown() { return false; },
   print(...a) { console.error(...a); },
 };
@@ -73,6 +85,27 @@ function fnv1a(bytes) {
 
 for (const d of dirArgs) {
   game.state.playerDir[0] = Number(d);
+  if (mob) {
+    // Render once with no mobs at all, to diff against.
+    for (let i = 0; i < game.state.zombieMask.length; i++) game.state.zombieMask[i] = 0;
+    for (let i = 0; i < game.state.cowMask.length; i++) game.state.cowMask[i] = 0;
+    for (let i = 0; i < game.state.skelMask.length; i++) game.state.skelMask[i] = 0;
+    for (let i = 0; i < game.state.arrowMask.length; i++) game.state.arrowMask[i] = 0;
+    game.renderGameFp(game.state);
+    const clean = Uint8Array.from(ctx.getImageData().data.subarray(0, CANVAS * VIEW_H * 4));
+    game.state.zombieMask[0] = 1;
+    game.state.zombieR[0] = game.state.playerR[0] + mob[0];
+    game.state.zombieC[0] = game.state.playerC[0] + mob[1];
+    game.renderGameFp(game.state);
+    const withMob = ctx.getImageData().data;
+    let changed = 0;
+    for (let i = 0; i < CANVAS * VIEW_H; i++) {
+      const o = i * 4;
+      if (clean[o] !== withMob[o] || clean[o + 1] !== withMob[o + 1] || clean[o + 2] !== withMob[o + 2]) changed++;
+    }
+    console.log(`dir ${d} mobpixels=${changed}`);
+    continue;
+  }
   game.renderGameFp(game.state);
   const px = ctx.getImageData().data;
   // Pixels above the horizon (rows 0..23) that are not sky. Only a CUBE can

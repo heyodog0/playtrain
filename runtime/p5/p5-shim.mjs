@@ -264,6 +264,16 @@ function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx
     atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH);
 }
 
+// One upright billboard, depth-tested against the voxel view's ray depths.
+// Mirrors p5::voxelSprite in native/runtime/p5.cpp.
+function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.voxelSprite !== 'function') {
+    throw new Error('voxelSprite: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
+    atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH);
+}
+
 // ---- Drawing primitives ----
 function background(...args) {
   _ctx.save();
@@ -676,7 +686,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,
