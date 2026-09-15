@@ -240,9 +240,34 @@ the observation mode, so it measures pixel throughput and nothing else.
 | `craftax_fp` | **5,935** | 168.5 |
 | `craftax_classic` | 397 | 2,518.9 |
 
-**14.9× faster.** This is the number the variant exists for: the classic
+**13.4× faster.** This is the number the variant exists for: the classic
 renderer spends almost its whole step in per-pixel JS loops, and an
-interpreter runs those slowly.
+interpreter runs those slowly. (It was 14.9× before face shading, fog and the
+sky gradient were added; the look costs about 20 µs a step.)
+
+### Vectorised host — `NativeVecEnv`
+
+Worker threads are `min(num_envs, performance-core count)`; this M4 has 4 P and
+6 E cores.
+
+| envs | SPS total | cores busy |
+|---|---|---|
+| 1 | 10,573 | 1.00 |
+| 2 | 18,605 | 1.92 |
+| 4 | 18,493 | 4.07 |
+| 8 | 16,372 | 3.88 |
+| 16 | 17,193 | 3.89 |
+
+**It plateaus at ~18.5k from two envs upward, and that is a host limitation,
+not the machine's.** Four cores are busy at 4 envs but per-core throughput has
+halved. The discriminating experiment: **four separate processes with one env
+each total 33,522 SPS**, where one process with four envs gets 18,493 — so the
+same cores deliver 1.8× more when the envs do not share a process. The likely
+causes are the per-step spin barrier (it waits for the slowest shard, and
+Python dispatches every step) and shared-cache pressure from four ~64 KB
+per-env working sets on the M4's single P-core cluster. Fixing it would mean
+changing `native/qjs/qjs_vec_host.cpp`, which this plan authorises only for the
+voxel bindings, so it is recorded rather than changed.
 
 ### V8 — `tests/envprof.mjs` (node `GameEnv`, in process)
 
