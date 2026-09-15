@@ -17,7 +17,7 @@ field or pixel, expected, actual) and stop.
 | T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | done | `uv run pytest tests/test_voxel.py -q`: `5 passed in 1.20s`; `GATE PASS: voxel_smoke` (200 steps × 3 seeds bit-exact) | dcfdbf0 | See "T2 findings" below. Repo suite `105 passed, 3 skipped`; classic parity suite `117 passed` — no regressions from the wasm rebuild. |
 | T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `15_atlas_fp.js` + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | done | `uv run pytest examples/games/multifile/variants/craftax_fp/tests -q`: `18 passed in 0.44s`; bundle `--check` → `ok craftax_fp`; `built 1 games` | 8c57ca2 | See "T3 findings". Repo suite `106 passed, 3 skipped`. Both gates mutation-checked. |
 | T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | done | `uv run pytest .../craftax_fp/tests/test_same_dynamics.py -q`: `6 passed in 5.11s`; driver: `210 episodes, 49061 steps, 0 differing bytes` | f665b4f | Symbolic obs equal too. G2 re-run here: `3 passed` (classic == C). See "T4 findings" for the golden-chain anomaly. |
-| T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | todo | | | GATE PASS ×3 "bit-exact". Never run two `gate_qjs.sh` at once (fixed `/tmp/gateq_*`). |
+| T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | done | `8 passed in 8.56s`; `GATE PASS: craftax_fp`, 3× `3000 steps bit-exact` | f70b6d0 | Symbolic mode agrees too; vectorised host deterministic and equal to the single env. Whole variant suite `32 passed`. |
 | T6 | `rs_voxel_sprite` + `rs_dusk` (§4.4 option A) + night static with driver seed; goldens extended; wasm check; T5 rerun | todo | | | Also: a night frame at `light_level<0.5` must differ from its daylight twin. |
 | T7 | Throughput: Mac `qjs_host bench` + V8 `envprof` for fp vs classic; one exclusive cluster job; `outputs/craftax_fp_bench.json` | todo | | | Cluster via `fasrc '<cmd>'`; `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`. Classic baseline from the same harness beside every fp number. |
 | T8 | Hand-off: play page at `dist/craftax-fp-play/`, serve command, what the human checks | todo | | | Hand-off stays a hand-off — do not simulate a human session. |
@@ -409,10 +409,67 @@ slot loop honest.
 re-run after any change to the fp sources. Do that before trusting a pixel
 gate; a dynamics divergence would otherwise show up as a confusing image diff.
 
+## T5 findings
+
+**Gate, green first run.**
+
+```
+PASS craftax_fp seed=1 (3000 steps bit-exact)
+PASS craftax_fp seed=42 (3000 steps bit-exact)
+PASS craftax_fp seed=777 (3000 steps bit-exact)
+GATE PASS: craftax_fp
+```
+
+Invocation (the sidecar's action table must be passed explicitly to
+`qjs_host`; the node side reads it from the sidecar itself):
+
+```sh
+cd native
+FPD=../examples/games/multifile/variants/craftax_fp/dist
+PLAYTRAIN_GAMES_DIR=$FPD \
+PLAYTRAIN_QJS_ACTIONS="$(jq -c .actions $FPD/craftax_fp.json)" \
+  ./gate_qjs.sh craftax_fp 3000
+```
+
+This is the strongest cross-target evidence for the voxel primitive so far:
+3,000 steps × 3 seeds of a real trajectory, with the observation hash compared
+every step, where QuickJS runs the Rust compiled **natively** and V8 runs the
+same Rust compiled to **wasm32**. T1's six golden scenes pinned that equality
+on hand-built grids; this pins it on 9,000 frames of actual Craftax worlds.
+
+**`uv run pytest .../craftax_fp/tests/test_engines_fp.py -q` → `8 passed in
+8.56s`.** Beyond the gate itself:
+
+- **Symbolic mode still agrees** across engines (600 steps × 3 seeds), and the
+  companion test proves it is not silently falling back to pixels — the
+  symbolic obshash must differ from the pixel one.
+- **The vectorised host matches the single env frame for frame.** This is the
+  sharp end of "rasterizer state is per-env": the voxel primitive keeps a depth
+  buffer on the canvas and grid/atlas staging on the per-env `RState`, and if
+  either leaked between envs, two envs in one process would not reproduce one
+  env in its own process. They do.
+- **Anti-vacuity is specific to this variant:** fp and classic share a seed and
+  have identical dynamics (T4), so the only thing that can make their
+  observation hashes differ is the renderer. The test asserts they differ —
+  a craftax_fp that somehow rendered the top-down frame would pass the
+  differential gate happily but fails this.
+
+**What T5 does not do, deliberately.** There is no forced-divergence mutation
+check here. Making the two engines genuinely disagree would mean breaking the
+Rust and rebuilding both hosts, and `gate_qjs.sh` is the repo's established
+differential gate with its own history of catching exactly this. The vacuity
+risk that *is* specific to craftax_fp — a green gate over the wrong frame — is
+covered by the test above.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T5 — ran `gate_qjs.sh craftax_fp 3000`: GATE PASS, 3 seeds ×
+  3000 steps bit-exact, first run. Wrote `test_engines_fp.py` (8 tests):
+  pixel gate, symbolic gate plus its non-vacuity check, an fp-vs-classic
+  obshash test so the gate cannot pass on the wrong frame, and vectorised-host
+  determinism and equality with the single env. Commit `f70b6d0`.
 - 2026-09-15 — T4 — wrote `same_dynamics.cjs` (both bundles in one node
   process, compared in memory) and `test_same_dynamics.py`. 210 episodes,
   49,061 steps, zero differing bytes of state or symbolic obs. Built the C
