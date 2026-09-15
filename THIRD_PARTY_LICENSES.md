@@ -12,7 +12,7 @@ binary. The build fetches the sources rather than vendoring them
 | [matter-js](https://brm.io/matter-js/) 0.20.0 | 2D physics for the games that use it (`tools/vendor/matter.min.js`, MIT header inline) | MIT |
 | [ProcGen](https://github.com/openai/procgen) | reference C++ sources, not compiled — see `games/procgen_src/LICENSE` | MIT |
 | [PufferLib](https://github.com/PufferAI/PufferLib) | reference C sources for the Craftax-Classic parity port, not compiled — see `games/craftax_src/` | MIT |
-| [Craftax](https://github.com/MichaelTMatthews/Craftax) | the 16x16 textures the Craftax-Classic port renders from, baked into the bundle at build time — see `games/craftax_assets/` | MIT |
+| [Craftax](https://github.com/MichaelTMatthews/Craftax) | the 16x16 textures the Craftax-Classic port and its first-person variant render from, baked into their bundles at build time — see `games/craftax_assets/` | MIT |
 
 ---
 
@@ -57,6 +57,13 @@ Craftax-Classic port renders from them so its observation carries the same
 image the published Craftax-Classic-Pixels benchmark does. They are baked
 into the bundle by `tools/craftax_atlas.py`, so no asset file ships or is
 loaded at runtime.
+
+The first-person variant in `examples/games/multifile/variants/craftax_fp/`
+renders from **the same vendored PNGs** — no new assets were added for it. It
+bakes them with a second tool, `tools/craftax_atlas_fp.py`, which differs only
+in keeping Craftax's authored 16x16 resolution instead of downscaling to the
+7x7 the classic port's agent view uses. Same provenance, same licence, same
+"baked in, nothing loaded at runtime".
 
 ## MIT License
 
