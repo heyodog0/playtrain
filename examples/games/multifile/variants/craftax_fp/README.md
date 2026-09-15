@@ -100,16 +100,34 @@ The hook is **opt-in per game**: `tools/play-templates.mjs` calls it only if
 the game defines it, so all 38 catalog pages build and behave exactly as
 before.
 
-## Controls are absolute, and that is the price of "same task"
+## Controls: relative for you, absolute for the agent
 
-Arrows move and face in **world** directions, not relative to the camera. Left
-always steps west, whichever way you are looking; the camera snaps to face the
-way you moved.
+At the keyboard the arrows are **relative to where you face**: UP walks
+forward, DOWN turns around and walks back, LEFT and RIGHT turn a quarter and
+step that way. Absolute arrows in a first-person view are genuinely
+disorienting — pressing Left while facing south walks you west, which on screen
+looks like sidling right while the camera whips around.
 
-Relative turn-and-walk controls would need different actions, which would
-change the action space and therefore the dynamics — and the whole claim here
-is that the dynamics are untouched. So the camera follows `playerDir` and the
-keys stay Craftax's.
+**There is no turn-in-place.** `movePlayer` in `40_player.js` sets the facing
+and *then* steps if the way is clear, so every direction action is a turn and a
+move together; turning without moving only happens incidentally when something
+blocks you. A real turn action would be a new action index, which would change
+the action space and the dynamics and make this a different game.
+
+**The agent's action space is unchanged, and this is the subtle part.**
+PlayTrain drives games by synthesising keys: `GameEnv.step(actionIndex)` looks
+the index up in the sidecar, presses those keys, and the game's
+`currentAction()` reads them. So a facing-relative `currentAction()` would
+silently redefine what every action index means *for training* — that was
+tried, and it made craftax_fp diverge from craftax_classic under identical
+action indices, caught by the inventory-strip gate at step 24.
+
+So the translation lives in `relativeArrow(code)`, a pure function the **play
+page** calls before it sends keys. `currentAction()` stays Craftax's absolute
+mapping: a raw UP key is north whatever you are facing. Both halves are gated
+(`test_arrows_are_facing_relative_for_a_human_but_absolute_for_an_agent`).
+
+The page hook is opt-in per game, so the other 38 catalog pages are untouched.
 
 ## What is exact, and what is not
 

@@ -277,8 +277,20 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
       return;
     }
     last = now;
-    setKeysDown(Array.from(held));
-    pressed.forEach(function (c) { simulateKeyPress(c); });   // one-shot keyPressed() events
+    // Opt-in per game: if the game exposes relativeArrow(code), arrow keys are
+    // translated through it before being sent. A first-person game uses this to
+    // make UP mean "forward" rather than "north". It deliberately lives here
+    // and not inside the game's own key reader, because GameEnv.step() drives
+    // the game by synthesising the sidecar's keys — a game that reinterpreted
+    // them itself would silently redefine what every action index means for a
+    // TRAINING run too. Catalog games do not define it and are unaffected.
+    var remap = typeof window.relativeArrow === 'function' ? window.relativeArrow : null;
+    var mapKey = function (c) {
+      if (!remap) return c;
+      try { return remap(c); } catch (e) { return c; }
+    };
+    setKeysDown(Array.from(held).map(mapKey));
+    pressed.forEach(function (c) { simulateKeyPress(mapKey(c)); });   // one-shot keyPressed() events
     pressed.clear();
     setPointerPos(mq.x, mq.y);
     setButtons(mq.down ? 1 : 0);

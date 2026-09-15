@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 19 sources listed in
 // examples/games/multifile/variants/craftax_fp/manifest.json
-// Source hash (sha256 over the concatenated sources): 8e37ce74a8154dc20f4768dbdf1afac1e77e974b673e3a9206865f10aada734f
+// Source hash (sha256 over the concatenated sources): 9b22283429b4e803317ffa4d0c575c9c1413397046f7386d02f363c45e592e73
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_fp
@@ -3553,6 +3553,51 @@ function currentAction() {
   if (keyIsDown(38)) return ACT_UP;
   if (keyIsDown(40)) return ACT_DOWN;
   return ACT_NOOP;
+}
+
+// --- facing-relative arrows, for a HUMAN at the keyboard ---------------------
+//
+// In a first-person view Craftax's absolute arrows are disorienting: pressing
+// Left while facing south walks you west, which on screen looks like sidling
+// right while the camera whips around. `relativeArrow` translates an arrow
+// keycode into the arrow that means the same thing relative to where you are
+// facing, so UP is always forward.
+//
+// WHY THIS IS A SEPARATE FUNCTION AND NOT PART OF currentAction(). PlayTrain
+// drives games by SYNTHESISING KEYS: GameEnv.step(actionIndex) looks the index
+// up in the sidecar, presses those keys, and the game's currentAction() reads
+// them. So a facing-relative currentAction() would silently redefine what every
+// action index means for the AGENT as well — measured, not guessed: it made
+// craftax_fp and craftax_classic diverge under identical action indices, and
+// the inventory-strip gate caught it at step 24.
+//
+// Keeping the translation here, as a pure function the PLAY PAGE calls before
+// it sends keys, means the human gets relative controls while the action space
+// stays Craftax's own absolute one. Training never calls this.
+//
+// It is still not a turn-in-place: `movePlayer` in 40_player.js sets the facing
+// and then steps if the way is clear, so every direction action is a turn AND a
+// move. Left and Right turn a quarter and step that way; Down turns around and
+// walks back, so the view flips. A real turn action would need a new action
+// index, which would change the action space and the dynamics.
+//
+// Tables are indexed by playerDir (1 west, 2 east, 3 north, 4 south); entry 0
+// is unreachable and mirrors north so a corrupt value cannot index off the end.
+const KEY_LEFT = 37, KEY_RIGHT = 39, KEY_UP = 38, KEY_DOWN = 40;
+const FP_ARROW_FWD = [KEY_UP, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN];
+const FP_ARROW_BACK = [KEY_DOWN, KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP];
+const FP_ARROW_LEFT = [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_LEFT, KEY_RIGHT];
+const FP_ARROW_RIGHT = [KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT];
+
+function relativeArrow(code) {
+  if (gameState === null) return code;
+  const dir = gameState.playerDir[0];
+  if (dir < 1 || dir > 4) return code;
+  if (code === KEY_UP) return FP_ARROW_FWD[dir];
+  if (code === KEY_DOWN) return FP_ARROW_BACK[dir];
+  if (code === KEY_LEFT) return FP_ARROW_LEFT[dir];
+  if (code === KEY_RIGHT) return FP_ARROW_RIGHT[dir];
+  return code;
 }
 
 function draw() {

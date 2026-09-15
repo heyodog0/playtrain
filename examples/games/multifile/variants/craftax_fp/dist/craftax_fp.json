@@ -102,12 +102,13 @@
     "rgb": true,
     "symbolic": 1345,
     "rgb_size": 64,
-    "frame": "rows 0-48 are the first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide, byte-identical to craftax_classic), row 63 black padding"
+    "frame": "rows 0-48 are the first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide, byte-identical to craftax_classic), row 63 black padding",
+    "controls_note": "the arrow KEYMAP is facing-relative for human play only; the 17-action space is Craftax's own absolute one and training never goes through the keymap"
   },
   "max_steps": 10000,
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move and face in WORLD directions (not relative to the camera) - the camera snaps to the way you face. SPACE interacts with the cell ahead. TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand next to a table; iron needs a furnace too).",
+    "controls": "Arrows are relative to where you face: UP walks forward, DOWN turns around and walks back, LEFT and RIGHT turn a quarter and step that way (Craftax has no turn-in-place action). SPACE interacts with the cell ahead. TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand next to a table; iron needs a furnace too).",
     "keymap_overlay": true
   },
   "reference": {
@@ -122,5 +123,5 @@
       "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
     ]
   },
-  "source_sha256": "8e37ce74a8154dc20f4768dbdf1afac1e77e974b673e3a9206865f10aada734f"
+  "source_sha256": "9b22283429b4e803317ffa4d0c575c9c1413397046f7386d02f363c45e592e73"
 }

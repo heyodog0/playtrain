@@ -270,6 +270,50 @@ def test_the_smooth_camera_interpolates_and_lands_on_the_training_frame():
     )
 
 
+def test_arrows_are_facing_relative_for_a_human_but_absolute_for_an_agent():
+    """Both halves of the relative-controls design, because getting this wrong
+    is silent and expensive.
+
+    A first-person view with Craftax's absolute arrows is disorienting, so the
+    play page translates arrow keys through the game's relativeArrow() before
+    sending them: UP becomes whichever world direction is forward.
+
+    The half that must NOT change is currentAction(). PlayTrain drives games by
+    synthesising the sidecar's keys — GameEnv.step(actionIndex) presses them and
+    the game reads them — so a facing-relative currentAction() would redefine
+    what every action index means for a TRAINING run. That was tried, and it
+    made craftax_fp diverge from craftax_classic under identical action indices
+    (the inventory-strip gate caught it at step 24). Hence: translation lives in
+    a pure function the page calls, and a raw UP key is always north."""
+    proc = subprocess.run(
+        ["node", "tests/fp_probe.mjs", "--arrows", "dist/craftax_fp.js", "1", "3"],
+        cwd=GAME_DIR, capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    rows = {}
+    for line in proc.stdout.strip().splitlines():
+        parts = line.split()
+        rows[parts[1]] = (dict(p.split("->") for p in parts[2:6]), parts[6])
+
+    assert set(rows) == {"west", "east", "north", "south"}, proc.stdout
+
+    # Forward is forward, for every facing.
+    forward = {"north": "up", "south": "down", "east": "right", "west": "left"}
+    for facing, (arrows, raw) in rows.items():
+        assert arrows["up"] == forward[facing], (
+            f"facing {facing}: UP maps to {arrows['up']}, expected {forward[facing]}"
+        )
+        # ...and the four arrows stay a permutation: no direction is lost.
+        assert sorted(arrows.values()) == ["down", "left", "right", "up"], (
+            f"facing {facing}: arrows are not a permutation: {arrows}"
+        )
+        # The agent-facing mapping is absolute, whatever the player faces.
+        assert raw == "rawup=north", f"facing {facing}: a raw UP key gave {raw}, not north"
+
+    # Facing north must be the identity, or the table is rotated.
+    assert rows["north"][0] == {"up": "up", "down": "down", "left": "left", "right": "right"}
+
+
 def test_the_play_page_builds(tmp_path):
     out = tmp_path / "play"
     proc = subprocess.run(
@@ -295,3 +339,4 @@ def test_the_play_page_builds(tmp_path):
     assert "1000 / 8" in html, "the page is not paced at the sidecar's 8 steps/s"
     # The smooth-camera hook, and the page's opt-in call to it.
     assert "renderInterpolated" in html, "the page lost the smooth-camera hook"
+    assert "relativeArrow" in html, "the page lost the facing-relative arrow remap"

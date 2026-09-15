@@ -42,6 +42,13 @@ if (nightAt >= 0) {
 // `--smooth` steps once and hashes the interpolated frame at several alphas,
 // plus the snapped frame draw() produces, so a test can prove the camera
 // really moves between steps AND that alpha=1 lands on the training frame.
+// `--arrows` reports, for each facing, which ABSOLUTE arrow each pressed arrow
+// becomes, and what currentAction() returns for a raw arrow. The second half is
+// the load-bearing one: it must stay Craftax's absolute mapping, or the action
+// index an agent sends would mean something facing-dependent.
+const arrowsAt = argv.indexOf('--arrows');
+const arrows = arrowsAt >= 0;
+if (arrows) argv.splice(arrowsAt, 1);
 const smoothAt = argv.indexOf('--smooth');
 const smooth = smoothAt >= 0;
 if (smooth) argv.splice(smoothAt, 1);
@@ -63,6 +70,11 @@ const canvas = createCanvas(CANVAS, CANVAS, CANVAS, CANVAS);
 const ctx = canvas.getContext('2d');
 const bitmaps = [];
 
+// Indirection so a probe can swap the key source AFTER the bundle has been
+// constructed: the surface's functions are passed by value into the bundle's
+// scope, so reassigning a property on `surface` later would not be seen.
+let _keyDown = () => false;
+
 const surface = {
   createCanvas(w, h) {
     if (w !== CANVAS || h !== CANVAS) throw new Error(`createCanvas ${w}x${h}`);
@@ -81,7 +93,7 @@ const surface = {
   voxelView(...args) { ctx.voxelView(...args); },
   voxelSprite(...args) { ctx.voxelSprite(...args); },
   voxelDusk(...args) { ctx.voxelDusk(...args); },
-  keyIsDown() { return false; },
+  keyIsDown(c) { return _keyDown(c); },
   print(...a) { console.error(...a); },
 };
 
@@ -89,7 +101,7 @@ const src = fs.readFileSync(bundlePath, 'utf8');
 // The bundle is a plain concatenation, so evaluating it in a function scope
 // with the surface in scope is exactly how a host presents those globals.
 const names = Object.keys(surface);
-const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, renderInterpolated, fpNotePose, setDriverSeed, get state() { return gameState; } };`);
+const run = new Function(...names, `${src}\nreturn { setup, draw, resetGame, stepGame, nightTick, renderGameFp, renderInterpolated, fpNotePose, setDriverSeed, relativeArrow, currentAction, get state() { return gameState; } };`);
 const game = run(...names.map((n) => surface[n]));
 
 game.setup();
@@ -116,6 +128,22 @@ function diff(a, b) {
     if (a[o] !== b[o] || a[o + 1] !== b[o + 1] || a[o + 2] !== b[o + 2]) n++;
   }
   return n;
+}
+
+if (arrows) {
+  const NAME = { 37: 'left', 38: 'up', 39: 'right', 40: 'down' };
+  const DIRN = { 1: 'west', 2: 'east', 3: 'north', 4: 'south' };
+  const ACT = { 1: 'west', 2: 'east', 3: 'north', 4: 'south', 0: 'noop' };
+  for (const dir of [1, 2, 3, 4]) {
+    game.state.playerDir[0] = dir;
+    const out = [38, 40, 37, 39].map((c) => `${NAME[c]}->${NAME[game.relativeArrow(c)]}`);
+    // And what the game itself does with a RAW arrow, which must not vary.
+    _keyDown = (c) => c === 38;
+    const raw = game.currentAction();
+    _keyDown = () => false;
+    console.log(`facing ${DIRN[dir]} ${out.join(' ')} rawup=${ACT[raw]}`);
+  }
+  process.exit(0);
 }
 
 if (smooth) {
