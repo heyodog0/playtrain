@@ -16,7 +16,7 @@ field or pixel, expected, actual) and stop.
 | T1 | `rs_voxel_view` in new `crates/rasterizer/src/voxel.rs`; 6 golden scenes (open field, corridor, wall at each of 4 yaws); `tests/wasm_voxel_check.mjs` | done | `cargo test --release`: `13 passed; 0 failed; 2 ignored`; wasm check `PASS` ×6, native hash == wasm hash; **44.87 µs/frame** | 5b5ca36 | See "T1 findings" below for the ABI T2 must bind and the depth-buffer decision. |
 | T2 | Bindings: `p5.hpp/.cpp`, `qjs_host.cpp`, `qjs_vec_host.cpp`, `p5-shim.mjs`, `raster.mjs` (pure-JS fallback, bit-identical), `raster-wasm.mjs`; `tests/games/voxel_smoke.js` + `tests/test_voxel.py` | done | `uv run pytest tests/test_voxel.py -q`: `5 passed in 1.20s`; `GATE PASS: voxel_smoke` (200 steps × 3 seeds bit-exact) | dcfdbf0 | See "T2 findings" below. Repo suite `105 passed, 3 skipped`; classic parity suite `117 passed` — no regressions from the wasm rebuild. |
 | T3 | Game: `examples/games/multifile/variants/craftax_fp/` manifest + `15_atlas_fp.js` + `80_render_fp.js` + `90_playtrain_fp.js`; bundle; play page | done | `uv run pytest examples/games/multifile/variants/craftax_fp/tests -q`: `18 passed in 0.44s`; bundle `--check` → `ok craftax_fp`; `built 1 games` | 8c57ca2 | See "T3 findings". Repo suite `106 passed, 3 skipped`. Both gates mutation-checked. |
-| T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | todo | | | Zero differing bytes of the 6,880-byte dump, plus symbolic obs equal. **Any diff = dynamics changed: mark blocked and stop.** |
+| T4 | Dynamics-invariance gate `tests/test_same_dynamics.py` over `traces/corpus/` + `traces/golden.json` | done | `uv run pytest .../craftax_fp/tests/test_same_dynamics.py -q`: `6 passed in 5.11s`; driver: `210 episodes, 49061 steps, 0 differing bytes` | f665b4f | Symbolic obs equal too. G2 re-run here: `3 passed` (classic == C). See "T4 findings" for the golden-chain anomaly. |
 | T5 | Cross-engine `tests/test_engines_fp.py` → `native/gate_qjs.sh craftax_fp 3000`, seeds 1 42 777 | todo | | | GATE PASS ×3 "bit-exact". Never run two `gate_qjs.sh` at once (fixed `/tmp/gateq_*`). |
 | T6 | `rs_voxel_sprite` + `rs_dusk` (§4.4 option A) + night static with driver seed; goldens extended; wasm check; T5 rerun | todo | | | Also: a night frame at `light_level<0.5` must differ from its daylight twin. |
 | T7 | Throughput: Mac `qjs_host bench` + V8 `envprof` for fp vs classic; one exclusive cluster job; `outputs/craftax_fp_bench.json` | todo | | | Cluster via `fasrc '<cmd>'`; `-c 64 --exclusive`, `unset OMP_NUM_THREADS`, `uv run --no-sync`. Classic baseline from the same harness beside every fp number. |
@@ -348,10 +348,78 @@ fp inventory rows equal classic's for the same state.
 each (`FP_PACK`, 17 entries). Plan §5 suggests a dirty flag; correctness first,
 and T7 measures whether it is worth the state.
 
+## T4 findings
+
+**Gate, green.** `tests/same_dynamics.cjs` steps both bundles over the whole
+corpus in one node process and compares in memory:
+
+```
+{ "ok": true, "episodes": 210, "steps": 49061,
+  "symbolic_steps": 49061, "chain_steps": 49061, "state_bytes": 6880 }
+```
+
+**Zero differing bytes** of the 6,880-byte canonical dump over all 49,061
+steps, and zero differing bytes of the 1,345-float symbolic observation.
+Reward bits and the done flag match the committed `traces/golden/` chains at
+every step. `uv run pytest ... -q` → `6 passed in 5.11s`.
+
+**Mutation-checked.** Adding one line to `isSolid` in the built fp bundle
+(making sand impassable) fails the gate with
+`corpus/uniform_000.bin seed 0 step 198: canonical state byte 4365 fp 16 vs
+classic 32` — the exact episode, step, offset and both values.
+
+**G2 was re-run on this machine**, because T4 only proves fp == classic and
+the claim people care about is fp == the C. `reference/build.sh` builds clean
+here (`built build/cc_ref`), and
+`uv run pytest .../craftax_classic/tests/test_lockstep.py -q` → **`3 passed in
+11.93s`**: classic == PufferLib's C, full canonical state, 210 episodes /
+49,061 steps. So the chain **fp == classic == C** is measured end to end on
+this machine, not inferred from the manifest. `reference/build/` is
+gitignored; rebuild it before quoting G2 again.
+
+**The golden chains' hash column cannot be reproduced, and that is the C
+driver's problem, not this variant's.** Worth writing down because the next
+person will try it and lose an hour.
+
+- `cc_ref_driver.c` computes `h = fnv1a64(buf, nb)` and then
+  `fwrite(buf, 1, nb, stdout)` — the same buffer, no re-serialisation between
+  them. So the stored hash ought to be FNV-1a of the bytes that follow it.
+- It is not. Running `cc_ref run 0 traces/corpus/uniform_000.bin
+  --dump-every 1` directly: step 1 stores **`8400bbda888c0c14`** and dumps a
+  state whose FNV-1a is **`0e925c8efd402f7a`**. That holds for all 201 steps
+  of the episode, and for every prefix length of the dump (checked
+  exhaustively, 0..6880), and for FNV-1 and a signed-char variant.
+- The JS `fnv1a64` in `common/parity.js` is **correct** — it reproduces the
+  standard vectors (`""`, `"a"`, `"foobar"`) and a BigInt reference — and the
+  JS dump hashes to `0e925c8efd402f7a`, i.e. **the JS dump is byte-identical
+  to the C's dumped state**. Nothing is wrong with the port.
+- So T4 compares the chains' **reward bits and done flag** (both match, all
+  49,061 steps) and not the hash column. Gating on that column would mean
+  gating on a reference-driver quirk. Recorded here rather than "fixed":
+  investigating it belongs with the classic port, not this plan.
+
+**The inventory strip is gated now**, closing T3's open item. `rows 49..62,
+cols 0..62` of the fp frame are compared pixel for pixel against
+craftax_classic's over a 64-step trajectory that moves the inventory, plus a
+companion test asserting the strip is not blank and does change — the equality
+test alone would pass on two blank strips. This is what keeps the duplicated
+slot loop honest.
+
+**Note for T5 and after:** the corpus driver runs in ~5 s, so it is cheap to
+re-run after any change to the fp sources. Do that before trusting a pixel
+gate; a dynamics divergence would otherwise show up as a confusing image diff.
+
 ## Log
 
 Newest first. One line per iteration: date, task, what happened.
 
+- 2026-09-15 — T4 — wrote `same_dynamics.cjs` (both bundles in one node
+  process, compared in memory) and `test_same_dynamics.py`. 210 episodes,
+  49,061 steps, zero differing bytes of state or symbolic obs. Built the C
+  driver and re-ran G2 green, so fp == classic == C is measured here. Found
+  and documented that the golden chains' hash column is not FNV-1a of the
+  state the C dumps — the reward/done columns are compared instead. Added the
+  inventory-strip equality gate T3 flagged. Commit `f665b4f`.
 - 2026-09-15 — T3 — built `variants/craftax_fp`: manifest single-sourcing the
   13 classic files by relative path, a 16×16 atlas from a new
   `tools/craftax_atlas_fp.py`, `80_render_fp.js` (grid pack, eye/yaw,
