@@ -1995,3 +1995,145 @@ it takes is either fetched (`ref_text`), a fixed asset (`template`), or derived
 (`source_text` for the ProcGen clones, which the prose at L1786 says passes the
 original C++ source in place of a mechanic line). Refinement is a separate step
 where a human does supply prose — that is § fig:variant-generation-example.
+
+---
+
+## § File index
+
+Every code file under `reproduction/`, and which labels use it. Generated
+from `git ls-files` and cross-checked against `reproduce.sh --list`, so a file
+added without a label will show up here as unaccounted.
+
+### On a paper path (31 files)
+
+| file | labels |
+|---|---|
+| `anonymize_study_data.py` | fig:human_wallclock — produced the committed `data/study/` from the raw sessions (it is why ages are banded) |
+| `figures/as_run/pw_bench_playwright.mjs` | tab:backend-ladder, fig:env_efficiency B — the as-run Playwright driver (pre-adv; the adv one is in runs/43783367/) |
+| `figures/fetch_data.sh` | fig:learning, fig:envcost, the 3 suite figures — fetches the figure-data-v1 archive |
+| `figures/fig_schematic.py` | fig:backend — a DRAFT REPLACEMENT, not a reproduction (flag 32) |
+| `figures/human/check_curve_encoder.py` | fig:human_wallclock — the guard that fails on a mixed-encoder curve file |
+| `figures/human/cohort.py` | fig:human_wallclock — the cohort claims |
+| `figures/human/crossings.py` | fig:human_wallclock — steps to reach the human mean |
+| `figures/human/plot_wallclock5.py` | fig:human_wallclock — both panels |
+| `figures/tables/dbuf_check.py` | tab:dbuf-ablation — the caption's claims and the mechanism correlation |
+| `figures/tables/dbuf_tex2.py` | tab:dbuf-ablation — emits the table body |
+| `figures/tables/t1a_agg.py` | tab:train-throughput (a) — the published t3fix arm and the adv2 comparison |
+| `figures/tables/t1a_nodes.py` | tab:train-throughput (a) — the per-node breakdown behind the 0.34M/0.35M gap |
+| `figures/tables/tab1b.py` | tab:train-throughput (b) — the environment swap |
+| `figures/tools/check_action_space.py` | tab:action-space — all 8 rows against the shipped spec |
+| `figures/tools/check_backend_ladder.py` | fig:env_efficiency B — the ladder ratios, both rung pairs |
+| `figures/tools/check_bench_scaling.py` | tab:bench-scaling — all 70 cells, re-derived |
+| `figures/tools/check_bench_setup.py` | tab:bench-setup — the six cells and the mean/median deviation |
+| `figures/tools/check_env_cost.py` | fig:envcost — the prose numbers, and the percmd variant guard |
+| `figures/tools/check_envpool_config.py` | tab:envpool-config — all 9 rows against the as-run job |
+| `figures/tools/check_eval.py` | tab:eval — all 48 cells, parsed from main.tex |
+| `figures/tools/check_hyperparams.py` | tab:hyperparams — every cell, and the config-identity claim |
+| `figures/tools/check_llm_cost.py` | tab:llm-cost — the whole table, offline |
+| `figures/tools/check_p5_subset.py` | tab:p5-subset — the three command counts |
+| `figures/tools/check_step_return.py` | tab:step-return — the contract against the runtime |
+| `figures/tools/check_suite.py` | the 3 suite figures + the tab:eval prose — composition and crossing claims |
+| `figures/tools/plot_env_cost.py` | fig:envcost — draws both panels |
+| `figures/tools/plot_env_efficiency_bestonly.py` | fig:env_efficiency — draws all four panels |
+| `figures/tools/plot_main_composite.py` | fig:learning — the composite, and its own composition report |
+| `figures/tools/plot_suite_grid3.py` | fig:suite_trainers, fig:suite_enc_impala, fig:suite_enc_ppo — one script, three `--arms` |
+| `figures/tools/throughput_panels.py` | fig:env_efficiency B/C/D, fig:learning D — imported by both, so the two never diverge |
+| `reproduce.sh` | ALL — the entry point; `--list` names every step |
+
+### Kept, not on any paper path (34 files)
+
+Nothing here is deleted. The three groups below are each worth keeping for a
+stated reason, and `STATE.md` flag 13 records that the call is the authors'.
+
+| file | why it is kept |
+|---|---|
+| `figures/as_run/fasrc_parallelism.sbatch` | PRE-ADV parallelism probe |
+| `figures/as_run/ladder/exp_qjs_opt.sh` | PRE-ADV ladder experiment |
+| `figures/as_run/ladder/sweep.sh` | PRE-ADV ladder sweep |
+| `figures/as_run/ladder/sweep2.sh` | PRE-ADV ladder sweep |
+| `figures/as_run/ladder/sweep3.sh` | PRE-ADV ladder sweep |
+| `figures/as_run/ladder/sweep5.sh` | PRE-ADV ladder sweep |
+| `figures/as_run/sweep_atari8.sh` | PRE-ADV as-run submission for the per-core ALE sweep |
+| `figures/as_run/sweep_backend_ladder.sh` | PRE-ADV as-run submission for the backend ladder |
+| `figures/as_run/sweep_procgen16.sh` | PRE-ADV as-run submission for the per-core ProcGen sweep |
+| `figures/human/add_ppo.py` | one-shot: added the PPO arm to a curve file |
+| `figures/human/add_sps.py` | one-shot: added SPS to a curve file |
+| `figures/human/build_rerun_curves.py` | built the committed rerun_curves*.json — keep: it is how the curve files came to be |
+| `figures/human/discover2.py` | one-shot: discovered run dirs |
+| `figures/human/eval_human_seeds.py` | side analysis: greedy eval on the human seed pool, capped like humans. Not in the paper |
+| `figures/human/extract_human_curves.py` | same, for the human side |
+| `figures/human/fix_flappy.py` | one-shot repair, flappy_bird |
+| `figures/human/force_flappy_ppo.py` | one-shot repair, flappy_bird PPO arm |
+| `figures/human/gen_rerun.py` | one-shot: generated the rerun manifest |
+| `figures/human/plot_human.py` | superseded human plotter |
+| `figures/human/plot_spread.py` | superseded spread plotter, now panel B of plot_wallclock5.py |
+| `figures/human/plot_steps.py` | superseded plotter; crossings.py copied its threshold parsing (and says so) |
+| `figures/human/plot_wallclock4.py` | superseded by plot_wallclock5.py |
+| `figures/human/restore_flappy_impala.py` | one-shot repair, flappy_bird IMPALA arm |
+| `figures/human/sps_compare.py` | side analysis: measured PPO vs IMPALA throughput per game |
+| `figures/tables/dbuf_agg.py` | earlier aggregation stage for the double-buffering data |
+| `figures/tables/dbuf_tex.py` | earlier table emitter, superseded by dbuf_tex2.py |
+| `figures/tools/plot_4a_adv.py` | superseded panel-A preview under the adv binary |
+| `figures/tools/plot_env_efficiency.py` | superseded draft of the efficiency figure |
+| `figures/tools/plot_env_efficiency_2arm.py` | superseded two-arm variant of the same figure |
+| `figures/tools/plot_suite_grid.py` | superseded single-seed 150M suite plotter; its geometry is inherited verbatim by plot_suite_grid3.py |
+| `figures/tools/plot_throughput_all.py` | the PRE-ADV throughput figure. Kept because it is the only consumer of results/env_throughput/sweep4.out and sweep6.out, and the only record of the superseded measurement (§ fig:env_efficiency) |
+
+### As-submitted cluster scripts under `runs/` (20 files)
+
+Provenance, not entry points: each is the script the cluster actually ran,
+committed beside its `SUBMIT.txt`. **Read them, do not run them** — their paths
+refer to the cluster trees as they stood. Each job's label is in its section
+above, and `runs/<job>/SUBMIT.txt` carries the verbatim `sacct` line.
+
+| job | script | label |
+|---|---|---|
+| 38145651 | `bench_vec_scaling_ab.sbatch` | fig:env_efficiency A (pre-adv full ladder) |
+| 39032276 | `bench_vec_scaling_ab.sbatch` | fig:env_efficiency A (pre-adv full ladder, ALE) |
+| 42009688 | `suite3.sbatch` | fig:learning, the 3 suite figures (IMPALA arm) |
+| 42149380 | `ppo3_icnn.sbatch` | fig:learning, the 3 suite figures (PPO arm) |
+| 43543523 | `final_any.sbatch` | fig:env_efficiency A (as-shipped curve) |
+| 43570992 | `ep_affinity.sbatch` | fig:env_efficiency A + tab:bench-scaling (80-thread points) |
+| 43574839 | `ale_sweep.sbatch` | fig:env_efficiency A (adv ALE 10/20/40) |
+| 43779854 | `ep_best_sweep.sbatch` | fig:env_efficiency A + tab:envpool-config |
+| 43780731 | `adv_anchor.sbatch` | fig:env_efficiency A (PlayTrain arm) |
+| 43783363 | `sweep4_adv.sh` | fig:env_efficiency C (ProcGen baseline) |
+| 43783364 | `sweep6_adv.sh` | fig:env_efficiency D (ALE baseline) |
+| 43783367 | `sweep7_adv.sh` | fig:env_efficiency B (adv Playwright + V8 rungs) |
+| 44381429 | `envcost_adv.sbatch` | fig:envcost |
+| 44515188 | `tier3_fig4a.sbatch` | fig:env_efficiency A replication |
+| 44515373 | `tier3_panelc_ladder.sbatch` | fig:env_efficiency B/C/D (PlayTrain arm) |
+| 44516162 | `tier3_pg_ab.sbatch` | tab:train-throughput (b), ProcGen |
+| 44516167 | `tier3_ale_ab.sbatch` | tab:train-throughput (b), ALE |
+| 44670988 | `t1a_adv2.sbatch` | tab:train-throughput (a), adv2 arm |
+| 44748571 | `t1a_t3fix.sbatch` | tab:train-throughput (a), t3fix arm |
+| 44861569 | `dbuf_t3_24.sbatch` | tab:dbuf-ablation |
+
+### Nothing was deleted
+
+MISSION allows deleting a file no label uses, in a separate commit with proof in
+the message. I deleted nothing, for two reasons worth stating rather than leaving
+implicit:
+
+- The largest group of unused files — the sixteen one-shot and superseded scripts
+  in `figures/human/` — is the human study's own history. `build_rerun_curves.py`
+  and `extract_human_curves.py` are how the committed curve files came to exist,
+  and the repair scripts record that `flappy_bird`'s dynamics changed mid-study
+  (the reason `ppo3_icnn.sbatch` re-ran the suite at all). Deleting them would
+  remove the only trace of that.
+- `plot_throughput_all.py` and the pre-adv `as_run/` scripts are the only
+  consumers and records of `sweep4.out` / `sweep6.out`, the superseded
+  measurement. § fig:env_efficiency depends on being able to point at them to
+  explain why those two files are in the repo at all.
+
+`STATE.md` flag 13 records the deletion decision as the authors' to make.
+
+### Data and provenance files not listed above
+
+The index covers code. The committed data files are listed in each label's
+section, plus two manifests worth naming here because they are read by tooling
+rather than by a figure: `figures/tables/nodes/t1a_nodes.tsv` and
+`nodes/dbuf_jobs.tsv` (job maps), `figures/scaling/panelA_measured.tsv`
+(measured-vs-derived map), `data/suite_run_jobs.tsv`, `data/variant_names.tsv`,
+`data/fig_learning_runs.tsv`, and `figures/tables/nodes/eval_suite_jobs.tsv`.
+Each is generated by, or cited in, the section that needs it.
