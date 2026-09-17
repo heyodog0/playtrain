@@ -834,3 +834,50 @@ sources them: ALE via `gymnasium/ale-py` at the `NoFrameskip-v4` prefix with
 the 12-second timed window; scaling efficiency defined as throughput per thread
 relative to the lowest thread count. The EnvPool arm's configuration is
 `tab:envpool-config`, still to be sourced.
+
+---
+
+## tab:bench-scaling — Thread scaling (Table 10)
+
+```
+graphic:   tabular, main.tex L1587
+redraw:    bash reproduction/reproduce.sh bench_scaling
+code:      reproduction/figures/tools/check_bench_scaling.py
+data:      none committed -- the two throughput columns are panel A's constants
+jobs:      PlayTrain 43780731; EnvPool 43779854 (10/20/40t) + 43570992 (80t)
+           + the config matrix (5t); all on holy8a24307
+```
+
+**All 70 cells check out: 14 rows x 5 columns, 0 mismatches.**
+`check_bench_scaling.py` parses the tabular out of `main.tex`, takes only the two
+throughput columns as given, and re-derives the ratio and both scaling-efficiency
+columns. Every derived cell matches what the paper prints, including the 99% that
+breaks PlayTrain's otherwise unbroken 100% column at ALE 80 threads.
+
+Scaling efficiency is, as the caption says, throughput per thread relative to the
+5-thread point. The caption's summary claims follow: PlayTrain holds 100% (99% in
+that one cell) on both suites out to eighty threads, while EnvPool falls to
+**50%** on ProcGen and holds **96%** on ALE. The headline ratios are 2.58x and
+20.80x.
+
+**What this verification does and does not establish.** It establishes that the
+table is correctly derived and internally consistent — no arithmetic slip
+anywhere in 70 cells. It does *not* establish the measurement, because the two
+throughput columns are the same hardcoded constants that draw panel A of
+Figure 4, and their source data is not in the repo (§ fig:env_efficiency panel A,
+`STATE.md` flags 2 and 3). This table and that panel cannot disagree: they are
+the same 28 numbers. Committing panel A's source data would make both
+reproducible at once.
+
+The EnvPool column is also a composite across three jobs — 43779854 for
+10/20/40 threads, 43570992 for the 80-thread points that produce the headline
+2.58x and 20.80x, and the config matrix for the 5-thread baseline that both
+efficiency columns are normalised against. 43570992 is still unrecovered.
+
+### Protocol behind the EnvPool column
+
+From `runs/43779854/ep_best_sweep.sbatch`, which is committed: four seconds of
+warmup per NUMA pool, then a twelve-second measured window, summed across pools
+and then geometric-meaned over games — exactly as the prose at L1583 describes.
+PlayTrain builds carry profile-guided optimization while EnvPool runs on its
+prebuilt wheel, which the same paragraph discloses.

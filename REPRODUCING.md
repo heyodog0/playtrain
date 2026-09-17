@@ -27,7 +27,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | five of six rows; the IMPALA-CNN row reads 0.34M against the paper's 0.35M because six of its games sit on a node every re-run excluded (`t1a_nodes.py`) |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical; the caption's "two slowest environments" example is wrong (PROVENANCE.md) |
-| Thread-scaling table | shares Figure 4 panel A's constants | see PROVENANCE.md | 2.58x at 80 threads |
+| Thread-scaling table | `figures/tools/check_bench_scaling.py` | Figure 4 panel A's constants | all 70 cells; ratios and both efficiency columns re-derived |
 | Appendix eval table | `figures/tools/check_eval.py` | `figures/results/eval_iddp_suite.json` | all 48 cells, parsed from main.tex |
 | Token cost table | `playtrain.gen.count_tokens` | `data/generation-logs/` | 6 of 7 rows exact, total differs by 8 tokens |
 
