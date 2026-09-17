@@ -458,10 +458,49 @@ number is affected; what breaks is the trail from a name in the paper to a file
 in the repo. The mapping is committed at `data/variant_names.tsv` and the
 decision — rename the files or rename in the paper — is `STATE.md` flag 9.
 
+### Slurm provenance for the 48 runs
+
+Run directories carry no job id, and their `config.json` records none. Two
+independent sources pin them anyway, and they agree:
+
+1. the **array manifests** — `runs/42009688/manifest.txt` (144 lines, the IMPALA
+   arm) and `runs/42149380/manifest.txt` (72 lines, the PPO arm) — map an array
+   task index to a run name, which is exact;
+2. each run's **TensorBoard filename** embeds its start time and hostname
+   (`events.out.tfevents.<unixtime>.<host>.<pid>.0`), which confirms the match
+   against `sacct`.
+
+`data/suite_run_jobs.tsv` is the join: all 48 runs, each with its array task or
+standalone job id, start time and node.
+
+| arm | job | how |
+|---|---|---|
+| IMPALA, `s3_icnn_*` | 42009688 `suite3`, `--array=1-144%8` | manifest task index |
+| PPO, `p3_icnn_*` | 42149380 `ppo3icnn`, and 42382390 which re-ran tasks 17–72 | manifest index; the TB timestamp picks the array |
+| PPO, `ppo_impala_*` | 9 standalone jobs, `ppoi_<game>_s<seed>` | job name matches the run name exactly |
+
+The runs span 2026-07-24 to 2026-08-28 across 24 nodes. Node spread is harmless
+here for the same reason as `tab:eval`: these are learning curves, not
+throughput.
+
+`ppo3_icnn.sbatch`'s header records why the suite was re-run at all —
+`flappy_bird`'s dynamics changed after the earlier agents trained, so those
+agents and the human-study participants had played different games.
+
+### A naming trap in the PPO runs
+
+Fifteen of the `p3_icnn_*` runs carry a `wandb_name` of `p3_nat_<game>_s<seed>` —
+`nat`, not `icnn` — while their directory says `icnn` and their config says
+`net: impala`. All 48 selected runs do have `net: impala`, so the figures are
+correct, but anyone re-deriving the selection from run names or wandb names
+would misclassify those fifteen as Nature-encoder runs. This is concrete
+evidence for `_runs()`'s insistence on selecting by config content; see
+`STATE.md` flag 24.
+
 ```
-runs/  not applicable: the curves come from the suite training runs in the
-       archive, identified by run directory rather than by a single job id.
-       Suite job provenance belongs to fig:suite_trainers and is recovered there.
+runs/42009688/  suite3.sbatch, manifest.txt, SUBMIT.txt
+runs/42149380/  ppo3_icnn.sbatch, manifest.txt, SUBMIT.txt
+data/suite_run_jobs.tsv   all 48 runs -> task/job, start time, node
 ```
 
 ---

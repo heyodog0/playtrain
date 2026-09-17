@@ -1,0 +1,10 @@
+# sacct -X -j 42009688_1 -o JobID,JobName%30,Submit,End,NodeList,SubmitLine%200 -n
+42009688_1   suite3   2026-08-26   (per-task node, see data/suite_run_jobs.tsv)   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch --array=1-144%8 suite3.sbatch
+
+what:  the IMPALA arm of the 100M suite -- the s3_icnn_* runs behind
+       fig:learning panel C and the three suite figures.
+array: 1-144%8, eight tasks at a time. Task index maps to a run through
+       outputs/_suite3/manifest.txt, committed here as manifest.txt
+       (144 lines = 24 games x 2 encoders x 3 seeds).
+mapping: reproduction/data/suite_run_jobs.tsv joins run dir -> array task,
+       cross-checked against each run's TensorBoard start time and hostname.

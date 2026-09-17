@@ -1,0 +1,17 @@
+# sacct -X -j 42149380_6 -o JobID,JobName%30,Submit,End,NodeList,SubmitLine%200 -n
+42149380_6   ppo3icnn   2026-08-26   (per-task node, see data/suite_run_jobs.tsv)   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch --array=1-144%8 ppo3_icnn.sbatch
+
+what:  the PPO arm of the same suite -- the p3_icnn_* runs.
+array: task index maps through outputs/_ppo3icnn/manifest.txt, committed here
+       as manifest.txt (72 lines).
+reran: job 42382390 re-ran tasks 17-72 of this same manifest
+       (sbatch --array=17,...,72%8 ppo3_icnn.sbatch). Where both arrays could
+       apply to a run, its TensorBoard start time decides which one produced it;
+       data/suite_run_jobs.tsv records the resolved task.
+resources: -c 23 --gres=gpu:1 --mem=96G, kempner_h100. The header notes the
+       IMPALA config wants two GPUs for vec_worker_device=cuda:0,cuda:1 while
+       PPO uses one.
+note:  the header also records why these runs exist: they re-run the eight
+       human-study games on the CURRENT game files, because flappy_bird's
+       dynamics changed after the earlier agents trained, so those agents and
+       the study participants had played different games.
