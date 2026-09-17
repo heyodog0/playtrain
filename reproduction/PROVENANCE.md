@@ -1407,3 +1407,72 @@ which looks like a deliberate distinction and is not one. Recorded under
   action space, seeding mode) are `PlayTrainEnv.__init__` keyword arguments —
   `obs_size`, `obs_mode`, `max_steps` and the rest — none of which require
   touching a game file, as claimed.
+
+---
+
+## tab:p5-subset — The p5.js subset the backend binds (Table 5)
+
+```
+graphic:   tabular, main.tex L1114
+redraw:    bash reproduction/reproduce.sh p5_subset
+code:      reproduction/figures/tools/check_p5_subset.py
+source:    playtrain/native/qjs/qjs_host.cpp  ->  BINDINGS[], registered in a
+           loop with JS_NewCFunction (L327)
+```
+
+Three counts are involved and no two of them agree.
+
+| count | value |
+|---|---|
+| commands the table lists | **37** |
+| commands the caption claims | **40** |
+| C functions the host actually binds | **65** |
+
+### Where the 40 comes from
+
+The caption's own text names three compatibility no-ops — `noLoop`, `frameRate`,
+`cursor` — and all three are in `BINDINGS[]`. **37 listed + those 3 = 40.** That
+is almost certainly the arithmetic behind the number, but the caption reads as
+describing the table ("40 p5.js commands the C++ later binds to" above a table of
+37), so as printed the count does not match what is shown. `STATE.md` flag 28.
+
+### "binds to" does not describe five of the 37
+
+The Input row mixes three different mechanisms:
+
+- `keyIsDown` — a bound C function, in `BINDINGS[]`;
+- `keyPressed` — a callback the **game** defines and the host calls;
+- `mouseX`, `mouseY`, `mouseIsPressed`, `gamepadAxes` — globals the **host
+  writes** each step via `JS_SetPropertyStr`, not functions a game calls.
+
+So five of the 37 names are not bindings in the sense the caption states. They
+are still part of the surface a generated game sees, which is the point the table
+is making; the wording is what is loose. The host's per-step writes are visible
+at `qjs_host.cpp` L449–454, including the uint16 dequantization
+(`f.qx / 65535.0 * p5::width()`) recorded under § tab:action-space.
+
+### 33 bound commands the table does not list
+
+The caption covers this with "operations such as noLoop, frameRate, cursor, and
+more a compatible no-ops so that games don't crash" — a reasonable summary, but
+worth recording what the 33 actually are, because **20 of them are 3D and voxel
+commands**: `box`, `sphere`, `cone`, `cylinder`, `ellipsoid`, `rotateX/Y/Z`,
+`ambientLight`, `directionalLight`, `pointLight`, `noLights`,
+`ambientMaterial`, `emissiveMaterial`, `normalMaterial`, `specularMaterial`,
+`shininess`, `voxelDusk`, `voxelSprite`, `voxelView`.
+
+Those are the surface of the 3D runtime that was removed from the project; their
+bindings remain in the host. They are not no-ops in the sense the caption means,
+and a reader counting `BINDINGS[]` to check the table would hit them first. The
+remaining 13 are genuine 2D extras and no-ops: `loop`, `noLoop`, `frameRate`,
+`cursor`, `noCursor`, `smooth`, `noSmooth`, `tint`, `textFont`, `createBitmap`,
+`loadBitmap`, `setTarget`, `clearTarget`.
+
+### What the table gets right
+
+Every one of the 32 non-input names it lists **is** in `BINDINGS[]` — no listed
+2D drawing command is missing from the host. The grouping is also faithful to
+the rasterizer's own structure: `beginShape`/`vertex`/`endShape` are the custom-
+shape path priced per polygon in fig:envcost, and `createGraphics`/`image` are
+the offscreen path. The claim that "the command names match p5.js so that a
+generated file runs as written" holds for all 37.

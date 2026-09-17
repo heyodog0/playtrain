@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return"
+STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return p5_subset"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -171,6 +171,11 @@ fi
 if want step_return; then
 step "Table 4, what a step returns  (against the runtime source)"
 ( cd figures && uv run --no-project python tools/check_step_return.py ) ; done_ $?
+fi
+
+if want p5_subset; then
+step "Table 5, the p5 subset  (caption claims 40 commands)"
+( cd figures && uv run --no-project python tools/check_p5_subset.py ) ; done_ $?
 fi
 
 if want llm_cost; then
