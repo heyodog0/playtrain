@@ -1918,3 +1918,80 @@ recorded here so the claim is not read as stronger than it is.
 `fig:variant-generation-example`'s substance is checkable elsewhere: the variant
 it shows is one of the four in § tab:llm-cost, whose call counts, token counts
 and wall-clock are verified against the generation logs.
+
+---
+
+## fig:catalog — A catalog entry (Figure 15)
+
+```
+graphic:   lstlisting, main.tex L1760  (style=jsonfig, defined at L63)
+source:    playtrain/games/catalogs/arcade_games.json  ->  the "donkey_kong" entry
+consumer:  playtrain/src/playtrain/gen/generate.py  ->  build_prompt()
+```
+
+**The listing is content-identical to the shipped entry**, all four fields, with
+the seven `actions_used` values in the same order:
+
+```json
+{ "name": "donkey_kong",
+  "ref": "https://ale.farama.org/environments/donkey_kong/",
+  "actions_used": ["LEFT","RIGHT","UP","DOWN","D","LEFT+D","RIGHT+D"],
+  "mechanic": "climb ladders + jump barrels to rescue" }
+```
+
+Eight catalogs ship in `games/catalogs/` — `arcade_games`, `atari_games`,
+`atari_enriched`, `nes_games`, `mobile_games`, `procgen_games`, `from_scratch`,
+plus a `refs/` directory.
+
+### The caption overstates one field
+
+> "The reference URL is fetched and included as text, `actions_used` **selects
+> the action space**, and the mechanic is one line"
+
+The first and third clauses hold: `fetch_ref(url)` dispatches to
+`_fetch_wikipedia` / `_fetch_appstore` / `_fetch_steam` and the result is passed
+to `build_prompt` as `ref_text`, and `mechanic` is a one-line string gated by
+`include_mechanic`.
+
+`actions_used` does **not** select an action space. Its only consumer in the
+entire repo is one line of `build_prompt`:
+
+```python
+actions = ", ".join(game.get("actions_used", []))
+```
+
+It is flattened into **prose in the LLM prompt** — a human-readable list telling
+the model which actions the game should use. Nothing resolves it against
+`runtime/action_spaces.json`, and the paper says elsewhere (L1091) that "for all
+of the experiments in this paper, we use the `default8` action space". So the
+action space is fixed, and this field describes which of its eight actions the
+generated game should exercise. `STATE.md` flag 33.
+
+### The two naming conventions, resolved
+
+This also settles a loose end from § tab:action-space. The catalog writes
+`LEFT+D` and `RIGHT+D`; `runtime/action_spaces.json` names the same actions
+`LEFT_D` and `RIGHT_D`. There is no bridging code because none is needed: the
+catalog's names are prompt text and the spec's names are runtime identifiers.
+They are two deliberate conventions, not a mismatch — which is a better
+description than the "cosmetic" note recorded earlier under tab:action-space.
+
+The paper's `tab:action-space` uses the catalog's plus form, so the two figures
+are at least consistent with each other.
+
+### The listing's highlighting is broken
+
+Of this listing's four keys, only `name` is in the `jsonfig` style's `emph`
+list, so `ref`, `actions_used` and `mechanic` render **unhighlighted** while
+`name` is coloured — which reads as a deliberate distinction and is not one.
+Recorded under `STATE.md` flag 27 together with the `mouse2d` finding for
+§ fig:action-spaces, which shares the style.
+
+### "The only human input"
+
+The caption calls the catalog entry "the only human input in the initial
+generation process", and `build_prompt`'s signature supports it: everything else
+it takes is either fetched (`ref_text`), a fixed asset (`template`), or derived
+(`source_text` for the ProcGen clones, which the prose at L1786 says passes the
+original C++ source in place of a mechanic line). Refinement is a separate step
+where a human does supply prose — that is § fig:variant-generation-example.
