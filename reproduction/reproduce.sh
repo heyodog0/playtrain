@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost"
+STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -161,6 +161,11 @@ step "Per-game suite grids, the three appendix figures"
        --arms impala   --name fig_suite_enc_impala --out "$OUT" \
   && $PYTB python tools/plot_suite_grid3.py --data outputs/_suite4_curves.json \
        --arms ppo      --name fig_suite_enc_ppo    --out "$OUT" ) ; done_ $?
+fi
+
+if want action_space; then
+step "Table 3, the default Discrete(8) action space  (against runtime/action_spaces.json)"
+( cd figures && uv run --no-project python tools/check_action_space.py ) ; done_ $?
 fi
 
 if want llm_cost; then

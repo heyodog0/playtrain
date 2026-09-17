@@ -1202,3 +1202,65 @@ has survived. `STATE.md` flag 25.
 
 The `Adaptability` row is a deliberate bare label with a single cell and is not
 part of this problem.
+
+---
+
+## tab:action-space — The default Discrete(8) action space (Table 3)
+
+```
+graphic:   tabular, main.tex L1008
+redraw:    bash reproduction/reproduce.sh action_space
+code:      reproduction/figures/tools/check_action_space.py
+source:    playtrain/runtime/action_spaces.json  ->  key "default8"
+           playtrain/src/playtrain/runtime/action_space.py  (the loader and contract)
+```
+
+**All eight rows verify against the shipped spec, 0 mismatches.** The checker
+parses the tabular out of `main.tex` and compares every index, name, keycode
+list and delivery mode against `runtime/action_spaces.json`, which is the
+canonical file — wheel-bundled, and read by the Python runtime, the Node runtime
+and the study-harness builder alike, so the table describes what all three use.
+
+| index | name | keycodes | delivery | spec entry |
+|---|---|---|---|---|
+| 0 | NOOP | — | — | `held: []`, `press: null` |
+| 1 | LEFT | 37 | held | `held: [37]` |
+| 2 | RIGHT | 39 | held | `held: [39]` |
+| 3 | UP | 38 | held | `held: [38]` |
+| 4 | DOWN | 40 | held | `held: [40]` |
+| 5 | D | 32 | press | `press: 32` |
+| 6 | LEFT+D | 37, 32 | held + press | `held: [37]`, `press: 32` |
+| 7 | RIGHT+D | 39, 32 | held + press | `held: [39]`, `press: 32` |
+
+The paper's "Delivery" column is a rendering of the spec's two fields, and
+`action_space.py`'s docstring defines them: `held` keys are down for every frame
+of the step; `press` fires the game's `keyPressed()` handler once before the
+first frame **and** is down for that frame. So "held" means a non-empty `held`
+with `press: null`, "press" the reverse, and "held + press" both. That
+distinction is why row 5 lists keycode 32 under "press" while rows 1–4 list
+theirs under "held".
+
+The only difference is cosmetic: the paper writes `LEFT+D` and `RIGHT+D` where
+the spec names them `LEFT_D` and `RIGHT_D`. The checker treats `+` and `_` as
+equivalent and says so.
+
+### Context the surrounding prose asserts
+
+- "the action space is defined by the framework's backend instead of the games"
+  (L989) — borne out by the spec being a runtime asset, not a per-game field;
+  the generated game files contain no action definitions.
+- "hot-swappable, and only requires filling out a JSON file" — the file ships
+  **five** named spaces, not one: `default8`, `thrust10`, `aimgrid18`,
+  `mouse2d`, `gamepad2s`. `action_space.py` accepts a name, a path to a `.json`,
+  or `None` for `default8`. The last two are continuous: the module documents a
+  `Box` form over `pointer_x` / `pointer_y` / `axis:0..3` / `button:mouse` /
+  `key:<code>` channels.
+- The wire contract, which nothing in the paper states and which matters for the
+  reproducibility claim: every analog value is quantized to uint16 at the
+  producer as `q = floor(clamp(v01) * 65535 + 0.5)` and dequantized identically
+  in every engine, with button and key channels pressed iff `q >= 32768`.
+  "Continuous above the wire, bit-exact below it" is what keeps replay and the
+  cross-engine gate exact.
+
+`fig:action-spaces` (L1067) quotes two entries from this same file and is
+recorded under its own label.
