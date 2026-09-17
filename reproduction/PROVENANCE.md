@@ -1476,3 +1476,65 @@ the rasterizer's own structure: `beginShape`/`vertex`/`endShape` are the custom-
 shape path priced per polygon in fig:envcost, and `createGraphics`/`image` are
 the offscreen path. The claim that "the command names match p5.js so that a
 generated file runs as written" holds for all 37.
+
+---
+
+## tab:backend-pieces — The four pieces compiled into the backend (Table 6)
+
+```
+graphic:   tabular, main.tex L1140
+source:    playtrain/native/build_qjs.sh   (the build that compiles all four)
+           playtrain/crates/rasterizer/    (Rust staticlib)
+           playtrain/native/runtime/p5.cpp (the C++ p5 layer)
+           playtrain/native/frozenmath/    (vendored OpenLibm, exposed as fm_*)
+```
+
+All four rows check out against the build script, which compiles exactly these
+and no others. `native/build_qjs.sh`'s own header says it: "Builds: rasterizer
+staticlib (cargo) + QuickJS staticlib (clang) + qjs_host."
+
+| piece | paper's language | evidence |
+|---|---|---|
+| QuickJS | C | QuickJS staticlib built with clang; `native/qjs/` |
+| p5 layer | C++ | `native/runtime/p5.cpp`, whose header says it mirrors `runtime/p5/p5-shim.mjs` "call-for-call against the rasterizer C ABI" |
+| Rasterizer | **Rust** | `cargo rustc --release --lib --crate-type staticlib` in `crates/rasterizer/`, linked as `libplaytrain_rasterizer.a`; p5.cpp calls it through `raster_abi.h` (`rs_set_fill`, `rs_set_stroke`, …) |
+| Frozen math | C | `native/frozenmath/`, a vendored clone of **JuliaMath/openlibm** compiled with `-Dsin=fm_sin -Dcos=fm_cos` |
+
+The Rust row is worth confirming explicitly because the repo contains a second,
+C++ rasterizing path (`p5.cpp` carries AVX2 intrinsics) that could be mistaken
+for *the* rasterizer. It is not: `p5.cpp` is the p5 layer, and it forwards to the
+Rust staticlib across a C ABI. The Rust crate also holds `three.rs` and
+`voxel.rs`, the 3D surface whose host bindings § tab:p5-subset found still
+present.
+
+### Why the frozen math exists, which the caption does not say
+
+The build script records the bug that produced it, and it is a better
+justification than the paper gives:
+
+> sin/cos were added when a generated asteroids clone exposed that the psin/pcos
+> polynomial in jsmath.h diverges from V8's fdlibm sine once game logic calls
+> `Math.sin` (the poly is only for rasterizer-internal geometry). fm_sin/fm_cos
+> are fdlibm with full Payne-Hanek reduction — the same lineage V8 ships.
+
+So there are two distinct sine implementations by design: a fast polynomial for
+rasterizer-internal geometry, and fm_sin/fm_cos for anything a game's JavaScript
+calls. The determinism claim rests on the second. The public symbols are renamed
+to `fm_*` specifically "so they never collide with the platform libm", which is
+what makes the row's "Replaces: the platform's `libm`" accurate.
+
+### One wording caveat
+
+The caption says the four are listed "in the order a frame passes through them".
+That holds for the first three — QuickJS interprets the game, the p5 layer
+receives its draw calls, the rasterizer writes the observation buffer. The
+fourth is not a stage in a frame's path: frozen math is a library the other
+pieces call, reached whenever game logic or geometry needs a transcendental, not
+after the rasterizer. Minor, and not worth a flag on its own; recorded here so
+the ordering claim is not read as a pipeline.
+
+The surrounding prose checks out too: the backend is built per machine with
+profile-guided and link-time optimization (the `-flto` and PGO flags in the same
+script, and the disclosure in § tab:bench-scaling that EnvPool runs on its
+prebuilt wheel while PlayTrain carries PGO), and the ahead-of-time path is the
+one § fig:env_efficiency panel C/D measures as the `tier3` arm.
