@@ -1,0 +1,385 @@
+{
+ "//": "Snapshot of the values these checkers parse out of main.tex, taken 2026-09-17 from /Users/heyodogo/code/lab/playtrain/ICLR-PlayTrain-Fast-LLM-VGEs/main.tex. Regenerate with tools/snapshot_paper_values.py. The checkers prefer the live paper when it is checked out.",
+ "tab:action-space": [
+  [
+   0,
+   "NOOP",
+   [],
+   "---"
+  ],
+  [
+   1,
+   "LEFT",
+   [
+    37
+   ],
+   "held"
+  ],
+  [
+   2,
+   "RIGHT",
+   [
+    39
+   ],
+   "held"
+  ],
+  [
+   3,
+   "UP",
+   [
+    38
+   ],
+   "held"
+  ],
+  [
+   4,
+   "DOWN",
+   [
+    40
+   ],
+   "held"
+  ],
+  [
+   5,
+   "D",
+   [
+    32
+   ],
+   "press"
+  ],
+  [
+   6,
+   "LEFT+D",
+   [
+    37,
+    32
+   ],
+   "held + press"
+  ],
+  [
+   7,
+   "RIGHT+D",
+   [
+    39,
+    32
+   ],
+   "held + press"
+  ]
+ ],
+ "tab:bench-scaling": {
+  "ALE|10": [
+   920486,
+   45600,
+   20.19,
+   100,
+   100
+  ],
+  "ALE|20": [
+   1846763,
+   89270,
+   20.69,
+   100,
+   98
+  ],
+  "ALE|30": [
+   2760813,
+   134145,
+   20.58,
+   100,
+   98
+  ],
+  "ALE|40": [
+   3692641,
+   177666,
+   20.78,
+   100,
+   97
+  ],
+  "ALE|5": [
+   460983,
+   22806,
+   20.21,
+   100,
+   100
+  ],
+  "ALE|60": [
+   5517172,
+   265505,
+   20.78,
+   100,
+   97
+  ],
+  "ALE|80": [
+   7300384,
+   350959,
+   20.8,
+   99,
+   96
+  ],
+  "ProcGen|10": [
+   455799,
+   354686,
+   1.29,
+   100,
+   100
+  ],
+  "ProcGen|20": [
+   910956,
+   584458,
+   1.56,
+   100,
+   82
+  ],
+  "ProcGen|30": [
+   1368468,
+   777384,
+   1.76,
+   100,
+   73
+  ],
+  "ProcGen|40": [
+   1819564,
+   931467,
+   1.95,
+   100,
+   66
+  ],
+  "ProcGen|5": [
+   227433,
+   177338,
+   1.28,
+   100,
+   100
+  ],
+  "ProcGen|60": [
+   2741906,
+   1197708,
+   2.29,
+   100,
+   56
+  ],
+  "ProcGen|80": [
+   3650005,
+   1412903,
+   2.58,
+   100,
+   50
+  ]
+ },
+ "tab:eval": {
+  "asteroids": [
+   513.8,
+   995.0
+  ],
+  "bigfish": [
+   0.6,
+   25.1
+  ],
+  "bossfight": [
+   -13.2,
+   77.6
+  ],
+  "breakout": [
+   80.0,
+   276.2
+  ],
+  "caveflyer": [
+   1.6,
+   1.0
+  ],
+  "chaser": [
+   5.6,
+   72.5
+  ],
+  "climber": [
+   0.2,
+   0.6
+  ],
+  "coinrun": [
+   4.8,
+   136.6
+  ],
+  "dodgeball": [
+   0.2,
+   6.8
+  ],
+  "freeway": [
+   0.0,
+   0.0
+  ],
+  "frostbite": [
+   32.5,
+   256.2
+  ],
+  "fruitbot": [
+   -2.0,
+   12.0
+  ],
+  "heist": [
+   2.5,
+   16.9
+  ],
+  "jumper": [
+   0.8,
+   1.5
+  ],
+  "leaper": [
+   12.5,
+   20.6
+  ],
+  "maze": [
+   0.0,
+   0.0
+  ],
+  "miner": [
+   2.1,
+   9.4
+  ],
+  "ninja": [
+   0.8,
+   0.2
+  ],
+  "plunder": [
+   2.8,
+   6.4
+  ],
+  "pong": [
+   -35.8,
+   100.9
+  ],
+  "qbert": [
+   36.2,
+   320.0
+  ],
+  "seaquest": [
+   102.5,
+   732.5
+  ],
+  "space_invaders": [
+   340.0,
+   400.0
+  ],
+  "starpilot": [
+   1.8,
+   27.5
+  ]
+ },
+ "tab:llm-cost": {
+  "Total": [
+   26,
+   70926,
+   67206,
+   34.4,
+   0.95
+  ],
+  "breakout.multiball": [
+   3,
+   5292,
+   4644,
+   2.3,
+   0.07
+  ],
+  "downwell": [
+   6,
+   14234,
+   12837,
+   5.9,
+   0.18
+  ],
+  "flappy_bird.hoop": [
+   5,
+   13204,
+   10780,
+   7.5,
+   0.16
+  ],
+  "frostbite.jungle": [
+   8,
+   24932,
+   25434,
+   10.9,
+   0.36
+  ],
+  "qbert.bigmap": [
+   2,
+   8459,
+   10228,
+   5.5,
+   0.14
+  ],
+  "vvvvvv": [
+   2,
+   4797,
+   3283,
+   2.3,
+   0.05
+  ]
+ },
+ "tab:p5-subset": {
+  "Canvas \\": [
+   "createCanvas",
+   "background"
+  ],
+  "Color state": [
+   "fill",
+   "stroke",
+   "noFill",
+   "noStroke",
+   "strokeWeight",
+   "color",
+   "lerpColor"
+  ],
+  "Custom shapes": [
+   "beginShape",
+   "vertex",
+   "endShape"
+  ],
+  "Input": [
+   "keyIsDown",
+   "keyPressed",
+   "mouseX",
+   "mouseY",
+   "mouseIsPressed",
+   "gamepadAxes"
+  ],
+  "Modes": [
+   "rectMode",
+   "ellipseMode"
+  ],
+  "Offscreen": [
+   "createGraphics",
+   "image"
+  ],
+  "Primitives": [
+   "rect",
+   "ellipse",
+   "circle",
+   "arc",
+   "triangle",
+   "quad",
+   "line"
+  ],
+  "Text": [
+   "textSize",
+   "textAlign",
+   "text"
+  ],
+  "Transforms": [
+   "push",
+   "pop",
+   "translate",
+   "rotate",
+   "scale"
+  ]
+ },
+ "tab:step-return": [
+  "observation",
+  "reward",
+  "terminated",
+  "truncated",
+  "info.score",
+  "info.lives",
+  "info.gameState",
+  "info.seed"
+ ]
+}

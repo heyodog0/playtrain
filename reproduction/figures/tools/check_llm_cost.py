@@ -18,9 +18,11 @@ import json
 import re
 from pathlib import Path
 
-R = Path(__file__).resolve().parents[2]   # reproduction/
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_ref import repo_root, resolve  # noqa: E402
+R = repo_root() / "reproduction"
 LOGS = R / "data" / "generation-logs"
-TEX = R.parents[1] / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
 # LoC and SPS are hardcoded in count_tokens.EXTRA, not derived from any
 # committed measurement -- see PROVENANCE.md and STATE.md flag 21.
 UNSOURCED = ("LoC delta", "SPS")
@@ -38,9 +40,8 @@ def repo_to_paper():
     return m
 
 
-def paper_rows():
+def _parse(lines):
     """The tab:llm-cost tabular as main.tex prints it."""
-    lines = TEX.read_text().splitlines()
     end = next(i for i, l in enumerate(lines) if "\\label{tab:llm-cost}" in l)
     start = next(i for i in range(end, 0, -1) if "\\begin{table}" in lines[i])
     out = {}
@@ -50,24 +51,24 @@ def paper_rows():
                      r"([\d.]+) min & \\\$([\d.]+) & (.+?) & (.+?) \\\\$", t)
         if m:
             n = lambda x: int(x.replace(",", ""))
-            out[m.group(1).replace("\\_", "_").replace("\\", "")] = (
+            out[m.group(1).replace("\\_", "_").replace("\\", "")] = [
                 int(m.group(2)), n(m.group(3)), n(m.group(4)),
-                float(m.group(5)), float(m.group(6)))
+                float(m.group(5)), float(m.group(6))]
         elif t.startswith("Total &"):
             m2 = re.match(r"^Total & (\d+) & ([\d,]+) / ([\d,]+) & ([\d.]+) min & \\\$([\d.]+)", t)
             if m2:
                 n = lambda x: int(x.replace(",", ""))
-                out["Total"] = (int(m2.group(1)), n(m2.group(2)), n(m2.group(3)),
-                                float(m2.group(4)), float(m2.group(5)))
+                out["Total"] = [int(m2.group(1)), n(m2.group(2)), n(m2.group(3)),
+                                float(m2.group(4)), float(m2.group(5))]
     return out
 
 
 def main():
     d = json.load(open(R / "data" / "llm_cost.json"))
     rate_in, rate_out = d["rate_in"], d["rate_out"]
-    paper = paper_rows()
+    paper, src = resolve("tab:llm-cost", _parse)
     alias = repo_to_paper()
-    print(f"    parsed {len(paper)} rows from the tab:llm-cost tabular"
+    print(f"    parsed {len(paper)} rows from {src}"
           f" ({len(d['rows'])} artifacts + Total in the data)")
     print(f"    rates ${rate_in:g} / ${rate_out:g} per 1M tokens"
           "   (caption: Gemini 3.1 Pro, $2 / $12)")
@@ -102,8 +103,8 @@ def main():
         p = paper.get(name)
         note = f"absent from the paper (looked for {name!r})" if p is None else (
             ("match" + ("" if name == r["artifact"] else f", as {name}"))
-            if p[:5] == (r["calls"], r["tokens_in"], r["tokens_out"],
-                         r["minutes"], r["cost_usd"]) else f"DIFFERS {p}")
+            if list(p[:5]) == [r["calls"], r["tokens_in"], r["tokens_out"],
+                               r["minutes"], r["cost_usd"]] else f"DIFFERS {p}")
         print(f"    {r['artifact']:<20} {r['calls']:5d}  {r['tokens_in']:7,} /{r['tokens_out']:7,}"
               f"  {r['minutes']:5.1f}  ${r['cost_usd']:.2f}   {note}")
     pt = paper.get("Total")

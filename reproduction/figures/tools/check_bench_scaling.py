@@ -18,8 +18,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEX = HERE.parents[3] / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
 sys.path.insert(0, str(HERE))
+from paper_ref import resolve  # noqa: E402
 
 THREADS = [5, 10, 20, 30, 40, 60, 80]
 # Panel A's constants, kept in step with plot_env_efficiency_bestonly.py.
@@ -35,9 +35,8 @@ ROW = re.compile(
     rf"\\?t?e?x?t?b?f?\{{?(\d+)\}}?\\% \\\\$")
 
 
-def published():
+def _parse(lines):
     """The 14 data rows of the tabular, as the paper prints them."""
-    lines = TEX.read_text().splitlines()
     start = next(i for i, l in enumerate(lines) if "\\label{tab:bench-scaling}" in l)
     head = next(i for i in range(start, 0, -1) if "\\begin{table}" in lines[i])
     rows, suite = {}, None
@@ -57,9 +56,9 @@ def published():
         m = re.match(r"^(\d+) & ([\d,]+) & ([\d,]+) & ([\d.]+) & (\d+)\\% & (\d+)\\% \\\\$", t)
         if m and suite:
             n = lambda x: int(x.replace(",", ""))
-            rows[(suite, int(m.group(1)))] = (n(m.group(2)), n(m.group(3)),
-                                              float(m.group(4)), int(m.group(5)),
-                                              int(m.group(6)))
+            rows[f"{suite}|{int(m.group(1))}"] = [n(m.group(2)), n(m.group(3)),
+                                                  float(m.group(4)), int(m.group(5)),
+                                                  int(m.group(6))]
     return rows
 
 
@@ -69,13 +68,14 @@ def eff(vals, threads):
 
 
 def main():
-    paper = published()
+    paper, src = resolve("tab:bench-scaling", _parse)
+    print(f"    paper values from {src}")
     print(f"    parsed {len(paper)} rows from the tab:bench-scaling tabular   (expected 14)")
     bad = []
     for suite, pt, ep in (("ProcGen", PG_PT, PG_EP), ("ALE", AL_PT, AL_EP)):
         e_pt, e_ep = eff(pt, THREADS), eff(ep, THREADS)
         for i, t in enumerate(THREADS):
-            key = (suite, t)
+            key = f"{suite}|{t}"
             if key not in paper:
                 bad.append(f"{suite} {t}t: row absent from the tabular")
                 continue

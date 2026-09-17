@@ -18,14 +18,14 @@ import ast
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]   # the lab root holding both repos
-TEX = ROOT / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
-RT = ROOT / "playtrain" / "src" / "playtrain" / "runtime"
-NATIVE = ROOT / "playtrain" / "native"
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_ref import repo_root, resolve  # noqa: E402
+RT = repo_root() / "src" / "playtrain" / "runtime"
+NATIVE = repo_root() / "native"
 
 
-def paper_fields():
-    lines = TEX.read_text().splitlines()
+def _parse(lines):
     end = next(i for i, l in enumerate(lines) if "\\label{tab:step-return}" in l)
     stop = next(i for i in range(end, len(lines)) if "\\end{tabular}" in lines[i])
     out = []
@@ -40,8 +40,8 @@ def paper_fields():
 
 def main():
     env = (RT / "env.py").read_text()
-    fields = paper_fields()
-    print(f"    paper lists {len(fields)} fields: {', '.join(fields)}")
+    fields, src = resolve("tab:step-return", _parse)
+    print(f"    paper ({src}) lists {len(fields)} fields: {', '.join(fields)}")
 
     dmax = int(re.search(r"DEFAULT_MAX_STEPS = (\d+)", env).group(1))
     print(f"    DEFAULT_MAX_STEPS = {dmax}   (paper: truncated at max_steps, default 2000)")

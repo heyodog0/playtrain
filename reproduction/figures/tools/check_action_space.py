@@ -20,13 +20,13 @@ import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[3]
-TEX = ROOT / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
-SPEC = ROOT / "playtrain" / "runtime" / "action_spaces.json"
+import sys
+sys.path.insert(0, str(HERE))
+from paper_ref import repo_root, resolve  # noqa: E402
+SPEC = repo_root() / "runtime" / "action_spaces.json"
 
 
-def paper_rows():
-    lines = TEX.read_text().splitlines()
+def _parse(lines):
     end = next(i for i, l in enumerate(lines) if "\\label{tab:action-space}" in l)
     stop = next(i for i in range(end, len(lines)) if "\\end{tabular}" in lines[i])
     rows = []
@@ -35,9 +35,9 @@ def paper_rows():
         m = re.match(r"^(\d+) & (\S+) & (.+?) & (.+?) \\\\$", t)
         if m:
             keys = m.group(3).strip()
-            rows.append((int(m.group(1)), m.group(2),
+            rows.append([int(m.group(1)), m.group(2),
                          [] if keys == "---" else [int(x) for x in keys.split(",")],
-                         m.group(4).strip()))
+                         m.group(4).strip()])
     return rows
 
 
@@ -54,8 +54,8 @@ def delivery(entry):
 
 def main():
     spec = json.load(open(SPEC))["default8"]
-    rows = paper_rows()
-    print(f"    parsed {len(rows)} rows from the tab:action-space tabular"
+    rows, src = resolve("tab:action-space", _parse)
+    print(f"    parsed {len(rows)} rows from {src}"
           f"; the spec's default8 has {len(spec)} actions")
     bad = []
     for idx, name, keys, deliv in rows:

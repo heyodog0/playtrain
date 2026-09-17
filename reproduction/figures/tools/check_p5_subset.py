@@ -17,16 +17,16 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-TEX = ROOT / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
-HOST = ROOT / "playtrain" / "native" / "qjs" / "qjs_host.cpp"
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_ref import repo_root, resolve  # noqa: E402
+HOST = repo_root() / "native" / "qjs" / "qjs_host.cpp"
 CAPTION_CLAIM = 40
 NAMED_NOOPS = {"noLoop", "frameRate", "cursor"}
 HOST_GLOBALS = {"mouseX", "mouseY", "mouseIsPressed", "gamepadAxes", "keyPressed"}
 
 
-def table_commands():
-    lines = TEX.read_text().splitlines()
+def _parse(lines):
     end = next(i for i, l in enumerate(lines) if "\\label{tab:p5-subset}" in l)
     start = next(i for i in range(end, 0, -1) if "\\begin{tabular}" in lines[i])
     groups = {}
@@ -49,11 +49,12 @@ def bindings():
 
 
 def main():
-    groups = table_commands()
+    groups, src = resolve("tab:p5-subset", _parse)
     listed = [c for v in groups.values() for c in v]
     bound = bindings()
     for g, v in groups.items():
         print(f"    {g:<16} {len(v):2d}  {', '.join(v)}")
+    print(f"    paper values from {src}")
     print(f"    table lists {len(listed)} commands   (caption claims {CAPTION_CLAIM})")
     print(f"    host BINDINGS[] registers {len(bound)} C functions")
 

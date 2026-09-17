@@ -16,17 +16,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEX = HERE.parents[3] / "ICLR-PlayTrain-Fast-LLM-VGEs" / "main.tex"
+sys.path.insert(0, str(HERE))
+from paper_ref import resolve  # noqa: E402
 ROW = re.compile(
     r"^([a-z_\\]+) & (-?[\d.]+) & (-?[\d.]+) & ([a-z_\\]+) & (-?[\d.]+) & (-?[\d.]+) \\\\$")
 
 
-def published():
+def _parse(lines):
     """The 24 (game, R, G) triples, parsed out of the tab:eval tabular."""
-    lines = TEX.read_text().splitlines()
     start = next(i for i, l in enumerate(lines) if "\\label{tab:eval}" in l)
     out = {}
     for line in lines[start:start + 40]:
@@ -34,8 +35,8 @@ def published():
         if not m:
             continue
         g1, r1, v1, g2, r2, v2 = m.groups()
-        out[g1.replace("\\_", "_")] = (float(r1), float(v1))
-        out[g2.replace("\\_", "_")] = (float(r2), float(v2))
+        out[g1.replace("\\_", "_")] = [float(r1), float(v1)]
+        out[g2.replace("\\_", "_")] = [float(r2), float(v2)]
     return out
 
 
@@ -44,8 +45,8 @@ def main():
     ap.add_argument("--file", default=HERE.parent / "results" / "eval_iddp_suite.json")
     args = ap.parse_args()
     data = json.load(open(args.file))
-    paper = published()
-    print(f"    parsed {len(paper)} games from main.tex, {len(data)} in {Path(args.file).name}")
+    paper, src = resolve("tab:eval", _parse)
+    print(f"    parsed {len(paper)} games from {src}, {len(data)} in {Path(args.file).name}")
 
     bad = []
     for g, (pr, pg) in sorted(paper.items()):
