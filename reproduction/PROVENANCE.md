@@ -1321,3 +1321,89 @@ since the prose calls the observation "a single 64x64 RGB frame with no
 stacking": `env.py` also supports `obs_mode="symbolic"`, which replaces the
 frame with a `Box(-inf, inf, (symbolic_dim,), float32)` and requires the game to
 declare `obs.symbolic`. The 64x64 RGB row is the default path, not the only one.
+
+---
+
+## fig:action-spaces — Two entries from the action-space file (Figure 7)
+
+```
+graphic:   lstlisting, main.tex L1067  (style=jsonfig, defined at L63)
+source:    playtrain/runtime/action_spaces.json
+verify:    bash reproduction/reproduce.sh action_space  covers the default8 rows
+```
+
+The listing quotes two entries verbatim from `runtime/action_spaces.json`.
+
+**`default8`** — the three actions shown match the file exactly, and the caption
+correctly says it is "abridged to three of its eight actions", with the listing
+itself carrying a `/* [...] five more */` marker:
+
+| listing | file |
+|---|---|
+| `{ "name": "NOOP", "held": [], "press": null }` | identical |
+| `{ "name": "LEFT", "held": [37], "press": null }` | identical |
+| `{ "name": "LEFT_D", "held": [37], "press": 32 }` | identical |
+
+All eight actions are checked against the file under § tab:action-space.
+
+**`mouse2d` is abridged too, but nothing says so.** The listing shows
+
+```
+"mouse2d": { "type": "box", "channels": ["pointer_x", "pointer_y"] }
+```
+
+while the file has **three** channels:
+`["pointer_x", "pointer_y", "button:mouse"]`. Unlike `default8`, this entry
+carries no ellipsis and the caption does not mention trimming it, so it reads as
+complete.
+
+This one costs the paper something. The prose two paragraphs later says the
+continuous backend "sets `mouseX`, `mouseY`, and `mousePressed` instead of key
+state" — three things. With `button:mouse` restored the entry matches that
+sentence exactly; as printed, the illustration is missing the very channel that
+`mousePressed` corresponds to. `STATE.md` flag 27.
+
+The file ships two more entries the figure does not quote, both discrete:
+`thrust10` (10 actions) and `aimgrid18` (18). The `//` key at the top of the
+file is a documentation string, not a space.
+
+### The listing style is hand-fitted, and one listing already loses by it
+
+`\lstdefinestyle{jsonfig}` at L63 highlights by enumerated keyword, not by
+grammar:
+
+```
+emph={default8, mouse2d, name, held, press, type, channels}
+emph={[2]NOOP, LEFT, LEFT_D, box, pointer_x, pointer_y}
+```
+
+Those two lists are exactly the tokens in *this* listing and nothing more, so
+any edit here silently loses its colour. Adding `button:mouse` would render
+unhighlighted — and, because the token contains a colon, `lstlisting`'s
+word-boundary matching may not treat it as one word at all, so it likely needs
+`literate` or a different mechanism rather than an `emph` entry.
+
+The same style is reused at L1763 for `fig:catalog`, and it already loses there:
+of that listing's four keys, only `name` is in the list. **`ref`,
+`actions_used` and `mechanic` render unhighlighted** while `name` is coloured,
+which looks like a deliberate distinction and is not one. Recorded under
+`fig:catalog` as well; same flag.
+
+### Prose claims around the figure
+
+- "The action space ... is a named entry in a JSON configuration file and is not
+  built into PlayTrain" — borne out: `action_space.py` reads
+  `runtime/action_spaces.json` and accepts a name, a `.json` path, or `None`.
+- "A held key is down for the step, while a press key is down for the step *and*
+  fires `keyPressed()` once" — matches both `action_space.py`'s docstring and
+  the `//` note in the JSON itself.
+- "continuous input values are given to the PlayTrain backend as integers ...
+  because floating point values are not exactly reproducible across JavaScript
+  engines" — this is the uint16 wire contract recorded under § tab:action-space:
+  `q = floor(clamp(v01) * 65535 + 0.5)`, dequantized identically in every
+  engine.
+- The Configuration paragraph's adjustables (resolution, frame skip, render
+  skip, frame stack, truncation horizon, grayscale; env count, worker threads,
+  action space, seeding mode) are `PlayTrainEnv.__init__` keyword arguments —
+  `obs_size`, `obs_mode`, `max_steps` and the rest — none of which require
+  touching a game file, as claimed.
