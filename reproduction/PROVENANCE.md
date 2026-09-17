@@ -1799,3 +1799,60 @@ One disclosure the paper makes and this section should echo: PlayTrain is
 compiled with profile-guided optimization while EnvPool runs on its prebuilt
 wheel (L1584). That is stated in the paper, and it is the kind of asymmetry a
 reader should weigh against the ratios.
+
+---
+
+## fig:generation and fig:backend — the two hand-drawn schematics (Figures 1 and 3)
+
+```
+graphics:  figures/generation.png            (fig:generation,  main.tex L194)
+           figures/architecture_schematic.png (fig:backend,    main.tex L325)
+source:    NONE. Neither has a source file in any repo -- no .svg, .key, .ai
+           or generating script. Confirmed by search and corroborated by
+           playtrain-wt-tuning/docs/REPRO.md, which records the same finding.
+```
+
+Both are hand-drawn raster images. `generation.png` is 1329x1232 RGBA carrying
+an Apple ICC profile and Adobe XMP, i.e. exported from a GUI tool, but nothing
+in it names the tool and no project file exists. **A reviewer asking for a
+change to either figure means redrawing it from scratch.** That is the honest
+status and it is worth stating in a reproducibility appendix rather than leaving
+the reader to infer that every figure has a pipeline.
+
+`fig:generation`'s content is not a measurement: panel A is the concept
+illustration (DownWell and VVVVVV becoming RL environments) and panel B is the
+generation pipeline, whose mechanics are sourced under § fig:catalog and
+§ tab:llm-cost.
+
+### fig:backend's published drawing has two identified errors
+
+`reproduction/figures/fig_schematic.py` exists and `reproduce.sh` runs it, but
+**it does not reproduce `architecture_schematic.png`**. Its own docstring says
+what it is:
+
+> Draft replacement for the PlayTrain schematic. Corrects the two things the
+> current drawing gets wrong:
+> - one QuickJS engine per *environment*, not per batch
+> - one observation buffer whose halves belong to two env groups, rather than
+>   two buffers that swap roles (there is no swap arrow here)
+
+Both corrections check out against the implementation:
+
+| the draft's claim | evidence |
+|---|---|
+| one QuickJS engine per environment | `native/qjs/qjs_vec_host.cpp`'s per-env state struct (L389–402) holds a `JSRuntime*` per environment, each with "its own JSContext + rasterizer state + p5 shim state" |
+| one shared observation buffer, halves per group | `PingPongVecEnv`: "Group g = env indices [g*group_size, (g+1)*group_size); outputs are contiguous views into the **shared** buffers", with `num_envs = 2 * group_size` |
+
+So the figure printed in the paper misstates the engine granularity and the
+buffer topology, and a corrected drawing already exists in the repo but was
+never swapped in. `STATE.md` flag 32.
+
+This also means `reproduce.sh`'s schematic step was misleading: it reported
+drawing "Architecture schematic" while producing a figure that deliberately
+disagrees with the published one. The step is relabelled this iteration to say
+so, in the same spirit as the suite-grid fix in § fig:suite_trainers. It still
+runs, because the draft is the useful artifact — it is just not a reproduction.
+
+```
+runs/  not applicable: no jobs, no data, no pipeline.
+```

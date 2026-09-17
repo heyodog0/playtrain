@@ -130,7 +130,10 @@ TMPS=$(mktemp -d); unpack_study "$TMPS"
 fi
 
 if want schematic; then
-step "Architecture schematic"
+step "Architecture schematic  (NOT fig:backend -- a draft replacement that corrects it)"
+# fig_schematic.py does not reproduce the paper's architecture_schematic.png,
+# which is hand-drawn with no source. It is a draft replacement that corrects
+# two things the published drawing gets wrong; see PROVENANCE.md § fig:backend.
 ( cd figures && $PY python fig_schematic.py "$OUT" ) ; done_ $?
 fi
 
