@@ -1150,3 +1150,55 @@ runs/  not applicable: these are LLM API calls, logged in
        reproduction/data/generation-logs/, not cluster jobs. The SPS column's
        measurement is the one piece with no recorded provenance (flag 21).
 ```
+
+---
+
+## tab:contrast — Qualitative properties of environment families (Table 2)
+
+```
+graphic:   tabular, main.tex L727
+code:      none — a qualitative judgement table
+data:      none measured
+```
+
+Descriptive. No cell is a measurement, so what this section records is where each
+judgement comes from: a citation for the other families, and for PlayTrain's own
+column, the label in this paper that supports it.
+
+| row | PlayTrain's cell | what backs it |
+|---|---|---|
+| Complexity | Flexible | § sec:variants; the generation pipeline, `playtrain/src/playtrain/gen/` |
+| Efficiency/Speed | High | **measured**: fig:env_efficiency (12.62x ALE, 2.19x ProcGen per core) and tab:train-throughput (1.07M agent-steps/s) |
+| Adaptability — training variations | Anything Describable | § sec:variants; tab:llm-cost, six artifacts generated for $0.95 total |
+| Adaptability — test environments | Anything Describable | same; the held-out level seeds in tab:eval |
+| Adaptability — game designs/dynamics | Very High | § sec:variants' three variant axes (parametric, structural, visual/thematic) |
+| Human Playability | High and Adaptable | **measured**: fig:human_wallclock, 20 participants played the same game files the agents train on |
+
+The comparison columns rest on citations rather than measurements of those
+systems: Atari on `bellemare2013ale`, ProcGen on `cobbe2020procgen`, and the
+GPU-port column on `radji2025octax` and `earle2025puzzlejax` as the caption
+states. All four keys resolve in the bibliography. The rows for those columns are
+the authors' reading of those systems, not anything this repo can check — which
+is the honest status of a qualitative table and is worth saying plainly rather
+than implying the whole table is sourced.
+
+Two of the six PlayTrain cells are backed by labels this harness verified
+(Efficiency/Speed and Human Playability). The other four are claims about
+capability, supported by the generation pipeline existing and being exercised,
+not by a number.
+
+### A latent LaTeX defect: one column too many
+
+`\begin{tabular}{l|ccccc}` declares **six** columns. The header supplies five
+(`Property & Atari & ProcGen & GPU-port & PlayTrain (ours)`), and so does every
+data row. The commented-out `Edit Target` row just below supplies **six** —
+`& ROM & C++ source & ROM/script & Python & \textbf{JS file}` — so the table
+previously had a fifth data column (Python) that was removed from the header and
+the rows but left in the column specification.
+
+The effect is a trailing empty column with the `|` rule sitting one column too
+far left of where the content ends. It renders without an error, which is why it
+has survived. `STATE.md` flag 25.
+
+The `Adaptability` row is a deliberate bare label with a single cell and is not
+part of this problem.
