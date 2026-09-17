@@ -1,0 +1,20 @@
+NODE: holy8a32607.rc.fas.harvard.edu
+QJS_HOST_MD5: 46ea49991fe2c6321cb5a0a9b558aebe  native/build/qjs_host
+done qjs qbert
+done qjs seaquest
+done qjs pong
+done qjs breakout
+done qjs space_invaders
+done qjs frostbite
+done qjs freeway
+done qjs asteroids
+game                  QuickJS mean±std          ALE mean±std   ratio
+qbert                   11337 ±    54         5703 ±    14   2.0x
+seaquest                82197 ±   605         9297 ±    11   8.8x
+pong                   312610 ±  2434        11721 ±    92  26.7x
+breakout                36008 ±   398         3896 ±    14   9.2x
+space_invaders          62841 ±   276         9628 ±    10   6.5x
+frostbite               52651 ±   305         5196 ±    28  10.1x
+--------------------------------------------------------------------
+GEOMEAN                 57113                7034        8.1x
+SWEEP6_ADV_DONE

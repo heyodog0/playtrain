@@ -1,0 +1,2 @@
+# sacct -X -j 43779854 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43779854   ep_best_sweep   2026-09-01T22:19:03   2026-09-01T22:43:17   holy8a24307   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch -w holy8a24307 ep_best_sweep.sbatch

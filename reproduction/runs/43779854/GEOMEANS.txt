@@ -1,0 +1,6 @@
+GEOMEAN t10  procgen  best_aff      355,451  (n=16)
+GEOMEAN t10  ale      best_aff       45,662  (n=8)
+GEOMEAN t20  procgen  best_aff      587,070  (n=16)
+GEOMEAN t20  ale      best_aff       89,285  (n=8)
+GEOMEAN t40  procgen  best_aff      931,786  (n=16)
+GEOMEAN t40  ale      best_aff      177,869  (n=8)

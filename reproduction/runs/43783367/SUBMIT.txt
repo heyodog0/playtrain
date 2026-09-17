@@ -1,0 +1,2 @@
+# sacct -X -j 43783367 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43783367   ladderadv   2026-09-01T22:47   holy8a32607   sbatch /n/home06/truong/sweep7_adv.sh

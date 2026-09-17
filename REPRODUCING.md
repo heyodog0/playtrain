@@ -8,13 +8,17 @@ $ bash reproduction/reproduce.sh --all    # adds the learning curves (277 MB, on
 ```
 
 Each step prints the paper's number beside the one it just computed, so a divergence is
-visible rather than silent. Output goes to `reproduction/out/`.
+visible rather than silent. Output goes to `reproduction/out/`. `reproduce.sh --list`
+names the steps and `reproduce.sh <name>` runs one.
+
+For the code, data file and cluster job behind each figure and table, see
+[`reproduction/PROVENANCE.md`](reproduction/PROVENANCE.md).
 
 ## What reproduces, and from what
 
 | artifact | generator | data | verified |
 |---|---|---|---|
-| Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/scaling/` | 2.18x ProcGen, 12.62x ALE, panel A at 3.64M / 7.36M |
+| Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/results/env_throughput/` (panels B/C/D); panel A is constants in the script | 12.62x ALE exact; 2.18x ProcGen against the paper's 2.19x |
 | Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset | all panels, both trainers |
 | Per-game suite grids | `reproduction/figures/tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
@@ -23,7 +27,7 @@ visible rather than silent. Output goes to `reproduction/out/`.
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical |
-| Thread-scaling table | shares Figure 4's data | `figures/scaling/` | 2.58x at 80 threads |
+| Thread-scaling table | shares Figure 4 panel A's constants | see PROVENANCE.md | 2.58x at 80 threads |
 | Appendix eval table | `results/eval_iddp_suite.json` | committed | 24 of 24 games |
 | Token cost table | `playtrain.gen.count_tokens` | `data/generation-logs/` | 6 of 7 rows exact, total differs by 8 tokens |
 
@@ -36,11 +40,11 @@ Figure 12 is a screenshot of the tester UI, reproduced by running `just tester`.
 ```console
 $ cd reproduction/figures
 
-# Figure 4. The job id selects the build: 44515188 is tier 3, and the older
-# 38145651 / 39032276 draw a valid figure at roughly half the throughput.
+# Figure 4. Panels B/C/D read figures/results/env_throughput/; panel A is
+# constants in the script. Its --ab-results / --pg-job / --ale-job flags are
+# accepted and ignored -- figures/scaling/ backs no published panel.
 $ uv run --no-project --with matplotlib --with numpy --with pillow \
-     python reproduction/figures/tools/plot_env_efficiency_bestonly.py \
-     --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out .
+     python reproduction/figures/tools/plot_env_efficiency_bestonly.py --out .
 
 # Table 1(a). The t3fix row is the published one. The adv2 row printed beside it
 # is the previous build.

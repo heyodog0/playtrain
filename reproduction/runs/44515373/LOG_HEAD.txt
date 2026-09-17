@@ -1,0 +1,33 @@
+node=holy8a32608.rc.fas.harvard.edu job=44515373
+Model name:          Intel(R) Xeon(R) Platinum 8480CL
+adv2 host md5 OK 5dcce14f4dfddc59a6b0f4e33d8a3127
+tier3 hosts present for all 24
+reused baselines present
+== PANEL C/D single-core, 24 games x 7 trials, interleaved ==
+done bigfish
+done bossfight
+done caveflyer
+done chaser
+done climber
+done coinrun
+done dodgeball
+done fruitbot
+done heist
+done jumper
+done leaper
+done maze
+done miner
+done ninja
+done plunder
+done starpilot
+done qbert
+done seaquest
+done pong
+done breakout
+done space_invaders
+done frostbite
+done freeway
+done asteroids
+== LADDER QuickJS rung, 24 games x 3 reps, bench 0 80000 ==
+== summary ==
+TIER3_PCD_DONE Sat Sep  5 00:13:49 EDT 2026

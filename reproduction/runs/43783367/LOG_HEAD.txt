@@ -1,0 +1,9 @@
+NODE: holy8a32607.rc.fas.harvard.edu
+QJS_HOST_MD5: 46ea49991fe2c6321cb5a0a9b558aebe  native/build/qjs_host
+=== Playwright ===
+GEOMEAN 502 (24 games)
+=== V8 (NodeGymEnv, production) ===
+=== QuickJS ===
+LADDER (24 games): {'playwright': 502, 'v8': 4374, 'quickjs': 37350}
+PW->V8 8.7x  V8->QJS 8.5x  PW->QJS 74x
+LADDER_ADV_DONE

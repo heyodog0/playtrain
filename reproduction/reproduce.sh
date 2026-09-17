@@ -1,27 +1,46 @@
 #!/usr/bin/env bash
 # Redraw every measured figure and table in the paper.
 #
-#   bash reproduction/reproduce.sh          # everything that needs no download
-#   bash reproduction/reproduce.sh --all    # also the learning-curve composite
+#   bash reproduction/reproduce.sh                  # everything that needs no download
+#   bash reproduction/reproduce.sh --all            # also the learning curves (277 MB fetch)
+#   bash reproduction/reproduce.sh env_efficiency   # one step by name
+#   bash reproduction/reproduce.sh --list           # the step names
 #
 # Outputs land in reproduction/out/. Each step prints the number the paper
-# reports beside the one it just computed.
+# reports beside the one it just computed. Provenance for every step -- code,
+# data, cluster job -- is in reproduction/PROVENANCE.md.
 set -uo pipefail
 cd "$(dirname "$0")"
 OUT="$PWD/out"; mkdir -p "$OUT"
 PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
-if [ "${1:-}" = "--all" ] && [ ! -f figures/outputs/percmd.json ]; then
+
+STEPS="env_efficiency env_cost t1a t1b dbuf human_wallclock schematic eval learning suite_grids"
+ALL=0; SEL=""
+case "${1:-}" in
+  --list) printf '%s\n' $STEPS; exit 0 ;;
+  --all)  ALL=1 ;;
+  "")     ;;
+  -*)     echo "unknown option $1; try --list" >&2; exit 2 ;;
+  *)      SEL="$1"
+          case " $STEPS " in *" $SEL "*) ;; *) echo "no such step: $SEL (see --list)" >&2; exit 2 ;; esac ;;
+esac
+# Named steps run on their own; the two heavy ones also run under --all.
+want() { if [ -n "$SEL" ]; then [ "$SEL" = "$1" ]; else [ "${2:-1}" -eq 1 ] || [ "$ALL" -eq 1 ]; fi; }
+
+if [ "$ALL" -eq 1 ] && [ ! -f figures/outputs/percmd.json ]; then
   echo "fetching run data (277 MB, once)"; bash figures/fetch_data.sh || exit 1
 fi
 step() { printf '\n=== %s\n' "$1"; }
 done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail+1)); echo "    FAILED"; fi; }
 
-step "Figure 4, environment efficiency  (paper: 2.19x ProcGen, 12.62x ALE)"
-( cd figures && $PY python tools/plot_env_efficiency_bestonly.py \
-    --ab-results scaling --pg-job 44515188 --ale-job 44515188 --out "$OUT" ) ; done_ $?
+if want env_efficiency; then
+step "Figure 4, environment efficiency  (paper: per core 2.19x ProcGen 14/16, 12.62x ALE 8/8; 80 threads 2.58x / 20.80x)"
+( cd figures && $PY python tools/plot_env_efficiency_bestonly.py --out "$OUT" ) ; done_ $?
+fi
 
+if want env_cost; then
 step "Environment cost breakdown"
 if [ -f figures/outputs/percmd.json ]; then
   ( cd figures && $PY python tools/plot_env_cost.py \
@@ -30,18 +49,26 @@ if [ -f figures/outputs/percmd.json ]; then
 else
   echo "    skipped: run 'bash reproduction/figures/fetch_data.sh' first"
 fi
+fi
 
+if want t1a; then
 step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
 ( cd figures/tables && uv run --no-project python t1a_agg.py \
     impala_nature=44748571+44784183 impala_icnn=44748573 \
     ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
+fi
 
+if want t1b; then
 step "Table 1(b), environment swap  (paper: 372k -> 838k, 175k -> 1,018k)"
 ( cd figures/tables && uv run --no-project python tab1b.py ) ; done_ $?
+fi
 
+if want dbuf; then
 step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
 ( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
+fi
 
+if want human_wallclock; then
 step "Human wall-clock figure"
 TMPS=$(mktemp -d)
 python3 -c "
@@ -50,10 +77,14 @@ for f in glob.glob('data/study/*.json.gz'):
     with gzip.open(f, 'rb') as i, open(os.path.join(sys.argv[1], os.path.basename(f)[:-3]), 'wb') as o:
         shutil.copyfileobj(i, o)" "$TMPS"
 ( cd figures/human && $PY python plot_wallclock5.py rerun_curves.json "$TMPS" "$OUT" ) ; done_ $?
+fi
 
+if want schematic; then
 step "Architecture schematic"
 ( cd figures && $PY python fig_schematic.py "$OUT" ) ; done_ $?
+fi
 
+if want eval; then
 step "Appendix eval table  (paper: 24 games, e.g. seaquest 102.5 / 732.5)"
 python3 - <<'PYEOF'
 import json
@@ -63,14 +94,18 @@ for g in ("seaquest", "bigfish", "pong"):
 print(f"    {len(d)} games total")
 PYEOF
 done_ $?
+fi
 
-if [ "${1:-}" = "--all" ]; then
-  step "Learning-curve composite"
-  ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
-  step "Per-game suite grids"
-  ( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null
-    $PYTB python tools/plot_suite_grid.py --out "$OUT" \
-    && $PYTB python tools/plot_suite_grid3.py --out "$OUT" ) ; done_ $?
+if want learning 0; then
+step "Learning-curve composite"
+( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
+fi
+
+if want suite_grids 0; then
+step "Per-game suite grids"
+( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null
+  $PYTB python tools/plot_suite_grid.py --out "$OUT" \
+  && $PYTB python tools/plot_suite_grid3.py --out "$OUT" ) ; done_ $?
 fi
 
 printf '\n%s\n' "----"
