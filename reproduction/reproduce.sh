@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space"
+STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -166,6 +166,11 @@ fi
 if want action_space; then
 step "Table 3, the default Discrete(8) action space  (against runtime/action_spaces.json)"
 ( cd figures && uv run --no-project python tools/check_action_space.py ) ; done_ $?
+fi
+
+if want step_return; then
+step "Table 4, what a step returns  (against the runtime source)"
+( cd figures && uv run --no-project python tools/check_step_return.py ) ; done_ $?
 fi
 
 if want llm_cost; then

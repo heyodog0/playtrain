@@ -1264,3 +1264,60 @@ equivalent and says so.
 
 `fig:action-spaces` (L1067) quotes two entries from this same file and is
 recorded under its own label.
+
+---
+
+## tab:step-return — What a step returns (Table 4)
+
+```
+graphic:   tabular, main.tex L1045
+redraw:    bash reproduction/reproduce.sh step_return
+code:      reproduction/figures/tools/check_step_return.py
+source:    playtrain/src/playtrain/runtime/env.py   (the contract and the defaults)
+           playtrain/src/playtrain/runtime/validate.py  (terminal states)
+           playtrain/native/qjs/qjs_host.cpp, native/aotfork/qjs_host_fork.cpp
+```
+
+Every claim in the table is fixed by source rather than measured, and six of the
+eight rows check out exactly:
+
+| row | paper | source |
+|---|---|---|
+| observation | `uint8[64,64,3]` | `observation_space = Box(0, 255, (obs_size, obs_size, channels), uint8)`, `obs_size: int = 64` |
+| reward | change in the game's score | `reward = score - lastScore` in both native hosts |
+| terminated | true when `gameState` is no longer `PLAYING` | `TERMINAL_STATES = {WIN, EXIT, GAMEOVER}` in `validate.py`, which also asserts the two agree |
+| truncated | true at `max_steps`, default 2000 | `DEFAULT_MAX_STEPS = 2000` |
+| `info.score` | cumulative score | in `_build_step_message` |
+| `info.lives` | lives remaining | in `_build_step_message` |
+| `info.seed` | seed for the current episode | in `_build_step_message` |
+
+Two rows are incomplete rather than wrong, and both are worth closing because
+this table is the step contract a reader implements against.
+
+### `info.gameState` omits a state
+
+The paper gives three values — `PLAYING`, `WIN`, `GAMEOVER`. The runtime defines
+**four**: `_GS_NAMES = ("PLAYING", "WIN", "GAMEOVER", "EXIT")`, with `"UNKNOWN"`
+as an out-of-range fallback. `EXIT` is not hypothetical: `validate.py`'s
+`TERMINAL_STATES = {"WIN", "EXIT", "GAMEOVER"}` treats it as terminal and flags
+any step that reports `terminated` without a terminal `gameState`. So a reader
+implementing against the table would treat an `EXIT` step as a contract
+violation. `STATE.md` flag 26.
+
+### `info.episodeLength` is returned but not listed
+
+`_build_step_message` puts five keys in `info` — `score`, `lives`, `gameState`,
+`episodeLength`, `seed` — and the table lists four. `episodeLength` is missing.
+Same flag.
+
+### Context
+
+The caption's derivation note is right on both counts: the reward is a score
+delta, and `terminated` is derived from `gameState` rather than reported
+independently, which is exactly what `validate.py` cross-checks.
+
+One thing the table describes only in its default configuration, worth stating
+since the prose calls the observation "a single 64x64 RGB frame with no
+stacking": `env.py` also supports `obs_mode="symbolic"`, which replaces the
+frame with a `Box(-inf, inf, (symbolic_dim,), float32)` and requires the game to
+declare `obs.symbolic`. The 64x64 RGB row is the default path, not the only one.
