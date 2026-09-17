@@ -24,7 +24,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games, in the script |
 | Architecture schematic | `figures/fig_schematic.py` | none | redraws, in the script |
-| Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows |
+| Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | five of six rows; the IMPALA-CNN row reads 0.34M against the paper's 0.35M because six of its games sit on a node every re-run excluded (`t1a_nodes.py`) |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical |
 | Thread-scaling table | shares Figure 4 panel A's constants | see PROVENANCE.md | 2.58x at 80 threads |

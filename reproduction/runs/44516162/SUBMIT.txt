@@ -1,0 +1,6 @@
+# sacct -X -j 44516162 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+44516162   tier3_pg_ab   2026-09-04T23:43:53   2026-09-05T06:14:48   holygpu8a15502   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch tier3_pg_ab.sbatch
+
+what: Table 1(b) ProcGen, 16 games, both arms (EnvPool and PlayTrain tier3).
+note: one job, all games, one node -- both sides of every swap are same-node by
+      construction, unlike Table 1(a). Verdicts in figures/tables/verdicts/.

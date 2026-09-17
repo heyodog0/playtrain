@@ -201,3 +201,117 @@ runs/44515188/  tier3_fig4a.sbatch, SUBMIT.txt, LOG_HEAD.txt
   `tools/plot_throughput_all.py`, the old figure. They are not the console output
   of anything in the paper. `sweep6.out`'s `NODE: holy8a32603` line is the reason
   the old README named that node.
+
+---
+
+## tab:train-throughput — Single-node training throughput (Table 1)
+
+```
+graphic:   tabular, main.tex L490
+redraw:    bash reproduction/reproduce.sh t1a        (a)
+           bash reproduction/reproduce.sh t1a_nodes  (a), node provenance
+           bash reproduction/reproduce.sh t1b        (b)
+code:      reproduction/figures/tables/t1a_agg.py, t1a_nodes.py, tab1b.py
+data:      reproduction/figures/tables/data/     (a), one JSON per row x game
+           reproduction/figures/tables/verdicts/ (b), one .verdict per game x arm
+           reproduction/figures/tables/nodes/t1a_nodes.tsv  (task -> game -> node)
+```
+
+One node, four H100s, 92 CPU cores, frame skip 1, 64x64x3 RGB, geometric mean
+over games. Every number is agent-steps/s.
+
+### (a) PlayTrain environments, double-buffered
+
+Four array jobs, one per row, one game per task, `--array=0-23%1` so tasks run
+serially. The published arm is **t3fix**; `t1a_agg.py` prints the previous
+engine (**adv2**) beside it for comparison, and only the t3fix line is in the
+paper.
+
+| paper row | paper | t3fix, all 24 | agree? | job(s) |
+|---|---|---|---|---|
+| IMPALA, Nature-CNN, all 24 | 1.07M | 1,071,262 | yes | 44748571 + 44784183 |
+| IMPALA, IMPALA-CNN, all 24 | 0.35M | **344,125 → 0.34M** | **no**, see below | 44748573 |
+| PPO, Nature-CNN, all 24 | 185k | 185,113 | yes | 44748574 + 44784184 |
+| PPO, IMPALA-CNN, all 24 | 68k | 67,636 | yes | 44748575 + 44784185 |
+| IMPALA, Nature-CNN, 16 ProcGen | 1.06M | 1,062,735 | yes | 44748571 + 44784183 |
+| IMPALA, Nature-CNN, 8 ALE | 1.09M | 1,088,521 | yes | 44748571 + 44784183 |
+
+The `+ 447841xx` jobs are re-runs of selected tasks; `t1a_agg.py` lets the later
+job win per game.
+
+**The 0.35M cell: the paper is right and the committed data is short one re-run.**
+None of these jobs is node-pinned, so each row's 24 games were measured on seven
+or eight different nodes. The campaign knew some were degraded —
+`t1a_t3fix.sbatch` excludes `holygpu8a134{01..04}` and `holygpu8a17601`, and all
+three re-run submissions add **`holygpu8a15203`** to that list. `impala_icnn` is
+the only row that was never re-run, so six of its games still carry
+`holygpu8a15203` measurements:
+
+```
+holygpu8a17204   n=5  mean 354,544
+holygpu8a15102   n=5  mean 353,887
+holygpu8a13202   n=1  mean 353,887
+holygpu8a17304   n=6  mean 349,514
+holygpu8a15203   n=6  mean 320,024   <- excluded by every re-run
+```
+
+That node runs the row 9.5% slow. Drop it and the row's geometric mean over the
+remaining 18 games is **352,600 → 0.35M, the paper's figure exactly**. The
+published 0.35M is therefore not stale adv2 (which was 347,722, also 0.35M) — it
+is this row measured off the bad node. Affected games: bigfish, caveflyer,
+climber, frostbite, plunder, seaquest. Closing the gap needs those six re-run
+with `--exclude=…,holygpu8a15203`, which is a cluster submission and so is
+`STATE.md` flag 7, not something this harness does.
+
+`reproduce.sh t1a_nodes` prints the per-node breakdown for all four rows from the
+committed `nodes/t1a_nodes.tsv`, so the node spread is visible rather than
+implicit. The other three rows match the paper despite the same spread, because
+their re-runs already moved the worst tasks.
+
+Binary provenance is gated inside the job: `t1a_t3fix.sbatch` copies the
+per-game `libqjs_vec.futIT2fix2_<game>.so` into a job-private shadow tree under
+`$TMPDIR`, md5-checks the copy, and then asserts from Python that the loaded
+library is that file and that `QJS_DIRTY` is set. It never swaps a `.so` inside a
+shared tree.
+
+Configs, per row:
+
+| row | template |
+|---|---|
+| impala_nature | `configs/pt_throughput/pt_bigfish_nature_fullnode.json`, widened by `tools/_mk_sweep_cfg.py <cfg> 15 5 256` |
+| impala_icnn | `playtrain-trainers/configs/impala_fullnode_throughput.json` |
+| ppo_nature, ppo_impala | `outputs/pv_p_breakout_s0/config.json` with `n_envs=768, n_steps=128, n_minibatches=32, ddp=True, native_env_threads=12, compile_mode=None, double_buffer=False, bf16=(net=="impala")` |
+
+### (b) PlayTrain clones vs originals, single-buffered
+
+| paper | EnvPool | PlayTrain | recomputed | job |
+|---|---|---|---|---|
+| 16 ProcGen | 372k | 838k | 371,617 → 837,638 | 44516162 |
+| 8 ALE | 175k | 1,018k | 175,119 → 1,017,528 | 44516167 |
+
+All four numbers agree. Unlike (a), each suite ran as **one job on one node**
+(`holygpu8a15502` and `holygpu8a17603`), so both sides of every swap are same-node
+by construction — which is what makes these the ratios the prose quotes.
+
+### Prose numbers around the table
+
+| paper | where | recomputed | agree? |
+|---|---|---|---|
+| all clones faster than ProcGen originals | L547 | true, 16/16 | yes |
+| ProcGen swap "2.25x on average" | L547 | 2.2540x (geomean of ratios = ratio of geomeans) | yes |
+| ALE swap 5.80x, "on all eight" | L547, L549 | **5.8105x**, and 8/8 faster | **no**, 5.81 vs 5.80 |
+
+The arithmetic means are 2.3888x and 5.9036x, so the paper is quoting geometric
+means, consistently with the caption. The ALE ratio rounds to 5.81, not 5.80;
+recorded in `STATE.md` § Flags with the ProcGen per-core rounding issue.
+
+```
+runs/44748571/  t1a_t3fix.sbatch, SUBMIT.txt, LOG_HEAD_task0.txt
+runs/44748573/  SUBMIT.txt   (same sbatch file, ROW=impala_icnn)
+runs/44748574/  SUBMIT.txt   runs/44748575/  SUBMIT.txt
+runs/44784183/  SUBMIT.txt   runs/44784184/  SUBMIT.txt   runs/44784185/  SUBMIT.txt
+runs/44670988/  t1a_adv2.sbatch, SUBMIT.txt   (adv2 comparison arm)
+runs/44670899/  SUBMIT.txt   runs/44670900/  SUBMIT.txt   runs/44670901/  SUBMIT.txt
+runs/44516162/  tier3_pg_ab.sbatch, SUBMIT.txt, LOG_HEAD.txt
+runs/44516167/  tier3_ale_ab.sbatch, SUBMIT.txt
+```

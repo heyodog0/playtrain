@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder env_cost t1a t1b dbuf human_wallclock schematic eval learning suite_grids"
+STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf human_wallclock schematic eval learning suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -61,6 +61,11 @@ step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
 ( cd figures/tables && uv run --no-project python t1a_agg.py \
     impala_nature=44748571+44784183 impala_icnn=44748573 \
     ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
+fi
+
+if want t1a_nodes; then
+step "Table 1(a) node provenance  (impala_icnn: 0.34M all-24 vs the paper's 0.35M)"
+( cd figures/tables && uv run --no-project python t1a_nodes.py ) ; done_ $?
 fi
 
 if want t1b; then
