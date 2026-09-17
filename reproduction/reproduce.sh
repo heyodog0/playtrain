@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids"
+STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -163,6 +163,12 @@ step "Per-game suite grids, the three appendix figures"
        --arms ppo      --name fig_suite_enc_ppo    --out "$OUT" ) ; done_ $?
 fi
 
+if want llm_cost; then
+step "Table 11, authorship cost  (offline: the committed counts, not a new API call)"
+( cd figures && uv run --no-project python tools/check_llm_cost.py ) ; done_ $?
+fi
+
 printf '\n%s\n' "----"
 echo "$ok ok, $fail failed. Outputs in reproduction/out/"
-echo "Not covered here: tab:llm-cost, which needs GEMINI_API_KEY (playtrain.gen.count_tokens)."
+echo "tab:llm-cost is checked offline against the committed counts; regenerating them"
+echo "from scratch needs GEMINI_API_KEY (playtrain.gen.count_tokens)."

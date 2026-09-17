@@ -29,7 +29,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical; the caption's "two slowest environments" example is wrong (PROVENANCE.md) |
 | Thread-scaling table | `figures/tools/check_bench_scaling.py` | Figure 4 panel A's constants | all 70 cells; ratios and both efficiency columns re-derived |
 | Appendix eval table | `figures/tools/check_eval.py` | `figures/results/eval_iddp_suite.json` | all 48 cells, parsed from main.tex |
-| Token cost table | `playtrain.gen.count_tokens` | `data/generation-logs/` | 6 of 7 rows exact, total differs by 8 tokens |
+| Token cost table | `figures/tools/check_llm_cost.py` (offline); `playtrain.gen.count_tokens` to regenerate | `data/llm_cost.json`, `data/generation-logs/` | all 6 rows exact; the paper's Total is 8 input tokens high; LoC and SPS columns unsourced |
 
 The remaining tables are descriptive: engine and backend comparisons, the action space,
 the step-return contract, hyperparameters, and the benchmark and EnvPool configurations.
@@ -53,8 +53,9 @@ $ cd tables && uv run --no-project python t1a_agg.py \
      ppo_nature=44748574+44784184 ppo_impala=44748575+44784185
 ```
 
-The token cost table is the one thing the script does not run. It needs
-`GEMINI_API_KEY`, since it re-counts tokens through the API.
+The token cost table is checked offline against the committed counts in
+`data/llm_cost.json`. Only regenerating those counts needs `GEMINI_API_KEY`,
+since that re-tokenizes through the API.
 
 `figures/as_run/` holds the sweep scripts and Slurm submissions exactly as they were
 submitted to the cluster. They are a record of what produced the committed data, not an

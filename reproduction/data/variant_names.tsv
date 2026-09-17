@@ -12,3 +12,4 @@ breakout.multiball	breakout.multi	examples/games/js/breakout.multi.js
 qbert.bigmap	qbert.v2	examples/games/js/qbert.v2.js
 flappy_bird.hoop	flappy_bird.dunk2	examples/games/js/flappy_bird.dunk2.js
 frostbite.jungle	frostbite.jungle	examples/games/js/frostbite.jungle.js
+downwell	downwell_fresh	(new game, no variant parent)

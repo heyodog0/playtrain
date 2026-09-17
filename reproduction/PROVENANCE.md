@@ -963,3 +963,90 @@ they are the strongest support it has for panel B and are recorded here.
 ```
 runs/44381429/  envcost_adv.sbatch, SUBMIT.txt
 ```
+
+---
+
+## tab:llm-cost — Authorship cost and training throughput per artifact (Table 11)
+
+```
+graphic:   tabular, main.tex L1774
+redraw:    bash reproduction/reproduce.sh llm_cost        offline, no API key
+regenerate: GEMINI_API_KEY=... uv run --with google-genai \
+              python -m playtrain.gen.count_tokens
+code:      playtrain/src/playtrain/gen/count_tokens.py  (the generator)
+           reproduction/figures/tools/check_llm_cost.py  (the offline check)
+data:      reproduction/data/llm_cost.json      the counts
+           reproduction/data/tab_llm_cost.tex   the generated tabular
+           reproduction/data/generation-logs/   26 logs, one per LLM call
+```
+
+The ledger this harness began with listed this table as needing `GEMINI_API_KEY`
+and suggested committing the counted JSON so it redraws offline. **That is
+already done**: `count_tokens.py` writes both the JSON and the LaTeX beside the
+counts, and both are committed. `reproduce.sh llm_cost` now checks the whole
+table with no API call, so the step is no longer excluded from the run.
+
+**Five of the seven columns verify completely, offline.**
+
+| column | source | status |
+|---|---|---|
+| Calls | one generation log per call | 26 of 26 logs present on disk; every row's Calls equals its number of logs |
+| Tokens (in / out) | Gemini `count_tokens` over each log's stored prompt and `raw_output` | all 12 cells match |
+| Time | wall-clock from the logs | all 6 match |
+| Cost | recomputed from $2 / $12 per 1M | all 6 match to the cent |
+| LoC Δ | **hardcoded** in `count_tokens.EXTRA` | unsourced |
+| SPS | **hardcoded** in `count_tokens.EXTRA` | unsourced |
+
+The rates in the code (`RATE_IN, RATE_OUT = 2.0, 12.0`) match the caption's
+Gemini 3.1 Pro prices, and every row's cost recomputes from its own token counts.
+
+### The Total row: the paper is 8 tokens high
+
+| | calls | tokens in | tokens out | time | cost |
+|---|---|---|---|---|---|
+| data (`llm_cost.json`, and the row sum) | 26 | **70,918** | 67,206 | 34.4 min | $0.95 |
+| paper (L1786) | 26 | **70,926** | 67,206 | 34.4 min | $0.95 |
+
+Everything else in the row agrees, and the six artifact rows sum exactly to the
+data's 70,918 — so this is a transcription slip in the paper, not a data problem.
+The committed `data/tab_llm_cost.tex`, which the generator emits, prints 70,918.
+The cost is unaffected: 8 input tokens is $0.000016. `STATE.md` flag 22.
+
+### The two hardcoded columns
+
+`count_tokens.EXTRA` carries LoC Δ and SPS with the comment "Measured elsewhere,
+carried here so the table has a single source" — but where is not recorded, and
+the comment then describes SPS as "single-core throughput on the suite's
+full-node configuration", which is self-contradictory. The paper's caption says
+full-node, and it is right: the committed single-core figures for these same
+games (`outputs/percmd.json`) are 11,222 for breakout.multi and **623** for
+qbert.v2, against the table's 355k and 39k. So the column is full-node trainer
+throughput and the code comment is wrong by a factor of 30 to 60.
+
+The qbert value is corroborated elsewhere: main.tex L778 says "qbert.bigmap
+reaches 39k SPS against the suite's 0.35M ceiling", and 39k is the table's own
+cell, with the four non-render-bound artifacts sitting at 354–356k, i.e. that
+0.35M ceiling. The numbers are coherent; what is missing is the measurement they
+came from. `STATE.md` flag 21.
+
+### Artifact names
+
+Four of the six rows are printed in the paper under different names than
+everything in the repo uses — `breakout.multiball` for `breakout.multi`,
+`qbert.bigmap` for `qbert.v2`, `flappy_bird.hoop` for `flappy_bird.dunk2`, and
+`downwell` for `downwell_fresh`. The generation logs, the JSON's `artifact` keys
+and the generated LaTeX all use the repo names. `check_llm_cost.py` resolves them
+through `data/variant_names.tsv`, which this iteration extended with the
+`downwell` row, and reports each match under the name the paper prints. Same
+issue as § fig:learning panel B; `STATE.md` flag 9.
+
+`qbert.v2` is worth one note: its two calls are logged under two different names,
+`qbert.v1_variant` and `qbert.v2_variant`, because the first produced v1 and the
+second produced v2 from it. `count_tokens.ARTIFACTS` globs both, which is why its
+Calls is 2 rather than 1.
+
+```
+runs/  not applicable: these are LLM API calls, logged in
+       reproduction/data/generation-logs/, not cluster jobs. The SPS column's
+       measurement is the one piece with no recorded provenance (flag 21).
+```
