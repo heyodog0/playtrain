@@ -1740,3 +1740,62 @@ this table: Table 1(a)'s PPO template uses `n_envs=768, n_steps=128,
 n_minibatches=32` (§ tab:train-throughput), against the 192 / 128 / 8 here. The
 prose at L1408 quotes this table's numbers — 128 steps x 192 environments =
 24,576 timesteps — and that arithmetic is right.
+
+---
+
+## tab:envpool-config — The tuned EnvPool configuration (Table 13)
+
+```
+graphic:   tabular, main.tex L1560
+redraw:    bash reproduction/reproduce.sh envpool_config
+code:      reproduction/figures/tools/check_envpool_config.py
+source:    reproduction/runs/43779854/ep_best_sweep.sbatch   (the as-run job)
+```
+
+**All nine rows are evidenced in the as-run submission, 0 unevidenced.** This is
+the configuration behind the EnvPool documented-best arm of
+§ fig:env_efficiency panel A, and the sbatch is committed, so each row points at
+a line rather than at a description.
+
+| row | paper | line in `ep_best_sweep.sbatch` |
+|---|---|---|
+| API | `make_gymnasium`, `async_reset`, `send`/`recv` | `envpool.make_gymnasium(...)`, `env.async_reset()`, `env.recv()`, `env.send(...)` |
+| pools per node | one per NUMA domain, each in its own process | domains from `glob.glob("/sys/devices/system/node/node[0-9]*")`; one `subprocess.Popen` per domain |
+| envs per pool | total ÷ domains (2,048 at 80 threads) | `envs = 2048 * T // 80`, then `pe = envs // K` |
+| threads per pool | total ÷ domains | `pe, pt = envs // K, max(1, T // K)` |
+| batch size | max(16, 3 × threads per pool) | `BS = max(16, pt * 3)` |
+| thread affinity | offset to that domain's first CPU | `thread_affinity_offset=off`, passed as `str(i * CPD)` |
+| ALE spec | 64×64 RGB, `stack_num=1`, `frame_skip=1` | `img_height=64, img_width=64, gray_scale=False, stack_num=1, frame_skip=1` |
+| ProcGen spec | defaults, already 64×64 RGB | the kwargs above are gated on `if env_id.endswith("-v5")`, so ProcGen gets only `batch_size` |
+| actions | uniform random, sampled per batch | `np.random.randint(0, na, size=len(ids))`, sized to the batch `recv` returned |
+
+The ProcGen row is worth spelling out because it is a claim about *absence*: the
+observation kwargs apply only to `-v5` ids, which are the ALE ones, so ProcGen
+environments are constructed with nothing but `batch_size`. "Defaults" is
+literal.
+
+The caption's "ALE is moved off its 84×84 grayscale stack-4 default so both
+comparisons see the same observation" is exactly what that `-v5` branch does,
+and it is the right direction to disclose: it makes ALE do more work than its
+default, not less.
+
+### The prose claims too
+
+Both statements at L1583 check out in the same file:
+
+- "each NUMA pool is warmed up for four seconds, the following twelve seconds
+  are then measured" — `pump(4.0); n, dt = pump(12.0)`, where `pump` returns
+  the step count and elapsed time and the reported figure is `n / dt`.
+- "We sum across all the pools for the node and then take the geometric mean
+  afterwards" — the parent sums each child's `sps` (`tot += json.loads(...)`)
+  and reports `geo(...)` over games.
+
+`PROVENANCE.md` § tab:bench-scaling records what this configuration produced,
+and § fig:env_efficiency panel A records the caveat that matters most: this arm
+was measured at 10/20/40 threads in this job and 80 threads in job 43570992,
+with 5, 30 and 60 threads derived rather than measured.
+
+One disclosure the paper makes and this section should echo: PlayTrain is
+compiled with profile-guided optimization while EnvPool runs on its prebuilt
+wheel (L1584). That is stated in the paper, and it is the kind of asymmetry a
+reader should weigh against the ratios.
