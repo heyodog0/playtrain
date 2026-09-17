@@ -581,3 +581,80 @@ either way — this is a wording problem, not a data problem.
 ```
 runs/44861569/  dbuf_t3_24.sbatch, SUBMIT.txt
 ```
+
+---
+
+## fig:suite_trainers, fig:suite_enc_impala, fig:suite_enc_ppo — Full-suite curves (Figures 9–11)
+
+```
+graphic:   figures/fig_suite_trainers.pdf, fig_suite_enc_impala.pdf, fig_suite_enc_ppo.pdf
+redraw:    bash reproduction/reproduce.sh suite_check    composition
+           bash reproduction/reproduce.sh suite_grids    all three figures
+code:      reproduction/figures/tools/plot_suite_grid3.py, tools/check_suite.py
+data:      figures/outputs/_suite4_curves.json  (in the figure-data-v1 archive)
+           24 games x 4 arms x 3 seeds
+```
+
+All three figures come from **one script and one data file**, differing only in
+which arms they show:
+
+| label | `--arms` | `--name` | arms drawn |
+|---|---|---|---|
+| fig:suite_trainers | `trainers` | `fig_suite_trainers` | IMPALA + IMPALA-CNN, PPO + IMPALA-CNN |
+| fig:suite_enc_impala | `impala` | `fig_suite_enc_impala` | IMPALA at both encoders |
+| fig:suite_enc_ppo | `ppo` | `fig_suite_enc_ppo` | PPO at both encoders |
+
+**`reproduce.sh` was producing none of them.** It called
+`plot_suite_grid3.py --out …` with no `--arms` and no `--name`, which emits the
+4-arm `fig_suite_grid` — a figure no label in `main.tex` uses — and also ran
+`plot_suite_grid.py`, whose own docstring says it draws the superseded
+single-seed 150M DDP2 run. So the step reported ok while redrawing nothing the
+paper contains. Fixed this iteration: the step now runs the three invocations
+above.
+
+Evidence the pairing is right: the redrawn PDFs come out at 354,793 / 346,426 /
+369,651 bytes against the paper's 354,996 / 346,192 / 369,377 — within 0.1%,
+the residue being embedded timestamps.
+
+While fixing this, `--arms` selection was hoisted out of the per-game loop (it
+was being rebuilt 24 times and then read after the loop by the final printout,
+which relied on loop-variable leakage), and that printout now names the arms it
+actually drew instead of always claiming four.
+
+### Caption claims
+
+| claim | recomputed | agree? |
+|---|---|---|
+| all 24 games | 24 of 24 present | yes |
+| three seeds per plot | 3 for every game in all four arms | yes |
+| 100M environment steps | IMPALA to 99.94M, PPO to 100.00M | yes |
+| both arms IMPALA-CNN (fig:suite_trainers) | `--arms trainers` = indices 0 and 2, the two IMPALA-CNN arms | yes |
+| lines are the seed mean, bands min and max | `seed_band` returns nanmean, nanmin, nanmax | yes |
+| PPO curves start at 0.5M | PPO data begins at 0.02M; the plotter cuts at 0.5M | yes, by deliberate cut |
+| the 2,000-frame horizon is at 12.3M | 6,144 envs x 2,000 = 12.288M | yes |
+
+The PPO cut is a censoring correction, not cosmetic: before the first truncation
+wave at 192 envs x 2,000 frames = 0.38M steps, only *winning* episodes have
+terminated, so every return average in that range is wins-only. The cut drops
+the censored head before smoothing, because masking afterwards would let the EMA
+carry the plateau across the boundary. IMPALA is not cut: its wave sits at 12.3M
+but its first log lands at 1.64M with returns accumulating from step one — which
+is exactly why `maze`, `heist` and `freeway`, the three games with no failure
+state, need the caption's caveat instead.
+
+One caveat the caption does not mention: the curves are **EMA-smoothed** before
+aggregation (`span_frac=0.02`), so a plotted line is a smoothed seed mean rather
+than the raw mean. Smoothing before the min/max is deliberate — at the logged
+resolution the raw band is driven by single-point spikes in one seed — but a
+reader comparing a plotted value against a raw TB number should expect a small
+difference. Recorded as a caveat, not a flag.
+
+`np.nanmean` over an all-NaN column raises a RuntimeWarning for grid points below
+a given arm's first sample (the PPO figure's first 0.5M). Harmless: those points
+are meant to be empty.
+
+```
+runs/  the suite training runs are identified by run directory inside the
+       archive, as for fig:learning. Their Slurm provenance is not yet
+       recovered; see STATE.md.
+```

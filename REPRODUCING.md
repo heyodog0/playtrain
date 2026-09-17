@@ -20,7 +20,7 @@ For the code, data file and cluster job behind each figure and table, see
 |---|---|---|---|
 | Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/results/env_throughput/` (panels B/C/D); panel A is constants in the script | 12.62x ALE exact; 2.18x ProcGen against the paper's 2.19x; panel B's lower rungs disagree with the prose, see PROVENANCE.md |
 | Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset (**not yet on the public repo**, see PROVENANCE.md) | 24 / 4 / 8 panels, 3+3 seeds all eight games; panel B's variant names differ from the paper's |
-| Per-game suite grids | `reproduction/figures/tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
+| Per-game suite grids | `reproduction/figures/tools/plot_suite_grid3.py` with `--arms trainers|impala|ppo` | `figures/outputs/_suite4_curves.json` | all three appendix figures, 24 games x 3 seeds x 100M |
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/`, `figures/human/rerun_curves_icnn.json` | 20 participants, 8 games; crossing steps match the paper, but two prose claims and the gender count do not (PROVENANCE.md) |
 | Architecture schematic | `figures/fig_schematic.py` | none | redraws, in the script |

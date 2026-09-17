@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_grids"
+STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -136,11 +136,23 @@ step "Learning-curve composite"
 ( cd figures && $PYTB python tools/plot_main_composite.py "$OUT/fig_main.png" ) ; done_ $?
 fi
 
+if want suite_check; then
+step "Suite figure composition  (paper: all 24 games, 3 seeds, 100M steps, PPO from 0.5M)"
+( cd figures && $PY python tools/check_suite.py --data outputs/_suite4_curves.json ) ; done_ $?
+fi
+
 if want suite_grids 0; then
-step "Per-game suite grids"
-( cd figures && cp outputs/_suite*_curves.json . 2>/dev/null
-  $PYTB python tools/plot_suite_grid.py --out "$OUT" \
-  && $PYTB python tools/plot_suite_grid3.py --out "$OUT" ) ; done_ $?
+step "Per-game suite grids, the three appendix figures"
+# --arms picks which of the four arms each figure shows, and --name must match
+# the file main.tex includes. Without them plot_suite_grid3.py emits the 4-arm
+# fig_suite_grid, which no label in the paper uses.
+( cd figures \
+  && $PYTB python tools/plot_suite_grid3.py --data outputs/_suite4_curves.json \
+       --arms trainers --name fig_suite_trainers  --out "$OUT" \
+  && $PYTB python tools/plot_suite_grid3.py --data outputs/_suite4_curves.json \
+       --arms impala   --name fig_suite_enc_impala --out "$OUT" \
+  && $PYTB python tools/plot_suite_grid3.py --data outputs/_suite4_curves.json \
+       --arms ppo      --name fig_suite_enc_ppo    --out "$OUT" ) ; done_ $?
 fi
 
 printf '\n%s\n' "----"
