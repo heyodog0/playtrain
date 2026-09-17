@@ -1,0 +1,40 @@
+node=holy8a24307.rc.fas.harvard.edu
+4.18.0-553.155.1.el8_10.x86_64
+NUMA node(s):        2
+Model name:          AMD EPYC 9654 96-Core Processor
+NUMA node0 CPU(s):   0-95
+NUMA node1 CPU(s):   96-191
+live .so (untouched): 8b539667dcead5513afe365b766f9e92  /n/holylabs/gershman_lab/Users/rtruong/playtrain/native/build/libqjs_vec.so
+8b539667dcead5513afe365b766f9e92  /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-tuning/native/build/variants/libqjs_vec.live.so
+42385dfd290461cc45ad1185c96adcdc  /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-tuning/native/build/variants/libqjs_vec.rv2.so
+e17cef67088f38410dd1322951e7c7b8  /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-tuning/native/build/variants/libqjs_vec.dv.so
+
+=== bigfish t1 live 8b539667dcead5513afe365b766f9e92 dirty=0
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 5297125, 'frames_per_s': 5297125, 'per_worker': [335343, 339681, 341792, 339642, 323154, 336119, 335256, 333317, 327973, 329969, 333478, 326098, 320025, 325373, 325664, 324238], 'ms_infer': 0.01, 'ms_env': 0.38, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_live_r1.json
+
+=== bigfish t1 rv2 42385dfd290461cc45ad1185c96adcdc dirty=0
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8040205, 'frames_per_s': 8040205, 'per_worker': [511618, 501554, 511768, 504298, 512268, 492266, 513490, 516357, 511047, 502732, 494225, 489549, 493996, 500430, 504303, 480305], 'ms_infer': 0.01, 'ms_env': 0.25, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_rv2_r1.json
+
+=== bigfish t1 dv e17cef67088f38410dd1322951e7c7b8 dirty=1
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8738498, 'frames_per_s': 8738498, 'per_worker': [562236, 560482, 549737, 543435, 547412, 547113, 549345, 533661, 550545, 535433, 554377, 525152, 546099, 548538, 547936, 536997], 'ms_infer': 0.01, 'ms_env': 0.23, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_dv_r1.json
+
+=== bigfish t2 live 8b539667dcead5513afe365b766f9e92 dirty=0
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 5292765, 'frames_per_s': 5292765, 'per_worker': [343727, 336308, 316846, 335779, 335005, 320333, 332762, 335646, 328801, 341682, 326008, 325534, 331613, 324552, 334506, 323663], 'ms_infer': 0.01, 'ms_env': 0.38, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_live_r2.json
+
+=== bigfish t2 rv2 42385dfd290461cc45ad1185c96adcdc dirty=0
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8021061, 'frames_per_s': 8021061, 'per_worker': [509373, 507779, 516723, 480845, 500783, 511426, 501516, 503812, 506147, 503174, 502536, 500877, 509608, 487066, 491578, 487820], 'ms_infer': 0.01, 'ms_env': 0.25, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_rv2_r2.json
+
+=== bigfish t2 dv e17cef67088f38410dd1322951e7c7b8 dirty=1
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8764962, 'frames_per_s': 8764962, 'per_worker': [547847, 558842, 557633, 552247, 554045, 551672, 551096, 550975, 530487, 535412, 553383, 547927, 557714, 539055, 539859, 536767], 'ms_infer': 0.01, 'ms_env': 0.23, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_dv_r2.json
+
+=== bigfish t3 live 8b539667dcead5513afe365b766f9e92 dirty=0
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 5350141, 'frames_per_s': 5350141, 'per_worker': [336986, 338296, 328689, 338471, 339896, 334610, 335153, 325861, 341151, 338925, 321034, 330800, 341107, 326701, 340408, 332053], 'ms_infer': 0.01, 'ms_env': 0.37, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/final_any_pt_43543523/bigfish_live_r3.json
+
+=== bigfish t3 rv2 42385dfd290461cc45ad1185c96adcdc dirty=0

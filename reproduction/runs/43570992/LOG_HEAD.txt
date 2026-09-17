@@ -1,0 +1,34 @@
+node=holy8a24307.rc.fas.harvard.edu
+NUMA node(s):        2
+NUMA node0 CPU(s):   0-95
+NUMA node1 CPU(s):   96-191
+domains=2 cores/domain=96 shard envs=1024 threads=40 bs=120
+{'suite': 'procgen', 'env_id': 'BigfishEasy-v0', 'sync1_aff': 609742, 'async_aff': 2581430}
+{'suite': 'procgen', 'env_id': 'BossfightEasy-v0', 'sync1_aff': 35612, 'async_aff': 76338}
+{'suite': 'procgen', 'env_id': 'CaveflyerEasy-v0', 'sync1_aff': 781362, 'async_aff': 1561147}
+{'suite': 'procgen', 'env_id': 'ChaserEasy-v0', 'sync1_aff': 808120, 'async_aff': 2340682}
+{'suite': 'procgen', 'env_id': 'ClimberEasy-v0', 'sync1_aff': 548948, 'async_aff': 2037958}
+{'suite': 'procgen', 'env_id': 'CoinrunEasy-v0', 'sync1_aff': 647154, 'async_aff': 1321155}
+{'suite': 'procgen', 'env_id': 'DodgeballEasy-v0', 'sync1_aff': 716180, 'async_aff': 1434611}
+{'suite': 'procgen', 'env_id': 'FruitbotEasy-v0', 'sync1_aff': 778334, 'async_aff': 1699588}
+{'suite': 'procgen', 'env_id': 'HeistEasy-v0', 'sync1_aff': 846120, 'async_aff': 2070127}
+{'suite': 'procgen', 'env_id': 'JumperEasy-v0', 'sync1_aff': 418559, 'async_aff': 815166}
+{'suite': 'procgen', 'env_id': 'LeaperEasy-v0', 'sync1_aff': 551902, 'async_aff': 1955167}
+{'suite': 'procgen', 'env_id': 'MazeEasy-v0', 'sync1_aff': 777546, 'async_aff': 2030979}
+{'suite': 'procgen', 'env_id': 'MinerEasy-v0', 'sync1_aff': 955835, 'async_aff': 2128097}
+{'suite': 'procgen', 'env_id': 'NinjaEasy-v0', 'sync1_aff': 915809, 'async_aff': 2004888}
+{'suite': 'procgen', 'env_id': 'PlunderEasy-v0', 'sync1_aff': 1043562, 'async_aff': 2076636}
+{'suite': 'procgen', 'env_id': 'StarpilotEasy-v0', 'sync1_aff': 405874, 'async_aff': 907322}
+{'suite': 'ale', 'env_id': 'Asteroids-v5', 'sync1_aff': 278640, 'async_aff': 373238}
+{'suite': 'ale', 'env_id': 'Breakout-v5', 'sync1_aff': 224729, 'async_aff': 337299}
+{'suite': 'ale', 'env_id': 'Freeway-v5', 'sync1_aff': 250215, 'async_aff': 306562}
+{'suite': 'ale', 'env_id': 'Frostbite-v5', 'sync1_aff': 245697, 'async_aff': 340563}
+{'suite': 'ale', 'env_id': 'Pong-v5', 'sync1_aff': 286205, 'async_aff': 376057}
+{'suite': 'ale', 'env_id': 'Qbert-v5', 'sync1_aff': 243685, 'async_aff': 357034}
+{'suite': 'ale', 'env_id': 'Seaquest-v5', 'sync1_aff': 282565, 'async_aff': 361866}
+{'suite': 'ale', 'env_id': 'SpaceInvaders-v5', 'sync1_aff': 273090, 'async_aff': 357504}
+GEOMEAN procgen  sync1_aff       577,487  (n=16)
+GEOMEAN procgen  async_aff     1,413,748  (n=16)
+GEOMEAN ale      sync1_aff       259,743  (n=8)
+GEOMEAN ale      async_aff       350,601  (n=8)
+AFF_DONE

@@ -1,0 +1,4 @@
+GEOMEAN procgen  sync1_aff       577,487  (n=16)
+GEOMEAN procgen  async_aff     1,413,748  (n=16)
+GEOMEAN ale      sync1_aff       259,743  (n=8)
+GEOMEAN ale      async_aff       350,601  (n=8)
