@@ -64,36 +64,37 @@ Jobs 43570992 (`ep_affinity`) and 43543523 (`final_any`, "the matrix") are now
 recovered into `runs/`, and recovering them settled which of panel A's points
 are measurements.
 
-**No arm was measured at 5, 30 or 60 threads.** Every job behind the panel swept
-the same ladder — 10/20/40/80. Job 43543523's own header states it: "EP thread
-sweeps 10/20/40/80 on ProcGen16 for sync1 / sync16n / async+NUMA. PT dv+live
-sweep 10/20/40/80 too (Fig 4A curves)." So three of the seven plotted thread
-counts are derived, in every series. The full point-by-point map is committed at
+**The seven-point ladder was measured — but not on the engine panel A plots.**
+Jobs **38145651** (ProcGen, both arms) and **39032276** (ALE, both arms) swept
+the full 5/10/20/30/40/60/80 ladder, and their per-game data is committed in
+`figures/scaling/`. That is where the figure's x-axis comes from.
+
+Panel A, however, plots **adv-era** values, and every adv-era sweep used
+10/20/40/80 only — 43543523 (its header: "EP thread sweeps 10/20/40/80 on
+ProcGen16"), 43574839 (workers 2/4/8, and its EnvPool side logs threads
+10/20/40), 43779854 (T in 10/20/40), 43780731 (w=2/4/8 plus an 80-thread block)
+and 43570992 (80 threads). So the plotted curves' 5, 30 and 60-thread points have
+no adv-era measurement behind them. Point-by-point map, including the pre-adv
+value at each thread count for scale:
 `figures/scaling/panelA_measured.tsv`.
 
-| series | measured | derived |
+| series | adv-era measured | derived in the plotted curve |
 |---|---|---|
-| EnvPool as shipped, ProcGen | 10/20/40/80 — all four **exact** against 43543523 | 5 (a duplicate of the 10-thread value), 30, 60 |
-| EnvPool as shipped, ALE | 80 only, exact | **5, 10, 20, 30, 40, 60** — the matrix swept ALE at 80 threads only |
-| EnvPool documented best, both suites | 10/20/40 from 43779854, 80 from 43570992, all within 0.44% | 5, 30, 60 |
+| EnvPool as shipped, ProcGen | 10/20/40/80, all four **exact** against 43543523 | 5 (a duplicate of the 10-thread value), 30, 60 |
+| EnvPool as shipped, ALE | 10/20/40 from 43574839 and 80 from 43543523, all four **exact** | 5 (duplicate of 10), 30, 60 |
+| EnvPool documented best, both suites | 10/20/40 from 43779854, 80 from 43570992, within 0.44% | 5, 30, 60 |
 | PlayTrain, both suites | 10/20/40/80 swept by 43780731 | 5, 30, 60 |
 
-Two consequences worth stating plainly:
+The one concrete anomaly is the 5-thread point: in **both** as-shipped series it
+is the 10-thread measurement repeated verbatim (ProcGen 178,217; ALE 38,478),
+which cannot be right as a 5-thread throughput and makes that column's "100%"
+scaling efficiency an artefact. `tab:bench-scaling` normalises both efficiency
+columns against that row.
 
-- The **5-thread row is not a measurement**, and it is the row
-  `tab:bench-scaling` normalises both scaling-efficiency columns against. The
-  "100%" at 5 threads is 100% by construction relative to a derived point. For
-  the EnvPool as-shipped series it is worse than derived: it is the 10-thread
-  value repeated verbatim, in both suites.
-- The **EnvPool as-shipped ALE curve rests on a single measured point.** Six of
-  its seven values are derived from the 80-thread measurement. That curve is not
-  in the published figure (panel A draws documented-best only) but it is what
-  the printout's "vs as shipped: 7.78x / 30.57x" line divides by.
-
-None of this makes a published ratio wrong: the headline 2.58x and 20.80x are
-80-thread numbers, and both denominators are measured (468,997 exact; 350,959
-against a logged 350,601, 0.10% apart). What is not supported is the impression
-that panel A is seven measured points per arm. `STATE.md` flag 23.
+No published ratio is affected: the headline 2.58x and 20.80x are 80-thread
+numbers and both denominators are measured (468,997 exact; 350,959 against a
+logged 350,601). What is not supported is presenting all seven thread counts as
+adv-era measurements. `STATE.md` flag 23.
 
 ### Panels C and D — per-core throughput vs ProcGen C++ and ALE
 
@@ -906,12 +907,14 @@ The EnvPool column is a composite across three jobs — 43779854 for 10/20/40
 threads, 43570992 for the 80-thread points that produce the headline 2.58x and
 20.80x, and 43543523 for the as-shipped curve. All three are now in `runs/`.
 
-**The 5-thread row of this table is not a measurement**, and both
-scaling-efficiency columns are normalised against it. No job behind panel A
-swept 5, 30 or 60 threads — see § fig:env_efficiency panel A and
+**The 5-thread row is not an adv-era measurement**, and both
+scaling-efficiency columns are normalised against it — in the as-shipped series
+it is the 10-thread value repeated verbatim. The full ladder was measured
+pre-adv (38145651 / 39032276), but no adv-era sweep covered 5, 30 or 60
+threads; see § fig:env_efficiency panel A and
 `figures/scaling/panelA_measured.tsv`. The 70 cells remain correctly derived
-from the throughputs; the throughputs at three of the seven thread counts are
-themselves interpolations. `STATE.md` flag 23.
+from the throughputs; three of the seven thread counts are themselves derived.
+`STATE.md` flag 23.
 
 ### Protocol behind the EnvPool column
 

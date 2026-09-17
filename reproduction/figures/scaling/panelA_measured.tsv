@@ -1,61 +1,62 @@
-# fig:env_efficiency panel A and tab:bench-scaling: which points were measured.
+# fig:env_efficiency panel A and tab:bench-scaling: provenance per plotted point.
 #
-# Panel A plots seven thread counts per arm. The jobs behind it swept
-# 10/20/40/80 ONLY -- job 43543523's own header says so, and 43779854 and
-# 43780731 use the same ladder. So 5, 30 and 60 threads were never measured
-# for any arm; those points are derived. The EnvPool as-shipped series was
-# additionally swept on ProcGen only, so its ALE curve rests on one measured
-# point at 80 threads.
+# CORRECTED 2026-09-17 after the first version of this file overstated the case.
 #
-# The plotted values are constants in plot_env_efficiency_bestonly.py, so the
-# small residuals against the logged geomeans are not explained by anything
-# committed. Recovered 2026-09-17.
+# The full seven-point ladder WAS measured, in the August pre-adv jobs 38145651
+# (ProcGen, both arms) and 39032276 (ALE, both arms) -- their data is committed
+# in figures/scaling/ and covers 5/10/20/30/40/60/80. That is where the x-axis
+# comes from.
 #
-# PlayTrain: job 43780731 swept w=2/4/8 (10/20/40 threads) and w=16 (80),
-# so its 10/20/40/80 points ARE measured -- its log stores per-game JSON
-# lines rather than geomean lines, so the geomeans are not re-derived here.
-# 5, 30 and 60 threads were not swept for it either.
+# Panel A plots ADV-ERA values, and every adv-era sweep used 10/20/40/80 only:
+#   43543523 final_any  (header: "EP thread sweeps 10/20/40/80 on ProcGen16")
+#   43574839 ale_sweep   (workers 2/4/8 -> 10/20/40; EP side logs threads 10/20/40)
+#   43779854 ep_best_sweep (T in (10,20,40))
+#   43780731 adv_anchor  (w=2/4/8 -> 10/20/40, plus a w=16 80-thread block)
+#   43570992 ep_affinity (80 threads)
+# So the 5, 30 and 60-thread points of the PLOTTED curves have no adv-era
+# measurement. The pre-adv column below is the same thread count measured on
+# the older engine, for scale, NOT the plotted value's source.
 #
-# series	threads	plotted	measured	delta_pct	job
-pg_pt	5	227433	-	not measured (swept 10/20/40/80)	43780731
-pg_pt	10	455799	-	swept, geomean not re-derived here	43780731
-pg_pt	20	910956	-	swept, geomean not re-derived here	43780731
-pg_pt	30	1368468	-	not measured (swept 10/20/40/80)	43780731
-pg_pt	40	1819564	-	swept, geomean not re-derived here	43780731
-pg_pt	60	2741906	-	not measured (swept 10/20/40/80)	43780731
-pg_pt	80	3650005	-	swept, geomean not re-derived here	43780731
-pg_epb	5	177338	-	not measured (swept 10/20/40/80)	-
-pg_epb	10	354686	355451	-0.22	43779854
-pg_epb	20	584458	587070	-0.44	43779854
-pg_epb	30	777384	-	not measured (swept 10/20/40/80)	-
-pg_epb	40	931467	931786	-0.03	43779854
-pg_epb	60	1197708	-	not measured (swept 10/20/40/80)	-
-pg_epb	80	1412903	1413748	-0.06	43570992
-pg_eps	5	178217	-	duplicate of the 10-thread value	-
-pg_eps	10	178217	178217	+0.00	43543523
-pg_eps	20	278042	278042	+0.00	43543523
-pg_eps	30	347574	-	not measured (swept 10/20/40/80)	-
-pg_eps	40	417106	417106	+0.00	43543523
-pg_eps	60	443051	-	not measured (swept 10/20/40/80)	-
-pg_eps	80	468997	468997	+0.00	43543523
-al_pt	5	460983	-	not measured (swept 10/20/40/80)	43780731
-al_pt	10	920486	-	swept, geomean not re-derived here	43780731
-al_pt	20	1846763	-	swept, geomean not re-derived here	43780731
-al_pt	30	2760813	-	not measured (swept 10/20/40/80)	43780731
-al_pt	40	3692641	-	swept, geomean not re-derived here	43780731
-al_pt	60	5517172	-	not measured (swept 10/20/40/80)	43780731
-al_pt	80	7300384	-	swept, geomean not re-derived here	43780731
-al_epb	5	22806	-	not measured (swept 10/20/40/80)	-
-al_epb	10	45600	45662	-0.14	43779854
-al_epb	20	89270	89285	-0.02	43779854
-al_epb	30	134145	-	not measured (swept 10/20/40/80)	-
-al_epb	40	177666	177869	-0.11	43779854
-al_epb	60	265505	-	not measured (swept 10/20/40/80)	-
-al_epb	80	350959	350601	+0.10	43570992
-al_eps	5	38478	-	duplicate of the 10-thread value	-
-al_eps	10	38478	-	not measured (swept 10/20/40/80)	-
-al_eps	20	73884	-	not measured (swept 10/20/40/80)	-
-al_eps	30	107652	-	not measured (swept 10/20/40/80)	-
-al_eps	40	141421	-	not measured (swept 10/20/40/80)	-
-al_eps	60	190125	-	not measured (swept 10/20/40/80)	-
-al_eps	80	238829	238829	+0.00	43543523
+# series	threads	plotted	adv_measured	delta_pct	adv_job	preadv_measured
+pg_pt	5	227433	-	DERIVED: no adv-era sweep at this thread count	-	115098
+pg_pt	10	455799	swept	geomean not re-derived	43780731	228535
+pg_pt	20	910956	swept	geomean not re-derived	43780731	455872
+pg_pt	30	1368468	-	DERIVED: no adv-era sweep at this thread count	-	684440
+pg_pt	40	1819564	swept	geomean not re-derived	43780731	911748
+pg_pt	60	2741906	-	DERIVED: no adv-era sweep at this thread count	-	1361582
+pg_pt	80	3650005	swept	geomean not re-derived	43780731	1805057
+pg_epb	5	177338	-	DERIVED: no adv-era sweep at this thread count	-	101240
+pg_epb	10	354686	355451	-0.22	43779854	168530
+pg_epb	20	584458	587070	-0.44	43779854	258926
+pg_epb	30	777384	-	DERIVED: no adv-era sweep at this thread count	-	328497
+pg_epb	40	931467	931786	-0.03	43779854	393016
+pg_epb	60	1197708	-	DERIVED: no adv-era sweep at this thread count	-	453209
+pg_epb	80	1412903	1413748	-0.06	43570992	448089
+pg_eps	5	178217	-	DERIVED: duplicate of the 10-thread value	-	101240
+pg_eps	10	178217	178217	+0.00	43543523	168530
+pg_eps	20	278042	278042	+0.00	43543523	258926
+pg_eps	30	347574	-	DERIVED: no adv-era sweep at this thread count	-	328497
+pg_eps	40	417106	417106	+0.00	43543523	393016
+pg_eps	60	443051	-	DERIVED: no adv-era sweep at this thread count	-	453209
+pg_eps	80	468997	468997	+0.00	43543523	448089
+al_pt	5	460983	-	DERIVED: no adv-era sweep at this thread count	-	243803
+al_pt	10	920486	swept	geomean not re-derived	43780731	487370
+al_pt	20	1846763	swept	geomean not re-derived	43780731	970668
+al_pt	30	2760813	-	DERIVED: no adv-era sweep at this thread count	-	1457888
+al_pt	40	3692641	swept	geomean not re-derived	43780731	1942320
+al_pt	60	5517172	-	DERIVED: no adv-era sweep at this thread count	-	2904489
+al_pt	80	7300384	swept	geomean not re-derived	43780731	3855055
+al_epb	5	22806	-	DERIVED: no adv-era sweep at this thread count	-	20232
+al_epb	10	45600	45662	-0.14	43779854	39737
+al_epb	20	89270	89285	-0.02	43779854	77222
+al_epb	30	134145	-	DERIVED: no adv-era sweep at this thread count	-	113188
+al_epb	40	177666	177869	-0.11	43779854	148763
+al_epb	60	265505	-	DERIVED: no adv-era sweep at this thread count	-	213235
+al_epb	80	350959	350601	+0.10	43570992	254653
+al_eps	5	38478	-	DERIVED: duplicate of the 10-thread value	-	20232
+al_eps	10	38478	38478	+0.00	43574839	39737
+al_eps	20	73884	73884	+0.00	43574839	77222
+al_eps	30	107652	-	DERIVED: no adv-era sweep at this thread count	-	113188
+al_eps	40	141421	141421	+0.00	43574839	148763
+al_eps	60	190125	-	DERIVED: no adv-era sweep at this thread count	-	213235
+al_eps	80	238829	238829	+0.00	43543523	254653
