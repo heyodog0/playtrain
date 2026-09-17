@@ -67,7 +67,10 @@ are measurements.
 **The seven-point ladder was measured — but not on the engine panel A plots.**
 Jobs **38145651** (ProcGen, both arms) and **39032276** (ALE, both arms) swept
 the full 5/10/20/30/40/60/80 ladder, and their per-game data is committed in
-`figures/scaling/`. That is where the figure's x-axis comes from.
+`figures/scaling/`. That is where the figure's x-axis comes from. The mechanism
+is explicit in their sbatch, now at `runs/38145651/`:
+`WORKERS="${WORKERS:-1,2,4,6,8,12,16}"` with `ENV_THREADS=5`, i.e. seven worker
+counts x 5 env threads = 5/10/20/30/40/60/80.
 
 Panel A, however, plots **adv-era** values, and every adv-era sweep used
 10/20/40/80 only — 43543523 (its header: "EP thread sweeps 10/20/40/80 on
@@ -82,6 +85,7 @@ value at each thread count for scale:
 |---|---|---|
 | EnvPool as shipped, ProcGen | 10/20/40/80, all four **exact** against 43543523 | 5 (a duplicate of the 10-thread value), 30, 60 |
 | EnvPool as shipped, ALE | 10/20/40 from 43574839 and 80 from 43543523, all four **exact** | 5 (duplicate of 10), 30, 60 |
+| | 43574839 swept workers 2/4/8 only, and its EnvPool output records threads 10/20/40 | |
 | EnvPool documented best, both suites | 10/20/40 from 43779854, 80 from 43570992, within 0.44% | 5, 30, 60 |
 | PlayTrain, both suites | 10/20/40/80 swept by 43780731 | 5, 30, 60 |
 
@@ -212,6 +216,19 @@ which treated 2.18 as the truth and the paper as 0.01 high. The substantive
 issue is that the code deviates from the documented statistic; fixing that
 confirms 2.19 and moves the ALE cell. `STATE.md` flag 1 carries the
 recommendation. Run `reproduce.sh bench_setup` to see the whole matrix.
+
+### The other jobs whose data sits in figures/scaling/
+
+`figures/scaling/` holds three jobs' worth of per-game data and none of it backs
+a published panel, so it is worth saying what each is for:
+
+| job | what | why it is here |
+|---|---|---|
+| 38145651 | ProcGen, both arms, full 5–80 ladder, pre-adv | the origin of panel A's seven-point x-axis |
+| 39032276 | ALE, both arms, full 5–80 ladder, pre-adv | same, for the ALE suite |
+| 44515188 | ProcGen + ALE, PlayTrain only, 10/20/40/80, tier3 | an independent replication of panel A, below |
+
+All three are now in `runs/` with their submissions and the ladder they swept.
 
 ### Independent replication of panel A (job 44515188)
 
@@ -903,9 +920,11 @@ Figure 4, and their source data is not in the repo (§ fig:env_efficiency panel 
 the same 28 numbers. Committing panel A's source data would make both
 reproducible at once.
 
-The EnvPool column is a composite across three jobs — 43779854 for 10/20/40
+The EnvPool column is a composite across four jobs — 43779854 for 10/20/40
 threads, 43570992 for the 80-thread points that produce the headline 2.58x and
-20.80x, and 43543523 for the as-shipped curve. All three are now in `runs/`.
+20.80x, 43543523 for the as-shipped ProcGen curve, and 43574839 for the
+as-shipped ALE sweep. All four are now in `runs/`, as are the two pre-adv
+full-ladder jobs 38145651 and 39032276.
 
 **The 5-thread row is not an adv-era measurement**, and both
 scaling-efficiency columns are normalised against it — in the as-shipped series

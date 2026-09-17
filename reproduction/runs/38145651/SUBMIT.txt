@@ -1,0 +1,17 @@
+# sacct -X -j 38145651 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+38145651   bench_vec_scaling_ab   2026-08-10T16:48:46   2026-08-10T17:29:45   holygpu8a17402   /n/holylabs/gershman_lab/Users/rtruong/playtrain-trainers   sbatch --nodelist=holygpu8a17402 benchmarks/bench_vec_scaling_ab.sbatch
+
+what:  the FULL seven-point thread ladder, ProcGen 16 games, both arms
+       (PlayTrain and EnvPool). Data committed at
+       reproduction/figures/scaling/ab_{pt,ep}_<game>_38145651.json.
+ladder: WORKERS defaults to 1,2,4,6,8,12,16 and ENV_THREADS to 5, so the
+       measured thread counts are 5/10/20/30/40/60/80 -- the seven points of
+       fig:env_efficiency panel A's x-axis. This job is why the axis has seven
+       points; it is NOT the source of the plotted values, which are adv-era.
+engine: pre-adv. Its 80-thread ProcGen PlayTrain geomean is 1,805,057 against
+       panel A's plotted 3,650,005, so roughly half the adv build's speed.
+as-run: the sbatch is git-tracked and clean at commit c1d81a9 (2026-08-13),
+       which added the script AND this job's results in the same commit. The
+       file's mtime is later than the run but its content is that commit's.
+       Caveat: c1d81a9's message is "add the ALE suite", so ALE support landed
+       with it; SUITE defaults to procgen, which is the path this job took.

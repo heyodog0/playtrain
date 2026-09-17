@@ -1,0 +1,12 @@
+# sacct -X -j 43574839 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43574839   ale_sweep   2026-09-01T10:41:13   2026-09-01T10:59:19   holy8a24307   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch -w holy8a24307 ale_sweep.sbatch
+
+what:  the adv-era ALE thread sweep behind panel A's ALE curves at 10/20/40.
+       Its EnvPool as-shipped points (38,478 / 73,884 / 141,421) are exactly
+       panel A's al_eps values at those thread counts; the 80-thread point
+       comes from the matrix 43543523.
+ladder: workers 2/4/8 x 5 env threads = 10/20/40 only. Its EnvPool output
+       (outputs/ep_ale_sweep_43574839.json) records threads 10/20/40. No
+       5/30/60 point, which is why panel A's ALE 5/30/60 values are derived.
+cited: HANDOFF-2026-09-01 section 2, "ALE8 (job 43574839 + 80th from matrix)".
+node:  holy8a24307, same as the matrix and ep_affinity.
