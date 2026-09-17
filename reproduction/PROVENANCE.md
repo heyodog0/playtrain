@@ -1538,3 +1538,61 @@ profile-guided and link-time optimization (the `-flto` and PGO flags in the same
 script, and the disclosure in § tab:bench-scaling that EnvPool runs on its
 prebuilt wheel while PlayTrain carries PGO), and the ahead-of-time path is the
 one § fig:env_efficiency panel C/D measures as the `tier3` arm.
+
+---
+
+## tab:backend-ladder — The three backends behind Figure 4B (Table 8)
+
+```
+graphic:   tabular, main.tex L1226
+numbers:   none live — the numeric line is commented out at L1229
+measured:  the ladder's throughputs belong to fig:env_efficiency panel B
+```
+
+Purely descriptive as printed. The commented-out line
+`% Stepping the same games gives 502, 4{,}374 and 37{,}350 env steps/s` is the
+adv ladder recorded under § fig:env_efficiency panel B, where the live prose's
+13.4x and 117x are also resolved. Nothing in the visible table is a
+measurement, so this section sources its fifteen cells.
+
+| row | Browser (Playwright) | Node/V8 | QuickJS (PlayTrain) |
+|---|---|---|---|
+| JS engine | `chromium` from `playwright-core`, launched headless — `as_run/pw_bench_playwright.mjs` L5, L59 | Node's V8 | QuickJS staticlib linked in-process — `native/build_qjs.sh` |
+| p5 layer | real `p5.js` on the page | `runtime/p5/p5-shim.mjs` | `native/runtime/p5.cpp` |
+| Rendering | browser canvas, read with `ctx.getImageData(...)` — L40 | `runtime/p5/raster-wasm.mjs` + `rasterizer.wasm` | Rust staticlib via `raster_abi.h` |
+| Observation out | base64 per step — `Buffer.from(b, 'base64')` at L47 | packed header written to an mmap file — `runtime/p5/game-worker.mjs` | straight into the observation buffer |
+| Driver | Node (the `.mjs` bench script itself) | Python — `bench_compare.py --backend node` | C — the QuickJS host's own benchmark loop |
+
+Every cell resolves to a file in the repo. The Playwright arm's as-run driver is
+committed at `figures/as_run/pw_bench_playwright.mjs`, and its adv-era
+counterpart (`pw_bench_fasrc_adv.mjs`, job 43783367) is the one behind the
+published rungs — see § fig:env_efficiency panel B.
+
+### The two rasterizer rows are the same source, compiled twice
+
+"rasterizer (wasm)" and "rasterizer (native)" read as two implementations. They
+are one: `raster-wasm.mjs`'s own header says it is "JS glue for the Rust→WASM
+rasterizer (**crates/rasterizer**, built to rasterizer.wasm)", and
+`crates/rasterizer` is the same crate `build_qjs.sh` compiles to a native
+staticlib for the QuickJS arm (§ tab:backend-pieces).
+
+That sharpens what panel B's Node→QuickJS step measures. It is **not** a
+rasterizer-quality difference — the rasterizing arithmetic is identical by
+construction, which is also what lets the cross-engine determinism gate be
+bit-exact. What changes across that rung is the JS engine, the p5 layer's
+language, the compilation target of the rasterizer, and how observations leave
+the process. The paper's caption says "only the backend layer underneath is
+different", which is right; the table's wording just invites reading the two
+rasterizer cells as different code.
+
+`PLAYTRAIN_RASTERIZER=wasm` is the switch that selects the wasm path, so the
+Node arm's configuration is reproducible from the environment variable alone.
+
+### Caption caveats
+
+- "The browser backend cannot use our p5 layer or rasterizer" — correct, and the
+  driver shows why: it runs the game inside `page.evaluate` against a real
+  canvas, so observations can only come back through the page boundary, which is
+  the base64 step.
+- The caption contains a typo, "brpwser" for "browser" (L1228). `STATE.md`
+  flag 29.
