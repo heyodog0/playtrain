@@ -1856,3 +1856,65 @@ runs, because the draft is the useful artifact — it is just not a reproduction
 ```
 runs/  not applicable: no jobs, no data, no pipeline.
 ```
+
+---
+
+## fig:game-interface and fig:variant-generation-example — the two tester screenshots (Figures 13 and 14)
+
+```
+graphics:  figures/game-interface.png, figures/variant-generation-example.png
+recipe:    cd playtrain && just tester      # -> uv run --extra gen python tools/tester.py
+           then localhost:3000
+source:    playtrain/tools/tester.py        (the UI in the screenshots)
+           playtrain/runtime/p5/raster.mjs  (what the centre panel renders through)
+```
+
+Screenshots of a live UI, so there is no data or job behind them — what a reader
+needs is the command that brings the interface up, and confirmation that it comes
+up populated from a clean clone. Both hold.
+
+`just tester` resolves to `uv run --extra gen python tools/tester.py`, which
+serves the interface on localhost:3000. Every element the captions describe is in
+that file:
+
+| caption claim | in `tools/tester.py` |
+|---|---|
+| left pane lists every game with variants nested underneath | `list_games()` over `games/js/*.js`, with the variant registry from `playtrain.gen.variant.load_registry` |
+| centre panel runs the selected game in a canvas "through the same `raster.mjs` rasterizer" | the browser shim loads PlayTrain's own rasterizer — the file's comment says "PlayTrain's own rasterizer, not real p5. The tester used to load…" |
+| right pane shows the game's console output alongside the model's generation process | the handler streams generation events through a `queue` to the page |
+| the bar switches between Refine and Fork; Refine edits the current game, Fork writes a new file | `refine_game` and `make_variant` / `promote_variant` from `playtrain.gen` |
+
+### It self-seeds, which is what makes the recipe work from a clean clone
+
+The tester reads `games/js/`, **not** the `examples/games/js/` that every
+benchmark and training run uses — and `games/js/` ships effectively empty (one
+tracked file, no `.js`). On its own that would mean a reader running
+`just tester` sees the blank left pane rather than the populated one the caption
+describes.
+
+It does not, because the tester seeds itself on startup: if `games/js` contains
+no `*.js` it copies every game from `games_dir()`, which resolves to
+`playtrain/examples/games/js` — **63 game files** in this checkout. So the first
+run populates the interface, and subsequent runs leave it alone (`if
+any(JS_DIR.glob("*.js")): return 0`). Worth recording because the two-games-
+directory split is otherwise exactly the kind of thing that makes a documented
+recipe fail silently.
+
+### What cannot be reproduced
+
+The screenshots are of particular moments: a specific game selected, specific
+console output, and in `fig:variant-generation-example` a specific human prompt
+with a parent frame beside its result. Re-running the tester gives the interface,
+not those frames. The caption's "The text shown is the human's verbatim prompt
+feedback" is not recoverable from the repo — that prompt is not in
+`data/generation-logs/` under any of the four variant names (§ fig:learning
+records the naming mismatch), and the two PNGs carry no provenance metadata
+beyond their timestamps.
+
+So these two labels are reproducible as *the interface*, and not as *the images*.
+That is the honest status for a UI screenshot and does not need a flag; it is
+recorded here so the claim is not read as stronger than it is.
+
+`fig:variant-generation-example`'s substance is checkable elsewhere: the variant
+it shows is one of the four in § tab:llm-cost, whose call counts, token counts
+and wall-clock are verified against the generation logs.
