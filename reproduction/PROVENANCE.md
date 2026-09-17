@@ -108,15 +108,39 @@ runs/43783364/  sweep6_adv.sh, sweep6_adv.out, SUBMIT.txt, LOG_HEAD.txt
 ### Panel B — the backend ladder
 
 ```
-data: figures/results/env_throughput/backend_ladder_fasrc.json
+data:   figures/results/env_throughput/backend_ladder_fasrc.json          (what the plotter reads)
+        figures/results/env_throughput/backend_ladder_adv/                (what the prose quotes)
+redraw: bash reproduction/reproduce.sh backend_ladder
+code:   reproduction/figures/tools/check_backend_ladder.py  (the ratios; bars come from throughput_panels.py)
 ```
 
-Geomeans over all 24 games: Playwright 517 → Node/V8 4,952 → QuickJS 58,827.
-The QuickJS rung is `44515373`'s **tier3** ladder block (`runs/44515373/
-raw_ladder.txt`, geomean 58,827 — exact); its adv2 rung was 37,850 and is not
-plotted. The Playwright and V8 rungs were reused from the 2026-09-01 ladder job
-`43783367` (`runs/43783367/`). Details for `tab:backend-ladder`, which describes
-the same three backends, are in that label's section.
+**The figure and the prose do not divide by the same rungs.** The QuickJS rung is
+settled: 58,827, job `44515373`'s **tier3** ladder block (`runs/44515373/
+raw_ladder.txt`, exact; the same job's adv2 rung was 37,850 and is not plotted).
+The two rungs below it exist in two versions:
+
+| Playwright / V8 rungs | source | V8 → QuickJS | browser → QuickJS |
+|---|---|---|---|
+| 502 / 4,374 | job 43783367, adv, `backend_ladder_adv/` | **13.45x** | **117.2x** |
+| 517 / 4,952 | pre-adv, in `backend_ladder_fasrc.json` | 11.88x | 113.8x |
+
+The paper's prose (main.tex L543) says **13.4x and 117x** — the adv pair, to the
+digit. `backend_ladder_fasrc.json`, which `throughput_panels.py` reads and which
+therefore sets the drawn bar heights, still carries the pre-adv pair: its history
+shows the QuickJS rung updated 30,581 → 58,827 when tier3 landed while the lower
+two were left at 517 / 4,952. Job `44515373`'s own header names
+`~/backend_ladder_fasrc_adv.json` (502 / 4,374) as the rungs it reused, so the
+as-run intent was the adv pair.
+
+The adv pair is committed at `backend_ladder_adv/` with its three raw arms, and
+recomputing the geomeans from those arms reproduces 502 / 4,374 / 37,350 exactly.
+`reproduce.sh backend_ladder` prints the paper's ratios beside both pairs rather
+than preferring one. Choosing between them changes the published figure, so it is
+recorded as flag 6 in `STATE.md` and nothing has been adjusted to make them
+agree.
+
+Details for `tab:backend-ladder`, which describes the same three backends and
+whose own numeric line is commented out in the tex, are in that label's section.
 
 ### Paper numbers and what reproduce.sh computes
 
@@ -126,6 +150,8 @@ the same three backends, are in that label's section.
 | per-core ProcGen 2.19x, 14/16 wins | L539, L1533 | **2.18x**, 14/16 | **no** |
 | 80 threads, ProcGen 2.58x | L550, L1534, L1604 | 2.58x | yes |
 | 80 threads, ALE 20.80x | L550, L1534, L1613 | 20.80x | yes |
+| panel B, V8 → QuickJS 13.4x | L543 | 13.4x from the adv rungs, 11.9x as plotted | see panel B |
+| panel B, browser → QuickJS 117x | L543 | 117x from the adv rungs, 114x as plotted | see panel B |
 | panel A absolutes 3,650,005 / 7,300,384 | L1604, L1613 | same (they are the constants) | n/a |
 
 The ProcGen per-core geomean ratio computed from the committed data is

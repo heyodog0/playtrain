@@ -12,9 +12,10 @@ script. Full provenance, including the cluster jobs, is in
 | `procgen4.json` | panel C baseline: real ProcGen, same 16 games × 7 trials (`bench_compare.py --backend procgen`) | 43783363 |
 | `ale_atari6.json` | panel D baseline: ALE via `bench_compare.py --backend ale`, same 8 games × 7 trials | 43783364 |
 | `compare_atari6.json` | merged Atari summary | 43783364 |
-| `backend_ladder_fasrc.json` | **panel B**: the Playwright → Node/V8 → QuickJS ladder, per-game across all 24 games plus geomeans | QuickJS rung 44515373; Playwright and V8 rungs 43783367 |
-| `pw_fasrc.json` | the Playwright arm's raw output | 43783367 |
-| `backend_ladder/` | the ladder's other two raw arms (`qjs_fasrc.txt`, `v8_fasrc.txt`, `node_{pg,at}.json`) | 43783367 |
+| `backend_ladder_fasrc.json` | **panel B**: the Playwright → Node/V8 → QuickJS ladder, per-game across all 24 games plus geomeans. QuickJS rung is tier3; the Playwright and V8 rungs are **pre-adv** and are not the ones the paper's prose divides by | QuickJS rung 44515373; lower rungs pre-adv |
+| `backend_ladder_adv/` | the adv re-measurement of the two lower rungs (502 / 4,374), which **is** what the paper quotes, plus its three raw arms and a README | 43783367 |
+| `pw_fasrc.json` | the pre-adv Playwright arm's raw output | pre-adv |
+| `backend_ladder/` | the pre-adv ladder's other two raw arms (`qjs_fasrc.txt`, `v8_fasrc.txt`, `node_{pg,at}.json`) | pre-adv |
 | `sweep4.out` | console output of the **superseded pre-adv** ProcGen sweep (plunder 95,442, mean ratio 1.47±). Backs `tools/plot_throughput_all.py`, the old figure — **not** anything in the paper | pre-adv |
 | `sweep6.out` | console output of the same superseded Atari sweep (geomean 6.68× over six games). Its `NODE: holy8a32603` line refers to that old run | pre-adv |
 | `qjs_sweep.json` | the earlier 5-trial sweep, kept for the rasterizer-improvement comparison (mean 27.5k → 33.0k) | older |
@@ -24,16 +25,20 @@ pre-adv measurement, but nothing in the paper reads them. The as-run submissions
 in `reproduction/figures/as_run/` are likewise the pre-adv versions; the
 submissions behind the published figure are in `reproduction/runs/`.
 
-Panel B geomeans over all 24 games: Playwright 517 → Node/V8 4,952 (9.6×) →
-QuickJS 58,827 (11.9×), i.e. 114× end to end. Its three arms were measured by
-three different drivers (Node+Chromium, Python harness, C loop) — see the caveat
-below.
+Panel B geomeans over all 24 games, as this file carries them: Playwright 517 →
+Node/V8 4,952 (9.6×) → QuickJS 58,827 (11.9×), i.e. 114× end to end. **The paper
+says 13.4× and 117×**, which is the same QuickJS rung over the adv rungs in
+`backend_ladder_adv/` (502 and 4,374) — that directory's README lays out the
+difference, and `reproduce.sh backend_ladder` prints both. The ladder's three arms
+were measured by three different drivers (Node+Chromium, Python harness, C loop)
+— see the caveat below.
 
 Hardware: FASRC Sapphire Rapids (Xeon Platinum 8480+), **one core** per
 measurement, `frame_skip=1`, 64×64 RGB. The PlayTrain arm of panels B/C/D ran on
-`holy8a32608` (job 44515373, 2026-09-04); the ProcGen, ALE, Playwright and V8
-baselines were **reused** from `holy8a32607` (jobs 43783363/64/67, 2026-09-01)
-rather than re-measured, because they do not depend on our engine build. So the
+`holy8a32608` (job 44515373, 2026-09-04); the ProcGen and ALE baselines were
+**reused** from `holy8a32607` (jobs 43783363/64, 2026-09-01) rather than
+re-measured, because they do not depend on our engine build, and the Playwright
+and V8 rungs likewise from 43783367 (see `backend_ladder_adv/`). So the
 two sides of a bar are from different jobs and nodes of the same class, three
 days apart — job 44515373's header states and justifies this.
 

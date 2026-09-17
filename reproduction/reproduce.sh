@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency env_cost t1a t1b dbuf human_wallclock schematic eval learning suite_grids"
+STEPS="env_efficiency backend_ladder env_cost t1a t1b dbuf human_wallclock schematic eval learning suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -38,6 +38,11 @@ done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail
 if want env_efficiency; then
 step "Figure 4, environment efficiency  (paper: per core 2.19x ProcGen 14/16, 12.62x ALE 8/8; 80 threads 2.58x / 20.80x)"
 ( cd figures && $PY python tools/plot_env_efficiency_bestonly.py --out "$OUT" ) ; done_ $?
+fi
+
+if want backend_ladder; then
+step "Figure 4B, backend ladder  (paper: 13.4x V8 -> QuickJS, 117x browser -> QuickJS)"
+( cd figures && uv run --no-project python tools/check_backend_ladder.py ) ; done_ $?
 fi
 
 if want env_cost; then
