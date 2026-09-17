@@ -1,0 +1,14 @@
+# Paper name -> repo name for the four generated variants.
+#
+# The paper (main.tex L618 caption, L640/645/648 prose, the tab:llm-cost rows at
+# L1783-1786, and the discussion at L778) uses presentation names. The shipped
+# game files, the llm_cost.json rows and the generation logs use the original
+# names. The token counts are identical either way, so this is naming only --
+# but a reader looking up breakout.multiball in examples/games/js/ will not
+# find it. See STATE.md flag 9.
+#
+# paper_name	repo_name	game_file
+breakout.multiball	breakout.multi	examples/games/js/breakout.multi.js
+qbert.bigmap	qbert.v2	examples/games/js/qbert.v2.js
+flappy_bird.hoop	flappy_bird.dunk2	examples/games/js/flappy_bird.dunk2.js
+frostbite.jungle	frostbite.jungle	examples/games/js/frostbite.jungle.js

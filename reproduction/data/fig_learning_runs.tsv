@@ -1,0 +1,53 @@
+# fig:learning panel C: the 48 run directories the composite selected.
+# Captured 2026-09-17 from the figure-data-v1 archive. _runs() in
+# tools/plot_main_composite.py picks, per game and seed, the lexicographically
+# greatest dir whose config declares the game, net=impala and a 100-200M budget.
+# game	trainer	dir
+bigfish	impala	outputs/s3_icnn_bigfish_s0
+bigfish	impala	outputs/s3_icnn_bigfish_s1
+bigfish	impala	outputs/s3_icnn_bigfish_s2
+bigfish	ppo	outputs/ppo_impala_bigfish_s0
+bigfish	ppo	outputs/ppo_impala_bigfish_s1
+bigfish	ppo	outputs/ppo_impala_bigfish_s2
+bossfight	impala	outputs/s3_icnn_bossfight_s0
+bossfight	impala	outputs/s3_icnn_bossfight_s1
+bossfight	impala	outputs/s3_icnn_bossfight_s2
+bossfight	ppo	outputs/p3_icnn_bossfight_s0
+bossfight	ppo	outputs/p3_icnn_bossfight_s1
+bossfight	ppo	outputs/p3_icnn_bossfight_s2
+chaser	impala	outputs/s3_icnn_chaser_s0
+chaser	impala	outputs/s3_icnn_chaser_s1
+chaser	impala	outputs/s3_icnn_chaser_s2
+chaser	ppo	outputs/p3_icnn_chaser_s0
+chaser	ppo	outputs/p3_icnn_chaser_s1
+chaser	ppo	outputs/p3_icnn_chaser_s2
+leaper	impala	outputs/s3_icnn_leaper_s0
+leaper	impala	outputs/s3_icnn_leaper_s1
+leaper	impala	outputs/s3_icnn_leaper_s2
+leaper	ppo	outputs/p3_icnn_leaper_s0
+leaper	ppo	outputs/p3_icnn_leaper_s1
+leaper	ppo	outputs/p3_icnn_leaper_s2
+ninja	impala	outputs/s3_icnn_ninja_s0
+ninja	impala	outputs/s3_icnn_ninja_s1
+ninja	impala	outputs/s3_icnn_ninja_s2
+ninja	ppo	outputs/p3_icnn_ninja_s0
+ninja	ppo	outputs/p3_icnn_ninja_s1
+ninja	ppo	outputs/p3_icnn_ninja_s2
+starpilot	impala	outputs/s3_icnn_starpilot_s0
+starpilot	impala	outputs/s3_icnn_starpilot_s1
+starpilot	impala	outputs/s3_icnn_starpilot_s2
+starpilot	ppo	outputs/p3_icnn_starpilot_s0
+starpilot	ppo	outputs/p3_icnn_starpilot_s1
+starpilot	ppo	outputs/p3_icnn_starpilot_s2
+miner	impala	outputs/s3_icnn_miner_s0
+miner	impala	outputs/s3_icnn_miner_s1
+miner	impala	outputs/s3_icnn_miner_s2
+miner	ppo	outputs/ppo_impala_miner_s0
+miner	ppo	outputs/ppo_impala_miner_s1
+miner	ppo	outputs/ppo_impala_miner_s2
+pong	impala	outputs/s3_icnn_pong_s0
+pong	impala	outputs/s3_icnn_pong_s1
+pong	impala	outputs/s3_icnn_pong_s2
+pong	ppo	outputs/ppo_impala_pong_s0
+pong	ppo	outputs/ppo_impala_pong_s1
+pong	ppo	outputs/ppo_impala_pong_s2

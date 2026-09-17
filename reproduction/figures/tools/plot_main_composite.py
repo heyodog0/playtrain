@@ -219,9 +219,13 @@ for i, game in enumerate(GAMES_ALL):
     axa.axis("off")
 
 C_AXES = []
+C_REPORT = []
 for i, game in enumerate(GAMES8):
     axc = fig.add_subplot(gC[i // 4, i % 4])
-    imp, ppo = curves_for(game, fixed_block=False)   # Nature everywhere
+    # IMPALA-CNN everywhere: _runs() keeps only configs with net == "impala".
+    imp, ppo = curves_for(game, fixed_block=False)
+    C_REPORT.append((game, imp[4] if imp else 0, ppo[4] if ppo else 0,
+                     max([imp[0][-1] if imp else 0, ppo[0][-1] if ppo else 0])))
     for data, color in ((imp, IMP_C), (ppo, PPO_C)):
         if data is None:
             continue
@@ -360,6 +364,35 @@ fig.text(0.502, up(0.955), L_VARIANTS, fontsize=FS_PANEL, fontweight="bold")
 if not NOTP:
     fig.text(X_PANEL, d_top + 0.015, L_TPUT, fontsize=FS_PANEL,
              fontweight="bold", va="bottom")
+
+# What the caption claims, beside what this run actually drew. The caption says
+# 24 game examples in A, four base/variant pairs in B, and eight games in C with
+# "both configurations using the IMPALA-CNN encoder" and "3 training seeds ... in
+# all cases".
+print(f"    panel A: {len(GAMES_ALL)} thumbnails      (paper: 24 game examples)")
+print(f"    panel B: {len(PAIRS)} pairs             (paper: four example pairs)")
+for base, var, _ in PAIRS:
+    print(f"      {base} / {var}")
+print(f"    panel C: {len(GAMES8)} games            (paper: eight representative games)")
+print(f"      {'game':16s} {'IMPALA seeds':>12s} {'PPO seeds':>10s} {'Msteps':>8s}"
+      "   (paper: 3 seeds in all cases, IMPALA-CNN both)")
+short = []
+for game, ik, pk, last in C_REPORT:
+    print(f"      {game:16s} {ik:>12d} {pk:>10d} {last:>8.0f}")
+    if ik != 3 or pk != 3:
+        short.append(game)
+print(f"    seeds: {'all 8 games have 3 and 3' if not short else 'SHORT OF 3: ' + ', '.join(short)}")
+# The 48 run directories panel C actually selected. _runs() picks, per game and
+# seed, the lexicographically greatest matching path, so which dir wins is worth
+# printing rather than inferring. A committed copy lives at
+# reproduction/data/fig_learning_runs.tsv for readers without the data archive.
+if "--runs" in sys.argv:
+    print("    panel C run dirs (game, trainer, dir):")
+    for game in GAMES8:
+        for trainer, dirs in (("impala", matrix_impala_runs(game)),
+                              ("ppo", ppo_dirs(game))):
+            for d in dirs:
+                print(f"      {game}\t{trainer}\t{d}")
 
 out = [a for a in sys.argv[1:] if not a.startswith("--")][0]
 fig.savefig(out, dpi=150)

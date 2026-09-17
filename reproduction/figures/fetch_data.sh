@@ -2,7 +2,7 @@
 # Download the data the paper figures are drawn from.
 #
 # The figures read TensorBoard event files, per-run configs, curve JSONs and
-# rendered game frames. That is 1.1 GB across 4,511 files, so it is published as a
+# rendered game frames. That unpacks to 5,150 files, so it is published as a
 # release asset instead of being committed. Cloning this repo does not download it.
 #
 #   bash reproduction/figures/fetch_data.sh
@@ -35,7 +35,14 @@ else
     gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --clobber
   else
     curl -fL --progress-bar -o "$ASSET" \
-      "https://github.com/$REPO/releases/download/$TAG/$ASSET"
+      "https://github.com/$REPO/releases/download/$TAG/$ASSET" || {
+      echo >&2
+      echo "could not download $ASSET from $REPO release $TAG." >&2
+      echo "If $REPO has no $TAG release yet, the archive has not been published" >&2
+      echo "there. Point the script at the repo that holds it:" >&2
+      echo "  PLAYTRAIN_DATA_REPO=<owner>/<repo> bash reproduction/figures/fetch_data.sh" >&2
+      exit 1
+    }
   fi
   # A wrong checksum means the asset was replaced. Do not unpack it: the figures
   # would redraw from data that is not what the paper reports.

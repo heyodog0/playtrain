@@ -19,7 +19,7 @@ For the code, data file and cluster job behind each figure and table, see
 | artifact | generator | data | verified |
 |---|---|---|---|
 | Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/results/env_throughput/` (panels B/C/D); panel A is constants in the script | 12.62x ALE exact; 2.18x ProcGen against the paper's 2.19x; panel B's lower rungs disagree with the prose, see PROVENANCE.md |
-| Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset | all panels, both trainers |
+| Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset (**not yet on the public repo**, see PROVENANCE.md) | 24 / 4 / 8 panels, 3+3 seeds all eight games; panel B's variant names differ from the paper's |
 | Per-game suite grids | `reproduction/figures/tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games, in the script |

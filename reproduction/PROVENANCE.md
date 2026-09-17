@@ -315,3 +315,80 @@ runs/44670899/  SUBMIT.txt   runs/44670900/  SUBMIT.txt   runs/44670901/  SUBMIT
 runs/44516162/  tier3_pg_ab.sbatch, SUBMIT.txt, LOG_HEAD.txt
 runs/44516167/  tier3_ale_ab.sbatch, SUBMIT.txt
 ```
+
+---
+
+## fig:learning — Generated environments and training curves (Figure 5)
+
+```
+graphic:   figures/fig_main_D.png
+redraw:    bash reproduction/reproduce.sh learning      (needs the data archive)
+code:      reproduction/figures/tools/plot_main_composite.py
+           (+ throughput_panels.py for its bottom strip, shared with fig:env_efficiency)
+data:      release asset figure-data-v1, playtrain-figure-data.tar.gz
+           sha256 03b4c1697d1c1fb7f807ef63c95ba572269872777eef147c4e547fe6a27a8323
+           290,073,695 bytes, unpacks to 5,150 files in figures/outputs/
+manifests: reproduction/data/fig_learning_runs.tsv   (panel C's 48 run dirs)
+           reproduction/data/variant_names.tsv       (panel B's paper vs repo names)
+```
+
+**The archive is not on the public repo.** `fetch_data.sh` defaults to
+`REPO=heyodog0/playtrain`, which has no `figure-data-v1` release; the asset lives
+only on the private `heyodog0/playtrain-dev`. Until it is published, a reader
+cloning the public repo cannot draw this figure, `fig:envcost`, or the three
+suite grids. Fetch it with
+`PLAYTRAIN_DATA_REPO=heyodog0/playtrain-dev bash reproduction/figures/fetch_data.sh`.
+`STATE.md` flag 10. The checksum in the script matches the asset as published on
+the dev repo, verified 2026-09-17.
+
+### What the caption claims, and what the code draws
+
+The caption states no measured quantity, so verification here is compositional.
+`reproduce.sh learning` now prints each claim beside what the run produced.
+
+| caption claim | drawn | agree? |
+|---|---|---|
+| (A) 24 game examples | 24 thumbnails | yes |
+| (B) four base/variant pairs | 4 pairs | yes, but see names below |
+| (C) eight representative games | 8 | yes |
+| (C) both configurations use the IMPALA-CNN encoder | `_runs()` keeps only configs with `net == "impala"`, for both trainers | yes |
+| (C) 3 training seeds in all cases | 3 IMPALA and 3 PPO for all eight games | yes |
+
+A stale comment above the retired `IMPALA_RUNS` block says "Everything is Nature
+now". It describes a code path the figure no longer takes (`fixed_block=False`),
+and the encoder filter above is what actually runs. The comment is wrong, not the
+figure.
+
+Panel C selects runs **by config content, not directory prefix** — the hazard
+that twice silently dropped a whole arm. Per game and seed it takes the
+lexicographically greatest directory whose config declares the game,
+`net == "impala"`, a 100–200M step budget, and a non-empty `tb/`. All 48 winners
+are `s3_icnn_*` for IMPALA and `p3_icnn_*` or `ppo_impala_*` for PPO; the full
+list is committed at `data/fig_learning_runs.tsv` so it can be read without the
+archive. The x-axis is clipped to 100M; bigfish, miner and pong have TB logs
+running to about 150M, so their curves are truncated rather than short.
+
+### Panel B: the variant names in the paper do not exist in the repo
+
+| paper | repo game file |
+|---|---|
+| `breakout.multiball` | `examples/games/js/breakout.multi.js` |
+| `qbert.bigmap` | `examples/games/js/qbert.v2.js` |
+| `flappy_bird.hoop` | `examples/games/js/flappy_bird.dunk2.js` |
+| `frostbite.jungle` | `examples/games/js/frostbite.jungle.js` |
+
+Only the fourth matches. The paper uses its names consistently — the caption at
+L618, the prose at L640, L645 and L648, the discussion at L778, and the
+`tab:llm-cost` rows at L1783–1786 — while the shipped game files,
+`plot_main_composite.py`'s `PAIRS`, and the `artifact` keys in
+`data/llm_cost.json` all use the repo names. The token counts in
+`llm_cost.json` match the paper's table exactly under the repo names, so no
+number is affected; what breaks is the trail from a name in the paper to a file
+in the repo. The mapping is committed at `data/variant_names.tsv` and the
+decision — rename the files or rename in the paper — is `STATE.md` flag 9.
+
+```
+runs/  not applicable: the curves come from the suite training runs in the
+       archive, identified by run directory rather than by a single job id.
+       Suite job provenance belongs to fig:suite_trainers and is recovered there.
+```
