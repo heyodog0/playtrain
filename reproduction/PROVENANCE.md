@@ -1596,3 +1596,72 @@ Node arm's configuration is reproducible from the environment variable alone.
   the base64 step.
 - The caption contains a typo, "brpwser" for "browser" (L1228). `STATE.md`
   flag 29.
+
+---
+
+## fig:trainer_timeline — Three ways inference can work (Figure 9)
+
+```
+graphic:   TikZ drawn inline, main.tex L1250-L1275. No image file and no
+           generating script -- the picture is LaTeX source, so it redraws
+           with the paper and has nothing to reproduce separately.
+source:    playtrain-trainers/src/playtrain_trainers/impala/train.py
+             `inference_mode` -- the three panels are its three values
+           playtrain-trainers/src/playtrain_trainers/train_ppo_clean.py
+             `double_buffer` and `_PingPongVecAdapter` -- panel C
+```
+
+**The three panels are not an abstract taxonomy — they are the trainer's three
+real, configurable modes.** `impala/train.py` documents `inference_mode` with
+the same three architectures in the same order, and validates against exactly
+that set (plus `remote_vec`, a fourth the figure does not draw):
+
+| panel | `inference_mode` | the source's own description |
+|---|---|---|
+| (A) Shared-CPU actors | `shared_cpu` (the default) | "monobeast-style: actors hold a `share_memory_()` CPU model and run forward locally. Slow on small batches (~315 SPS on MiniGrid) but matches torchbeast lineage" |
+| (B) Centralized batched inference | `central_gpu` | "SEED-style: actors send obs to a central inference thread that batches across actors and runs one GPU forward. Targets ~PPO speed (~1500+ SPS)" |
+| (C) Vectorized worker, double-buffered | `vec` + `double_buffer` | "each worker owns a NativeVecEnv of batch_size QuickJS envs + its own GPU inference copy, one batched forward + one GIL-released vec_step per vector step ... targets 100k+ SPS" |
+
+Two lineages the source names and the paper does not: (A) is **monobeast /
+torchbeast** and (B) is **SEED**. Those are the systems the two panels depict,
+and naming them would make the figure's argument easier to place.
+
+### Panel C is the mechanism tab:dbuf-ablation measures
+
+The caption of `tab:dbuf-ablation` points here explicitly ("Figure~\ref{fig:trainer_timeline}C"),
+and the implementation matches the drawing precisely: `PingPongVecEnv` is
+constructed with `group_size = cfg.n_envs // 2` — the two groups the panel
+shows — and `_PingPongVecAdapter`'s docstring states the overlap condition the
+figure illustrates:
+
+> Exposes send/wait per group rather than a blocking `step()`, because the
+> overlap only exists if the caller runs inference BETWEEN the two. Per-env
+> semantics are identical to the serial path (same env_step, SAME_STEP
+> autoreset); only the dispatch is split.
+
+So the diagram's claim — one group steps on the C++ env threads while the
+other's inference runs on the GPU — is the adapter's contract, and the **1.34x
+geometric mean** in Table 7 is the measured value of that overlap. The
+"per-env semantics are identical ... only the dispatch is split" note is what
+justifies comparing the two arms at all.
+
+The path also carries guardrails worth recording, because they bound when the
+panel's picture applies: `double_buffer` requires `vec_backend='native'` and an
+**even** `n_envs` (the envs split into two equal groups), and it rejects
+`use_lstm`, `use_rnd` and `use_noveld` outright — "that path keeps per-step
+state the interleaved rollout does not carry across groups". A run that would
+have had quietly wrong credit assignment fails instead.
+
+### Caption caveats
+
+`STATE.md` flag 30, all cosmetic:
+
+- "per-say" should be "per se" (L1275).
+- Panels (A) and (B) are labelled with parentheses in the caption but (C) is
+  written `\textbf{C}` without them, so it renders inconsistently with the
+  other two and with the in-figure label "(C)".
+- "the other's observations inference can be ran" is ungrammatical.
+
+Nothing in the figure itself is inaccurate: the hatched idle blocks in (A) and
+(B), and their absence in (C), are exactly what the three modes' documented
+throughputs (~315 SPS, ~1500+ SPS, 100k+ SPS) reflect.
