@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids"
+STEPS="env_efficiency backend_ladder bench_setup env_cost t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -43,6 +43,11 @@ fi
 if want backend_ladder; then
 step "Figure 4B, backend ladder  (paper: 13.4x V8 -> QuickJS, 117x browser -> QuickJS)"
 ( cd figures && uv run --no-project python tools/check_backend_ladder.py ) ; done_ $?
+fi
+
+if want bench_setup; then
+step "Table 9, benchmark setup  (paper: 12.62x / 2.19x, 20.80x / 2.58x, 5.8x / 2.25x)"
+( cd figures && $PY python tools/check_bench_setup.py ) ; done_ $?
 fi
 
 if want env_cost; then

@@ -147,17 +147,37 @@ whose own numeric line is commented out in the tex, are in that label's section.
 | paper | where in main.tex | reproduce.sh | agree? |
 |---|---|---|---|
 | per-core ALE 12.62x, 8/8 wins | L539, L1533 | 12.62x, 8/8 | yes |
-| per-core ProcGen 2.19x, 14/16 wins | L539, L1533 | **2.18x**, 14/16 | **no** |
+| per-core ProcGen 2.19x, 14/16 wins | L539, L1533 | 2.18x as drawn, **2.19x** under the paper's stated median | see below |
 | 80 threads, ProcGen 2.58x | L550, L1534, L1604 | 2.58x | yes |
 | 80 threads, ALE 20.80x | L550, L1534, L1613 | 20.80x | yes |
 | panel B, V8 → QuickJS 13.4x | L543 | 13.4x from the adv rungs, 11.9x as plotted | see panel B |
 | panel B, browser → QuickJS 117x | L543 | 117x from the adv rungs, 114x as plotted | see panel B |
 | panel A absolutes 3,650,005 / 7,300,384 | L1604, L1613 | same (they are the constants) | n/a |
 
-The ProcGen per-core geomean ratio computed from the committed data is
-**2.1849664823**, which rounds to 2.18. The paper prints 2.19 in two places.
-Recorded as a MISMATCH in `STATE.md` § Flags; the data is not adjusted to the
-paper.
+The ProcGen per-core ratio depends on how the seven trials per game are
+aggregated, and **the plotting code does not use the statistic the paper
+describes**. `main.tex` L1538 says "we used the median", and the baseline JSONs
+carry their own note `report median` — but `throughput_panels.py` aggregates with
+`statistics.fmean` and reads `fps_mean`. The four combinations:
+
+| PlayTrain arm | baseline arm | ProcGen | ALE |
+|---|---|---|---|
+| mean | mean (**as drawn**) | 2.1850 → 2.18 | 12.6182 → **12.62** |
+| mean | median | 2.1911 → **2.19** | 12.6018 → 12.60 |
+| median | mean | 2.1869 → **2.19** | 12.6587 → 12.66 |
+| median | median (**as described**) | 2.1930 → **2.19** | 12.6423 → 12.64 |
+
+So ProcGen's published 2.19 is reproduced by three of the four combinations and
+fails only under the mean/mean pairing the code actually uses, while ALE's
+published 12.62 is reproduced *only* by mean/mean. **No single convention gives
+both published numbers.** Under the paper's own stated method, median/median,
+ProcGen is 2.19 as printed and ALE becomes 12.64.
+
+This supersedes the simpler reading recorded in the first pass over this label,
+which treated 2.18 as the truth and the paper as 0.01 high. The substantive
+issue is that the code deviates from the documented statistic; fixing that
+confirms 2.19 and moves the ALE cell. `STATE.md` flag 1 carries the
+recommendation. Run `reproduce.sh bench_setup` to see the whole matrix.
 
 ### Independent replication of panel A (job 44515188)
 
@@ -746,3 +766,71 @@ and per-seed aggregator (mean, median, max): every one gives PPO 16 or 17, never
 runs/  see figures/tables/nodes/eval_suite_jobs.tsv rather than 24 runs/ dirs;
        the submit lines are one-liners with the config named inline.
 ```
+
+---
+
+## tab:bench-setup — The three throughput measurements (Table 9)
+
+```
+graphic:   tabular, main.tex L1524
+redraw:    bash reproduction/reproduce.sh bench_setup
+code:      reproduction/figures/tools/check_bench_setup.py
+data:      no data of its own; every cell cross-references another label
+```
+
+Six numeric cells, all restatements:
+
+| row | hardware | vs ALE | vs ProcGen | source | agree? |
+|---|---|---|---|---|---|
+| per core | Intel Sapphire Rapids | 12.62x | 2.19x | fig:env_efficiency C, D | see that label |
+| thread scaling | AMD Genoa | 20.80x | 2.58x | fig:env_efficiency A | yes |
+| with a trainer | AMD Genoa, 4xH100 | 5.8x | 2.25x | tab:train-throughput (b) | yes |
+
+The trainer row is worth a note: Table 1(b) gives 5.8105 and 2.2540, and this
+table prints them to one and two decimals as **5.8x** and **2.25x**, both of
+which round correctly. The *prose* at L547 and L549 prints the same ALE ratio as
+"5.80x" to two decimals, which does not — that is `STATE.md` flag 8, and it is a
+prose problem, not a problem with this table.
+
+The ledger this harness started from expected "1.13x / 4.00x cells (may be
+stale)". Those numbers are not in the table any more; it has been updated since.
+
+### The caption's same-job, same-node claim does not hold for two of three rows
+
+> "Frame skip is 1 and both arms run in one job on one node."
+
+| row | holds? | why |
+|---|---|---|
+| per core | **no** | PlayTrain from job 44515373 on holy8a32608; the ALE and ProcGen baselines reused from 43783363/64 on holy8a32607, three days earlier |
+| thread scaling | **partly** | PlayTrain 43780731 and EnvPool 43779854 + 43570992 are different jobs, though all on holy8a24307 |
+| with a trainer | yes | 44516162 and 44516167 each run both arms inside one job |
+
+The same sentence appears again at L1523 in the surrounding prose ("with both
+arms of every comparison run in a single job on one node"), so it is asserted
+twice. For the per-core row it is the reuse that job 44515373's own header
+documents and justifies — the C++ baselines do not depend on the engine build —
+so the measurement is defensible; the blanket caption claim is what overreaches.
+`STATE.md` flag 19.
+
+### The single-core protocol, and the mean/median deviation
+
+The protocol claims check out against the data files' own metadata: seven trials,
+1500 frames, 200 warmup discarded, frame skip 1, PlayTrain and ProcGen at 64x64
+RGB with ALE at its native 210x160 (which the caption correctly flags as
+unmatched, favouring PlayTrain).
+
+The statistic does not. L1538 says "we used the median" and both baseline JSONs
+carry the note `report median`, but `throughput_panels.py` aggregates the seven
+trials with `statistics.fmean` and reads `fps_mean`. The consequences are in
+§ fig:env_efficiency: it is exactly this choice that decides whether ProcGen's
+per-core ratio reads 2.18 or 2.19, and adopting the documented median moves the
+ALE cell from 12.62 to 12.64. The baselines also record `fps_median` alongside
+`fps_mean`, so switching costs nothing but a decision.
+
+Other method claims in the surrounding prose, recorded here because nothing else
+sources them: ALE via `gymnasium/ale-py` at the `NoFrameskip-v4` prefix with
+`frameskip=1` and no action repeats; ProcGen v0 with `num_levels=0` and
+`start_level=0`; EnvPool 1.2.5 for both baselines in the multi-thread setting;
+the 12-second timed window; scaling efficiency defined as throughput per thread
+relative to the lowest thread count. The EnvPool arm's configuration is
+`tab:envpool-config`, still to be sourced.
