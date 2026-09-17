@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf human_wallclock schematic eval learning suite_grids"
+STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf human_cohort human_wallclock human_crossings schematic eval learning suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -78,15 +78,35 @@ step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
 ( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
 fi
 
-if want human_wallclock; then
-step "Human wall-clock figure"
-TMPS=$(mktemp -d)
-python3 -c "
+# Both human steps read the study JSONs unpacked; CURVES must be the IMPALA-CNN
+# file, since the caption says both arms use that encoder. rerun_curves.json has
+# its PPO arm on Nature -- check_curve_encoder.py enforces the difference.
+CURVES=rerun_curves_icnn.json
+unpack_study() {
+  python3 -c "
 import gzip, glob, os, shutil, sys
 for f in glob.glob('data/study/*.json.gz'):
     with gzip.open(f, 'rb') as i, open(os.path.join(sys.argv[1], os.path.basename(f)[:-3]), 'wb') as o:
-        shutil.copyfileobj(i, o)" "$TMPS"
-( cd figures/human && $PY python plot_wallclock5.py rerun_curves.json "$TMPS" "$OUT" ) ; done_ $?
+        shutil.copyfileobj(i, o)" "$1"
+}
+
+if want human_cohort; then
+step "Human study cohort  (paper: 20 participants, 8 games, 6 female / 14 male)"
+TMPS=$(mktemp -d); unpack_study "$TMPS"
+( cd figures/human && uv run --no-project python cohort.py "$TMPS" ) ; done_ $?
+fi
+
+if want human_wallclock; then
+step "Human wall-clock figure  (paper: 20 participants, 8 games, 100 s each, 3 seeds, IMPALA-CNN both arms)"
+TMPS=$(mktemp -d); unpack_study "$TMPS"
+( cd figures/human && uv run --no-project python check_curve_encoder.py "$CURVES" \
+    && $PY python plot_wallclock5.py "$CURVES" "$TMPS" "$OUT" ) ; done_ $?
+fi
+
+if want human_crossings; then
+step "Steps to reach the human mean  (paper: flappy_bird PPO 1M, coinrun IMPALA 81M, six of eight games)"
+TMPS=$(mktemp -d); unpack_study "$TMPS"
+( cd figures/human && $PY python crossings.py "$CURVES" "$TMPS" ) ; done_ $?
 fi
 
 if want schematic; then

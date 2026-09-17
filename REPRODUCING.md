@@ -22,7 +22,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset (**not yet on the public repo**, see PROVENANCE.md) | 24 / 4 / 8 panels, 3+3 seeds all eight games; panel B's variant names differ from the paper's |
 | Per-game suite grids | `reproduction/figures/tools/plot_suite_grid.py`, `plot_suite_grid3.py` | `figures/results/suite_tb`, curve JSONs | runs |
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py` | release asset | both panels match |
-| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/` | 8 games, in the script |
+| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/`, `figures/human/rerun_curves_icnn.json` | 20 participants, 8 games; crossing steps match the paper, but two prose claims and the gender count do not (PROVENANCE.md) |
 | Architecture schematic | `figures/fig_schematic.py` | none | redraws, in the script |
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | five of six rows; the IMPALA-CNN row reads 0.34M against the paper's 0.35M because six of its games sit on a node every re-run excluded (`t1a_nodes.py`) |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |

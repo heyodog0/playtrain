@@ -392,3 +392,114 @@ runs/  not applicable: the curves come from the suite training runs in the
        archive, identified by run directory rather than by a single job id.
        Suite job provenance belongs to fig:suite_trainers and is recovered there.
 ```
+
+---
+
+## fig:human_wallclock — Human play vs agent training (Figure 6)
+
+```
+graphic:   figures/fig_human_wallclock.pdf
+redraw:    bash reproduction/reproduce.sh human_cohort      cohort claims
+           bash reproduction/reproduce.sh human_wallclock   the figure
+           bash reproduction/reproduce.sh human_crossings   steps to the human mean
+code:      reproduction/figures/human/plot_wallclock5.py
+           reproduction/figures/human/crossings.py, cohort.py, check_curve_encoder.py
+data:      reproduction/data/study/*.json.gz   (30 sessions, 20 participants)
+           reproduction/figures/human/rerun_curves_icnn.json   (the agent curves)
+```
+
+### The curve file: reproduce.sh was drawing the wrong one
+
+Three curve files sit in `figures/human/`, and each records its encoder per arm
+in its own metadata:
+
+| file | IMPALA arm | PPO arm |
+|---|---|---|
+| `rerun_curves.json` | `net: impala` | **`net: nature`** |
+| `rerun_curves_nature.json` | `net: nature` | `net: nature` |
+| `rerun_curves_icnn.json` | `net: impala` | `net: impala` |
+
+The caption says "Both RL agents use the IMPALA-CNN encoder", so only the third
+file matches the paper — and it is the one whose crossing steps reproduce the
+paper's quoted numbers. `reproduce.sh` was passing `rerun_curves.json`, which
+compares an IMPALA-CNN IMPALA against a **Nature-CNN PPO**. That is the
+mixed-encoder hazard that has already bitten the suite panels twice, and it
+produced a figure that looked entirely reasonable.
+
+Fixed this iteration: both human steps now pass `rerun_curves_icnn.json` and run
+`check_curve_encoder.py` first, which fails the step if either arm is not
+`impala`. The human means, the spread panel and panel B are unaffected — they come
+from the study data, not the curves.
+
+### Steps to reach the human mean
+
+`crossings.py` rule: the first step at which the 3-seed mean reaches the human
+mean **and** stays within 10% of it for the rest of the run, so a curve that
+touches the line once and collapses does not count.
+
+| paper claim | where | recomputed (icnn) | agree? |
+|---|---|---|---|
+| PPO is the only one to learn flappy_bird, at 1M | L714 | PPO 1.0M, IMPALA never | yes |
+| IMPALA is the only one on coinrun, after 81M | L715 | IMPALA 81.2M, PPO never | yes |
+| Neither reaches it on caveflyer | L716 | neither | yes |
+| Neither reaches it on VVVVVV | L716 | **IMPALA 85.9M** | **no** |
+| six of the eight games are reached | L713 | **seven of eight** | **no** |
+
+Reached under `rerun_curves_icnn.json`: asteroids (IMPALA 26.3M, PPO 68.2M),
+vvvvvv (IMPALA 85.9M), breakout (PPO 68.2M), flappy_bird (PPO 1.0M), seaquest
+(IMPALA 30.5M, PPO 14.4M), coinrun (IMPALA 81.2M), plunder (PPO 16.1M). Only
+caveflyer is never reached, so the count is seven.
+
+The commented-out prose at L718–L721 also matches this file exactly — asteroids
+26M, seaquest 30M, flappy_bird 1M, coinrun 81M, plunder 16M — which is good
+evidence that `rerun_curves_icnn.json` is the set the text was written against,
+and that the two surviving claims were simply not updated when VVVVVV's IMPALA
+curve crossed. Recorded as `STATE.md` flag 11.
+
+For contrast, the superseded Nature file gives exactly six games reached (coinrun
+never), which is where "six of the eight" came from.
+
+### The cohort
+
+| paper claim | L | recomputed | agree? |
+|---|---|---|---|
+| 20 participants | 703 | 20 of 30 sessions kept | yes |
+| eight named games | 702 | all eight, 20 blocks each | yes |
+| 6 female | 704 | 6 `Woman` | yes |
+| 14 male | 704 | **13 `Man` and 1 `Non-binary`** | **no** |
+| mean age 32.4, SD 9.0, range 19–54 | 703 | not recomputable | see below |
+
+`data/study/` holds 30 sessions; the 20 that count are those with a real
+participant id, started at or after `2026-08-05T16:52:00Z`, and not partial —
+which drops p01–p10, an earlier pilot cohort. `cohort.py` applies the same rule
+`plot_wallclock5.py` uses and prints what it dropped.
+
+**Ages cannot be checked.** `anonymize_study_data.py` replaces exact ages with
+bands before the data is committed, so the file carries `ageBand`
+(`30-39` x7, `20-29` x8, `18-27` x2, `40-49` x2, `50-59` x1) and no ages. The
+paper's mean, SD and range come from the Prolific export, which is not committed
+and should not be. The banding is also not a single scheme — `18-27` sits
+alongside `20-29` and `30-39` — so even a band-weighted estimate would be
+approximate. This is a deliberate privacy limit, recorded as a caveat, not a
+defect.
+
+The gender count is a real disagreement and it is visible in committed data:
+6 women, 13 men, 1 non-binary participant, totalling 20. `STATE.md` flag 12.
+
+### Other scripts in figures/human/
+
+Twenty scripts sit beside these four. `build_rerun_curves.py` and
+`extract_human_curves.py` built the curve files; `add_ppo.py`, `add_sps.py`,
+`fix_flappy.py`, `force_flappy_ppo.py`, `restore_flappy_impala.py`,
+`gen_rerun.py` and `discover2.py` are one-shot repair and assembly steps from
+the study's own history; `plot_human.py`, `plot_spread.py`, `plot_steps.py` and
+`plot_wallclock4.py` are superseded plotters. None is on the path from committed
+data to the published figure. They are listed in § File index under "kept, not
+on any paper path"; whether to delete them is `STATE.md` flag 13.
+
+```
+runs/  not applicable: the human sessions came from the web study, not Slurm.
+       The agent curves in rerun_curves_icnn.json are sourced from the suite
+       runs (their metadata says "suite (_suite4_curves.json)"), whose job
+       provenance belongs to fig:suite_trainers.
+```
