@@ -658,3 +658,91 @@ runs/  the suite training runs are identified by run directory inside the
        archive, as for fig:learning. Their Slurm provenance is not yet
        recovered; see STATE.md.
 ```
+
+---
+
+## tab:eval — Mean return over 8 held-out level seeds (Table 8)
+
+```
+graphic:   tabular, main.tex L1483
+redraw:    bash reproduction/reproduce.sh eval          all 48 cells
+           bash reproduction/reproduce.sh suite_check   the prose around the table
+code:      reproduction/figures/tools/check_eval.py
+data:      reproduction/figures/results/eval_iddp_suite.json   (committed, no archive needed)
+           reproduction/figures/tables/nodes/eval_suite_jobs.tsv  (the 24 jobs)
+```
+
+**All 48 cells match exactly.** `check_eval.py` parses the 24 `game & R & G`
+triples out of the `tab:eval` tabular in `main.tex` itself and compares them
+against the JSON, so this is a paper-versus-data check rather than a
+data-versus-data one: 48 cells, 0 mismatches. Greedy beats random on 20 of the
+24 games (caveflyer, maze, ninja and freeway being the exceptions).
+
+The step used to print three hand-picked games and a count. It now checks every
+cell.
+
+### The sibling file, and why the guard matters
+
+`results/eval_final_agents_b256.json` sits next to the right file with the same
+shape and the same 24 games. Pointing the table at it produces **20 mismatches,
+every one of them in the G column, while all 24 R values still match** — because
+the random-policy returns do not depend on the checkpoint. A table built from it
+would look entirely plausible. Run
+`python tools/check_eval.py --file results/eval_final_agents_b256.json` to see it.
+Its greedy returns come from weaker checkpoints (`outputs/impala_34603289` and
+siblings, a different and earlier set of runs).
+
+### The 24 jobs
+
+The evaluated checkpoints are the final checkpoints of the 24 IMPALA suite
+training runs, and each job id is embedded in the `run` field
+(`outputs/impala_<jobid>`). All 24 recovered into
+`figures/tables/nodes/eval_suite_jobs.tsv` with job name, submit and end time,
+node and config. They ran on 2026-07-24 within half an hour of each other,
+spread over five nodes, under `scripts/run_impala.sh` with
+`--export=ALL,USE_MPS=1`, `-c 92 --gres=gpu:4`.
+
+Node spread does not threaten this table the way it threatened Table 1(a): these
+cells are **returns**, not throughput, so a slower node changes how long the job
+took, not what the agent learned.
+
+One config is odd and worth stating: 23 of the 24 use
+`configs/pt_throughput/pt_b256_<game>_icnn_ddp2.json`, but **bigfish alone uses
+`pt_bigfish_icnn_ddp2v2.json`**. Whether that is a deliberate per-game override
+or a leftover is `STATE.md` flag 17.
+
+**No evaluation script is committed.** The table's numbers come from
+`eval_iddp_suite.json`, but nothing in the repo produced it — the ledger's
+expected `tools/eval_final_agents.py` does not exist here. So the JSON is
+checkable against the paper (and is), but not regenerable from the checkpoints.
+`STATE.md` flag 16. The caption's "8 held-out level seeds" is likewise an
+assertion the committed data does not record: the JSON holds one random and one
+greedy return per game with `ckpt_step: -1`, and no per-seed breakdown.
+
+### Prose around the table
+
+| claim | L | recomputed | agree? |
+|---|---|---|---|
+| IMPALA's freeway zero holds across both encoders and all 3 seeds | 1477 | 0.0 for all six seed-runs | yes |
+| PPO reaches freeway returns of 8.8 to 11.8 | 1477 | arm means 8.78 (PPO+IMPALA-CNN) and 11.88 (PPO+Nature-CNN) | yes, but see below |
+| on climber only IMPALA finishes above zero | 1478 | IMPALA +0.74, +0.68, −0.36; PPO all negative | yes |
+| IMPALA outperforms PPO on climber, coinrun, chaser, heist, asteroids | 1476 | all five are IMPALA wins | yes |
+| PPO wins 13 of the 24 | 1479 | PPO wins **17**, IMPALA 7 | **no** |
+
+The "8.8 to 11.8" range is not a seed range but the two PPO **arm means**, and
+the lower end is depressed by a dead seed: PPO+IMPALA-CNN scores 13.23, 13.10
+and **0.00**, averaging 8.78. The sentence reads as though PPO reliably scores
+between 8.8 and 11.8 on freeway when in fact one of its six seed-runs scores
+zero, exactly as IMPALA's do. Worth a clause; recorded with flag 18.
+
+"PPO wins 13 of the 24" does not hold under any reasonable definition. Comparing
+both IMPALA-CNN arms — the ones the sentence is about — PPO wins 17 and IMPALA 7
+(asteroids, chaser, climber, coinrun, heist, jumper, ninja). I swept 36
+combinations of arm pairing, final-value window (last point, last 5%, last 20%)
+and per-seed aggregator (mean, median, max): every one gives PPO 16 or 17, never
+13. `STATE.md` flag 18.
+
+```
+runs/  see figures/tables/nodes/eval_suite_jobs.tsv rather than 24 runs/ dirs;
+       the submit lines are one-liners with the config named inline.
+```

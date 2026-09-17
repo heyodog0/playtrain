@@ -28,7 +28,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical; the caption's "two slowest environments" example is wrong (PROVENANCE.md) |
 | Thread-scaling table | shares Figure 4 panel A's constants | see PROVENANCE.md | 2.58x at 80 threads |
-| Appendix eval table | `results/eval_iddp_suite.json` | committed | 24 of 24 games |
+| Appendix eval table | `figures/tools/check_eval.py` | `figures/results/eval_iddp_suite.json` | all 48 cells, parsed from main.tex |
 | Token cost table | `playtrain.gen.count_tokens` | `data/generation-logs/` | 6 of 7 rows exact, total differs by 8 tokens |
 
 The remaining tables are descriptive: engine and backend comparisons, the action space,

@@ -120,15 +120,8 @@ step "Architecture schematic"
 fi
 
 if want eval; then
-step "Appendix eval table  (paper: 24 games, e.g. seaquest 102.5 / 732.5)"
-python3 - <<'PYEOF'
-import json
-d = json.load(open("figures/results/eval_iddp_suite.json"))
-for g in ("seaquest", "bigfish", "pong"):
-    print(f"    {g:10s} random {d[g]['random_return']:7.1f}  greedy {d[g]['greedy_return']:7.1f}")
-print(f"    {len(d)} games total")
-PYEOF
-done_ $?
+step "Appendix eval table  (all 48 cells, parsed straight out of main.tex)"
+( cd figures && uv run --no-project python tools/check_eval.py ) ; done_ $?
 fi
 
 if want learning 0; then

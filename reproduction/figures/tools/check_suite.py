@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics as st
 from pathlib import Path
 
 GAMES_ALL = ["asteroids", "bigfish", "bossfight", "breakout", "caveflyer",
@@ -58,6 +59,42 @@ def main():
           f" so the 0.5M cut clears it   (paper: PPO curves start at 0.5M)")
     print(f"    IMPALA horizon {IMPALA_ENVS} x {HORIZON} = {IMPALA_ENVS*HORIZON/1e6:.3f}M"
           f"   (paper: 12.3M for {', '.join(NO_FAILURE)})")
+
+    # The prose around tab:eval (main.tex L1476-1479) makes four claims about
+    # these same curves. Final value = mean over the last 5% of each seed's run.
+    def fin(game, arm):
+        out = []
+        for sd in sorted(rec[game].get(arm, {})):
+            x, y = rec[game][arm][sd]["x"], rec[game][arm][sd]["y"]
+            if not x:
+                continue
+            cut = max(x) * 0.95
+            v = [b for a, b in zip(x, y) if a >= cut]
+            if v:
+                out.append(st.fmean(v))
+        return out
+
+    fw_i = fin("freeway", "impala") + fin("freeway", "nature")
+    print(f"\n    freeway IMPALA, both encoders, all seeds: {[round(v, 2) for v in fw_i]}"
+          f"   (paper: zero across both encoders and all 3 seeds)")
+    print(f"    freeway PPO+IMPALA-CNN seeds {[round(v, 2) for v in fin('freeway', 'ppo_impala')]}"
+          f" -> arm mean {st.fmean(fin('freeway', 'ppo_impala')):.2f}")
+    print(f"    freeway PPO+Nature-CNN seeds {[round(v, 2) for v in fin('freeway', 'ppo_nature')]}"
+          f" -> arm mean {st.fmean(fin('freeway', 'ppo_nature')):.2f}"
+          "   (paper: PPO reaches 8.8 to 11.8)")
+    print(f"    climber IMPALA-CNN {[round(v, 2) for v in fin('climber', 'impala')]},"
+          f" PPO+IMPALA-CNN {[round(v, 2) for v in fin('climber', 'ppo_impala')]}"
+          "   (paper: only IMPALA finishes above zero)")
+
+    ppo_w = [g for g in GAMES_ALL
+             if st.fmean(fin(g, "ppo_impala")) > st.fmean(fin(g, "impala"))]
+    imp_w = [g for g in GAMES_ALL if g not in ppo_w]
+    print(f"    both arms IMPALA-CNN: PPO wins {len(ppo_w)} of {len(GAMES_ALL)},"
+          f" IMPALA wins {len(imp_w)}   (paper: PPO wins 13 of the 24)")
+    named = ["climber", "coinrun", "chaser", "heist", "asteroids"]
+    print(f"    paper's named IMPALA wins {named} all hold:"
+          f" {all(g in imp_w for g in named)}   (IMPALA also wins"
+          f" {', '.join(g for g in imp_w if g not in named)})")
     return 0
 
 
