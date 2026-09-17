@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0
 
-STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf human_cohort human_wallclock human_crossings schematic eval learning suite_grids"
+STEPS="env_efficiency backend_ladder env_cost t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_grids"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -89,6 +89,11 @@ for f in glob.glob('data/study/*.json.gz'):
     with gzip.open(f, 'rb') as i, open(os.path.join(sys.argv[1], os.path.basename(f)[:-3]), 'wb') as o:
         shutil.copyfileobj(i, o)" "$1"
 }
+
+if want dbuf_check; then
+step "Table 7 caption claims  (paper: 1.34x overall, median 1.20x, plunder 0.97x)"
+( cd figures/tables && $PY python dbuf_check.py ) ; done_ $?
+fi
 
 if want human_cohort; then
 step "Human study cohort  (paper: 20 participants, 8 games, 6 female / 14 male)"

@@ -503,3 +503,81 @@ runs/  not applicable: the human sessions came from the web study, not Slurm.
        runs (their metadata says "suite (_suite4_curves.json)"), whose job
        provenance belongs to fig:suite_trainers.
 ```
+
+---
+
+## tab:dbuf-ablation — Double buffering (Table 7)
+
+```
+graphic:   tabular, main.tex L1413
+redraw:    bash reproduction/reproduce.sh dbuf         the table body
+           bash reproduction/reproduce.sh dbuf_check   the caption's claims
+code:      reproduction/figures/tables/dbuf_tex2.py, dbuf_check.py
+data:      reproduction/figures/tables/data/dbuf_t3_44861569_<game>.json  (24 files)
+           reproduction/figures/tables/nodes/dbuf_jobs.tsv  (task -> game -> raw id)
+job:       array 44861569 dbuf_t3_24, tasks 0-23, node holygpu8a15203,
+           2026-09-06T15:00:50 to 2026-09-07T08:07:20
+```
+
+**The table body reproduces byte for byte.** `dbuf_tex2.py` emits all 24 game
+rows, all 72 numbers, and the geometric-mean row identical to the LaTeX in
+`main.tex` — including `median 1.20x, range 0.92--2.08x`. Nothing to flag there.
+
+Setup: IMPALA with the Nature-CNN encoder at the topology in `tab:hyperparams`,
+fifteen workers, template
+`configs/pt_throughput/pt_bigfish_nature_fullnode.json`, arms `a4` (double
+buffered) and `a3` (single). The statistic is the median of 60-second SPS
+windows with the first discarded.
+
+### One array job, not twenty-four
+
+The 24 data files are all named `dbuf_t3_44861569_<game>.json`, but each records
+a **different** `job_id` inside — 44989151, 44995888, … 45032367. Those are not
+separate jobs. `SLURM_JOB_ID` inside an array task is the per-task `JobIDRaw`,
+while the filename carries `SLURM_ARRAY_JOB_ID`. `sacct -o JobID,JobIDRaw`
+confirms all 24 are tasks of array job **44861569**, and the full join is
+committed at `nodes/dbuf_jobs.tsv`. A reader who took the inner ids at face
+value would go looking for two dozen jobs that do not exist.
+
+`--array=0-23%1` means the tasks ran strictly one at a time, so no two games ever
+shared the node.
+
+### The node, and why the ratios survive it
+
+All 24 tasks were pinned with `--nodelist=holygpu8a15203` — the same node the
+Table 1(a) re-runs added to their exclude list, and the same silicon class that
+varies by up to 1.56x in clock. That makes the absolute `k`/`M` columns a
+statement about that one node.
+
+The **ratios are unaffected**, because both arms of a given game ran inside the
+same array task on that node: a slow clock divides out. This is the opposite
+situation from Table 1(a), where each game sat on a different node and the
+per-game numbers were node-confounded.
+
+### The caption's claims
+
+| claim | recomputed | agree? |
+|---|---|---|
+| double buffering gives 1.34x overall | 1.34x | yes |
+| median 1.20x, range 0.92–2.08x | identical | yes |
+| plunder "at nearly a million steps-per-second reduces at 0.97x" | 0.97x at 907,653 single-buffered | yes |
+| "the gain tracks how environment-bound a game is" | r = **−0.871** against env-only per-core SPS, **−0.949** against single-buffered throughput, over all 24 games | yes, strongly |
+| "miner and leaper, the two slowest environments present in the table" | they are the two largest **gains**, not the two slowest environments | **no** |
+
+The mechanism claim is the substantive one and it holds well. The worked example
+is what slips: miner (2.08x) and leaper (1.92x) top the *ratio* column, but by
+env-only per-core speed the two slowest games in the table are **qbert**
+(14,706) and **climber** (16,876), and by single-buffered trainer throughput they
+are **climber** (415,609) and **fruitbot** (435,804). `leaper` runs at 66,213
+env-only SPS — **13th slowest of the 24** — and is the clearest exception to the
+caption's own trend, gaining 1.92x while the similarly-paced heist and frostbite
+gain only 1.18x and 1.15x.
+
+So the sentence conflates "largest gain" with "slowest environment" and picks, as
+one of its two examples, the game that least fits the pattern it is illustrating.
+`STATE.md` flag 14 has the recommendation. The numbers in the table are right
+either way — this is a wording problem, not a data problem.
+
+```
+runs/44861569/  dbuf_t3_24.sbatch, SUBMIT.txt
+```
