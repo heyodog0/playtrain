@@ -881,3 +881,85 @@ warmup per NUMA pool, then a twelve-second measured window, summed across pools
 and then geometric-meaned over games — exactly as the prose at L1583 describes.
 PlayTrain builds carry profile-guided optimization while EnvPool runs on its
 prebuilt wheel, which the same paragraph discloses.
+
+---
+
+## fig:envcost — Cost of one operation, and per-game step anatomy (Figure 12)
+
+```
+graphic:   figures/fig_env_cost.pdf
+redraw:    bash reproduction/reproduce.sh env_cost        the figure
+           bash reproduction/reproduce.sh env_cost_check  the prose numbers
+code:      reproduction/figures/tools/plot_env_cost.py, tools/check_env_cost.py
+data:      figures/outputs/percmd.json, logic_probes.json, grid.json
+           (in the figure-data-v1 archive; see fig:learning for the access flag)
+job:       44381429 envcost_adv, node holy8a14102, -C sapphirerapids -c 1,
+           2026-09-04; built by dependency 44381264 adopt_build_dc
+```
+
+Every number the appendix prose quotes checks out:
+
+| claim | where | recomputed | agree? |
+|---|---|---|---|
+| background is the most expensive at 390 ns per call | L1694 | background, 390.34 ns, dearest of the priced primitives | yes |
+| fill is the fastest, only sets colour state | L1695 | fill, 79.25 ns, cheapest priced primitive | yes |
+| shapes priced per polygon | caption | `shape_unit_ns` 372.31; beginShape/vertex/endShape all 0 | yes |
+| pong is the fastest, 11 p5 commands per frame | L1696 | pong, 233,103 sps, exactly 11.0 commands | yes |
+| flappy_bird issues fewer commands yet is slower | L1698 | 6.2 commands, 222,614 sps — fewer and slower | yes |
+| maze is the one game whose costs exceed its step time | caption | maze alone: 67.45 us priced against a 64.21 us step | yes |
+| miner spends 75% of its step on 787 drawing commands | L778 | 75% and 787 commands | yes |
+| one core of one Sapphire Rapids node | L1692 | `-C sapphirerapids -c 1` | yes |
+
+`maze`'s over-attribution is why its bar carries no residual: with the priced
+operations already exceeding the measured step, there is nothing left to assign
+to game logic, and `logic_us` is 0. It is the only such game.
+
+### The variant hazard
+
+Four `percmd*.json` files sit side by side. The figure reads `percmd.json`, and
+it is **byte-identical to `percmd_adv_nodirty.json`** — the adopted build with
+dirty-rectangle skipping off, exactly what the caption states. The others are
+live traps:
+
+| file | background | pong |
+|---|---|---|
+| `percmd.json` = `percmd_adv_nodirty.json` (**drawn**) | 390.34 ns | 233,103 sps |
+| `percmd_adv_dirty.json` | 386.82 ns | 226,405 sps |
+| `percmd_preadv.json` | **1303.84 ns** | **107,354 sps** |
+
+The pre-adv file would redraw the entire figure with every price about 3.3x
+higher and every game about 2x slower, and nothing about the result would look
+wrong. `check_env_cost.py` asserts the identity, so a swap fails loudly.
+
+Job 44381429's header explains why the anatomy runs with `QJS_DIRTY` unset:
+dirty-rectangle skipping removes the raster pass on skipped frames, so a step
+decomposition measured under it would not be an anatomy of a rendered step. The
+figure is internally consistent on this — both its prices and its bracketed
+throughputs come from the same dirty-off file.
+
+### Two places the methods text is narrower than the data
+
+Neither changes a published number; both would mislead someone rebuilding the
+probes.
+
+- **The probe sweep.** L1685 says N "varies from 0, 64, 128, 256, and 512". The
+  committed grid actually sweeps drawing at {0, 64, 128, 192, 256, 320, 512, 768}
+  and logic at {0, 128, 256, 384, 512, 768, 1024, 1536}, and the standalone logic
+  probes use {0, 256, 512, 1024, 2048, 4096} — a different ladder from the one
+  described, not "the same structure".
+- **The logic operations.** L1687 names four: collision checks, allocations,
+  entity updates, typed-array writes. The data fits **five**, the unnamed one
+  being `lgrid`, "tile-grid cell scan" at 78.82 ns per unit. That omission is
+  worth closing precisely because `maze` — the one game whose decomposition
+  overflows — is a tile-grid game.
+
+All five fits are near-perfect lines (r^2 from 0.99977 to 0.99999), and
+`grid.json` records a held-out check of the additive draw+logic model with a mean
+absolute error of **0.36%**, which is good evidence the decomposition in panel B
+is sound. Neither the r^2 values nor the held-out error appear in the paper;
+they are the strongest support it has for panel B and are recorded here.
+`STATE.md` flag 20.
+
+```
+runs/44381429/  envcost_adv.sbatch, SUBMIT.txt
+```

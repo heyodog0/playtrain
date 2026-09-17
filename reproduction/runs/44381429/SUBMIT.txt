@@ -1,0 +1,18 @@
+# sacct -X -j 44381429 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+44381429   envcost_adv   2026-09-04T09:08:54   2026-09-04T09:26:05   holy8a14102   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch --dependency=afterok:44381264 envcost_adv.sbatch
+
+what:  fig:envcost -- per-primitive prices, per-game binding counts, and the
+       step decomposition, re-measured on the adopted (adv) build.
+node:  holy8a14102, -C sapphirerapids, -c 1  (paper: "one core of one Sapphire
+       Rapids node")
+dep:   44381264 adopt_build_dc on holy8a24303, which built
+       libqjs_vec.advdc.so = the adv recipe plus per-binding counters.
+dirty: the anatomy runs with QJS_DIRTY UNSET, because dirty-rectangle skipping
+       removes the raster pass on skipped frames and a decomposition under it
+       would not describe a rendered step. This is why the figure reads
+       outputs/percmd.json, which is byte-identical to percmd_adv_nodirty.json.
+       percmd_adv_dirty.json exists beside it and is NOT what the figure draws.
+hazard: percmd_preadv.json is the superseded pre-adv measurement -- it prices
+       background at 1303.84 ns against the adv build's 390.34, and pong at
+       107,354 sps against 233,103. Drawing the figure from it would change
+       every number by ~3x while looking perfectly reasonable.
