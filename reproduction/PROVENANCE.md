@@ -1665,3 +1665,78 @@ have had quietly wrong credit assignment fails instead.
 Nothing in the figure itself is inaccurate: the hatched idle blocks in (A) and
 (B), and their absence in (C), are exactly what the three modes' documented
 throughputs (~315 SPS, ~1500+ SPS, 100k+ SPS) reflect.
+
+---
+
+## tab:hyperparams — Training configuration (Table 12)
+
+```
+graphic:   tabular, main.tex L1368
+redraw:    bash reproduction/reproduce.sh hyperparams   (needs the data archive)
+code:      reproduction/figures/tools/check_hyperparams.py
+source:    figures/outputs/s3_icnn_*/config.json   (IMPALA, 72 runs)
+           figures/outputs/p3_icnn_*/config.json   (PPO, 72 runs)
+           playtrain-trainers/src/playtrain_trainers/impala/train.py
+           playtrain-trainers/src/playtrain_trainers/train_ppo_clean.py
+```
+
+**Every checkable cell traces to a config key, 0 mismatches.** The table
+describes the 100M suite runs, so the authority is the `config.json` each run
+carries.
+
+| IMPALA cell | key | PPO cell | key |
+|---|---|---|---|
+| encoder IMPALA-CNN | `net: impala` | encoder IMPALA-CNN | `net: impala` |
+| feature dim 256 | `features_dim` | environments 192 | `n_envs` |
+| recurrence none | `use_lstm: false` | rollout length 128 | `n_steps` |
+| frame skip / stack 1 / 1 | `frame_skip`, `frame_stack` | minibatches 8 | `n_minibatches` |
+| batch size 256 | `batch_size` | epochs per batch 3 | `n_epochs` |
+| unroll length 64 | `unroll_length` | lr 2.5e-4, annealed | `learning_rate`, `anneal_lr` |
+| discount 0.99 | `discounting` | discount 0.999 | `gamma` |
+| baseline cost 0.5 | `baseline_cost` | GAE λ 0.95 | `gae_lambda` |
+| entropy cost 0.01 | `entropy_cost` | clip coefficient 0.2 | `clip_coef` |
+| reward clip to ±1 | `reward_clipping: abs_one` | value coefficient 0.5 | `vf_coef` |
+| gradient-norm clip 40.0 | `grad_norm_clipping` | entropy coefficient 0.01 | `ent_coef` |
+| learning rate 5e-4 | `learning_rate` | gradient-norm clip 0.5 | `max_grad_norm` |
+| α / momentum / ε | `rmsprop_alpha` 0.99, `rmsprop_momentum` 0.0, `rmsprop_epsilon` 1e-05 | precision fp32 | `bf16: false` |
+| precision bf16, channels-last | `learner_precision: bf16`, `vec_infer_bf16`, `channels_last` | `torch.compile` off | `compile_mode: null` |
+
+Optimizers are in the trainers rather than the configs: `torch.optim.Adam(...,
+eps=1e-5)` at `train_ppo_clean.py` L810 for PPO, and the `rmsprop_*` keys for
+IMPALA. The observation row (`3x64x64` RGB) is the runtime default verified
+under § tab:step-return.
+
+### The caption's two structural claims are true, and now measured
+
+> "Each config is identical for every game" … "per-game tuning: none"
+
+Diffing all **72 IMPALA** and all **72 PPO** configs against the first, ignoring
+only the per-run identity fields (`game`, `seed`, `log_dir`, the wandb names and
+`ddp_rdzv_port`): **zero keys differ**, in either arm. That is the strongest form
+the claim could take, and it is worth having as a check rather than an assertion
+— it is exactly what a reviewer would doubt.
+
+### The topology rows, and a cross-check that closes
+
+`vec_workers: 12` and `batch_size: 256` give 12 x 2 x 256 = **6,144**
+environments, matching the table. `vec_worker_device: "cuda:2,cuda:3"` is two
+inference GPUs of the four, leaving two for DDP — the table's "2 DDP + 2
+inference GPUs".
+
+That 6,144 is the same number § fig:suite_trainers needed: 6,144 x 2,000 frames
+= 12.288M, the horizon at which `maze`, `heist` and `freeway` first terminate.
+Two labels, derived independently, agree.
+
+### One cell is abbreviated
+
+`torch.compile` is given as **max-autotune**; the config says
+**`max-autotune-no-cudagraphs`**. The suffix is not cosmetic — it disables CUDA
+graph capture — so the table names a mode that differs from the one that ran.
+Minor, and the direction is conservative (the paper claims the more aggressive
+setting), but worth correcting. `STATE.md` flag 31.
+
+The throughput configs are a different thing and should not be confused with
+this table: Table 1(a)'s PPO template uses `n_envs=768, n_steps=128,
+n_minibatches=32` (§ tab:train-throughput), against the 192 / 128 / 8 here. The
+prose at L1408 quotes this table's numbers — 128 steps x 192 environments =
+24,576 timesteps — and that arithmetic is right.
