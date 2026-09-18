@@ -187,4 +187,4 @@ for ext in ('pdf', 'png'):
 print(f"{'game':<13}{'human':>8}{'min/mean':>10}{'max/mean':>10}{'spread':>9}")
 for g in games:
     hv = human[g]; m = st.mean(hv)
-    print(f'{g:<13}{m:>8.1f}{min(hv)/m:>10.2f}{max(hv)/m:>10.2f}{max(hv)/max(min(hv),1e-9):>8.0f}x')
+    print(f'{g:<13}{m:>8.1f}{min(hv)/m:>10.2f}{max(hv)/m:>10.2f}{(max(hv)/min(hv) if min(hv)>0 else float("inf")):>8.0f}x')

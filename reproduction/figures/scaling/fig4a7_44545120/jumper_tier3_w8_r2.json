@@ -1,0 +1,24 @@
+[
+  {
+    "game": "jumper",
+    "workers": 8,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 995328,
+    "frames_per_s": 995328,
+    "per_worker": [
+      125372,
+      123986,
+      124769,
+      124798,
+      123549,
+      124397,
+      124634,
+      123824
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.02,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

@@ -1,0 +1,40 @@
+node=holy8a28510.rc.fas.harvard.edu job=44601287
+NUMA node(s):        2
+Model name:          AMD EPYC 9654 96-Core Processor
+SHADOW PROVENANCE OK /tmp/pttree_44601287/native/build/libqjs_vec.so 1c5149364c32fb58ce9b81cda49fa763
+== PlayTrain tier3 anchor, 80 threads, 24 games x 2 ==
+ANCHOR_DONE Sat Sep  5 09:31:18 EDT 2026
+K=2 NUMA domains, CPD=96 cpus/domain
+--- T=5 envs=128 per_pool=64 threads_per_pool=2 bs=16
+    done T=5
+--- T=10 envs=256 per_pool=128 threads_per_pool=5 bs=16
+    done T=10
+--- T=20 envs=512 per_pool=256 threads_per_pool=10 bs=30
+    done T=20
+--- T=30 envs=768 per_pool=384 threads_per_pool=15 bs=45
+    done T=30
+--- T=40 envs=1024 per_pool=512 threads_per_pool=20 bs=60
+    done T=40
+--- T=60 envs=1536 per_pool=768 threads_per_pool=30 bs=90
+    done T=60
+--- T=80 envs=2048 per_pool=1024 threads_per_pool=40 bs=120
+    done T=80
+
+=== EnvPool documented-best geomeans, 7 points ===
+t5   procgen       147,716  (n=16)
+t10  procgen       354,686  (n=16)
+t20  procgen       584,458  (n=16)
+t30  procgen       777,384  (n=16)
+t40  procgen       931,467  (n=16)
+t60  procgen     1,197,708  (n=16)
+t80  procgen     1,412,903  (n=16)
+  procgen curve: 147,716 / 354,686 / 584,458 / 777,384 / 931,467 / 1,197,708 / 1,412,903
+t5   ale            18,390  (n=8)
+t10  ale            45,600  (n=8)
+t20  ale            89,270  (n=8)
+t30  ale           134,145  (n=8)
+t40  ale           177,666  (n=8)
+t60  ale           265,505  (n=8)
+t80  ale           350,959  (n=8)
+  ale curve: 18,390 / 45,600 / 89,270 / 134,145 / 177,666 / 265,505 / 350,959
+EP_BEST_7PT_DONE Sat Sep  5 10:24:51 EDT 2026

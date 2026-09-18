@@ -1,0 +1,16 @@
+# sacct -X -j 44545120 -o JobID,JobName%16,Submit,End,NodeList,SubmitLine -n
+44545120   tier3_fig4a7   2026-09-05T02:06:35   2026-09-05T04:17:27   holy8a28510   sbatch tier3_fig4a_full.sbatch
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  Figure 4A at the published seven thread counts (5/10/20/30/40/60/80), ALL FOUR
+       arms in ONE job on ONE node (AMD Genoa, -C genoa, exclusive, 96 cores):
+         PlayTrain tier3  (the published engine, per-game AOT libs, md5-gated)
+         PlayTrain adv2   (the previous engine, for reference)
+         EnvPool tuned    (async + numactl NUMA binding)  <- superseded by 44601287, see there
+         EnvPool as-shipped (single sync pool)
+       PlayTrain: 128 envs/worker x 5 env threads, w = 1/2/4/6/8/12/16, 24 games,
+       2 trials per point (3 at 80 threads).
+data:  reproduction/figures/scaling/fig4a7_44545120/<game>_<arm>_w<w>_r<trial>.json
+       (723 files). The PlayTrain tier3 geomeans over these ARE panel A's PlayTrain
+       constants, all seven points, both suites, to the unit.
+       EnvPool arms: GEOMEANS.txt (the job's printed summary; per-game rows in LOG).

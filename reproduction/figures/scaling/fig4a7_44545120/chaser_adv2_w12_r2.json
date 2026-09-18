@@ -1,0 +1,28 @@
+[
+  {
+    "game": "chaser",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1058693,
+    "frames_per_s": 1058693,
+    "per_worker": [
+      88558,
+      88425,
+      87997,
+      88166,
+      87970,
+      88098,
+      87949,
+      88524,
+      88339,
+      88213,
+      88049,
+      88407
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.44,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

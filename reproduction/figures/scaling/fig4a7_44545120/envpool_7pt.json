@@ -1,0 +1,1178 @@
+[
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 5,
+  "sync1": 170041,
+  "async_numa": 190141
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 5,
+  "sync1": 13807,
+  "async_numa": 33162
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 5,
+  "sync1": 118232,
+  "async_numa": 115537
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 5,
+  "sync1": 147195,
+  "async_numa": 144707
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 5,
+  "sync1": 129606,
+  "async_numa": 131155
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 5,
+  "sync1": 95502,
+  "async_numa": 104354
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 5,
+  "sync1": 121471,
+  "async_numa": 127381
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 5,
+  "sync1": 99584,
+  "async_numa": 104781
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 5,
+  "sync1": 139545,
+  "async_numa": 154838
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 5,
+  "sync1": 77346,
+  "async_numa": 83181
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 5,
+  "sync1": 118668,
+  "async_numa": 140593
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 5,
+  "sync1": 123298,
+  "async_numa": 117481
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 5,
+  "sync1": 119220,
+  "async_numa": 140789
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 5,
+  "sync1": 124317,
+  "async_numa": 130456
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 5,
+  "sync1": 151960,
+  "async_numa": 176308
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 5,
+  "sync1": 114720,
+  "async_numa": 142595
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 5,
+  "sync1": 21464,
+  "async_numa": 18822
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 5,
+  "sync1": 18623,
+  "async_numa": 16696
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 5,
+  "sync1": 17192,
+  "async_numa": 15086
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 5,
+  "sync1": 18911,
+  "async_numa": 16879
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 5,
+  "sync1": 21081,
+  "async_numa": 18743
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 5,
+  "sync1": 19509,
+  "async_numa": 17581
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 5,
+  "sync1": 20686,
+  "async_numa": 18203
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 5,
+  "sync1": 20649,
+  "async_numa": 18105
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 10,
+  "sync1": 301949,
+  "async_numa": 411453
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 10,
+  "sync1": 12847,
+  "async_numa": 41934
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 10,
+  "sync1": 206502,
+  "async_numa": 262051
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 10,
+  "sync1": 244559,
+  "async_numa": 326147
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 10,
+  "sync1": 229983,
+  "async_numa": 296164
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 10,
+  "sync1": 180375,
+  "async_numa": 232041
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 10,
+  "sync1": 186609,
+  "async_numa": 286381
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 10,
+  "sync1": 182363,
+  "async_numa": 236059
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 10,
+  "sync1": 255408,
+  "async_numa": 336148
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 10,
+  "sync1": 124240,
+  "async_numa": 183044
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 10,
+  "sync1": 204757,
+  "async_numa": 316966
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 10,
+  "sync1": 217567,
+  "async_numa": 270330
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 10,
+  "sync1": 241876,
+  "async_numa": 312101
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 10,
+  "sync1": 236873,
+  "async_numa": 294194
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 10,
+  "sync1": 259096,
+  "async_numa": 375546
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 10,
+  "sync1": 146288,
+  "async_numa": 290132
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 10,
+  "sync1": 41270,
+  "async_numa": 46156
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 10,
+  "sync1": 35104,
+  "async_numa": 41040
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 10,
+  "sync1": 34423,
+  "async_numa": 36988
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 10,
+  "sync1": 37412,
+  "async_numa": 41675
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 10,
+  "sync1": 41909,
+  "async_numa": 45737
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 10,
+  "sync1": 37851,
+  "async_numa": 43113
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 10,
+  "sync1": 41490,
+  "async_numa": 44319
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 10,
+  "sync1": 40084,
+  "async_numa": 44331
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 20,
+  "sync1": 552840,
+  "async_numa": 785022
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 20,
+  "sync1": 12746,
+  "async_numa": 34325
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 20,
+  "sync1": 272451,
+  "async_numa": 500948
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 20,
+  "sync1": 490658,
+  "async_numa": 631321
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 20,
+  "sync1": 436073,
+  "async_numa": 567587
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 20,
+  "sync1": 254116,
+  "async_numa": 450601
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 20,
+  "sync1": 265874,
+  "async_numa": 526374
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 20,
+  "sync1": 338600,
+  "async_numa": 454922
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 20,
+  "sync1": 493421,
+  "async_numa": 645576
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 20,
+  "sync1": 156914,
+  "async_numa": 332446
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 20,
+  "sync1": 270287,
+  "async_numa": 599810
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 20,
+  "sync1": 406427,
+  "async_numa": 523310
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 20,
+  "sync1": 439970,
+  "async_numa": 597618
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 20,
+  "sync1": 428017,
+  "async_numa": 558014
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 20,
+  "sync1": 421929,
+  "async_numa": 696830
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 20,
+  "sync1": 145216,
+  "async_numa": 407704
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 20,
+  "sync1": 80546,
+  "async_numa": 91381
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 20,
+  "sync1": 66260,
+  "async_numa": 81683
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 20,
+  "sync1": 67581,
+  "async_numa": 73657
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 20,
+  "sync1": 70480,
+  "async_numa": 83051
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 20,
+  "sync1": 81936,
+  "async_numa": 91690
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 20,
+  "sync1": 70994,
+  "async_numa": 86148
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 20,
+  "sync1": 79228,
+  "async_numa": 88056
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 20,
+  "sync1": 78745,
+  "async_numa": 87931
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 30,
+  "sync1": 657066,
+  "async_numa": 1158746
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 30,
+  "sync1": 18818,
+  "async_numa": 39425
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 30,
+  "sync1": 290802,
+  "async_numa": 725132
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 30,
+  "sync1": 709116,
+  "async_numa": 941769
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 30,
+  "sync1": 635687,
+  "async_numa": 832512
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 30,
+  "sync1": 304014,
+  "async_numa": 626052
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 30,
+  "sync1": 248440,
+  "async_numa": 704130
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 30,
+  "sync1": 501782,
+  "async_numa": 681978
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 30,
+  "sync1": 617678,
+  "async_numa": 938334
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 30,
+  "sync1": 216101,
+  "async_numa": 444817
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 30,
+  "sync1": 452063,
+  "async_numa": 876374
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 30,
+  "sync1": 604492,
+  "async_numa": 784274
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 30,
+  "sync1": 661380,
+  "async_numa": 882993
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 30,
+  "sync1": 602131,
+  "async_numa": 824352
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 30,
+  "sync1": 408827,
+  "async_numa": 990045
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 30,
+  "sync1": 203406,
+  "async_numa": 445912
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 30,
+  "sync1": 117974,
+  "async_numa": 137211
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 30,
+  "sync1": 96585,
+  "async_numa": 123055
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 30,
+  "sync1": 99606,
+  "async_numa": 111156
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 30,
+  "sync1": 102690,
+  "async_numa": 124950
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 30,
+  "sync1": 124573,
+  "async_numa": 137873
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 30,
+  "sync1": 102839,
+  "async_numa": 128856
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 30,
+  "sync1": 118003,
+  "async_numa": 132309
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 30,
+  "sync1": 115368,
+  "async_numa": 131774
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 40,
+  "sync1": 797279,
+  "async_numa": 1522235
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 40,
+  "sync1": 21138,
+  "async_numa": 47442
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 40,
+  "sync1": 421320,
+  "async_numa": 899232
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 40,
+  "sync1": 879116,
+  "async_numa": 1235243
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 40,
+  "sync1": 814253,
+  "async_numa": 1097964
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 40,
+  "sync1": 340017,
+  "async_numa": 716364
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 40,
+  "sync1": 373868,
+  "async_numa": 765551
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 40,
+  "sync1": 584188,
+  "async_numa": 899947
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 40,
+  "sync1": 694920,
+  "async_numa": 1206446
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 40,
+  "sync1": 256957,
+  "async_numa": 453933
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 40,
+  "sync1": 429136,
+  "async_numa": 1100871
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 40,
+  "sync1": 729617,
+  "async_numa": 1051017
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 40,
+  "sync1": 766819,
+  "async_numa": 1159002
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 40,
+  "sync1": 663943,
+  "async_numa": 1084313
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 40,
+  "sync1": 527757,
+  "async_numa": 1196474
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 40,
+  "sync1": 249755,
+  "async_numa": 492095
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 40,
+  "sync1": 153847,
+  "async_numa": 183477
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 40,
+  "sync1": 123019,
+  "async_numa": 164533
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 40,
+  "sync1": 130953,
+  "async_numa": 148211
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 40,
+  "sync1": 133117,
+  "async_numa": 166811
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 40,
+  "sync1": 158224,
+  "async_numa": 184101
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 40,
+  "sync1": 132988,
+  "async_numa": 173119
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 40,
+  "sync1": 153473,
+  "async_numa": 177353
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 40,
+  "sync1": 150226,
+  "async_numa": 175452
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 60,
+  "sync1": 559074,
+  "async_numa": 2159013
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 60,
+  "sync1": 18556,
+  "async_numa": 62044
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 60,
+  "sync1": 479293,
+  "async_numa": 1096421
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 60,
+  "sync1": 973430,
+  "async_numa": 1831304
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 60,
+  "sync1": 959351,
+  "async_numa": 1594436
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 60,
+  "sync1": 458355,
+  "async_numa": 867003
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 60,
+  "sync1": 453818,
+  "async_numa": 950201
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 60,
+  "sync1": 582904,
+  "async_numa": 1304512
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 60,
+  "sync1": 733926,
+  "async_numa": 1494689
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 60,
+  "sync1": 264802,
+  "async_numa": 559236
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 60,
+  "sync1": 659103,
+  "async_numa": 1431923
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 60,
+  "sync1": 1000414,
+  "async_numa": 1549406
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 60,
+  "sync1": 1000921,
+  "async_numa": 1669894
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 60,
+  "sync1": 945131,
+  "async_numa": 1567147
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 60,
+  "sync1": 798588,
+  "async_numa": 1475849
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 60,
+  "sync1": 259937,
+  "async_numa": 645921
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 60,
+  "sync1": 217361,
+  "async_numa": 274464
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 60,
+  "sync1": 172719,
+  "async_numa": 246904
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 60,
+  "sync1": 191342,
+  "async_numa": 224151
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 60,
+  "sync1": 189791,
+  "async_numa": 252032
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 60,
+  "sync1": 221360,
+  "async_numa": 275900
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 60,
+  "sync1": 187621,
+  "async_numa": 260589
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 60,
+  "sync1": 218339,
+  "async_numa": 266476
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 60,
+  "sync1": 213613,
+  "async_numa": 264269
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BigfishEasy-v0",
+  "threads": 80,
+  "sync1": 610262,
+  "async_numa": 2605399
+ },
+ {
+  "suite": "procgen",
+  "env_id": "BossfightEasy-v0",
+  "threads": 80,
+  "sync1": 28369,
+  "async_numa": 70985
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CaveflyerEasy-v0",
+  "threads": 80,
+  "sync1": 690328,
+  "async_numa": 1325299
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ChaserEasy-v0",
+  "threads": 80,
+  "sync1": 556179,
+  "async_numa": 2297060
+ },
+ {
+  "suite": "procgen",
+  "env_id": "ClimberEasy-v0",
+  "threads": 80,
+  "sync1": 558923,
+  "async_numa": 1998720
+ },
+ {
+  "suite": "procgen",
+  "env_id": "CoinrunEasy-v0",
+  "threads": 80,
+  "sync1": 465915,
+  "async_numa": 1033021
+ },
+ {
+  "suite": "procgen",
+  "env_id": "DodgeballEasy-v0",
+  "threads": 80,
+  "sync1": 453555,
+  "async_numa": 1125134
+ },
+ {
+  "suite": "procgen",
+  "env_id": "FruitbotEasy-v0",
+  "threads": 80,
+  "sync1": 776843,
+  "async_numa": 1615430
+ },
+ {
+  "suite": "procgen",
+  "env_id": "HeistEasy-v0",
+  "threads": 80,
+  "sync1": 818282,
+  "async_numa": 1767043
+ },
+ {
+  "suite": "procgen",
+  "env_id": "JumperEasy-v0",
+  "threads": 80,
+  "sync1": 268281,
+  "async_numa": 644603
+ },
+ {
+  "suite": "procgen",
+  "env_id": "LeaperEasy-v0",
+  "threads": 80,
+  "sync1": 709478,
+  "async_numa": 1686137
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MazeEasy-v0",
+  "threads": 80,
+  "sync1": 706690,
+  "async_numa": 1993726
+ },
+ {
+  "suite": "procgen",
+  "env_id": "MinerEasy-v0",
+  "threads": 80,
+  "sync1": 562678,
+  "async_numa": 2076522
+ },
+ {
+  "suite": "procgen",
+  "env_id": "NinjaEasy-v0",
+  "threads": 80,
+  "sync1": 581931,
+  "async_numa": 1967358
+ },
+ {
+  "suite": "procgen",
+  "env_id": "PlunderEasy-v0",
+  "threads": 80,
+  "sync1": 825052,
+  "async_numa": 1732350
+ },
+ {
+  "suite": "procgen",
+  "env_id": "StarpilotEasy-v0",
+  "threads": 80,
+  "sync1": 252944,
+  "async_numa": 746697
+ },
+ {
+  "suite": "ale",
+  "env_id": "Asteroids-v5",
+  "threads": 80,
+  "sync1": 253225,
+  "async_numa": 361979
+ },
+ {
+  "suite": "ale",
+  "env_id": "Breakout-v5",
+  "threads": 80,
+  "sync1": 214818,
+  "async_numa": 328074
+ },
+ {
+  "suite": "ale",
+  "env_id": "Freeway-v5",
+  "threads": 80,
+  "sync1": 233700,
+  "async_numa": 298333
+ },
+ {
+  "suite": "ale",
+  "env_id": "Frostbite-v5",
+  "threads": 80,
+  "sync1": 227141,
+  "async_numa": 332957
+ },
+ {
+  "suite": "ale",
+  "env_id": "Pong-v5",
+  "threads": 80,
+  "sync1": 256285,
+  "async_numa": 364369
+ },
+ {
+  "suite": "ale",
+  "env_id": "Qbert-v5",
+  "threads": 80,
+  "sync1": 225925,
+  "async_numa": 346579
+ },
+ {
+  "suite": "ale",
+  "env_id": "Seaquest-v5",
+  "threads": 80,
+  "sync1": 252174,
+  "async_numa": 351890
+ },
+ {
+  "suite": "ale",
+  "env_id": "SpaceInvaders-v5",
+  "threads": 80,
+  "sync1": 246715,
+  "async_numa": 350317
+ }
+]

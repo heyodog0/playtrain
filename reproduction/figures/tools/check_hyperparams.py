@@ -64,7 +64,7 @@ PPO = [("encoder IMPALA-CNN", "net", "impala"),
 def main():
     if not (D / "s3_icnn_bossfight_s0").exists():
         print("    skipped: run 'bash reproduction/figures/fetch_data.sh' first")
-        return 0
+        return 3
     bad = []
     for lab, pat, rows in (("IMPALA", "s3_icnn_*", IMPALA), ("PPO", "p3_icnn_*", PPO)):
         dirs = sorted(glob.glob(str(D / pat)))

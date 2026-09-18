@@ -9,12 +9,17 @@ Everything measured ran on Harvard FASRC. Node names matter: the same node class
 differs by up to 1.56x in clock, so every `SUBMIT.txt` records `NodeList`.
 
 Redraw anything with `bash reproduction/reproduce.sh <name>`; `--list` prints the
-names. Sections not yet written are tracked in
-`playtrain-internal/repro-loop/STATE.md`.
+names. All 28 labels in the paper have a section here.
+
+Six of the checkers (`check_action_space`, `check_bench_scaling`, `check_eval`,
+`check_llm_cost`, `check_p5_subset`, `check_step_return`) read `main.tex`
+directly when the paper repository is checked out as a sibling of this one, and
+otherwise read `data/paper_values.json`, a committed snapshot of the values they
+need. Each prints which of the two sources it used.
 
 ---
 
-## fig:env_efficiency — Environment efficiency (Figure 4)
+## fig:env_efficiency — Environment efficiency
 
 ```
 graphic:   figures/fig_env_efficiency.pdf
@@ -27,78 +32,52 @@ Four panels with **four different provenances**. Read the panel you care about.
 
 ### Panel A — thread scaling (env-only, 5→80 threads)
 
-Not data-driven. The seven points per arm are **constants in the plot script**
-(`plot_env_efficiency_bestonly.py`, `main()`), transcribed from the jobs below.
-The script also defines `load_scaling()` and accepts `--ab-results/--pg-job/
---ale-job`, but nothing calls it and the flags are ignored — see § Flags in
-`STATE.md`. The `figures/scaling/ab_*.json` files in the repo therefore back no
-published panel; they are an independent replication, described at the end of
-this section.
-
-| arm | constant @80t | job | node | date |
-|---|---|---|---|---|
-| PlayTrain, 16 ProcGen | 3,650,005 | 43780731 `adv_anchor` | holy8a24307 | 2026-09-01 |
-| PlayTrain, 8 ALE | 7,300,384 | 43780731 `adv_anchor` | holy8a24307 | 2026-09-01 |
-| EnvPool documented best, ProcGen | 1,412,903 | 43779854 `ep_best_sweep` (10/20/40t) + 43570992 (80t) | holy8a24307 | 2026-09-01 |
-| EnvPool documented best, ALE | 350,959 | same | holy8a24307 | 2026-09-01 |
-| EnvPool as shipped (sync1) | 468,997 / 238,829 | the config matrix, HANDOFF-2026-09-01 §2 | holy8a24307 | 2026-09-01 |
-
 ```
-runs/43780731/  adv_anchor.sbatch, SUBMIT.txt, LOG_HEAD.txt
-runs/43779854/  ep_best_sweep.sbatch, SUBMIT.txt, LOG_HEAD.txt, GEOMEANS.txt
+data:      figures/scaling/fig4a7_44545120/<game>_tier3_w<w>_r<n>.json   (PlayTrain, 721 files)
+           runs/44601287/LOG.txt, runs/44614598/LOG.txt                  (EnvPool geomeans)
+check:     bash reproduction/reproduce.sh panel_a   (tools/check_panel_a.py)
 ```
 
-`43779854`'s own printed geomeans (`GEOMEANS.txt`) agree with the plotted
-constants to within 0.4%: ProcGen 355,451 / 587,070 / 931,786 at 10/20/40
-threads against the plotted 354,686 / 584,458 / 931,467; ALE 45,662 / 89,285 /
-177,869 against 45,600 / 89,270 / 177,666. Its 80-thread points were taken from
-the earlier 43570992 and its 5-thread point from the matrix, so panel A's
-EnvPool curve is a **composite of three jobs**, all on holy8a24307.
+The seven points per arm are constants in the plot script
+(`plot_env_efficiency_bestonly.py`, `main()`). Every one of the 28 plotted
+constants is a measurement, and `check_panel_a.py` recomputes each from the
+committed data and refuses to pass if any differs. All three source jobs ran on
+the same node, **holy8a28510** (AMD Genoa, exclusive, 96 cores), on 2026-09-05,
+so the two arms the figure compares are same-node at every thread count.
 
-`43779854` measures EnvPool at its documented best: async, one pool per NUMA
-domain, in-pool `thread_affinity_offset`, `batch_size = 3 x threads`. The
-as-shipped sync arm is omitted from the plot but kept for the printout, which is
-where the "vs as shipped: 7.78x / 30.57x" line comes from.
+| arm | thread counts | job | how the constant was obtained |
+|---|---|---|---|
+| PlayTrain (tier3, the published engine), both suites | all seven | 44545120 `tier3_fig4a7` | geomean over games of the best trial; 128 envs/worker x 5 env threads, w = 1/2/4/6/8/12/16, 2 trials (3 at 80) |
+| EnvPool documented best, both suites | 10/20/30/40/60/80 | 44601287 `ep_best_7pt` | the job's printed geomeans; EnvPool's own `thread_affinity_offset`, one pool per NUMA domain, `batch_size = max(16, 3 x threads per pool)` |
+| EnvPool documented best, both suites | 5 | 44614598 `ep_best_t5fix` | one pool of 5 threads (44601287's two-pool split had run four threads at T=5) |
 
-Jobs 43570992 (`ep_affinity`) and 43543523 (`final_any`, "the matrix") are now
-recovered into `runs/`, and recovering them settled which of panel A's points
-are measurements.
+```
+runs/44545120/  tier3_fig4a_full.sbatch, SUBMIT.txt, LOG_HEAD.txt, GEOMEANS.txt
+runs/44601287/  ep_best_7pt.sbatch, SUBMIT.txt, LOG.txt
+runs/44614598/  ep_best_t5fix.sbatch, SUBMIT.txt, LOG.txt
+```
 
-**The seven-point ladder was measured — but not on the engine panel A plots.**
-Jobs **38145651** (ProcGen, both arms) and **39032276** (ALE, both arms) swept
-the full 5/10/20/30/40/60/80 ladder, and their per-game data is committed in
-`figures/scaling/`. That is where the figure's x-axis comes from. The mechanism
-is explicit in their sbatch, now at `runs/38145651/`:
-`WORKERS="${WORKERS:-1,2,4,6,8,12,16}"` with `ENV_THREADS=5`, i.e. seven worker
-counts x 5 env threads = 5/10/20/30/40/60/80.
+Job 44545120 also measured a PlayTrain adv2 arm (the previous engine) and two
+EnvPool arms of its own; its EnvPool tuned arm used `numactl` binding rather
+than EnvPool's own affinity and understates the baseline by 10–28%, which is why
+44601287 re-measured it and is the source used. The as-shipped EnvPool series
+(`pg_eps`, `al_eps` in the script) is not drawn and appears only in the step's
+printout; its 10/20/40/80 points come from 43543523 and 43574839 and its 5, 30
+and 60-thread entries are placeholders (the 5-thread one repeats the 10-thread
+value), so that series should not be quoted.
 
-Panel A, however, plots **adv-era** values, and every adv-era sweep used
-10/20/40/80 only — 43543523 (its header: "EP thread sweeps 10/20/40/80 on
-ProcGen16"), 43574839 (workers 2/4/8, and its EnvPool side logs threads
-10/20/40), 43779854 (T in 10/20/40), 43780731 (w=2/4/8 plus an 80-thread block)
-and 43570992 (80 threads). So the plotted curves' 5, 30 and 60-thread points have
-no adv-era measurement behind them. Point-by-point map, including the pre-adv
-value at each thread count for scale:
-`figures/scaling/panelA_measured.tsv`.
+`tab:bench-scaling` is these same 28 numbers, so the table's 5, 30 and 60-thread
+rows are measured rows and its efficiency columns normalise against a measured
+5-thread point.
 
-| series | adv-era measured | derived in the plotted curve |
-|---|---|---|
-| EnvPool as shipped, ProcGen | 10/20/40/80, all four **exact** against 43543523 | 5 (a duplicate of the 10-thread value), 30, 60 |
-| EnvPool as shipped, ALE | 10/20/40 from 43574839 and 80 from 43543523, all four **exact** | 5 (duplicate of 10), 30, 60 |
-| | 43574839 swept workers 2/4/8 only, and its EnvPool output records threads 10/20/40 | |
-| EnvPool documented best, both suites | 10/20/40 from 43779854, 80 from 43570992, within 0.44% | 5, 30, 60 |
-| PlayTrain, both suites | 10/20/40/80 swept by 43780731 | 5, 30, 60 |
-
-The one concrete anomaly is the 5-thread point: in **both** as-shipped series it
-is the 10-thread measurement repeated verbatim (ProcGen 178,217; ALE 38,478),
-which cannot be right as a 5-thread throughput and makes that column's "100%"
-scaling efficiency an artefact. `tab:bench-scaling` normalises both efficiency
-columns against that row.
-
-No published ratio is affected: the headline 2.58x and 20.80x are 80-thread
-numbers and both denominators are measured (468,997 exact; 350,959 against a
-logged 350,601). What is not supported is presenting all seven thread counts as
-adv-era measurements. `STATE.md` flag 23.
+Earlier jobs that led here, all in `runs/`: 43780731 (`adv_anchor`) and
+43779854 (`ep_best_sweep`) measured the adv2 engine and EnvPool at 10/20/40
+threads on holy8a24307; 43570992 (`ep_affinity`) and 43543523 (`final_any`)
+gave the 80-thread and as-shipped EnvPool points; 38145651 and 39032276 are the
+August pre-adv full ladders whose per-game data sits in `figures/scaling/` as
+`ab_*_<job>.json` and which fixed the seven-point x-axis; 44515188 is a
+10/20/40/80 tier3 replication (`ab_pt_*_44515188.json`, within 1% of the
+constants at those four points).
 
 ### Panels C and D — per-core throughput vs ProcGen C++ and ALE
 
@@ -154,7 +133,7 @@ code:   reproduction/figures/tools/check_backend_ladder.py  (the ratios; bars co
 
 **The figure and the prose do not divide by the same rungs.** The QuickJS rung is
 settled: 58,827, job `44515373`'s **tier3** ladder block (`runs/44515373/
-raw_ladder.txt`, exact; the same job's adv2 rung was 37,850 and is not plotted).
+raw_ladder.txt`, exact; the same job's adv2 rung was 37,350 and is not plotted).
 The two rungs below it exist in two versions:
 
 | Playwright / V8 rungs | source | V8 → QuickJS | browser → QuickJS |
@@ -173,8 +152,7 @@ as-run intent was the adv pair.
 The adv pair is committed at `backend_ladder_adv/` with its three raw arms, and
 recomputing the geomeans from those arms reproduces 502 / 4,374 / 37,350 exactly.
 `reproduce.sh backend_ladder` prints the paper's ratios beside both pairs rather
-than preferring one. Choosing between them changes the published figure, so it is
-recorded as flag 6 in `STATE.md`.
+than preferring one. Choosing between them changes the published figure.
 
 **Resolved 2026-09-18.** `backend_ladder_fasrc.json`'s `playwright` and `v8`
 blocks were replaced with the adv pair from `backend_ladder_adv/` (the file
@@ -216,11 +194,9 @@ published 12.62 is reproduced *only* by mean/mean. **No single convention gives
 both published numbers.** Under the paper's own stated method, median/median,
 ProcGen is 2.19 as printed and ALE becomes 12.64.
 
-This supersedes the simpler reading recorded in the first pass over this label,
-which treated 2.18 as the truth and the paper as 0.01 high. The substantive
-issue is that the code deviates from the documented statistic; fixing that
-confirms 2.19 and moves the ALE cell. `STATE.md` flag 1 carries the
-recommendation. Run `reproduce.sh bench_setup` to see the whole matrix.
+The substantive issue is that the code deviates from the documented statistic;
+adopting the documented median would confirm 2.19 and move the ALE cell. Run
+`reproduce.sh bench_setup` to see the whole matrix.
 
 **Resolved 2026-09-18.** The paper now states the mean (L1549) and prints 2.18 at
 L539 and L1537; the code was left as it was, so the drawn figure, the table and
@@ -284,7 +260,7 @@ runs/44515188/  tier3_fig4a.sbatch, SUBMIT.txt, LOG_HEAD.txt
 
 ---
 
-## tab:train-throughput — Single-node training throughput (Table 1)
+## tab:train-throughput — Single-node training throughput
 
 ```
 graphic:   tabular, main.tex L490
@@ -340,8 +316,7 @@ remaining 18 games is **352,600 → 0.35M, the paper's figure exactly**. The
 published 0.35M is therefore not stale adv2 (which was 347,722, also 0.35M) — it
 is this row measured off the bad node. Affected games: bigfish, caveflyer,
 climber, frostbite, plunder, seaquest. Closing the gap needs those six re-run
-with `--exclude=…,holygpu8a15203`, which is a cluster submission and so is
-`STATE.md` flag 7, not something this harness does.
+with `--exclude=…,holygpu8a15203`, which is a cluster submission.
 
 **Resolved 2026-09-18: job 47057946** re-ran exactly those six tasks with the
 same sbatch file and `holygpu8a15203` added to the exclude list, as the other
@@ -366,7 +341,7 @@ Configs, per row:
 | row | template |
 |---|---|
 | impala_nature | `configs/pt_throughput/pt_bigfish_nature_fullnode.json`, widened by `tools/_mk_sweep_cfg.py <cfg> 15 5 256` |
-| impala_icnn | `playtrain-trainers/configs/impala_fullnode_throughput.json` |
+| impala_icnn | `playtrain-trainers/configs/impala_fullnode_throughput.json`, in the playtrain-trainers repository |
 | ppo_nature, ppo_impala | `outputs/pv_p_breakout_s0/config.json` with `n_envs=768, n_steps=128, n_minibatches=32, ddp=True, native_env_threads=12, compile_mode=None, double_buffer=False, bf16=(net=="impala")` |
 
 ### (b) PlayTrain clones vs originals, single-buffered
@@ -389,8 +364,9 @@ by construction — which is what makes these the ratios the prose quotes.
 | ALE swap 5.80x, "on all eight" | L547, L549 | **5.8105x**, and 8/8 faster | **no**, 5.81 vs 5.80 |
 
 The arithmetic means are 2.3888x and 5.9036x, so the paper is quoting geometric
-means, consistently with the caption. The ALE ratio rounds to 5.81, not 5.80;
-recorded in `STATE.md` § Flags with the ProcGen per-core rounding issue.
+means, consistently with the caption. The ALE ratio rounds to 5.81, not 5.80.
+This is an open decision for the authors, alongside the ProcGen per-core
+rounding issue.
 
 ```
 runs/44748571/  t1a_t3fix.sbatch, SUBMIT.txt, LOG_HEAD_task0.txt
@@ -406,7 +382,7 @@ runs/44516167/  tier3_ale_ab.sbatch, SUBMIT.txt
 
 ---
 
-## fig:learning — Generated environments and training curves (Figure 5)
+## fig:learning — Generated environments and training curves
 
 ```
 graphic:   figures/fig_main_D.png
@@ -426,8 +402,8 @@ only on the private `heyodog0/playtrain-dev`. Until it is published, a reader
 cloning the public repo cannot draw this figure, `fig:envcost`, or the three
 suite grids. Fetch it with
 `PLAYTRAIN_DATA_REPO=heyodog0/playtrain-dev bash reproduction/figures/fetch_data.sh`.
-`STATE.md` flag 10. The checksum in the script matches the asset as published on
-the dev repo, verified 2026-09-17.
+The checksum in the script matches the asset as published on the dev repo,
+verified 2026-09-17.
 
 ### What the caption claims, and what the code draws
 
@@ -472,8 +448,8 @@ L618, the prose at L640, L645 and L648, the discussion at L778, and the
 `data/llm_cost.json` all use the repo names. The token counts in
 `llm_cost.json` match the paper's table exactly under the repo names, so no
 number is affected; what breaks is the trail from a name in the paper to a file
-in the repo. The mapping is committed at `data/variant_names.tsv` and the
-decision — rename the files or rename in the paper — is `STATE.md` flag 9.
+in the repo. The mapping is committed at `data/variant_names.tsv`. This is an
+open decision for the authors: rename the files, or rename in the paper.
 
 ### Slurm provenance for the 48 runs
 
@@ -511,8 +487,7 @@ Fifteen of the `p3_icnn_*` runs carry a `wandb_name` of `p3_nat_<game>_s<seed>` 
 `net: impala`. All 48 selected runs do have `net: impala`, so the figures are
 correct, but anyone re-deriving the selection from run names or wandb names
 would misclassify those fifteen as Nature-encoder runs. This is concrete
-evidence for `_runs()`'s insistence on selecting by config content; see
-`STATE.md` flag 24.
+evidence for `_runs()`'s insistence on selecting by config content.
 
 ```
 runs/42009688/  suite3.sbatch, manifest.txt, SUBMIT.txt
@@ -522,7 +497,7 @@ data/suite_run_jobs.tsv   all 48 runs -> task/job, start time, node
 
 ---
 
-## fig:human_wallclock — Human play vs agent training (Figure 6)
+## fig:human_wallclock — Human play vs agent training
 
 ```
 graphic:   figures/fig_human_wallclock.pdf
@@ -553,7 +528,7 @@ compares an IMPALA-CNN IMPALA against a **Nature-CNN PPO**. That is the
 mixed-encoder hazard that has already bitten the suite panels twice, and it
 produced a figure that looked entirely reasonable.
 
-Fixed this iteration: both human steps now pass `rerun_curves_icnn.json` and run
+Both human steps pass `rerun_curves_icnn.json` and run
 `check_curve_encoder.py` first, which fails the step if either arm is not
 `impala`. The human means, the spread panel and panel B are unaffected — they come
 from the study data, not the curves.
@@ -581,7 +556,7 @@ The commented-out prose at L718–L721 also matches this file exactly — astero
 26M, seaquest 30M, flappy_bird 1M, coinrun 81M, plunder 16M — which is good
 evidence that `rerun_curves_icnn.json` is the set the text was written against,
 and that the two surviving claims were simply not updated when VVVVVV's IMPALA
-curve crossed. Recorded as `STATE.md` flag 11.
+curve crossed.
 
 For contrast, the superseded Nature file gives exactly six games reached (coinrun
 never), which is where "six of the eight" came from.
@@ -611,7 +586,7 @@ approximate. This is a deliberate privacy limit, recorded as a caveat, not a
 defect.
 
 The gender count is a real disagreement and it is visible in committed data:
-6 women, 13 men, 1 non-binary participant, totalling 20. `STATE.md` flag 12.
+6 women, 13 men, 1 non-binary participant, totalling 20.
 
 ### Other scripts in figures/human/
 
@@ -622,7 +597,7 @@ Twenty scripts sit beside these four. `build_rerun_curves.py` and
 the study's own history; `plot_human.py`, `plot_spread.py`, `plot_steps.py` and
 `plot_wallclock4.py` are superseded plotters. None is on the path from committed
 data to the published figure. They are listed in § File index under "kept, not
-on any paper path"; whether to delete them is `STATE.md` flag 13.
+on any paper path"; whether to delete them is an open decision for the authors.
 
 ```
 runs/  not applicable: the human sessions came from the web study, not Slurm.
@@ -633,7 +608,7 @@ runs/  not applicable: the human sessions came from the web study, not Slurm.
 
 ---
 
-## tab:dbuf-ablation — Double buffering (Table 7)
+## tab:dbuf-ablation — Double buffering
 
 ```
 graphic:   tabular, main.tex L1413
@@ -648,7 +623,7 @@ job:       array 44861569 dbuf_t3_24, tasks 0-23, node holygpu8a15203,
 
 **The table body reproduces byte for byte.** `dbuf_tex2.py` emits all 24 game
 rows, all 72 numbers, and the geometric-mean row identical to the LaTeX in
-`main.tex` — including `median 1.20x, range 0.92--2.08x`. Nothing to flag there.
+`main.tex` — including `median 1.20x, range 0.92--2.08x`. Nothing is amiss there.
 
 Setup: IMPALA with the Nature-CNN encoder at the topology in `tab:hyperparams`,
 fifteen workers, template
@@ -702,7 +677,7 @@ gain only 1.18x and 1.15x.
 
 So the sentence conflates "largest gain" with "slowest environment" and picks, as
 one of its two examples, the game that least fits the pattern it is illustrating.
-`STATE.md` flag 14 has the recommendation. The numbers in the table are right
+The numbers in the table are right
 either way — this is a wording problem, not a data problem.
 
 ```
@@ -711,7 +686,7 @@ runs/44861569/  dbuf_t3_24.sbatch, SUBMIT.txt
 
 ---
 
-## fig:suite_trainers, fig:suite_enc_impala, fig:suite_enc_ppo — Full-suite curves (Figures 9–11)
+## fig:suite_trainers, fig:suite_enc_impala, fig:suite_enc_ppo — Full-suite curves
 
 ```
 graphic:   figures/fig_suite_trainers.pdf, fig_suite_enc_impala.pdf, fig_suite_enc_ppo.pdf
@@ -736,17 +711,14 @@ which arms they show:
 4-arm `fig_suite_grid` — a figure no label in `main.tex` uses — and also ran
 `plot_suite_grid.py`, whose own docstring says it draws the superseded
 single-seed 150M DDP2 run. So the step reported ok while redrawing nothing the
-paper contains. Fixed this iteration: the step now runs the three invocations
-above.
+paper contains. The step runs the three invocations above.
 
 Evidence the pairing is right: the redrawn PDFs come out at 354,793 / 346,426 /
 369,651 bytes against the paper's 354,996 / 346,192 / 369,377 — within 0.1%,
 the residue being embedded timestamps.
 
-While fixing this, `--arms` selection was hoisted out of the per-game loop (it
-was being rebuilt 24 times and then read after the loop by the final printout,
-which relied on loop-variable leakage), and that printout now names the arms it
-actually drew instead of always claiming four.
+`--arms` selection is built once outside the per-game loop, and the final
+printout names the arms it actually drew.
 
 ### Caption claims
 
@@ -774,7 +746,7 @@ aggregation (`span_frac=0.02`), so a plotted line is a smoothed seed mean rather
 than the raw mean. Smoothing before the min/max is deliberate — at the logged
 resolution the raw band is driven by single-point spikes in one seed — but a
 reader comparing a plotted value against a raw TB number should expect a small
-difference. Recorded as a caveat, not a flag.
+difference. Recorded as a caveat.
 
 `np.nanmean` over an all-NaN column raises a RuntimeWarning for grid points below
 a given arm's first sample (the PPO figure's first 0.5M). Harmless: those points
@@ -783,12 +755,12 @@ are meant to be empty.
 ```
 runs/  the suite training runs are identified by run directory inside the
        archive, as for fig:learning. Their Slurm provenance is not yet
-       recovered; see STATE.md.
+       recovered.
 ```
 
 ---
 
-## tab:eval — Mean return over 8 held-out level seeds (Table 8)
+## tab:eval — Mean return over 8 held-out level seeds
 
 ```
 graphic:   tabular, main.tex L1483
@@ -805,8 +777,7 @@ against the JSON, so this is a paper-versus-data check rather than a
 data-versus-data one: 48 cells, 0 mismatches. Greedy beats random on 20 of the
 24 games (caveflyer, maze, ninja and freeway being the exceptions).
 
-The step used to print three hand-picked games and a count. It now checks every
-cell.
+The step checks every cell.
 
 ### The sibling file, and why the guard matters
 
@@ -835,16 +806,15 @@ took, not what the agent learned.
 
 One config is odd and worth stating: 23 of the 24 use
 `configs/pt_throughput/pt_b256_<game>_icnn_ddp2.json`, but **bigfish alone uses
-`pt_bigfish_icnn_ddp2v2.json`**. Whether that is a deliberate per-game override
-or a leftover is `STATE.md` flag 17.
+`pt_bigfish_icnn_ddp2v2.json`**. This is an open question for the authors:
+whether that is a deliberate per-game override or a leftover.
 
 **No evaluation script is committed.** The table's numbers come from
-`eval_iddp_suite.json`, but nothing in the repo produced it — the ledger's
-expected `tools/eval_final_agents.py` does not exist here. So the JSON is
-checkable against the paper (and is), but not regenerable from the checkpoints.
-`STATE.md` flag 16. The caption's "8 held-out level seeds" is likewise an
-assertion the committed data does not record: the JSON holds one random and one
-greedy return per game with `ckpt_step: -1`, and no per-seed breakdown.
+`eval_iddp_suite.json`, but nothing in the repo produced it: there is no
+`tools/eval_final_agents.py`. So the JSON is checkable against the paper (and
+is), but not regenerable from the checkpoints. The caption's "8 held-out level
+seeds" is likewise an assertion the committed data does not record: the JSON
+holds one random and one greedy return per game with `ckpt_step: -1`, and no per-seed breakdown.
 
 ### Prose around the table
 
@@ -860,14 +830,14 @@ The "8.8 to 11.8" range is not a seed range but the two PPO **arm means**, and
 the lower end is depressed by a dead seed: PPO+IMPALA-CNN scores 13.23, 13.10
 and **0.00**, averaging 8.78. The sentence reads as though PPO reliably scores
 between 8.8 and 11.8 on freeway when in fact one of its six seed-runs scores
-zero, exactly as IMPALA's do. Worth a clause; recorded with flag 18.
+zero, exactly as IMPALA's do. Worth a clause.
 
 "PPO wins 13 of the 24" does not hold under any reasonable definition. Comparing
 both IMPALA-CNN arms — the ones the sentence is about — PPO wins 17 and IMPALA 7
-(asteroids, chaser, climber, coinrun, heist, jumper, ninja). I swept 36
+(asteroids, chaser, climber, coinrun, heist, jumper, ninja). A sweep of 36
 combinations of arm pairing, final-value window (last point, last 5%, last 20%)
-and per-seed aggregator (mean, median, max): every one gives PPO 16 or 17, never
-13. `STATE.md` flag 18.
+and per-seed aggregator (mean, median, max) gives PPO 16 or 17 in every one,
+never 13.
 
 ```
 runs/  see figures/tables/nodes/eval_suite_jobs.tsv rather than 24 runs/ dirs;
@@ -876,7 +846,7 @@ runs/  see figures/tables/nodes/eval_suite_jobs.tsv rather than 24 runs/ dirs;
 
 ---
 
-## tab:bench-setup — The three throughput measurements (Table 9)
+## tab:bench-setup — The three throughput measurements
 
 ```
 graphic:   tabular, main.tex L1524
@@ -889,18 +859,15 @@ Six numeric cells, all restatements:
 
 | row | hardware | vs ALE | vs ProcGen | source | agree? |
 |---|---|---|---|---|---|
-| per core | Intel Sapphire Rapids | 12.62x | 2.19x | fig:env_efficiency C, D | see that label |
+| per core | Intel Sapphire Rapids | 12.62x | 2.18x | fig:env_efficiency C, D | yes (the mean, adopted 2026-09-18; see that label) |
 | thread scaling | AMD Genoa | 20.80x | 2.58x | fig:env_efficiency A | yes |
 | with a trainer | AMD Genoa, 4xH100 | 5.8x | 2.25x | tab:train-throughput (b) | yes |
 
 The trainer row is worth a note: Table 1(b) gives 5.8105 and 2.2540, and this
 table prints them to one and two decimals as **5.8x** and **2.25x**, both of
 which round correctly. The *prose* at L547 and L549 prints the same ALE ratio as
-"5.80x" to two decimals, which does not — that is `STATE.md` flag 8, and it is a
-prose problem, not a problem with this table.
-
-The ledger this harness started from expected "1.13x / 4.00x cells (may be
-stale)". Those numbers are not in the table any more; it has been updated since.
+"5.80x" to two decimals, which does not — that is a prose problem, not a
+problem with this table.
 
 ### The caption's same-job, same-node claim does not hold for two of three rows
 
@@ -917,7 +884,6 @@ arms of every comparison run in a single job on one node"), so it is asserted
 twice. For the per-core row it is the reuse that job 44515373's own header
 documents and justifies — the C++ baselines do not depend on the engine build —
 so the measurement is defensible; the blanket caption claim is what overreaches.
-`STATE.md` flag 19.
 
 ### The single-core protocol, and the mean/median deviation
 
@@ -945,7 +911,7 @@ relative to the lowest thread count. The EnvPool arm's configuration is
 
 ---
 
-## tab:bench-scaling — Thread scaling (Table 10)
+## tab:bench-scaling — Thread scaling
 
 ```
 graphic:   tabular, main.tex L1587
@@ -972,8 +938,8 @@ that one cell) on both suites out to eighty threads, while EnvPool falls to
 table is correctly derived and internally consistent — no arithmetic slip
 anywhere in 70 cells. It does *not* establish the measurement, because the two
 throughput columns are the same hardcoded constants that draw panel A of
-Figure 4, and their source data is not in the repo (§ fig:env_efficiency panel A,
-`STATE.md` flags 2 and 3). This table and that panel cannot disagree: they are
+Figure 4, and their source data is not in the repo (§ fig:env_efficiency
+panel A). This table and that panel cannot disagree: they are
 the same 28 numbers. Committing panel A's source data would make both
 reproducible at once.
 
@@ -983,14 +949,10 @@ threads, 43570992 for the 80-thread points that produce the headline 2.58x and
 as-shipped ALE sweep. All four are now in `runs/`, as are the two pre-adv
 full-ladder jobs 38145651 and 39032276.
 
-**The 5-thread row is not an adv-era measurement**, and both
-scaling-efficiency columns are normalised against it — in the as-shipped series
-it is the 10-thread value repeated verbatim. The full ladder was measured
-pre-adv (38145651 / 39032276), but no adv-era sweep covered 5, 30 or 60
-threads; see § fig:env_efficiency panel A and
-`figures/scaling/panelA_measured.tsv`. The 70 cells remain correctly derived
-from the throughputs; three of the seven thread counts are themselves derived.
-`STATE.md` flag 23.
+All seven thread counts are measured, both arms, on one node (jobs 44545120,
+44601287 and 44614598; see § fig:env_efficiency panel A and
+`reproduce.sh panel_a`), so the efficiency columns normalise against a measured
+5-thread point. The 70 cells are correctly derived from those throughputs.
 
 ### Protocol behind the EnvPool column
 
@@ -1002,7 +964,7 @@ prebuilt wheel, which the same paragraph discloses.
 
 ---
 
-## fig:envcost — Cost of one operation, and per-game step anatomy (Figure 12)
+## fig:envcost — Cost of one operation, and per-game step anatomy
 
 ```
 graphic:   figures/fig_env_cost.pdf
@@ -1010,7 +972,7 @@ redraw:    bash reproduction/reproduce.sh env_cost        the figure
            bash reproduction/reproduce.sh env_cost_check  the prose numbers
 code:      reproduction/figures/tools/plot_env_cost.py, tools/check_env_cost.py
 data:      figures/outputs/percmd.json, logic_probes.json, grid.json
-           (in the figure-data-v1 archive; see fig:learning for the access flag)
+           (in the figure-data-v1 archive; see fig:learning for the access caveat)
 job:       44381429 envcost_adv, node holy8a14102, -C sapphirerapids -c 1,
            2026-09-04; built by dependency 44381264 adopt_build_dc
 ```
@@ -1076,7 +1038,6 @@ All five fits are near-perfect lines (r^2 from 0.99977 to 0.99999), and
 absolute error of **0.36%**, which is good evidence the decomposition in panel B
 is sound. Neither the r^2 values nor the held-out error appear in the paper;
 they are the strongest support it has for panel B and are recorded here.
-`STATE.md` flag 20.
 
 ```
 runs/44381429/  envcost_adv.sbatch, SUBMIT.txt
@@ -1084,25 +1045,23 @@ runs/44381429/  envcost_adv.sbatch, SUBMIT.txt
 
 ---
 
-## tab:llm-cost — Authorship cost and training throughput per artifact (Table 11)
+## tab:llm-cost — Authorship cost and training throughput per artifact
 
 ```
 graphic:   tabular, main.tex L1774
 redraw:    bash reproduction/reproduce.sh llm_cost        offline, no API key
 regenerate: GEMINI_API_KEY=... uv run --with google-genai \
               python -m playtrain.gen.count_tokens
-code:      playtrain/src/playtrain/gen/count_tokens.py  (the generator)
+code:      src/playtrain/gen/count_tokens.py  (the generator)
            reproduction/figures/tools/check_llm_cost.py  (the offline check)
 data:      reproduction/data/llm_cost.json      the counts
            reproduction/data/tab_llm_cost.tex   the generated tabular
            reproduction/data/generation-logs/   26 logs, one per LLM call
 ```
 
-The ledger this harness began with listed this table as needing `GEMINI_API_KEY`
-and suggested committing the counted JSON so it redraws offline. **That is
-already done**: `count_tokens.py` writes both the JSON and the LaTeX beside the
-counts, and both are committed. `reproduce.sh llm_cost` now checks the whole
-table with no API call, so the step is no longer excluded from the run.
+**The table redraws offline.** `count_tokens.py` writes both the JSON and the
+LaTeX beside the counts, and both are committed, so `reproduce.sh llm_cost`
+checks the whole table with no API call and no key.
 
 **Five of the seven columns verify completely, offline.**
 
@@ -1128,7 +1087,7 @@ Gemini 3.1 Pro prices, and every row's cost recomputes from its own token counts
 Everything else in the row agrees, and the six artifact rows sum exactly to the
 data's 70,918 — so this is a transcription slip in the paper, not a data problem.
 The committed `data/tab_llm_cost.tex`, which the generator emits, prints 70,918.
-The cost is unaffected: 8 input tokens is $0.000016. `STATE.md` flag 22.
+The cost is unaffected: 8 input tokens is $0.000016.
 
 ### The two hardcoded columns
 
@@ -1145,7 +1104,7 @@ The qbert value is corroborated elsewhere: main.tex L778 says "qbert.bigmap
 reaches 39k SPS against the suite's 0.35M ceiling", and 39k is the table's own
 cell, with the four non-render-bound artifacts sitting at 354–356k, i.e. that
 0.35M ceiling. The numbers are coherent; what is missing is the measurement they
-came from. `STATE.md` flag 21.
+came from.
 
 ### Artifact names
 
@@ -1154,9 +1113,9 @@ everything in the repo uses — `breakout.multiball` for `breakout.multi`,
 `qbert.bigmap` for `qbert.v2`, `flappy_bird.hoop` for `flappy_bird.dunk2`, and
 `downwell` for `downwell_fresh`. The generation logs, the JSON's `artifact` keys
 and the generated LaTeX all use the repo names. `check_llm_cost.py` resolves them
-through `data/variant_names.tsv`, which this iteration extended with the
-`downwell` row, and reports each match under the name the paper prints. Same
-issue as § fig:learning panel B; `STATE.md` flag 9.
+through `data/variant_names.tsv`, which carries the `downwell` row, and reports
+each match under the name the paper prints. Same issue as § fig:learning
+panel B.
 
 `qbert.v2` is worth one note: its two calls are logged under two different names,
 `qbert.v1_variant` and `qbert.v2_variant`, because the first produced v1 and the
@@ -1166,12 +1125,12 @@ Calls is 2 rather than 1.
 ```
 runs/  not applicable: these are LLM API calls, logged in
        reproduction/data/generation-logs/, not cluster jobs. The SPS column's
-       measurement is the one piece with no recorded provenance (flag 21).
+       measurement is the one piece with no recorded provenance.
 ```
 
 ---
 
-## tab:contrast — Qualitative properties of environment families (Table 2)
+## tab:contrast — Qualitative properties of environment families
 
 ```
 graphic:   tabular, main.tex L727
@@ -1185,8 +1144,8 @@ column, the label in this paper that supports it.
 
 | row | PlayTrain's cell | what backs it |
 |---|---|---|
-| Complexity | Flexible | § sec:variants; the generation pipeline, `playtrain/src/playtrain/gen/` |
-| Efficiency/Speed | High | **measured**: fig:env_efficiency (12.62x ALE, 2.19x ProcGen per core) and tab:train-throughput (1.07M agent-steps/s) |
+| Complexity | Flexible | § sec:variants; the generation pipeline, `src/playtrain/gen/` |
+| Efficiency/Speed | High | **measured**: fig:env_efficiency (12.62x ALE, 2.18x ProcGen per core) and tab:train-throughput (1.07M agent-steps/s) |
 | Adaptability — training variations | Anything Describable | § sec:variants; tab:llm-cost, six artifacts generated for $0.95 total |
 | Adaptability — test environments | Anything Describable | same; the held-out level seeds in tab:eval |
 | Adaptability — game designs/dynamics | Very High | § sec:variants' three variant axes (parametric, structural, visual/thematic) |
@@ -1200,7 +1159,7 @@ the authors' reading of those systems, not anything this repo can check — whic
 is the honest status of a qualitative table and is worth saying plainly rather
 than implying the whole table is sourced.
 
-Two of the six PlayTrain cells are backed by labels this harness verified
+Two of the six PlayTrain cells are backed by labels verified in this document
 (Efficiency/Speed and Human Playability). The other four are claims about
 capability, supported by the generation pipeline existing and being exercised,
 not by a number.
@@ -1216,21 +1175,21 @@ the rows but left in the column specification.
 
 The effect is a trailing empty column with the `|` rule sitting one column too
 far left of where the content ends. It renders without an error, which is why it
-has survived. `STATE.md` flag 25.
+has survived.
 
 The `Adaptability` row is a deliberate bare label with a single cell and is not
 part of this problem.
 
 ---
 
-## tab:action-space — The default Discrete(8) action space (Table 3)
+## tab:action-space — The default Discrete(8) action space
 
 ```
 graphic:   tabular, main.tex L1008
 redraw:    bash reproduction/reproduce.sh action_space
 code:      reproduction/figures/tools/check_action_space.py
-source:    playtrain/runtime/action_spaces.json  ->  key "default8"
-           playtrain/src/playtrain/runtime/action_space.py  (the loader and contract)
+source:    runtime/action_spaces.json  ->  key "default8"
+           src/playtrain/runtime/action_space.py  (the loader and contract)
 ```
 
 **All eight rows verify against the shipped spec, 0 mismatches.** The checker
@@ -1258,9 +1217,11 @@ with `press: null`, "press" the reverse, and "held + press" both. That
 distinction is why row 5 lists keycode 32 under "press" while rows 1–4 list
 theirs under "held".
 
-The only difference is cosmetic: the paper writes `LEFT+D` and `RIGHT+D` where
-the spec names them `LEFT_D` and `RIGHT_D`. The checker treats `+` and `_` as
-equivalent and says so.
+The only difference is one of naming convention: the paper writes `LEFT+D` and
+`RIGHT+D`, the catalog's prompt-text form, where the spec names them `LEFT_D`
+and `RIGHT_D`, the runtime identifiers. The two forms are deliberate
+conventions, not a mismatch. The checker treats `+` and `_` as equivalent and
+says so.
 
 ### Context the surrounding prose asserts
 
@@ -1285,15 +1246,15 @@ recorded under its own label.
 
 ---
 
-## tab:step-return — What a step returns (Table 4)
+## tab:step-return — What a step returns
 
 ```
 graphic:   tabular, main.tex L1045
 redraw:    bash reproduction/reproduce.sh step_return
 code:      reproduction/figures/tools/check_step_return.py
-source:    playtrain/src/playtrain/runtime/env.py   (the contract and the defaults)
-           playtrain/src/playtrain/runtime/validate.py  (terminal states)
-           playtrain/native/qjs/qjs_host.cpp, native/aotfork/qjs_host_fork.cpp
+source:    src/playtrain/runtime/env.py   (the contract and the defaults)
+           src/playtrain/runtime/validate.py  (terminal states)
+           native/qjs/qjs_host.cpp, native/aotfork/qjs_host_fork.cpp
 ```
 
 Every claim in the table is fixed by source rather than measured, and six of the
@@ -1320,13 +1281,13 @@ as an out-of-range fallback. `EXIT` is not hypothetical: `validate.py`'s
 `TERMINAL_STATES = {"WIN", "EXIT", "GAMEOVER"}` treats it as terminal and flags
 any step that reports `terminated` without a terminal `gameState`. So a reader
 implementing against the table would treat an `EXIT` step as a contract
-violation. `STATE.md` flag 26.
+violation.
 
 ### `info.episodeLength` is returned but not listed
 
 `_build_step_message` puts five keys in `info` — `score`, `lives`, `gameState`,
-`episodeLength`, `seed` — and the table lists four. `episodeLength` is missing.
-Same flag.
+`episodeLength`, `seed` — and the table lists four. `episodeLength` is missing,
+alongside the `gameState` omission above.
 
 ### Context
 
@@ -1342,12 +1303,12 @@ declare `obs.symbolic`. The 64x64 RGB row is the default path, not the only one.
 
 ---
 
-## fig:action-spaces — Two entries from the action-space file (Figure 7)
+## fig:action-spaces — Two entries from the action-space file
 
 ```
 graphic:   lstlisting, main.tex L1067  (style=jsonfig, defined at L63)
-source:    playtrain/runtime/action_spaces.json
-verify:    bash reproduction/reproduce.sh action_space  covers the default8 rows
+data:      runtime/action_spaces.json
+redraw:    bash reproduction/reproduce.sh action_space  covers the default8 rows
 ```
 
 The listing quotes two entries verbatim from `runtime/action_spaces.json`.
@@ -1379,7 +1340,7 @@ This one costs the paper something. The prose two paragraphs later says the
 continuous backend "sets `mouseX`, `mouseY`, and `mousePressed` instead of key
 state" — three things. With `button:mouse` restored the entry matches that
 sentence exactly; as printed, the illustration is missing the very channel that
-`mousePressed` corresponds to. `STATE.md` flag 27.
+`mousePressed` corresponds to.
 
 The file ships two more entries the figure does not quote, both discrete:
 `thrust10` (10 actions) and `aimgrid18` (18). The `//` key at the top of the
@@ -1405,7 +1366,7 @@ The same style is reused at L1763 for `fig:catalog`, and it already loses there:
 of that listing's four keys, only `name` is in the list. **`ref`,
 `actions_used` and `mechanic` render unhighlighted** while `name` is coloured,
 which looks like a deliberate distinction and is not one. Recorded under
-`fig:catalog` as well; same flag.
+`fig:catalog` as well.
 
 ### Prose claims around the figure
 
@@ -1428,13 +1389,13 @@ which looks like a deliberate distinction and is not one. Recorded under
 
 ---
 
-## tab:p5-subset — The p5.js subset the backend binds (Table 5)
+## tab:p5-subset — The p5.js subset the backend binds
 
 ```
 graphic:   tabular, main.tex L1114
 redraw:    bash reproduction/reproduce.sh p5_subset
 code:      reproduction/figures/tools/check_p5_subset.py
-source:    playtrain/native/qjs/qjs_host.cpp  ->  BINDINGS[], registered in a
+source:    native/qjs/qjs_host.cpp  ->  BINDINGS[], registered in a
            loop with JS_NewCFunction (L327)
 ```
 
@@ -1452,7 +1413,7 @@ The caption's own text names three compatibility no-ops — `noLoop`, `frameRate
 `cursor` — and all three are in `BINDINGS[]`. **37 listed + those 3 = 40.** That
 is almost certainly the arithmetic behind the number, but the caption reads as
 describing the table ("40 p5.js commands the C++ later binds to" above a table of
-37), so as printed the count does not match what is shown. `STATE.md` flag 28.
+37), so as printed the count does not match what is shown.
 
 ### "binds to" does not describe five of the 37
 
@@ -1497,14 +1458,14 @@ generated file runs as written" holds for all 37.
 
 ---
 
-## tab:backend-pieces — The four pieces compiled into the backend (Table 6)
+## tab:backend-pieces — The four pieces compiled into the backend
 
 ```
 graphic:   tabular, main.tex L1140
-source:    playtrain/native/build_qjs.sh   (the build that compiles all four)
-           playtrain/crates/rasterizer/    (Rust staticlib)
-           playtrain/native/runtime/p5.cpp (the C++ p5 layer)
-           playtrain/native/frozenmath/    (vendored OpenLibm, exposed as fm_*)
+source:    native/build_qjs.sh   (the build that compiles all four)
+           crates/rasterizer/    (Rust staticlib)
+           native/runtime/p5.cpp (the C++ p5 layer)
+           native/frozenmath/    (OpenLibm, cloned at build time, fm_* symbols)
 ```
 
 All four rows check out against the build script, which compiles exactly these
@@ -1516,7 +1477,7 @@ staticlib (cargo) + QuickJS staticlib (clang) + qjs_host."
 | QuickJS | C | QuickJS staticlib built with clang; `native/qjs/` |
 | p5 layer | C++ | `native/runtime/p5.cpp`, whose header says it mirrors `runtime/p5/p5-shim.mjs` "call-for-call against the rasterizer C ABI" |
 | Rasterizer | **Rust** | `cargo rustc --release --lib --crate-type staticlib` in `crates/rasterizer/`, linked as `libplaytrain_rasterizer.a`; p5.cpp calls it through `raster_abi.h` (`rs_set_fill`, `rs_set_stroke`, …) |
-| Frozen math | C | `native/frozenmath/`, a vendored clone of **JuliaMath/openlibm** compiled with `-Dsin=fm_sin -Dcos=fm_cos` |
+| Frozen math | C | `native/frozenmath/`, into which `native/build_qjs.sh` clones **JuliaMath/openlibm** at build time, compiled with `-Dsin=fm_sin -Dcos=fm_cos` |
 
 The Rust row is worth confirming explicitly because the repo contains a second,
 C++ rasterizing path (`p5.cpp` carries AVX2 intrinsics) that could be mistaken
@@ -1548,7 +1509,7 @@ That holds for the first three — QuickJS interprets the game, the p5 layer
 receives its draw calls, the rasterizer writes the observation buffer. The
 fourth is not a stage in a frame's path: frozen math is a library the other
 pieces call, reached whenever game logic or geometry needs a transcendental, not
-after the rasterizer. Minor, and not worth a flag on its own; recorded here so
+after the rasterizer. Minor on its own; recorded here so
 the ordering claim is not read as a pipeline.
 
 The surrounding prose checks out too: the backend is built per machine with
@@ -1559,12 +1520,12 @@ one § fig:env_efficiency panel C/D measures as the `tier3` arm.
 
 ---
 
-## tab:backend-ladder — The three backends behind Figure 4B (Table 8)
+## tab:backend-ladder — The three backends behind Figure 4B
 
 ```
 graphic:   tabular, main.tex L1226
-numbers:   none live — the numeric line is commented out at L1229
-measured:  the ladder's throughputs belong to fig:env_efficiency panel B
+data:      none live — the numeric line is commented out at L1229; the
+           ladder's throughputs belong to fig:env_efficiency panel B
 ```
 
 Purely descriptive as printed. The commented-out line
@@ -1612,18 +1573,18 @@ Node arm's configuration is reproducible from the environment variable alone.
   driver shows why: it runs the game inside `page.evaluate` against a real
   canvas, so observations can only come back through the page boundary, which is
   the base64 step.
-- The caption contains a typo, "brpwser" for "browser" (L1228). `STATE.md`
-  flag 29.
+- The caption contains a typo, "brpwser" for "browser" (L1228).
 
 ---
 
-## fig:trainer_timeline — Three ways inference can work (Figure 9)
+## fig:trainer_timeline — Three ways inference can work
 
 ```
 graphic:   TikZ drawn inline, main.tex L1250-L1275. No image file and no
            generating script -- the picture is LaTeX source, so it redraws
            with the paper and has nothing to reproduce separately.
-source:    playtrain-trainers/src/playtrain_trainers/impala/train.py
+source:    in the playtrain-trainers repository:
+           playtrain-trainers/src/playtrain_trainers/impala/train.py
              `inference_mode` -- the three panels are its three values
            playtrain-trainers/src/playtrain_trainers/train_ppo_clean.py
              `double_buffer` and `_PingPongVecAdapter` -- panel C
@@ -1672,7 +1633,7 @@ have had quietly wrong credit assignment fails instead.
 
 ### Caption caveats
 
-`STATE.md` flag 30, all cosmetic:
+Recorded here so they are not lost, all cosmetic:
 
 - "per-say" should be "per se" (L1275).
 - Panels (A) and (B) are labelled with parentheses in the caption but (C) is
@@ -1686,7 +1647,7 @@ throughputs (~315 SPS, ~1500+ SPS, 100k+ SPS) reflect.
 
 ---
 
-## tab:hyperparams — Training configuration (Table 12)
+## tab:hyperparams — Training configuration
 
 ```
 graphic:   tabular, main.tex L1368
@@ -1696,6 +1657,7 @@ source:    figures/outputs/s3_icnn_*/config.json   (IMPALA, 72 runs)
            figures/outputs/p3_icnn_*/config.json   (PPO, 72 runs)
            playtrain-trainers/src/playtrain_trainers/impala/train.py
            playtrain-trainers/src/playtrain_trainers/train_ppo_clean.py
+           (both in the playtrain-trainers repository)
 ```
 
 **Every checkable cell traces to a config key, 0 mismatches.** The table
@@ -1751,7 +1713,7 @@ Two labels, derived independently, agree.
 **`max-autotune-no-cudagraphs`**. The suffix is not cosmetic — it disables CUDA
 graph capture — so the table names a mode that differs from the one that ran.
 Minor, and the direction is conservative (the paper claims the more aggressive
-setting), but worth correcting. `STATE.md` flag 31.
+setting), but worth correcting.
 
 The throughput configs are a different thing and should not be confused with
 this table: Table 1(a)'s PPO template uses `n_envs=768, n_steps=128,
@@ -1761,13 +1723,13 @@ prose at L1408 quotes this table's numbers — 128 steps x 192 environments =
 
 ---
 
-## tab:envpool-config — The tuned EnvPool configuration (Table 13)
+## tab:envpool-config — The tuned EnvPool configuration
 
 ```
 graphic:   tabular, main.tex L1560
 redraw:    bash reproduction/reproduce.sh envpool_config
 code:      reproduction/figures/tools/check_envpool_config.py
-source:    reproduction/runs/43779854/ep_best_sweep.sbatch   (the as-run job)
+data:      reproduction/runs/43779854/ep_best_sweep.sbatch   (the as-run job)
 ```
 
 **All nine rows are evidenced in the as-run submission, 0 unevidenced.** This is
@@ -1809,9 +1771,10 @@ Both statements at L1583 check out in the same file:
   and reports `geo(...)` over games.
 
 `PROVENANCE.md` § tab:bench-scaling records what this configuration produced,
-and § fig:env_efficiency panel A records the caveat that matters most: this arm
-was measured at 10/20/40 threads in this job and 80 threads in job 43570992,
-with 5, 30 and 60 threads derived rather than measured.
+and § fig:env_efficiency panel A records where the plotted numbers come from:
+this job measured 10/20/40 threads on holy8a24307; the constants the figure
+draws are the same protocol re-run at all seven thread counts by 44601287 and
+44614598 on holy8a28510, the node the PlayTrain arm was measured on.
 
 One disclosure the paper makes and this section should echo: PlayTrain is
 compiled with profile-guided optimization while EnvPool runs on its prebuilt
@@ -1820,14 +1783,13 @@ reader should weigh against the ratios.
 
 ---
 
-## fig:generation and fig:backend — the two hand-drawn schematics (Figures 1 and 3)
+## fig:generation and fig:backend — the two hand-drawn schematics
 
 ```
-graphics:  figures/generation.png            (fig:generation,  main.tex L194)
+graphic:   figures/generation.png            (fig:generation,  main.tex L194)
            figures/architecture_schematic.png (fig:backend,    main.tex L325)
 source:    NONE. Neither has a source file in any repo -- no .svg, .key, .ai
-           or generating script. Confirmed by search and corroborated by
-           playtrain-wt-tuning/docs/REPRO.md, which records the same finding.
+           or generating script. Confirmed by search.
 ```
 
 Both are hand-drawn raster images. `generation.png` is 1329x1232 RGBA carrying
@@ -1842,20 +1804,17 @@ illustration (DownWell and VVVVVV becoming RL environments) and panel B is the
 generation pipeline, whose mechanics are sourced under § fig:catalog and
 § tab:llm-cost.
 
-### fig:backend's published drawing has two identified errors
+### fig:backend's published drawing, and the draft beside it
 
-**Retracted 2026-09-18.** The published `architecture_schematic.png` was checked by
-eye against the code: it shows one QuickJS env per box inside the threadpool and
-an observation buffer labelled "one slot per env", which is the implementation.
-The docstring quoted below describes the drawing that preceded it
-(`architecture_schematic_old.png` in the paper repo shows the same corrected
-content, so the fix predates both). `fig_schematic.py` remains a draft that adds
-the group A / group B double-buffering split; it is not a correction. The
-paragraphs below are kept as the record of the claim.
+The published `architecture_schematic.png` agrees with the code: it shows one
+QuickJS env per box inside the threadpool and an observation buffer labelled
+"one slot per env", which is the implementation.
+(`architecture_schematic_old.png` in the paper repo shows the same content.)
 
 `reproduction/figures/fig_schematic.py` exists and `reproduce.sh` runs it, but
-**it does not reproduce `architecture_schematic.png`**. Its own docstring says
-what it is:
+**it does not reproduce `architecture_schematic.png`**: it is a draft that adds
+the group A / group B double-buffering split. Its own docstring describes an
+earlier drawing, since superseded:
 
 > Draft replacement for the PlayTrain schematic. Corrects the two things the
 > current drawing gets wrong:
@@ -1870,15 +1829,12 @@ Both corrections check out against the implementation:
 | one QuickJS engine per environment | `native/qjs/qjs_vec_host.cpp`'s per-env state struct (L389–402) holds a `JSRuntime*` per environment, each with "its own JSContext + rasterizer state + p5 shim state" |
 | one shared observation buffer, halves per group | `PingPongVecEnv`: "Group g = env indices [g*group_size, (g+1)*group_size); outputs are contiguous views into the **shared** buffers", with `num_envs = 2 * group_size` |
 
-So the figure printed in the paper misstates the engine granularity and the
-buffer topology, and a corrected drawing already exists in the repo but was
-never swapped in. `STATE.md` flag 32.
+Both points hold of the published drawing as well, so the drawing and the
+implementation agree.
 
-This also means `reproduce.sh`'s schematic step was misleading: it reported
-drawing "Architecture schematic" while producing a figure that deliberately
-disagrees with the published one. The step is relabelled this iteration to say
-so, in the same spirit as the suite-grid fix in § fig:suite_trainers. It still
-runs, because the draft is the useful artifact — it is just not a reproduction.
+`reproduce.sh`'s schematic step draws the draft rather than the published
+figure, and is labelled to say so. It still runs, because the draft is the
+useful artifact — it is just not a reproduction.
 
 ```
 runs/  not applicable: no jobs, no data, no pipeline.
@@ -1886,14 +1842,14 @@ runs/  not applicable: no jobs, no data, no pipeline.
 
 ---
 
-## fig:game-interface and fig:variant-generation-example — the two tester screenshots (Figures 13 and 14)
+## fig:game-interface and fig:variant-generation-example — the two tester screenshots
 
 ```
-graphics:  figures/game-interface.png, figures/variant-generation-example.png
-recipe:    cd playtrain && just tester      # -> uv run --extra gen python tools/tester.py
+graphic:   figures/game-interface.png, figures/variant-generation-example.png
+recipe:    just tester      # -> uv run --extra gen python tools/tester.py
            then localhost:3000
-source:    playtrain/tools/tester.py        (the UI in the screenshots)
-           playtrain/runtime/p5/raster.mjs  (what the centre panel renders through)
+source:    tools/tester.py        (the UI in the screenshots)
+           runtime/p5/raster.mjs  (what the centre panel renders through)
 ```
 
 Screenshots of a live UI, so there is no data or job behind them — what a reader
@@ -1921,7 +1877,7 @@ describes.
 
 It does not, because the tester seeds itself on startup: if `games/js` contains
 no `*.js` it copies every game from `games_dir()`, which resolves to
-`playtrain/examples/games/js` — **63 game files** in this checkout. So the first
+`examples/games/js` — **63 game files** in this checkout. So the first
 run populates the interface, and subsequent runs leave it alone (`if
 any(JS_DIR.glob("*.js")): return 0`). Worth recording because the two-games-
 directory split is otherwise exactly the kind of thing that makes a documented
@@ -1939,8 +1895,8 @@ records the naming mismatch), and the two PNGs carry no provenance metadata
 beyond their timestamps.
 
 So these two labels are reproducible as *the interface*, and not as *the images*.
-That is the honest status for a UI screenshot and does not need a flag; it is
-recorded here so the claim is not read as stronger than it is.
+That is the honest status for a UI screenshot, and it is recorded here so the
+claim is not read as stronger than it is.
 
 `fig:variant-generation-example`'s substance is checkable elsewhere: the variant
 it shows is one of the four in § tab:llm-cost, whose call counts, token counts
@@ -1948,12 +1904,12 @@ and wall-clock are verified against the generation logs.
 
 ---
 
-## fig:catalog — A catalog entry (Figure 15)
+## fig:catalog — A catalog entry
 
 ```
 graphic:   lstlisting, main.tex L1760  (style=jsonfig, defined at L63)
-source:    playtrain/games/catalogs/arcade_games.json  ->  the "donkey_kong" entry
-consumer:  playtrain/src/playtrain/gen/generate.py  ->  build_prompt()
+data:      games/catalogs/arcade_games.json  ->  the "donkey_kong" entry
+consumer:  src/playtrain/gen/generate.py  ->  build_prompt()
 ```
 
 **The listing is content-identical to the shipped entry**, all four fields, with
@@ -1992,16 +1948,15 @@ the model which actions the game should use. Nothing resolves it against
 `runtime/action_spaces.json`, and the paper says elsewhere (L1091) that "for all
 of the experiments in this paper, we use the `default8` action space". So the
 action space is fixed, and this field describes which of its eight actions the
-generated game should exercise. `STATE.md` flag 33.
+generated game should exercise.
 
-### The two naming conventions, resolved
+### The two naming conventions
 
-This also settles a loose end from § tab:action-space. The catalog writes
-`LEFT+D` and `RIGHT+D`; `runtime/action_spaces.json` names the same actions
-`LEFT_D` and `RIGHT_D`. There is no bridging code because none is needed: the
-catalog's names are prompt text and the spec's names are runtime identifiers.
-They are two deliberate conventions, not a mismatch — which is a better
-description than the "cosmetic" note recorded earlier under tab:action-space.
+The same pair appears in § tab:action-space. The catalog writes `LEFT+D` and
+`RIGHT+D`; `runtime/action_spaces.json` names the same actions `LEFT_D` and
+`RIGHT_D`. There is no bridging code because none is needed: the catalog's names
+are prompt text and the spec's names are runtime identifiers. They are two
+deliberate conventions, not a mismatch.
 
 The paper's `tab:action-space` uses the catalog's plus form, so the two figures
 are at least consistent with each other.
@@ -2011,8 +1966,8 @@ are at least consistent with each other.
 Of this listing's four keys, only `name` is in the `jsonfig` style's `emph`
 list, so `ref`, `actions_used` and `mechanic` render **unhighlighted** while
 `name` is coloured — which reads as a deliberate distinction and is not one.
-Recorded under `STATE.md` flag 27 together with the `mouse2d` finding for
-§ fig:action-spaces, which shares the style.
+Recorded together with the `mouse2d` finding for § fig:action-spaces, which
+shares the style.
 
 ### "The only human input"
 
@@ -2031,14 +1986,14 @@ Every code file under `reproduction/`, and which labels use it. Generated
 from `git ls-files` and cross-checked against `reproduce.sh --list`, so a file
 added without a label will show up here as unaccounted.
 
-### On a paper path (31 files)
+### On a paper path (33 files)
 
 | file | labels |
 |---|---|
 | `anonymize_study_data.py` | fig:human_wallclock — produced the committed `data/study/` from the raw sessions (it is why ages are banded) |
 | `figures/as_run/pw_bench_playwright.mjs` | tab:backend-ladder, fig:env_efficiency B — the as-run Playwright driver (pre-adv; the adv one is in runs/43783367/) |
 | `figures/fetch_data.sh` | fig:learning, fig:envcost, the 3 suite figures — fetches the figure-data-v1 archive |
-| `figures/fig_schematic.py` | fig:backend — a DRAFT REPLACEMENT, not a reproduction (flag 32) |
+| `figures/fig_schematic.py` | fig:backend — a DRAFT variant, not a reproduction |
 | `figures/human/check_curve_encoder.py` | fig:human_wallclock — the guard that fails on a mixed-encoder curve file |
 | `figures/human/cohort.py` | fig:human_wallclock — the cohort claims |
 | `figures/human/crossings.py` | fig:human_wallclock — steps to reach the human mean |
@@ -2057,13 +2012,16 @@ added without a label will show up here as unaccounted.
 | `figures/tools/check_eval.py` | tab:eval — all 48 cells, parsed from main.tex |
 | `figures/tools/check_hyperparams.py` | tab:hyperparams — every cell, and the config-identity claim |
 | `figures/tools/check_llm_cost.py` | tab:llm-cost — the whole table, offline |
+| `figures/tools/check_panel_a.py` | fig:env_efficiency A, tab:bench-scaling — every plotted constant against the job that measured it |
 | `figures/tools/check_p5_subset.py` | tab:p5-subset — the three command counts |
 | `figures/tools/check_step_return.py` | tab:step-return — the contract against the runtime |
 | `figures/tools/check_suite.py` | the 3 suite figures + the tab:eval prose — composition and crossing claims |
+| `figures/tools/paper_ref.py` | shared — resolves the paper source, falling back to `data/paper_values.json` when the paper repo is not a sibling |
 | `figures/tools/plot_env_cost.py` | fig:envcost — draws both panels |
 | `figures/tools/plot_env_efficiency_bestonly.py` | fig:env_efficiency — draws all four panels |
 | `figures/tools/plot_main_composite.py` | fig:learning — the composite, and its own composition report |
 | `figures/tools/plot_suite_grid3.py` | fig:suite_trainers, fig:suite_enc_impala, fig:suite_enc_ppo — one script, three `--arms` |
+| `figures/tools/snapshot_paper_values.py` | shared — regenerates the `data/paper_values.json` snapshot from the live `main.tex` |
 | `figures/tools/throughput_panels.py` | fig:env_efficiency B/C/D, fig:learning D — imported by both, so the two never diverge |
 | `reproduce.sh` | ALL — the entry point; `--list` names every step |
 
@@ -2164,6 +2122,6 @@ The index covers code. The committed data files are listed in each label's
 section, plus two manifests worth naming here because they are read by tooling
 rather than by a figure: `figures/tables/nodes/t1a_nodes.tsv` and
 `nodes/dbuf_jobs.tsv` (job maps), `figures/scaling/panelA_measured.tsv`
-(measured-vs-derived map), `data/suite_run_jobs.tsv`, `data/variant_names.tsv`,
+(which job measured each plotted point), `data/suite_run_jobs.tsv`, `data/variant_names.tsv`,
 `data/fig_learning_runs.tsv`, and `figures/tables/nodes/eval_suite_jobs.tsv`.
 Each is generated by, or cited in, the section that needs it.

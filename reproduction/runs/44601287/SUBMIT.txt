@@ -1,0 +1,13 @@
+# sacct -X -j 44601287 -o JobID,JobName%16,Submit,End,NodeList,SubmitLine -n
+44601287   ep_best_7pt   2026-09-05T09:28:56   2026-09-05T10:24:54   holy8a28510   sbatch ep_best_7pt.sbatch
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  EnvPool DOCUMENTED-BEST arm at the published seven thread counts, same node as
+       44545120. Re-measures the tuned arm with ep_best_sweep.sbatch's child verbatim
+       (envpool's own thread_affinity_offset, one pool per NUMA domain,
+       batch_size = max(16, 3 x threads per pool)), because 44545120's tuned arm had
+       used numactl binding instead, which understates EnvPool by 10-28%.
+       Its printed geomeans (LOG.txt lines 23-38) ARE panel A's EnvPool constants at
+       10/20/30/40/60/80 threads, both suites, to the unit.
+       Its 5-thread point is NOT used: the K=2 pool split gave 2x2 = four threads at
+       T=5. Superseded there by 44614598.

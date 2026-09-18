@@ -1,0 +1,28 @@
+[
+  {
+    "game": "leaper",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2223208,
+    "frames_per_s": 2223208,
+    "per_worker": [
+      189318,
+      183897,
+      185882,
+      192230,
+      187558,
+      182609,
+      183826,
+      180475,
+      185080,
+      183258,
+      180187,
+      188888
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.68,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

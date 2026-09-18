@@ -1,0 +1,20 @@
+[
+  {
+    "game": "qbert",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 394356,
+    "frames_per_s": 394356,
+    "per_worker": [
+      98259,
+      98316,
+      98899,
+      98881
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.29,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

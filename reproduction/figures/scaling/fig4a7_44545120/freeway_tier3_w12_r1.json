@@ -1,0 +1,28 @@
+[
+  {
+    "game": "freeway",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 10303235,
+    "frames_per_s": 10303235,
+    "per_worker": [
+      875573,
+      869843,
+      860517,
+      840329,
+      865530,
+      840212,
+      873129,
+      859379,
+      874521,
+      850876,
+      852898,
+      840427
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.14,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

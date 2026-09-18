@@ -1,0 +1,22 @@
+[
+  {
+    "game": "breakout",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2179583,
+    "frames_per_s": 2179583,
+    "per_worker": [
+      365975,
+      366215,
+      362818,
+      362706,
+      360729,
+      361140
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.34,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

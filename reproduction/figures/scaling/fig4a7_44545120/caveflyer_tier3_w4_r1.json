@@ -1,0 +1,20 @@
+[
+  {
+    "game": "caveflyer",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 650166,
+    "frames_per_s": 650166,
+    "per_worker": [
+      162694,
+      166518,
+      162714,
+      158240
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.78,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

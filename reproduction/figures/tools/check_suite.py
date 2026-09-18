@@ -35,7 +35,7 @@ def main():
     args = ap.parse_args()
     if not Path(args.data).is_file():
         print("    skipped: run 'bash reproduction/figures/fetch_data.sh' first")
-        return 0
+        return 3
     rec = json.load(open(args.data))
 
     missing = [g for g in GAMES_ALL if g not in rec]

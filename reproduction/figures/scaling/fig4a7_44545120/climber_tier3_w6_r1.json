@@ -1,0 +1,22 @@
+[
+  {
+    "game": "climber",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 529126,
+    "frames_per_s": 529126,
+    "per_worker": [
+      88043,
+      88142,
+      88916,
+      88315,
+      88218,
+      87492
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.44,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

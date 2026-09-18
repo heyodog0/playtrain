@@ -1,0 +1,22 @@
+[
+  {
+    "game": "heist",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1952553,
+    "frames_per_s": 1952553,
+    "per_worker": [
+      325040,
+      326269,
+      324813,
+      326191,
+      325171,
+      325071
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.38,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

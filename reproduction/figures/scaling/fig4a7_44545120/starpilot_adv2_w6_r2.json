@@ -1,0 +1,22 @@
+[
+  {
+    "game": "starpilot",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2021866,
+    "frames_per_s": 2021866,
+    "per_worker": [
+      340182,
+      341056,
+      332320,
+      334363,
+      337372,
+      336573
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.37,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

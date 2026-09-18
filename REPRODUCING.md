@@ -3,48 +3,60 @@
 Everything measured in the paper redraws from this repo.
 
 ```console
-$ bash reproduction/reproduce.sh          # no download needed
-$ bash reproduction/reproduce.sh --all    # adds the learning curves (277 MB, once)
+$ bash reproduction/reproduce.sh          # committed data only, about 5 s
+$ bash reproduction/figures/fetch_data.sh # the 277 MB run archive, once
+$ bash reproduction/reproduce.sh --all    # adds the four figures that need it
 ```
 
+Needs [`uv`](https://docs.astral.sh/uv/) and network access on first run (each step
+fetches matplotlib, numpy and pillow into uv's cache). Nothing else is installed.
+
 Each step prints the paper's number beside the one it just computed, so a divergence is
-visible rather than silent. Output goes to `reproduction/out/`. `reproduce.sh --list`
-names the steps and `reproduce.sh <name>` runs one.
+visible rather than silent. Steps that need the archive say `skipped` until it is
+fetched, and the summary line counts them separately from passes. Output goes to
+`reproduction/out/`. `reproduce.sh --list` names the steps and `reproduce.sh <name>`
+runs one.
+
+Six steps compare table cells against the paper source. When the paper repo is checked
+out beside this one they read `main.tex` directly; otherwise they read
+`reproduction/data/paper_values.json`, a committed snapshot, and say which they used.
 
 For the code, data file and cluster job behind each figure and table, see
-[`reproduction/PROVENANCE.md`](reproduction/PROVENANCE.md).
+[`reproduction/PROVENANCE.md`](reproduction/PROVENANCE.md). The as-submitted Slurm
+script, submit line, node and log head of every job that produced committed data are
+under `reproduction/runs/<jobid>/`.
 
 ## What reproduces, and from what
 
 | artifact | generator | data | verified |
 |---|---|---|---|
-| Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/results/env_throughput/` (panels B/C/D); panel A is constants in the script | 12.62x ALE exact; 2.18x ProcGen against the paper's 2.19x; panel B's lower rungs disagree with the prose, see PROVENANCE.md |
-| Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset (**not yet on the public repo**, see PROVENANCE.md) | 24 / 4 / 8 panels, 3+3 seeds all eight games; panel B's variant names differ from the paper's |
+| Figure 4, environment efficiency | `reproduction/figures/tools/plot_env_efficiency_bestonly.py` | `figures/results/env_throughput/` (panels B/C/D); `figures/scaling/fig4a7_44545120/` and two job logs (panel A, checked by `check_panel_a.py`) | 12.62x ALE, 2.18x ProcGen, 13.4x and 117x ladder, all exact |
+| Learning-curve composite | `reproduction/figures/tools/plot_main_composite.py` | release asset `figure-data-v1` | 24 / 4 / 8 panels, 3+3 seeds all eight games; the paper's variant names map to files via `data/variant_names.tsv` |
 | Per-game suite grids | `reproduction/figures/tools/plot_suite_grid3.py` with `--arms trainers|impala|ppo` | `figures/outputs/_suite4_curves.json` | all three appendix figures, 24 games x 3 seeds x 100M |
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py`, `tools/check_env_cost.py` | release asset | every prose number: background 390 ns, pong 11 cmds, miner 75% on 787 |
-| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/`, `figures/human/rerun_curves_icnn.json` | 20 participants, 8 games; crossing steps match the paper, but two prose claims and the gender count do not (PROVENANCE.md) |
-| Architecture schematic | `figures/fig_schematic.py` | none | **not** a reproduction of `fig:backend`, which is hand-drawn with no source: this is a draft that corrects two errors in it (PROVENANCE.md) |
+| Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/`, `figures/human/rerun_curves_icnn.json` | 20 participants, 8 games; crossing steps and every prose count match |
+| Architecture schematic | `figures/fig_schematic.py` | none | **not** a reproduction of `fig:backend`, which is hand-drawn with no source file; this is a draft that adds the double-buffering groups |
 | Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows, after re-run 47057946 moved the IMPALA-CNN row's six slow-node games (`t1a_nodes.py` shows the per-node spread) |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
-| Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical; the caption's "two slowest environments" example is wrong (PROVENANCE.md) |
-| Thread-scaling table | `figures/tools/check_bench_scaling.py` | Figure 4 panel A's constants | all 70 cells; ratios and both efficiency columns re-derived |
+| Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical, all 72 numbers |
+| Thread-scaling table | `figures/tools/check_bench_scaling.py` | Figure 4 panel A's constants, themselves checked against jobs 44545120 / 44601287 / 44614598 | all 70 cells; ratios and both efficiency columns re-derived |
 | Appendix eval table | `figures/tools/check_eval.py` | `figures/results/eval_iddp_suite.json` | all 48 cells, parsed from main.tex |
-| Token cost table | `figures/tools/check_llm_cost.py` (offline); `playtrain.gen.count_tokens` to regenerate | `data/llm_cost.json`, `data/generation-logs/` | all 6 rows exact; the paper's Total is 8 input tokens high; LoC and SPS columns unsourced |
+| Token cost table | `figures/tools/check_llm_cost.py` (offline); `playtrain.gen.count_tokens` to regenerate | `data/llm_cost.json`, `data/generation-logs/` | all 7 rows exact; LoC and SPS columns have no committed measurement |
 
 The remaining tables are descriptive: engine and backend comparisons, the action space,
 the step-return contract, hyperparameters, and the benchmark and EnvPool configurations.
-Figure 12 is a screenshot of the tester UI, reproduced by running `just tester`.
+The two tester screenshots are reproduced as an interface, by running `just tester`.
 
 ## Individual commands
 
 ```console
 $ cd reproduction/figures
 
-# Figure 4. Panels B/C/D read figures/results/env_throughput/; panel A is
-# constants in the script. Its --ab-results / --pg-job / --ale-job flags are
-# accepted and ignored -- figures/scaling/ backs no published panel.
+# Figure 4. Panels B/C/D read results/env_throughput/; panel A is constants in
+# the script (its --ab-results / --pg-job / --ale-job flags are accepted and
+# ignored; scaling/ is an independent replication, not the figure's source).
 $ uv run --no-project --with matplotlib --with numpy --with pillow \
-     python reproduction/figures/tools/plot_env_efficiency_bestonly.py --out .
+     python tools/plot_env_efficiency_bestonly.py --out .
 
 # Table 1(a). The t3fix row is the published one. The adv2 row printed beside it
 # is the previous build.
@@ -57,12 +69,13 @@ The token cost table is checked offline against the committed counts in
 `data/llm_cost.json`. Only regenerating those counts needs `GEMINI_API_KEY`,
 since that re-tokenizes through the API.
 
-`figures/as_run/` holds the sweep scripts and Slurm submissions exactly as they were
-submitted to the cluster. They are a record of what produced the committed data, not an
-entry point, and the paths inside them refer to the tree as it stood at run time. Read
-them, do not run them. The two data directories under `figures/results/` each carry a
-manifest naming every committed measurement file, the hardware it was taken on, and the
-caveats that came with it.
+`reproduction/runs/<jobid>/` holds each Slurm submission exactly as it ran: the sbatch
+file, the `sacct` submit line, the node, and the log head. They are a record of what
+produced the committed data, not an entry point: the paths inside them refer to a
+cluster tree and virtualenv that are not in this repo. Read them, do not run them. The
+two data directories under `figures/results/` each carry a manifest naming every
+committed measurement file, the hardware it was taken on, and the caveats that came
+with it.
 
 ## Four ways to reproduce the wrong thing
 

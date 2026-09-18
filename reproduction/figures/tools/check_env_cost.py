@@ -21,7 +21,7 @@ D = Path(__file__).resolve().parents[1] / "outputs"
 def main():
     if not (D / "percmd.json").exists():
         print("    skipped: run 'bash reproduction/figures/fetch_data.sh' first")
-        return 0
+        return 3
     pc = json.load(open(D / "percmd.json"))
     price, rows = pc["price_ns"], pc["rows"]
 

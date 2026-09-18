@@ -1,0 +1,20 @@
+[
+  {
+    "game": "pong",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 5402134,
+    "frames_per_s": 5402134,
+    "per_worker": [
+      1367414,
+      1350801,
+      1339533,
+      1344386
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.09,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

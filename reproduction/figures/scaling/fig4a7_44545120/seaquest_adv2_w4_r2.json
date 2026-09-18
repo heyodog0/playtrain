@@ -1,0 +1,20 @@
+[
+  {
+    "game": "seaquest",
+    "workers": 4,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 2152285,
+    "frames_per_s": 2152285,
+    "per_worker": [
+      540753,
+      534448,
+      530944,
+      546140
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.23,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

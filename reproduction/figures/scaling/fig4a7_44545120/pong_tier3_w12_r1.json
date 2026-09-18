@@ -1,0 +1,28 @@
+[
+  {
+    "game": "pong",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 20645876,
+    "frames_per_s": 20645876,
+    "per_worker": [
+      1751433,
+      1713959,
+      1704470,
+      1663337,
+      1759074,
+      1697975,
+      1705256,
+      1785527,
+      1719881,
+      1724388,
+      1718114,
+      1702463
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.07,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

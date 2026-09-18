@@ -14,9 +14,9 @@ cd "$(dirname "$0")"
 OUT="$PWD/out"; mkdir -p "$OUT"
 PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
-ok=0; fail=0
+ok=0; fail=0; skipped=0
 
-STEPS="env_efficiency backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return p5_subset hyperparams envpool_config"
+STEPS="env_efficiency panel_a backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return p5_subset hyperparams envpool_config"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -33,11 +33,16 @@ if [ "$ALL" -eq 1 ] && [ ! -f figures/outputs/percmd.json ]; then
   echo "fetching run data (277 MB, once)"; bash figures/fetch_data.sh || exit 1
 fi
 step() { printf '\n=== %s\n' "$1"; }
-done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail+1)); echo "    FAILED"; fi; }
+done_() { case "$1" in 0) ok=$((ok+1)); echo "    ok";; 3) skipped=$((skipped+1));; *) fail=$((fail+1)); echo "    FAILED";; esac; }
 
 if want env_efficiency; then
 step "Figure 4, environment efficiency  (paper: per core 2.18x ProcGen 14/16, 12.62x ALE 8/8; 80 threads 2.58x / 20.80x)"
 ( cd figures && $PY python tools/plot_env_efficiency_bestonly.py --out "$OUT" ) ; done_ $?
+fi
+
+if want panel_a; then
+step "Figure 4A constants  (paper: 2.58x ProcGen and 20.80x ALE at 80 threads; every plotted point against its job)"
+( cd figures && uv run --no-project python tools/check_panel_a.py ) ; done_ $?
 fi
 
 if want backend_ladder; then
@@ -62,7 +67,7 @@ if [ -f figures/outputs/percmd.json ]; then
       outputs/percmd.json outputs/logic_probes.json outputs/grid.json "$OUT/fig_env_cost" )
   done_ $?
 else
-  echo "    skipped: run 'bash reproduction/figures/fetch_data.sh' first"
+  echo "    skipped: run 'bash reproduction/figures/fetch_data.sh' first"; done_ 3
 fi
 fi
 
@@ -75,7 +80,7 @@ if want t1a; then
 step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
 ( cd figures/tables && uv run --no-project python t1a_agg.py \
     impala_nature=44748571+44784183 impala_icnn=44748573+47057946 \
-    ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
+    ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 ) ; done_ $?
 fi
 
 if want t1a_nodes; then
@@ -90,7 +95,7 @@ fi
 
 if want dbuf; then
 step "Table 7, double-buffering ablation  (paper: miner 969k/465k/2.08x)"
-( cd figures/tables && $PY python dbuf_tex2.py | head -6 ) ; done_ $?
+( cd figures/tables && $PY python dbuf_tex2.py | tail -4 ) ; done_ $?
 fi
 
 # Both human steps read the study JSONs unpacked; CURVES must be the IMPALA-CNN
@@ -197,6 +202,6 @@ step "Table 11, authorship cost  (offline: the committed counts, not a new API c
 fi
 
 printf '\n%s\n' "----"
-echo "$ok ok, $fail failed. Outputs in reproduction/out/"
+echo "$ok ok, $skipped skipped (need the figure-data archive), $fail failed. Outputs in reproduction/out/"
 echo "tab:llm-cost is checked offline against the committed counts; regenerating them"
 echo "from scratch needs GEMINI_API_KEY (playtrain.gen.count_tokens)."

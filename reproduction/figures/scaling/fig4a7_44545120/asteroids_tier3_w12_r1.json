@@ -1,0 +1,28 @@
+[
+  {
+    "game": "asteroids",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 4555319,
+    "frames_per_s": 4555319,
+    "per_worker": [
+      382411,
+      378142,
+      380199,
+      389162,
+      380741,
+      382720,
+      376612,
+      377868,
+      377798,
+      376805,
+      377874,
+      374987
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.33,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

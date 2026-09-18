@@ -1,0 +1,8 @@
+# sacct -X -j 44614598 -o JobID,JobName%16,Submit,End,NodeList,SubmitLine -n
+44614598   ep_best_t5fix   2026-09-05T11:01:34   2026-09-05T11:09:15   holy8a28510   sbatch ep_best_t5fix.sbatch
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  The 5-thread EnvPool documented-best point only, same node as 44545120 and
+       44601287. One pool of 5 threads, 128 envs, bs=16, affinity offset 0. Fixes
+       44601287's T=5, which had run four threads. Its two printed geomeans
+       (LOG.txt) are panel A's 5-thread EnvPool constants: ProcGen 177,338, ALE 22,806.

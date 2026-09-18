@@ -1,7 +1,7 @@
 """Who the 20 participants are, and which of the paper's cohort claims hold.
 
 main.tex L702-706 says: 20 participants, mean age 32.4 (SD 9.0, range 19-54),
-6 female and 14 male, each playing eight named games for 100 seconds.
+6 women, 13 men and 1 non-binary participant, each playing eight named games for 100 seconds.
 
 data/study/ holds 30 session files. The 20 that count are selected the way
 plot_wallclock5.py selects them: drop non-participant ids (probe, playtest,
@@ -56,7 +56,7 @@ def main():
         print(f"      MISSING {missing}  UNEXPECTED {extra}")
 
     gender = collections.Counter(s["demographics"].get("gender") for s in kept)
-    print(f"    gender: {dict(gender)}   (paper: 6 female, 14 male)")
+    print(f"    gender: {dict(gender)}   (paper: 6 women, 13 men, 1 non-binary)")
     bands = collections.Counter(s["demographics"].get("ageBand") for s in kept)
     print(f"    ageBand: {dict(bands)}")
     print("    exact ages are not committed (anonymized to bands), so the paper's"

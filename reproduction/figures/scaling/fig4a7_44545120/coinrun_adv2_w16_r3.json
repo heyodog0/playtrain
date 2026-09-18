@@ -1,0 +1,32 @@
+[
+  {
+    "game": "coinrun",
+    "workers": 16,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1108122,
+    "frames_per_s": 1108122,
+    "per_worker": [
+      70336,
+      69898,
+      69229,
+      69701,
+      69500,
+      69657,
+      69218,
+      69545,
+      70030,
+      70473,
+      69007,
+      68996,
+      68558,
+      67954,
+      67116,
+      68903
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 1.84,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]
