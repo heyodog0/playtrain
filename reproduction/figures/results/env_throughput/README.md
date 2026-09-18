@@ -16,7 +16,7 @@ script. Full provenance, including the cluster jobs, is in
 | `backend_ladder_adv/` | the adv re-measurement of the two lower rungs (502 / 4,374), which **is** what the paper quotes, plus its three raw arms and a README | 43783367 |
 | `pw_fasrc.json` | the pre-adv Playwright arm's raw output | pre-adv |
 | `backend_ladder/` | the pre-adv ladder's other two raw arms (`qjs_fasrc.txt`, `v8_fasrc.txt`, `node_{pg,at}.json`) | pre-adv |
-| `sweep4.out` | console output of the **superseded pre-adv** ProcGen sweep (plunder 95,442, mean ratio 1.47±). Backs `tools/plot_throughput_all.py`, the old figure — **not** anything in the paper | pre-adv |
+| `sweep4.out` | console output of the **superseded pre-adv** ProcGen sweep (plunder 95,442, mean ratio 1.47±). Backed `tools/plot_throughput_all.py` (removed 2026-09-18, in git history), the old figure — **not** anything in the paper | pre-adv |
 | `sweep6.out` | console output of the same superseded Atari sweep (geomean 6.68× over six games). Its `NODE: holy8a32603` line refers to that old run | pre-adv |
 | `qjs_sweep.json` | the earlier 5-trial sweep, kept for the rasterizer-improvement comparison (mean 27.5k → 33.0k) | older |
 

@@ -2067,12 +2067,25 @@ added without a label will show up here as unaccounted.
 | `figures/tools/throughput_panels.py` | fig:env_efficiency B/C/D, fig:learning D — imported by both, so the two never diverge |
 | `reproduce.sh` | ALL — the entry point; `--list` names every step |
 
-### Kept, not on any paper path (34 files)
-
-Nothing here is deleted. The three groups below are each worth keeping for a
-stated reason, and `STATE.md` flag 13 records that the call is the authors'.
+### Kept, not on any paper path (2 files)
 
 | file | why it is kept |
+|---|---|
+| `figures/human/build_rerun_curves.py` | built the committed rerun_curves*.json — keep: it is how the curve files came to be |
+| `figures/human/extract_human_curves.py` | same, for the human side |
+
+### Deleted 2026-09-18 (29 files)
+
+Superseded drafts, one-shot repair steps and pre-adv sweep scripts that no paper
+label used. Removed in one commit so `reproduction/` reads as the pipeline and
+nothing else. Every one is in git history:
+
+```
+git log --all --oneline -- reproduction/figures/human/plot_wallclock4.py   # find the commit
+git show <commit>^:reproduction/figures/human/plot_wallclock4.py         # read it
+```
+
+| file | what it was |
 |---|---|
 | `figures/as_run/fasrc_parallelism.sbatch` | PRE-ADV parallelism probe |
 | `figures/as_run/ladder/exp_qjs_opt.sh` | PRE-ADV ladder experiment |
@@ -2085,10 +2098,8 @@ stated reason, and `STATE.md` flag 13 records that the call is the authors'.
 | `figures/as_run/sweep_procgen16.sh` | PRE-ADV as-run submission for the per-core ProcGen sweep |
 | `figures/human/add_ppo.py` | one-shot: added the PPO arm to a curve file |
 | `figures/human/add_sps.py` | one-shot: added SPS to a curve file |
-| `figures/human/build_rerun_curves.py` | built the committed rerun_curves*.json — keep: it is how the curve files came to be |
 | `figures/human/discover2.py` | one-shot: discovered run dirs |
 | `figures/human/eval_human_seeds.py` | side analysis: greedy eval on the human seed pool, capped like humans. Not in the paper |
-| `figures/human/extract_human_curves.py` | same, for the human side |
 | `figures/human/fix_flappy.py` | one-shot repair, flappy_bird |
 | `figures/human/force_flappy_ppo.py` | one-shot repair, flappy_bird PPO arm |
 | `figures/human/gen_rerun.py` | one-shot: generated the rerun manifest |
@@ -2136,24 +2147,16 @@ above, and `runs/<job>/SUBMIT.txt` carries the verbatim `sacct` line.
 | 44748571 | `t1a_t3fix.sbatch` | tab:train-throughput (a), t3fix arm |
 | 44861569 | `dbuf_t3_24.sbatch` | tab:dbuf-ablation |
 
-### Nothing was deleted
+### What was deleted, and when
 
-MISSION allows deleting a file no label uses, in a separate commit with proof in
-the message. I deleted nothing, for two reasons worth stating rather than leaving
-implicit:
-
-- The largest group of unused files — the sixteen one-shot and superseded scripts
-  in `figures/human/` — is the human study's own history. `build_rerun_curves.py`
-  and `extract_human_curves.py` are how the committed curve files came to exist,
-  and the repair scripts record that `flappy_bird`'s dynamics changed mid-study
-  (the reason `ppo3_icnn.sbatch` re-ran the suite at all). Deleting them would
-  remove the only trace of that.
-- `plot_throughput_all.py` and the pre-adv `as_run/` scripts are the only
-  consumers and records of `sweep4.out` / `sweep6.out`, the superseded
-  measurement. § fig:env_efficiency depends on being able to point at them to
-  explain why those two files are in the repo at all.
-
-`STATE.md` flag 13 records the deletion decision as the authors' to make.
+The 29 files above were removed on 2026-09-18 at the authors' decision, after the
+audit had listed each with its reason. Two things they recorded are preserved
+elsewhere so the deletion loses no provenance: the human-study repair history
+(the `flappy_bird` dynamics change mid-study, which is why `ppo3_icnn.sbatch`
+re-ran the suite) is written up under § fig:human_wallclock, and the pre-adv
+sweep outputs `sweep4.out` / `sweep6.out` are explained in
+`results/env_throughput/README.md`. `build_rerun_curves.py` and
+`extract_human_curves.py` stay because they produced committed curve files.
 
 ### Data and provenance files not listed above
 

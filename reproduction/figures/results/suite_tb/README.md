@@ -4,7 +4,7 @@ TensorBoard event files and run configs for all 24 replica games, recovered from
 cluster (`outputs/impala_<job>/`) and committed here so the
 appendix figure is reproducible from this repo. 480 KB total.
 
-`reproduction/figures/tools/plot_suite_grid.py` reads this directory and writes `fig_suite_grid.{png,pdf}` into its `--out` directory.
+The single-seed grid drawn from this directory (`plot_suite_grid.py`) was removed on 2026-09-18 and is in git history; the paper's suite figures come from `plot_suite_grid3.py` and the 3-seed curve JSON. This directory remains the data behind `tab:eval`. It was drawn into `fig_suite_grid.{png,pdf}` via `--out` directory.
 
 ## What these runs are
 

@@ -5,7 +5,7 @@
     the eight spreads are comparable on one axis. Kept out of (A) because a raw
     range band covers whole panels on asteroids and breakout.
 
-usage: python plot_wallclock4.py CURVES.json STUDY_DATA_DIR OUT_DIR
+usage: python plot_wallclock5.py CURVES.json STUDY_DATA_DIR OUT_DIR
 """
 import glob
 import json
