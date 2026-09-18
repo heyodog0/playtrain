@@ -33,7 +33,7 @@ def main():
 
     print(f"    paper                      V8 -> QuickJS {PAPER_V8:5.1f}x   "
           f"browser -> QuickJS {PAPER_PW:5.0f}x")
-    for lab, r, n in (("as plotted (pre-adv rungs)", plotted, n1),
+    for lab, r, n in (("as plotted (ladder json)   ", plotted, n1),
                       ("adv rungs, job 43783367   ", adv, n2)):
         print(f"    {lab} V8 -> QuickJS {qjs / r['v8']:5.1f}x   "
               f"browser -> QuickJS {qjs / r['playwright']:5.0f}x"
