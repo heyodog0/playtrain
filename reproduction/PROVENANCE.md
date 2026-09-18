@@ -1844,6 +1844,15 @@ generation pipeline, whose mechanics are sourced under § fig:catalog and
 
 ### fig:backend's published drawing has two identified errors
 
+**Retracted 2026-09-18.** The published `architecture_schematic.png` was checked by
+eye against the code: it shows one QuickJS env per box inside the threadpool and
+an observation buffer labelled "one slot per env", which is the implementation.
+The docstring quoted below describes the drawing that preceded it
+(`architecture_schematic_old.png` in the paper repo shows the same corrected
+content, so the fix predates both). `fig_schematic.py` remains a draft that adds
+the group A / group B double-buffering split; it is not a correction. The
+paragraphs below are kept as the record of the claim.
+
 `reproduction/figures/fig_schematic.py` exists and `reproduce.sh` runs it, but
 **it does not reproduce `architecture_schematic.png`**. Its own docstring says
 what it is:
