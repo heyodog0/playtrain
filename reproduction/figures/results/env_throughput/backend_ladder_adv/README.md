@@ -37,3 +37,7 @@ reproduction/reproduce.sh backend_ladder` prints all three lines so the gap is
 visible rather than silent. Which pair is correct is a decision for the authors —
 see flag 6 in `playtrain-internal/repro-loop/STATE.md`. Nothing here has been
 changed to make the numbers agree.
+
+**2026-09-18:** `../backend_ladder_fasrc.json` now carries this file's Playwright and V8
+rungs (its `provenance` key records the swap), so the drawn figure and the prose agree.
+The section above is kept as the record of why the two files differed.

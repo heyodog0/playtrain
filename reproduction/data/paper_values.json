@@ -1,5 +1,5 @@
 {
- "//": "Snapshot of the values these checkers parse out of main.tex, taken 2026-09-17 from /Users/heyodogo/code/lab/playtrain/ICLR-PlayTrain-Fast-LLM-VGEs/main.tex. Regenerate with tools/snapshot_paper_values.py. The checkers prefer the live paper when it is checked out.",
+ "//": "Snapshot of the values these checkers parse out of main.tex, taken 2026-09-18 from /Users/heyodogo/code/lab/playtrain/ICLR-PlayTrain-Fast-LLM-VGEs/main.tex. Regenerate with tools/snapshot_paper_values.py. The checkers prefer the live paper when it is checked out.",
  "tab:action-space": [
   [
    0,
@@ -267,7 +267,7 @@
  "tab:llm-cost": {
   "Total": [
    26,
-   70926,
+   70918,
    67206,
    34.4,
    0.95
@@ -379,7 +379,6 @@
   "truncated",
   "info.score",
   "info.lives",
-  "info.gameState",
   "info.seed"
  ]
 }

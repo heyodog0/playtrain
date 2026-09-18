@@ -36,7 +36,7 @@ step() { printf '\n=== %s\n' "$1"; }
 done_() { if [ "$1" -eq 0 ]; then ok=$((ok+1)); echo "    ok"; else fail=$((fail+1)); echo "    FAILED"; fi; }
 
 if want env_efficiency; then
-step "Figure 4, environment efficiency  (paper: per core 2.19x ProcGen 14/16, 12.62x ALE 8/8; 80 threads 2.58x / 20.80x)"
+step "Figure 4, environment efficiency  (paper: per core 2.18x ProcGen 14/16, 12.62x ALE 8/8; 80 threads 2.58x / 20.80x)"
 ( cd figures && $PY python tools/plot_env_efficiency_bestonly.py --out "$OUT" ) ; done_ $?
 fi
 
@@ -46,7 +46,7 @@ step "Figure 4B, backend ladder  (paper: 13.4x V8 -> QuickJS, 117x browser -> Qu
 fi
 
 if want bench_setup; then
-step "Table 9, benchmark setup  (paper: 12.62x / 2.19x, 20.80x / 2.58x, 5.8x / 2.25x)"
+step "Table 9, benchmark setup  (paper: 12.62x / 2.18x, 20.80x / 2.58x, 5.8x / 2.25x)"
 ( cd figures && $PY python tools/check_bench_setup.py ) ; done_ $?
 fi
 
@@ -74,12 +74,12 @@ fi
 if want t1a; then
 step "Table 1(a), training throughput  (paper: 1.07M / 0.35M / 185k / 68k)"
 ( cd figures/tables && uv run --no-project python t1a_agg.py \
-    impala_nature=44748571+44784183 impala_icnn=44748573 \
+    impala_nature=44748571+44784183 impala_icnn=44748573+47057946 \
     ppo_nature=44748574+44784184 ppo_impala=44748575+44784185 | head -14 ) ; done_ $?
 fi
 
 if want t1a_nodes; then
-step "Table 1(a) node provenance  (impala_icnn: 0.34M all-24 vs the paper's 0.35M)"
+step "Table 1(a) node provenance  (per-node means; impala_icnn 0.35M after re-run 47057946)"
 ( cd figures/tables && uv run --no-project python t1a_nodes.py ) ; done_ $?
 fi
 
@@ -111,7 +111,7 @@ step "Table 7 caption claims  (paper: 1.34x overall, median 1.20x, plunder 0.97x
 fi
 
 if want human_cohort; then
-step "Human study cohort  (paper: 20 participants, 8 games, 6 female / 14 male)"
+step "Human study cohort  (paper: 20 participants, 8 games, 6 women / 13 men / 1 non-binary)"
 TMPS=$(mktemp -d); unpack_study "$TMPS"
 ( cd figures/human && uv run --no-project python cohort.py "$TMPS" ) ; done_ $?
 fi
@@ -124,7 +124,7 @@ TMPS=$(mktemp -d); unpack_study "$TMPS"
 fi
 
 if want human_crossings; then
-step "Steps to reach the human mean  (paper: flappy_bird PPO 1M, coinrun IMPALA 81M, six of eight games)"
+step "Steps to reach the human mean  (paper: flappy_bird PPO 1M, coinrun IMPALA 81M, seven of eight games)"
 TMPS=$(mktemp -d); unpack_study "$TMPS"
 ( cd figures/human && $PY python crossings.py "$CURVES" "$TMPS" ) ; done_ $?
 fi
@@ -177,7 +177,7 @@ step "Table 4, what a step returns  (against the runtime source)"
 fi
 
 if want p5_subset; then
-step "Table 5, the p5 subset  (caption claims 40 commands)"
+step "Table 5, the p5 subset  (caption says 37 commands)"
 ( cd figures && uv run --no-project python tools/check_p5_subset.py ) ; done_ $?
 fi
 

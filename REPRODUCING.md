@@ -24,7 +24,7 @@ For the code, data file and cluster job behind each figure and table, see
 | Environment cost | `reproduction/figures/tools/plot_env_cost.py`, `tools/check_env_cost.py` | release asset | every prose number: background 390 ns, pong 11 cmds, miner 75% on 787 |
 | Human wall-clock | `figures/human/plot_wallclock5.py` | `data/study/`, `figures/human/rerun_curves_icnn.json` | 20 participants, 8 games; crossing steps match the paper, but two prose claims and the gender count do not (PROVENANCE.md) |
 | Architecture schematic | `figures/fig_schematic.py` | none | **not** a reproduction of `fig:backend`, which is hand-drawn with no source: this is a draft that corrects two errors in it (PROVENANCE.md) |
-| Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | five of six rows; the IMPALA-CNN row reads 0.34M against the paper's 0.35M because six of its games sit on a node every re-run excluded (`t1a_nodes.py`) |
+| Table 1(a), training throughput | `figures/tables/t1a_agg.py` | `figures/tables/data/` | all six rows, after re-run 47057946 moved the IMPALA-CNN row's six slow-node games (`t1a_nodes.py` shows the per-node spread) |
 | Table 1(b), environment swap | `figures/tables/tab1b.py` | `figures/tables/verdicts/` | all four numbers exact |
 | Table 7, double buffering | `figures/tables/dbuf_tex2.py` | `figures/tables/data/` | byte-identical; the caption's "two slowest environments" example is wrong (PROVENANCE.md) |
 | Thread-scaling table | `figures/tools/check_bench_scaling.py` | Figure 4 panel A's constants | all 70 cells; ratios and both efficiency columns re-derived |
@@ -49,7 +49,7 @@ $ uv run --no-project --with matplotlib --with numpy --with pillow \
 # Table 1(a). The t3fix row is the published one. The adv2 row printed beside it
 # is the previous build.
 $ cd tables && uv run --no-project python t1a_agg.py \
-     impala_nature=44748571+44784183 impala_icnn=44748573 \
+     impala_nature=44748571+44784183 impala_icnn=44748573+47057946 \
      ppo_nature=44748574+44784184 ppo_impala=44748575+44784185
 ```
 

@@ -208,3 +208,9 @@ t3fix	ppo_nature	44784184	23	qbert	holygpu8a15401	2026-09-06T06:27:29	2026-09-06
 # Table 1(b): one job per suite, all games inside it, so no per-game node spread.
 t3fix	tab1b_procgen	44516162	-	all 16	holygpu8a15502	2026-09-04T23:43:53	2026-09-05T06:14:48
 t3fix	tab1b_ale	44516167	-	all 8	holygpu8a17603	2026-09-04T23:43:54	2026-09-05T02:59:31
+t3fix	impala_icnn	47057946	0	plunder	holygpu8a15401	2026-09-18T16:06:21	2026-09-18T16:13:11
+t3fix	impala_icnn	47057946	1	bigfish	holygpu8a17304	2026-09-18T16:06:21	2026-09-18T16:14:09
+t3fix	impala_icnn	47057946	11	caveflyer	holygpu8a15401	2026-09-18T16:06:21	2026-09-18T16:17:53
+t3fix	impala_icnn	47057946	14	climber	holygpu8a17304	2026-09-18T16:06:21	2026-09-18T16:18:48
+t3fix	impala_icnn	47057946	18	seaquest	holygpu8a15401	2026-09-18T16:06:21	2026-09-18T16:22:32
+t3fix	impala_icnn	47057946	21	frostbite	holygpu8a17304	2026-09-18T16:06:21	2026-09-18T16:23:35

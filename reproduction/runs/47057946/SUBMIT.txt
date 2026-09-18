@@ -1,0 +1,17 @@
+# sacct -X -j 47057946 -o JobID,State,NodeList,Submit,End,SubmitLine%180 -n
+47057946_0    COMPLETED  holygpu8a15401 2026-09-18T16:06:21 2026-09-18T16:13:11
+47057946_1    COMPLETED  holygpu8a17304 2026-09-18T16:06:21 2026-09-18T16:14:09
+47057946_11   COMPLETED  holygpu8a15401 2026-09-18T16:06:21 2026-09-18T16:17:53
+47057946_14   COMPLETED  holygpu8a17304 2026-09-18T16:06:21 2026-09-18T16:18:48
+47057946_18   COMPLETED  holygpu8a15401 2026-09-18T16:06:21 2026-09-18T16:22:32
+47057946_21   COMPLETED  holygpu8a17304 2026-09-18T16:06:21 2026-09-18T16:23:35
+SubmitLine (all tasks):
+  sbatch --array=0,1,11,14,18,21 --exclude=holygpu8a13401,holygpu8a13402,holygpu8a13403,holygpu8a13404,holygpu8a17601,holygpu8a15203 --export=ALL,ROW=impala_icnn t1a_t3fix.sbatch
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  re-run of the six impala_icnn tasks that 44748573 had measured on holygpu8a15203
+       (plunder bigfish caveflyer climber seaquest frostbite), with that node added to the
+       exclude list exactly as the other three rows' re-runs (44784183/84/85) did.
+       t1a_agg.py's later-job-wins rule takes these over the 44748573 values.
+sbatch file: runs/44748571/t1a_t3fix.sbatch, byte-identical (md5 2a270e7a65782866e4cca6957abdda0e)
+       to the cluster copy at submission.

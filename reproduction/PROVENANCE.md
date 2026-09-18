@@ -160,11 +160,11 @@ The two rungs below it exist in two versions:
 | Playwright / V8 rungs | source | V8 → QuickJS | browser → QuickJS |
 |---|---|---|---|
 | 502 / 4,374 | job 43783367, adv, `backend_ladder_adv/` | **13.45x** | **117.2x** |
-| 517 / 4,952 | pre-adv, in `backend_ladder_fasrc.json` | 11.88x | 113.8x |
+| 517 / 4,952 | pre-adv, in `backend_ladder_fasrc.json` until 2026-09-18 | 11.88x | 113.8x |
 
 The paper's prose (main.tex L543) says **13.4x and 117x** — the adv pair, to the
 digit. `backend_ladder_fasrc.json`, which `throughput_panels.py` reads and which
-therefore sets the drawn bar heights, still carries the pre-adv pair: its history
+therefore sets the drawn bar heights, carried the pre-adv pair until 2026-09-18: its history
 shows the QuickJS rung updated 30,581 → 58,827 when tier3 landed while the lower
 two were left at 517 / 4,952. Job `44515373`'s own header names
 `~/backend_ladder_fasrc_adv.json` (502 / 4,374) as the rungs it reused, so the
@@ -174,8 +174,13 @@ The adv pair is committed at `backend_ladder_adv/` with its three raw arms, and
 recomputing the geomeans from those arms reproduces 502 / 4,374 / 37,350 exactly.
 `reproduce.sh backend_ladder` prints the paper's ratios beside both pairs rather
 than preferring one. Choosing between them changes the published figure, so it is
-recorded as flag 6 in `STATE.md` and nothing has been adjusted to make them
-agree.
+recorded as flag 6 in `STATE.md`.
+
+**Resolved 2026-09-18.** `backend_ladder_fasrc.json`'s `playwright` and `v8`
+blocks were replaced with the adv pair from `backend_ladder_adv/` (the file
+records this under `provenance`), the figure was redrawn, and the new
+`fig_env_efficiency.pdf` is in the paper. Panels A, C and D are unchanged; the
+drawn ladder now reads 13.4x and 117x, matching L542.
 
 Details for `tab:backend-ladder`, which describes the same three backends and
 whose own numeric line is commented out in the tex, are in that label's section.
@@ -185,11 +190,11 @@ whose own numeric line is commented out in the tex, are in that label's section.
 | paper | where in main.tex | reproduce.sh | agree? |
 |---|---|---|---|
 | per-core ALE 12.62x, 8/8 wins | L539, L1533 | 12.62x, 8/8 | yes |
-| per-core ProcGen 2.19x, 14/16 wins | L539, L1533 | 2.18x as drawn, **2.19x** under the paper's stated median | see below |
+| per-core ProcGen 2.18x, 14/16 wins | L539, L1537 | 2.18x | yes (paper moved to the mean on 2026-09-18, see below) |
 | 80 threads, ProcGen 2.58x | L550, L1534, L1604 | 2.58x | yes |
 | 80 threads, ALE 20.80x | L550, L1534, L1613 | 20.80x | yes |
-| panel B, V8 → QuickJS 13.4x | L543 | 13.4x from the adv rungs, 11.9x as plotted | see panel B |
-| panel B, browser → QuickJS 117x | L543 | 117x from the adv rungs, 114x as plotted | see panel B |
+| panel B, V8 → QuickJS 13.4x | L542 | 13.4x | yes (adv rungs drawn since 2026-09-18, see panel B) |
+| panel B, browser → QuickJS 117x | L542 | 117x | yes (adv rungs drawn since 2026-09-18, see panel B) |
 | panel A absolutes 3,650,005 / 7,300,384 | L1604, L1613 | same (they are the constants) | n/a |
 
 The ProcGen per-core ratio depends on how the seven trials per game are
@@ -216,6 +221,10 @@ which treated 2.18 as the truth and the paper as 0.01 high. The substantive
 issue is that the code deviates from the documented statistic; fixing that
 confirms 2.19 and moves the ALE cell. `STATE.md` flag 1 carries the
 recommendation. Run `reproduce.sh bench_setup` to see the whole matrix.
+
+**Resolved 2026-09-18.** The paper now states the mean (L1549) and prints 2.18 at
+L539 and L1537; the code was left as it was, so the drawn figure, the table and
+the methods sentence agree. The matrix above stands as the record of why.
 
 ### The other jobs whose data sits in figures/scaling/
 
@@ -301,7 +310,7 @@ paper.
 | paper row | paper | t3fix, all 24 | agree? | job(s) |
 |---|---|---|---|---|
 | IMPALA, Nature-CNN, all 24 | 1.07M | 1,071,262 | yes | 44748571 + 44784183 |
-| IMPALA, IMPALA-CNN, all 24 | 0.35M | **344,125 → 0.34M** | **no**, see below | 44748573 |
+| IMPALA, IMPALA-CNN, all 24 | 0.35M | 352,097 | yes, since re-run 47057946 (see below) | 44748573 + 47057946 |
 | PPO, Nature-CNN, all 24 | 185k | 185,113 | yes | 44748574 + 44784184 |
 | PPO, IMPALA-CNN, all 24 | 68k | 67,636 | yes | 44748575 + 44784185 |
 | IMPALA, Nature-CNN, 16 ProcGen | 1.06M | 1,062,735 | yes | 44748571 + 44784183 |
@@ -315,8 +324,8 @@ None of these jobs is node-pinned, so each row's 24 games were measured on seven
 or eight different nodes. The campaign knew some were degraded —
 `t1a_t3fix.sbatch` excludes `holygpu8a134{01..04}` and `holygpu8a17601`, and all
 three re-run submissions add **`holygpu8a15203`** to that list. `impala_icnn` is
-the only row that was never re-run, so six of its games still carry
-`holygpu8a15203` measurements:
+the only row that had not been re-run, so six of its games carried
+`holygpu8a15203` measurements (per-node means before the re-run):
 
 ```
 holygpu8a17204   n=5  mean 354,544
@@ -333,6 +342,13 @@ is this row measured off the bad node. Affected games: bigfish, caveflyer,
 climber, frostbite, plunder, seaquest. Closing the gap needs those six re-run
 with `--exclude=…,holygpu8a15203`, which is a cluster submission and so is
 `STATE.md` flag 7, not something this harness does.
+
+**Resolved 2026-09-18: job 47057946** re-ran exactly those six tasks with the
+same sbatch file and `holygpu8a15203` added to the exclude list, as the other
+three rows' re-runs had (`runs/47057946/`, nodes holygpu8a15401 and
+holygpu8a17304). With `t1a_agg.py`'s later-job-wins rule the row is now
+**352,097 → 0.35M**, the paper's figure, and no measurement in Table 1(a) comes
+from the excluded node.
 
 `reproduce.sh t1a_nodes` prints the per-node breakdown for all four rows from the
 committed `nodes/t1a_nodes.tsv`, so the node spread is visible rather than
@@ -379,6 +395,7 @@ recorded in `STATE.md` § Flags with the ProcGen per-core rounding issue.
 ```
 runs/44748571/  t1a_t3fix.sbatch, SUBMIT.txt, LOG_HEAD_task0.txt
 runs/44748573/  SUBMIT.txt   (same sbatch file, ROW=impala_icnn)
+runs/47057946/  SUBMIT.txt, LOG_HEAD_task0.txt   (re-run of its six holygpu8a15203 tasks, 2026-09-18)
 runs/44748574/  SUBMIT.txt   runs/44748575/  SUBMIT.txt
 runs/44784183/  SUBMIT.txt   runs/44784184/  SUBMIT.txt   runs/44784185/  SUBMIT.txt
 runs/44670988/  t1a_adv2.sbatch, SUBMIT.txt   (adv2 comparison arm)
@@ -552,8 +569,8 @@ touches the line once and collapses does not count.
 | PPO is the only one to learn flappy_bird, at 1M | L714 | PPO 1.0M, IMPALA never | yes |
 | IMPALA is the only one on coinrun, after 81M | L715 | IMPALA 81.2M, PPO never | yes |
 | Neither reaches it on caveflyer | L716 | neither | yes |
-| Neither reaches it on VVVVVV | L716 | **IMPALA 85.9M** | **no** |
-| six of the eight games are reached | L713 | **seven of eight** | **no** |
+| Neither reaches it on VVVVVV (removed 2026-09-18) | L714 | IMPALA 85.9M | paper corrected |
+| seven of the eight games are reached | L712 | seven of eight | yes (corrected 2026-09-18) |
 
 Reached under `rerun_curves_icnn.json`: asteroids (IMPALA 26.3M, PPO 68.2M),
 vvvvvv (IMPALA 85.9M), breakout (PPO 68.2M), flappy_bird (PPO 1.0M), seaquest
@@ -576,7 +593,7 @@ never), which is where "six of the eight" came from.
 | 20 participants | 703 | 20 of 30 sessions kept | yes |
 | eight named games | 702 | all eight, 20 blocks each | yes |
 | 6 female | 704 | 6 `Woman` | yes |
-| 14 male | 704 | **13 `Man` and 1 `Non-binary`** | **no** |
+| 13 men, 1 non-binary | 701 | 13 `Man`, 1 `Non-binary` | yes (corrected 2026-09-18) |
 | mean age 32.4, SD 9.0, range 19–54 | 703 | not recomputable | see below |
 
 `data/study/` holds 30 sessions; the 20 that count are those with a real
@@ -834,10 +851,10 @@ greedy return per game with `ckpt_step: -1`, and no per-seed breakdown.
 | claim | L | recomputed | agree? |
 |---|---|---|---|
 | IMPALA's freeway zero holds across both encoders and all 3 seeds | 1477 | 0.0 for all six seed-runs | yes |
-| PPO reaches freeway returns of 8.8 to 11.8 | 1477 | arm means 8.78 (PPO+IMPALA-CNN) and 11.88 (PPO+Nature-CNN) | yes, but see below |
+| PPO reaches freeway 12 to 13 on five of six seeds | 1481 | 13.23, 13.10, 0.00 and 11.75, 11.97, 11.92 | yes (corrected 2026-09-18) |
 | on climber only IMPALA finishes above zero | 1478 | IMPALA +0.74, +0.68, −0.36; PPO all negative | yes |
 | IMPALA outperforms PPO on climber, coinrun, chaser, heist, asteroids | 1476 | all five are IMPALA wins | yes |
-| PPO wins 13 of the 24 | 1479 | PPO wins **17**, IMPALA 7 | **no** |
+| PPO wins 17 of the 24 | 1483 | 17 (15 outright, 3 within 2%) | yes (corrected 2026-09-18) |
 
 The "8.8 to 11.8" range is not a seed range but the two PPO **arm means**, and
 the lower end is depressed by a dead seed: PPO+IMPALA-CNN scores 13.23, 13.10
@@ -915,7 +932,8 @@ trials with `statistics.fmean` and reads `fps_mean`. The consequences are in
 § fig:env_efficiency: it is exactly this choice that decides whether ProcGen's
 per-core ratio reads 2.18 or 2.19, and adopting the documented median moves the
 ALE cell from 12.62 to 12.64. The baselines also record `fps_median` alongside
-`fps_mean`, so switching costs nothing but a decision.
+`fps_mean`, so switching costs nothing but a decision. The decision was taken the other
+way on 2026-09-18: the paper now says mean at L1549, matching the code.
 
 Other method claims in the surrounding prose, recorded here because nothing else
 sources them: ALE via `gymnasium/ale-py` at the `NoFrameskip-v4` prefix with
@@ -1105,7 +1123,7 @@ Gemini 3.1 Pro prices, and every row's cost recomputes from its own token counts
 | | calls | tokens in | tokens out | time | cost |
 |---|---|---|---|---|---|
 | data (`llm_cost.json`, and the row sum) | 26 | **70,918** | 67,206 | 34.4 min | $0.95 |
-| paper (L1786) | 26 | **70,926** | 67,206 | 34.4 min | $0.95 |
+| paper (L1794, corrected 2026-09-18) | 26 | **70,918** | 67,206 | 34.4 min | $0.95 |
 
 Everything else in the row agrees, and the six artifact rows sum exactly to the
 data's 70,918 — so this is a transcription slip in the paper, not a data problem.
@@ -2019,7 +2037,7 @@ added without a label will show up here as unaccounted.
 | `figures/tables/dbuf_check.py` | tab:dbuf-ablation — the caption's claims and the mechanism correlation |
 | `figures/tables/dbuf_tex2.py` | tab:dbuf-ablation — emits the table body |
 | `figures/tables/t1a_agg.py` | tab:train-throughput (a) — the published t3fix arm and the adv2 comparison |
-| `figures/tables/t1a_nodes.py` | tab:train-throughput (a) — the per-node breakdown behind the 0.34M/0.35M gap |
+| `figures/tables/t1a_nodes.py` | tab:train-throughput (a) — the per-node breakdown that located the 0.34M/0.35M gap, closed by re-run 47057946 |
 | `figures/tables/tab1b.py` | tab:train-throughput (b) — the environment swap |
 | `figures/tools/check_action_space.py` | tab:action-space — all 8 rows against the shipped spec |
 | `figures/tools/check_backend_ladder.py` | fig:env_efficiency B — the ladder ratios, both rung pairs |

@@ -22,7 +22,7 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXCLUDED_ON_RERUN = "holygpu8a15203"
-ROWS = {"impala_nature": ["44748571", "44784183"], "impala_icnn": ["44748573"],
+ROWS = {"impala_nature": ["44748571", "44784183"], "impala_icnn": ["44748573", "47057946"],
         "ppo_nature": ["44748574", "44784184"], "ppo_impala": ["44748575", "44784185"]}
 PAPER = {"impala_nature": 1.07e6, "impala_icnn": 0.35e6,
          "ppo_nature": 185e3, "ppo_impala": 68e3}

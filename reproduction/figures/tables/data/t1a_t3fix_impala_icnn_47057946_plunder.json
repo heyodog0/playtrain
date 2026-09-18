@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "game": "plunder",
+      "sps": 353889,
+      "windows": [
+        353887,
+        353888,
+        353889,
+        353889
+      ],
+      "minutes": 5.5
+    }
+  ],
+  "mean_sps": 353889,
+  "geomean_sps": 353889,
+  "games_ok": 1,
+  "games_total": 1,
+  "games_failed": [],
+  "template": "../playtrain-trainers/configs/impala_fullnode_throughput.json"
+}
