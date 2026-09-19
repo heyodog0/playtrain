@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 14
+ITERATION: 15
 BRANCH: chip8 (from vgdl @ 0f341a0)
-LAST_COMMIT: 431d8dd
+LAST_COMMIT: b10d65f
 
 ## Ledger
 
@@ -25,7 +25,7 @@ LAST_COMMIT: 431d8dd
 | U11 obs default docs | done | `golden ok (222)`, `dist/ fresh (37)`, `dist/chip8_brix.json obs.octax_frame_stack == 4`; pytest golden+fresh+runtime `5 passed` | 01845a3 | manifest `obs` = rgb 64 + `octax_frame_stack: 4` + note; `not_matched[1]` now states the decision and the caveat that the runtime's frame_stack=4 stacks consecutive step displays, not Octax's four intra-step frames (equal only when the display is static within a step); README says the same. Sidecars embed `obs`, so all 37 bundles' .json changed; the .js did not. |
 | U12 cavern4a/4b | done | `9/9 trajectories exact` (cavern4a, cavern4b, cavern1 x 3 seeds x 500 steps); full suite `52 passed` with 39 bundles; goldens 234 | 63ee7a1 | `tests/oracle.py --module cavern` takes the module as given and the ROM as `<env_id>.ch8` (build OctaxEnv exactly as create_environment would, minus its env_id regex). Defs carry `oracle_module: "cavern"` and `gate_oracle.mjs` forwards it. Test counts 37 -> 39 in test_lockstep, test_runtime, test_engine_gate. Under random play cavern4a/4b terminate at step 2-3 like cavern2+. |
 | U13 ROM NOTICE | done | `2 passed` (notice fresh; all 39 .ch8 listed with current sha1) | 431d8dd | `tools/rom_notice.py [--check]` renders roms/NOTICE.md from manifest.json: file, sha1, bytes, game, title, authors, release, module, modified-by-Octax (cavern, spacejam, flight_runner, target_shooter), meta-sha1-ok. Provenance paragraph names the pinned commit, MIT for Octax's modified builds, per-ROM hobbyist authorship for the rest, and the removal procedure if an author objects. Not a legal review: the human's decision was keep + notice. |
-| U14 AOT measurement | todo | | | measure only; never change runtime/hosts/engine; blocked-with-reason is an acceptable outcome |
+| U14 AOT measurement | done | 18/18 traces PASS (qjs_host, f0, f1 x 3 games x 2 seeds, byte-identical incl. obs hash, 0 bytecode-mismatch); f1 = 28.6k-34.6k steps/s = 2.46-2.68x qjs_host, 1.62-1.66x f0 | b10d65f | Table under Numbers > AOT tier. Existing `native/aotfork` harness, plain arms, 56 functions AOT-compiled per bundle. `build_fork.sh` f0/f1 miss `build/v8_ieee754.o` on this Mac (pre-existing); worked around via the `RA` override, script untouched. Adoption for training remains the human's call (PLAN section 9 Q5 note). |
 
 Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 
@@ -150,3 +150,4 @@ ROM redistribution, AOT tier. Nothing in the port blocks on them.
 13 | U11 | manifest obs hint + not_matched wording, README, sidecars rebuilt | G4 222/222, G5 fresh
 14 | U12 | oracle --module, games/cavern4a|4b.json, gate forwards oracle_module, 39 bundles, 234 goldens, counts | G3 9/9, suite 52 passed
 15 | U13 | tools/rom_notice.py, roms/NOTICE.md, tests/test_rom_notice.py | 2 passed
+16 | U14 | AOT hosts built (f0 + f1 x 3), gated vs V8, benched; numbers in PROGRESS + PLAN Q5 | 18/18 PASS, 2.5-2.7x
