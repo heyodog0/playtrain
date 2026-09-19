@@ -30,3 +30,20 @@ def oracle(*args: str) -> subprocess.CompletedProcess:
         pytest.skip("Octax oracle not configured (CHIP8_ORACLE_PY, CHIP8_OCTAX)")
     return subprocess.run([os.environ["CHIP8_ORACLE_PY"], str(HERE / "oracle.py"), *args],
                           cwd=FAMILY, capture_output=True, text=True, env=os.environ.copy())
+
+
+def run_js(script: Path, *args: str) -> subprocess.CompletedProcess:
+    """Concatenate src/*.js (name order, as the bundler does) plus `script` into one flat file and run
+    it with node. One global script, never eval: top-level const/class must be visible everywhere."""
+    if NODE is None:
+        pytest.skip("node not on PATH")
+    import tempfile
+    srcs = sorted((FAMILY / "src").glob("*.js"))
+    text = "\n".join(p.read_text() for p in srcs) + "\n" + Path(script).read_text()
+    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False, dir=tempfile.gettempdir()) as fh:
+        fh.write(text)
+        tmp = fh.name
+    try:
+        return subprocess.run([NODE, tmp, *args], cwd=FAMILY, capture_output=True, text=True)
+    finally:
+        os.unlink(tmp)
