@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 7
+ITERATION: 8
 BRANCH: chip8 (from vgdl @ 0f341a0)
-LAST_COMMIT: 442b271
+LAST_COMMIT: f0e6599
 
 ## Ledger
 
@@ -18,7 +18,7 @@ LAST_COMMIT: 442b271
 | U04 env step + 3 games lockstep | done | `9/9 trajectories exact` (brix, pong, tetris x seeds 1,2,3 x 500 steps, every field, past terminated); pytest `6 passed` | 753fa40 | `src/30_env.js`: c8EnvCreate/Reset/Step mirror OctaxEnv incl. the cached post-startup state and the uint8 timer rule `(t - 1) & 0xFF`. Score/terminated are JSON expression trees in `games/<game>.json` evaluated by `c8Eval` with JAX dtype rules (V is u8, consts weak, `i32` node promotes; u8 ops wrap) so U06 can transcribe airplane's `-V11 - V12` (uint8) faithfully; ops: V const i32 u8 neg add sub mul floordiv mod eq ne gt lt ge le or and not cond true false. `tests/gate_oracle.mjs [games] --steps --seeds` also checks games/*.json against the module's action_set/disable_delay/startup/custom_startup as reported by the oracle. Lockstep compares all 500 steps regardless of termination (oracle `--no-stop`); PlayTrain's own stop-at-GAMEOVER is U05. `C8_CUSTOM_STARTUP` table is empty: deep and vertical_brix need their startup functions transcribed in U06. Levelled games: def may carry `env_id` (e.g. cavern1) for the oracle. brix terminates at step 20-38 under random play, pong 332-380, tetris never within 500. |
 | U05 prelude, bundles, sidecars, goldens | done | `golden ok (18 trajectories)`, `dist/ fresh (3 games)`, pytest `10 passed` (G0-G5 + runtime discovery/sidecar) | be6ea32 | `src/90_prelude.js`: one draw() = one env step; action = first held key in action_set order else NOOP; GAMEOVER on terminated; canvas 256x256 with the display drawn by one drawTiles call into the 256x128 middle band (at 64x64 obs each CHIP-8 pixel is one pixel, rows 16..47); classic green-on-black; own base64 decoder (no atob in QuickJS). `tools/bundle_chip8.mjs <game> [--sidecar]` inlines games/<game>.json + ROM (sha1 checked against def and manifest) + common/threefry2x32.js + src/*.js; `tools/bundle_all.mjs [--check]`. Sidecar: name chip8_<game>, `actions` = KEY_<hex> (held = browser keyCode, layout 1234/QWER/ASDF/ZXCV) then NOOP, `action_space` 'chip8_<game>' (informational; the runtime takes the `actions` list, env.py:176), max_steps 4500, rom sha1, reference pin. Goldens: 6 seeds x 500 steps, full state, stepping past terminated (a `--steps` parsing bug made the first write hash zero steps; fixed before commit). `not_matched` written into manifest.json. `list_available_games()` shows chip8_brix/pong/tetris (test_runtime.py). draw()-path check: brix GAMEOVER at draw 19 with key Q held. |
 | U06 all 22 games lockstep | done | `111/111 trajectories exact` (37 defs x seeds 1,2,3 x 500 steps, every field); pytest `10 passed in 104s`; goldens 222; dist fresh (37) | 442b271 | 37 `games/*.json`: 19 single games + cavern 1,2,3,5,6 + space_flight 1-10 + target_shooter 1-3 (levelled defs carry `env_id`). cavern4a/4b are not loadable via create_environment: PLAN section 9 Q4, not shipped. `C8_CUSTOM_STARTUP` has deep (hold key 0 for 150 instr) and vertical_brix (hold key 7 for 1000). Score/terminated transcribed by hand into expression trees (airplane's uint8 `-V11 - V12`, shooting_stars' cond, space_flight's `V12 >= 0x3E`), all verified by the gate. Lockstep over the corpus takes ~100 s (37 x 3 oracle processes). Termination under random play recorded in manifest reference_quirks (cavern2+ die at step 2-3, deep at 49 every seed, 9 games never within 500). test_lockstep now runs the whole corpus; test_runtime expects 37 chip8_* games. |
-| U07 cross-engine gate, runtime, benchmark | todo | | | |
+| U07 cross-engine gate, runtime, benchmark | done | G6 `41 passed` (37 bundles x seeds 1,42 x 300 steps, V8+wasm vs qjs_host byte-identical incl. obs hash); G7 NativeVecEnv 4 env steps, obs 64x64x3, display in rows 16..47, colours black/green only; G9 table under Numbers; full suite `51 passed` | f0e6599 | `tests/test_engine_gate.py` sets PLAYTRAIN_QJS_ACTIONS per game from the sidecar and leaves PLAYTRAIN_ACTION_SPACE unset (GameEnv reads the sidecar's actions itself); PLAYTRAIN_GAMES_DIR must be absolute. `native/build/qjs_host` exists on this Mac (built 2026-09-18 17:38 on the vgdl branch), so the old 'native build broken locally' note is stale for qjs_host; qjs_vec is a dylib (`libqjs_vec.dylib`), no qjs_vec_host binary. G9: 8.4k-13.2k steps/s per QuickJS env vs PLAN's 60-120k expectation: profiled (V8 110k env-only; vgdl_aliens 17k on the same host; 64px canvas variant identical) -> QuickJS interpretation of the 44-instruction loop is the cost; PLAN section 6 corrected, section 9 Q5 asks whether the AOT tier is wanted. No engine change made. |
 | U08 browser smoke | todo | | | playwright-core: `npm i playwright-core` in a scratch dir; Chromium under `~/Library/Caches/ms-playwright/` |
 | U09 report + docs | todo | | | |
 | U10 human handoff | handoff | | | |
@@ -27,7 +27,47 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 
 ## Numbers
 
-(G9 results go here: game, steps/s 1 env / 1 thread, 20 env / 10 thr, QuickJS.)
+G9, U07, this Mac (arm64, `benchmarks/bench_chip8.py`, qjs_host bench 20k steps; NativeVecEnv 20 env / 10 threads, 300 batched steps after 20 warm-up). V8 (node, env only, brix): 110,132 steps/s. vgdl_aliens on the same qjs_host: 17,054. The 20-env column drifts downward through the run (space_flight1 96k -> space_flight9 59k); treat +-30% as run-to-run noise on this laptop, not a per-game difference.
+
+| game | 1 env / 1 thread (qjs_host bench) | 20 env / 10 thr (NativeVecEnv) |
+|---|---|---|
+| airplane | 12,547 | 114,447 |
+| blinky | 11,798 | 99,390 |
+| brix | 11,866 | 92,654 |
+| cavern1 | 12,698 | 103,584 |
+| cavern2 | 12,659 | 71,497 |
+| cavern3 | 12,701 | 72,717 |
+| cavern5 | 12,845 | 64,440 |
+| cavern6 | 12,266 | 62,105 |
+| deep | 11,835 | 94,095 |
+| filter | 12,484 | 110,952 |
+| flight_runner | 12,491 | 106,402 |
+| missile | 13,154 | 112,385 |
+| pong | 10,883 | 94,264 |
+| rocket | 8,751 | 68,577 |
+| shooting_stars | 12,021 | 89,015 |
+| space_flight1 | 12,554 | 95,975 |
+| space_flight10 | 9,623 | 58,227 |
+| space_flight2 | 11,981 | 80,906 |
+| space_flight3 | 11,470 | 70,691 |
+| space_flight4 | 11,242 | 69,516 |
+| space_flight5 | 10,893 | 66,047 |
+| space_flight6 | 10,740 | 63,293 |
+| space_flight7 | 10,350 | 60,670 |
+| space_flight8 | 10,077 | 60,073 |
+| space_flight9 | 9,741 | 58,746 |
+| spacejam | 12,297 | 107,303 |
+| squash | 12,717 | 111,078 |
+| submarine | 8,938 | 77,406 |
+| tank | 11,894 | 103,698 |
+| target_shooter1 | 12,952 | 111,570 |
+| target_shooter2 | 12,798 | 91,912 |
+| target_shooter3 | 12,346 | 106,986 |
+| tetris | 13,030 | 115,511 |
+| ufo | 8,385 | 73,286 |
+| vertical_brix | 12,484 | 109,299 |
+| wipe_off | 11,919 | 107,309 |
+| worm | 11,305 | 75,339 |
 
 ## Reference quirks found
 
@@ -48,3 +88,4 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 5 | U04 | src/30_env.js (env + c8Eval), games/brix|pong|tetris.json, tests/gate_oracle.mjs, test_lockstep.py | G3 9/9
 6 | U05 | src/90_prelude.js, tools/bundle_chip8.mjs + bundle_all.mjs, dist/ (3 games + sidecars), tests/golden.mjs + golden.json, test_golden/test_bundle_fresh/test_runtime, manifest not_matched | G4 18/18, G5 fresh, pytest 10 passed
 7 | U06 | 34 new games/*.json, custom startups in 30_env.js, 37 bundles + sidecars, 222 goldens, lockstep test over corpus, PLAN Q4 | G3 111/111
+8 | U07 | tests/test_engine_gate.py, NativeVecEnv test in test_runtime.py, benchmarks/bench_chip8.py, PLAN section 6 corrected + Q5, Numbers table | G6 41 passed, G7 ok, G9 recorded
