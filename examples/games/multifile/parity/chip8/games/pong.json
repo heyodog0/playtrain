@@ -1,0 +1,20 @@
+{
+  "game": "pong",
+  "module": "octax/environments/pong.py",
+  "title": "Pong",
+  "authors": ["1 player"],
+  "release": null,
+  "rom": "Pong (1 player).ch8",
+  "sha1": "607c4f7f4e4dce9f99d96b3182bfe7e88bb090ee",
+  "action_set": [1, 4],
+  "startup_instructions": 0,
+  "custom_startup": null,
+  "disable_delay": true,
+  "score": {"op": "sub",
+            "a": {"op": "floordiv", "a": {"op": "i32", "a": {"op": "V", "i": 14}}, "b": {"op": "const", "v": 10}},
+            "b": {"op": "mod", "a": {"op": "i32", "a": {"op": "V", "i": 14}}, "b": {"op": "const", "v": 10}}},
+  "terminated": {"op": "or",
+                 "a": {"op": "eq", "a": {"op": "floordiv", "a": {"op": "V", "i": 14}, "b": {"op": "const", "v": 10}}, "b": {"op": "const", "v": 9}},
+                 "b": {"op": "eq", "a": {"op": "mod", "a": {"op": "V", "i": 14}, "b": {"op": "const", "v": 10}}, "b": {"op": "const", "v": 9}}},
+  "human": {"keys": {"1": "paddle up", "4": "paddle down"}, "controls": "1 (key 1) moves the paddle up, Q (key 4) down."}
+}
