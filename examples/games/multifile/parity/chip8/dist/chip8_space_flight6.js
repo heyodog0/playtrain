@@ -612,5 +612,6 @@ globalThis.__chip8 = {
   step: (a) => c8EnvStep(c8Env, a),
   env: () => c8Env,
   def: () => C8_GAME_DEF,
+  keyNames: () => C8_KEYNAMES, keyCodes: () => C8_KEYCODES,
   snap: () => { const c = c8Env.cpu; return { t: c8Env.time, pc: c.pc, I: c.I, V: Array.from(c.V), sp: c.sp, stack: Array.from(c.stack), delay: c.delay, sound: c.sound, keypad: Array.from(c.keypad), display: c8DisplayHex(c), rng: Array.from(c.rng), score: c8Env.score, reward: c8Env.reward, terminated: c8Env.terminated, truncated: c8Env.truncated }; },
 };
