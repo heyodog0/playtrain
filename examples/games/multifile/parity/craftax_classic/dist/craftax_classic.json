@@ -124,5 +124,5 @@
       "Craftax-Classic-Pixels below light_level 0.5, as drawn by the hosts: Craftax adds per-pixel static from state_rng, which its step derives from the DRIVER's PRNGKey and the step index (a fixed number of splits; independent of actions and world). Given that driver seed the game derives state_rng itself (setDriverSeed; threefry-2x32 + split in 16_threefry.js) and the frame is byte-identical at every light level: 147/147 daylight + 74/74 night frames (seed 11, driver seed 7) and 120/120 (seed 3, driver seed 2024, death frame included). Craftax needs the same driver seed, so this is the same interface. No host passes one yet, so what the hosts draw at night is the deterministic dusk image without the static; at light_level >= 0.5 the hosts' frame IS byte-identical to render_craftax_pixels(state).astype(uint8). See reference/craftax_pixels/README.md"
     ]
   },
-  "source_sha256": "1ae251b61c8e0a898ed8115b0b4f4de50b26be6a1e5abca3d58611e13bd0b805"
+  "source_sha256": "6ac5f86d888b082706d588395a0d07554d7d86d61887250d41eae2804c2498ba"
 }

@@ -10,6 +10,7 @@
     "../../parity/craftax_classic/src/00_header.js",
     "../../parity/craftax_classic/src/10_constants.js",
     "../../parity/craftax_classic/src/15_atlas.js",
+    "../../common/threefry2x32.js",
     "../../parity/craftax_classic/src/16_threefry.js",
     "../../parity/craftax_classic/src/20_state.js",
     "../../parity/craftax_classic/src/30_worldgen.js",

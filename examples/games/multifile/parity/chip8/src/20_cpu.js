@@ -202,7 +202,7 @@ function c8Execute(cpu, ins) {
     case 0xA: cpu.I = nnn; break;
     case 0xB: cpu.pc = cpu.modern ? ((nn + V[x]) & 0xFFF) : ((nnn + V[0]) & 0xFFF); break;
     case 0xC: {                            // key, subkey = split(rng); VX = randint(subkey) & NN
-      c8ThreefrySplit(cpu.rng[0], cpu.rng[1], c8SplitTmp);
+      threefrySplit(cpu.rng[0], cpu.rng[1], c8SplitTmp);
       const k0 = c8SplitTmp[0], k1 = c8SplitTmp[1];
       V[x] = c8Randint8(c8SplitTmp[2], c8SplitTmp[3]) & nn;
       cpu.rng[0] = k0; cpu.rng[1] = k1;

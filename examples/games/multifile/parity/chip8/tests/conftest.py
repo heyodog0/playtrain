@@ -11,6 +11,11 @@ FAMILY = HERE.parent
 REPO = FAMILY.parents[4]   # examples/games/multifile/parity/chip8 -> repo root
 NODE = shutil.which("node")
 BRIX_ROM = FAMILY / "roms" / "Brix [Andreas Gustafsson, 1990].ch8"
+COMMON = FAMILY.parents[1] / "common"
+# The bundle's recipe, in scope order: shared threefry core, then src/*.js by name (tools/bundle_chip8.mjs
+# does the same; the family manifest deliberately has no "sources" key, which would make
+# tools/bundle_multifile.py --all treat the family as one game).
+SOURCES = [COMMON / "threefry2x32.js"] + sorted((FAMILY / "src").glob("*.js"))
 
 
 def node(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -38,8 +43,7 @@ def run_js(script: Path, *args: str) -> subprocess.CompletedProcess:
     if NODE is None:
         pytest.skip("node not on PATH")
     import tempfile
-    srcs = sorted((FAMILY / "src").glob("*.js"))
-    text = "\n".join(p.read_text() for p in srcs) + "\n" + Path(script).read_text()
+    text = "\n".join(p.read_text() for p in SOURCES) + "\n" + Path(script).read_text()
     with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False, dir=tempfile.gettempdir()) as fh:
         fh.write(text)
         tmp = fh.name

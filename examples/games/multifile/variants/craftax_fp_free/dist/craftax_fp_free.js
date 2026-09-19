@@ -1,9 +1,9 @@
 // ============================================================================
 // craftax_fp_free v0.1.0 — GENERATED, DO NOT EDIT
 //
-// Built by tools/bundle_multifile.py from 20 sources listed in
+// Built by tools/bundle_multifile.py from 21 sources listed in
 // examples/games/multifile/variants/craftax_fp_free/manifest.json
-// Source hash (sha256 over the concatenated sources): 5f7d9b16fb3733a835e4966d1837e04f706e2f91035f137529916e96dc2160c3
+// Source hash (sha256 over the concatenated sources): a61d4bc80777b3a20d85401ce7c27a29d7cb71e6905acedb8be868959d1725a1
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle craftax_fp_free
@@ -805,18 +805,16 @@ const NIGHT_NOISE_B64 =
   'bV0/MqRdPz//XT8kfV4/VRxfP+TaXz+MtmA/uKxhP5W6Yj8b3WM/IBFlP2NTZj+coGc/ivVoPwFPaj/zqWs/fgNtP/NYbj/fp28/' +
   'D+5wP5kpcj/WWHM/a3p0P0WNdT+WkHY/0oN3P6xmeD8SOXk/JPt5PzCtej+rT3s/';
 
-// ---- ../../parity/craftax_classic/src/16_threefry.js ----
-// 16_threefry.js — JAX's threefry-2x32 and jax.random.uniform, for the
-// night static in 80_render.js.
+// ---- ../../common/threefry2x32.js ----
+// threefry2x32.js — JAX's threefry-2x32 block function, PRNGKey, split and 32-bit
+// random bits, bit for bit, for every game whose reference draws from jax.random.
 //
-// This is NOT the game's RNG. The dynamics use the PCG in common/rng_pcg32.js,
-// which mirrors PufferLib's C. This file exists because Craftax draws its
-// per-pixel night static with `jax.random.uniform(state.state_rng, (49, 63))`,
-// and reproducing that frame means reproducing JAX's generator bit for bit,
-// given the same key. It is stateless: same key, same bits, every call.
+// Users: parity/craftax_classic (night static via threefryUniformF32, the
+// per-step state_rng via split) and parity/chip8 (CXNN: split + randint uint8).
 //
-// What is mirrored, from jax/_src/random/threefry2x32.py and core.py at
-// jax 0.11.1 with `jax_threefry_partitionable=True` (the default since 0.5):
+// What is mirrored, from jax/_src/prng.py with `jax_threefry_partitionable=True`
+// (the default since jax 0.5; checked against 0.11.1 for craftax and 0.6.2 for
+// chip8's oracle, identical bits):
 //
 //   * the Threefry-2x32 block function, 20 rounds, rotations
 //     [13, 15, 26, 6] / [17, 29, 16, 24], key schedule ks = [k0, k1,
@@ -828,13 +826,10 @@ const NIGHT_NOISE_B64 =
 //     (`_threefry_random_bits_partitionable`, bit_width 32). The older
 //     layout — halves of a flat iota, outputs concatenated — gives different
 //     bits and is not what the installed JAX runs;
-//   * uniform: the top 23 random bits become the mantissa of a float32 with
-//     exponent 0, i.e. `(bits >>> 9) | 0x3f800000`, bitcast to a float in
-//     [1, 2), minus 1 (`_uniform`). With minval 0 and maxval 1 the trailing
-//     `floats * (max - min) + min` and `max(min, ...)` are identities.
+//   * split (`_threefry_split_foldlike`): output key j is the two words of
+//     threefry(key, counter (0, j)).
 //
-// Pure uint32 work: `>>> 0` after every add, no BigInt, so V8 and QuickJS
-// agree. Arrays here are small (3087 elements) and hashed one at a time.
+// Pure uint32 work: `>>> 0` after every add, no BigInt, so V8 and QuickJS agree.
 
 const THREEFRY_C240 = 0x1BD11BDA;
 
@@ -896,17 +891,6 @@ function threefryRandomBits32(k0, k1, i) {
   return (_tfOut[0] ^ _tfOut[1]) >>> 0;
 }
 
-// jax.random.uniform(key, (n,)) as float32 in [0, 1), written into out[0..n).
-// Row-major, so a (rows, cols) array's element (y, x) is out[y * cols + x].
-function threefryUniformF32(k0, k1, n, out) {
-  for (let i = 0; i < n; i++) {
-    const bits = threefryRandomBits32(k0, k1, i);
-    const fb = ((bits >>> 9) | 0x3f800000) >>> 0;
-    out[i] = F(bitsToF32(fb) - 1);
-  }
-  return out;
-}
-
 // jax.random.PRNGKey(seed) for a 32-bit seed: `_threefry_seed` puts the
 // seed's high 32 bits in the first word and the low 32 in the second, so a
 // seed below 2^32 is [0, seed].
@@ -923,6 +907,33 @@ function threefrySplit(k0, k1, out) {
   out[0] = _tfOut[0]; out[1] = _tfOut[1];
   _threefry2x32(k0, k1, 0, 1);
   out[2] = _tfOut[0]; out[3] = _tfOut[1];
+  return out;
+}
+
+// ---- ../../parity/craftax_classic/src/16_threefry.js ----
+// 16_threefry.js — jax.random.uniform and Craftax's per-step state_rng, on the
+// shared threefry core in ../../common/threefry2x32.js (block function, PRNGKey,
+// split, 32-bit bits).
+//
+// This is NOT the game's RNG. The dynamics use the PCG in common/rng_pcg32.js,
+// which mirrors PufferLib's C. This file exists because Craftax draws its
+// per-pixel night static with `jax.random.uniform(state.state_rng, (49, 63))`,
+// and reproducing that frame means reproducing JAX's generator bit for bit,
+// given the same key. It is stateless: same key, same bits, every call.
+//
+// uniform (`_uniform`): the top 23 random bits become the mantissa of a float32
+// with exponent 0, i.e. `(bits >>> 9) | 0x3f800000`, bitcast to a float in
+// [1, 2), minus 1. With minval 0 and maxval 1 the trailing
+// `floats * (max - min) + min` and `max(min, ...)` are identities.
+
+// jax.random.uniform(key, (n,)) as float32 in [0, 1), written into out[0..n).
+// Row-major, so a (rows, cols) array's element (y, x) is out[y * cols + x].
+function threefryUniformF32(k0, k1, n, out) {
+  for (let i = 0; i < n; i++) {
+    const bits = threefryRandomBits32(k0, k1, i);
+    const fb = ((bits >>> 9) | 0x3f800000) >>> 0;
+    out[i] = F(bitsToF32(fb) - 1);
+  }
   return out;
 }
 

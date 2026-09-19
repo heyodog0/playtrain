@@ -10,6 +10,7 @@
     "src/00_header.js",
     "src/10_constants.js",
     "src/15_atlas.js",
+    "../../common/threefry2x32.js",
     "src/16_threefry.js",
     "src/20_state.js",
     "src/30_worldgen.js",
