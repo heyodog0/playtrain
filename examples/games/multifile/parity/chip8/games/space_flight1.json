@@ -1,0 +1,53 @@
+{
+  "game": "space_flight1",
+  "env_id": "space_flight1",
+  "module": "octax/environments/space_flight.py",
+  "title": "Space Flight 1",
+  "authors": [],
+  "release": "19xx",
+  "rom": "space_flight1.ch8",
+  "sha1": "1086fe15b4608581c8715618f303af911813dc8e",
+  "action_set": [
+    1,
+    4
+  ],
+  "startup_instructions": 300,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 0
+  },
+  "terminated": {
+    "op": "or",
+    "a": {
+      "op": "eq",
+      "a": {
+        "op": "V",
+        "i": 9
+      },
+      "b": {
+        "op": "const",
+        "v": 0
+      }
+    },
+    "b": {
+      "op": "ge",
+      "a": {
+        "op": "V",
+        "i": 12
+      },
+      "b": {
+        "op": "const",
+        "v": 62
+      }
+    }
+  },
+  "human": {
+    "keys": {
+      "1": "key 1",
+      "4": "key 4"
+    },
+    "controls": "1 (key 1) and Q (key 4) steer."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "game": "deep",
+  "env_id": "deep",
+  "module": "octax/environments/deep.py",
+  "title": "Deep8",
+  "authors": [
+    "John Earnest"
+  ],
+  "release": "2014",
+  "rom": "Deep8 (by John Earnest)(2014).ch8",
+  "sha1": "b41cc0b5b2faabafd532d705b804abb3e8f97baf",
+  "action_set": [
+    7,
+    8,
+    9
+  ],
+  "startup_instructions": 0,
+  "custom_startup": "deep",
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 9
+  },
+  "terminated": {
+    "op": "ne",
+    "a": {
+      "op": "V",
+      "i": 11
+    },
+    "b": {
+      "op": "const",
+      "v": 1
+    }
+  },
+  "human": {
+    "keys": {
+      "7": "left",
+      "8": "key 8",
+      "9": "right"
+    },
+    "controls": "A (key 7) left, S (key 8), D (key 9) right."
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "game": "space_flight5",
+  "env_id": "space_flight5",
+  "module": "octax/environments/space_flight.py",
+  "title": "Space Flight 5",
+  "authors": [],
+  "release": "19xx",
+  "rom": "space_flight5.ch8",
+  "sha1": "05e8e285872740154d60f3743e5a64a9f8c1d6c3",
+  "action_set": [
+    1,
+    4
+  ],
+  "startup_instructions": 300,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 0
+  },
+  "terminated": {
+    "op": "or",
+    "a": {
+      "op": "eq",
+      "a": {
+        "op": "V",
+        "i": 9
+      },
+      "b": {
+        "op": "const",
+        "v": 0
+      }
+    },
+    "b": {
+      "op": "ge",
+      "a": {
+        "op": "V",
+        "i": 12
+      },
+      "b": {
+        "op": "const",
+        "v": 62
+      }
+    }
+  },
+  "human": {
+    "keys": {
+      "1": "key 1",
+      "4": "key 4"
+    },
+    "controls": "1 (key 1) and Q (key 4) steer."
+  }
+}

@@ -80,8 +80,16 @@ function c8EnvCreate(def, romBytes) {
   };
 }
 
-// The game's custom_startup functions (deep, vertical_brix), transcribed per game; U06 fills in.
-const C8_CUSTOM_STARTUP = {};
+// The games' custom_startup functions, transcribed from octax/environments/<game>.py: hold one key
+// while running N instructions on the fresh state, then release it.
+function c8StartupHoldKey(cpu, key, n) {
+  cpu.keypad[key] = 1;
+  for (let i = 0; i < n; i++) c8Step(cpu);
+  cpu.keypad[key] = 0;
+}
+function c8StartupDeep(cpu) { c8StartupHoldKey(cpu, 0, 150); }             // deep.py
+function c8StartupVerticalBrix(cpu) { c8StartupHoldKey(cpu, 7, 1000); }    // vertical_brix.py
+const C8_CUSTOM_STARTUP = { deep: c8StartupDeep, vertical_brix: c8StartupVerticalBrix };
 
 function c8EnvRunStartup(env) {
   const cpu = env.cpu;

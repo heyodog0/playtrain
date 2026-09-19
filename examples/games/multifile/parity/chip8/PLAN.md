@@ -211,3 +211,4 @@ at the time of writing.
 1. Observation: last frame (PlayTrain default) or Octax's 4-frame stack via `frame_stack=4`? Affects any "same as Octax" training claim.
 2. Which of the 48 ROMs to ship: Octax's 22 game modules plus their levels, or every `.ch8` in `roms/`?
 3. ROM redistribution: Octax ships them under MIT for its modified ones and lists authorship for the rest; confirm that is acceptable for the PlayTrain repo.
+4. cavern4a.ch8 and cavern4b.ch8 ship in Octax's `roms/` but `create_environment("cavern4a")` cannot load them (the env_id must end in digits), so U06 ships cavern 1, 2, 3, 5, 6 only. Add them as `cavern4a`/`cavern4b` defs (the oracle would need a `--rom-only` path that bypasses create_environment) or leave them out?

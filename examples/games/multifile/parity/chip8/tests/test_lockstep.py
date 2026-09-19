@@ -8,10 +8,13 @@ from conftest import node, oracle_configured
 
 pytestmark = pytest.mark.skipif(not oracle_configured(), reason="Octax oracle not configured (CHIP8_ORACLE_PY, CHIP8_OCTAX)")
 
-U04_GAMES = "brix,pong,tetris"
+from pathlib import Path
+
+N_GAMES = len(list((Path(__file__).resolve().parent.parent / "games").glob("*.json")))   # 37: 19 games + 18 levels
 
 
-def test_brix_pong_tetris_500_steps_3_seeds_exact():
-    proc = node("tests/gate_oracle.mjs", U04_GAMES, "--steps", "500", "--seeds", "1,2,3")
+def test_every_game_and_level_500_steps_3_seeds_exact():
+    assert N_GAMES == 37
+    proc = node("tests/gate_oracle.mjs", "--steps", "500", "--seeds", "1,2,3")
     assert proc.returncode == 0, proc.stdout[-6000:] + proc.stderr[-3000:]
-    assert proc.stdout.strip().endswith("9/9 trajectories exact")
+    assert proc.stdout.strip().endswith(f"{3 * N_GAMES}/{3 * N_GAMES} trajectories exact")

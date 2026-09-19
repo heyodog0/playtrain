@@ -1,0 +1,46 @@
+{
+  "game": "worm",
+  "env_id": "worm",
+  "module": "octax/environments/worm.py",
+  "title": "SuperWorm V4",
+  "authors": [
+    "RB-Revival Studios",
+    "Martijn Wenting"
+  ],
+  "release": "2007",
+  "rom": "Worm V4 [RB-Revival Studios, 2007].ch8",
+  "sha1": "54b2b475e8522421be83b643d50f48a1ccaab74f",
+  "action_set": [
+    2,
+    8,
+    4,
+    6
+  ],
+  "startup_instructions": 1600,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 5
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 7
+    },
+    "b": {
+      "op": "const",
+      "v": 255
+    }
+  },
+  "human": {
+    "keys": {
+      "2": "up",
+      "8": "down",
+      "4": "left",
+      "6": "right"
+    },
+    "controls": "2 up, S (key 8) down, Q (key 4) left, E (key 6) right."
+  }
+}

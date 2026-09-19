@@ -1,0 +1,112 @@
+{
+  "name": "chip8_flight_runner",
+  "version": "0.1.0",
+  "title": "CHIP-8 Flight Runner",
+  "family": "chip8",
+  "game": "flight_runner",
+  "env_id": "flight_runner",
+  "module": "octax/environments/flight_runner.py",
+  "authors": [
+    "TodPunk"
+  ],
+  "release": "2014-11-01",
+  "rom": {
+    "file": "flightrunner.ch8",
+    "sha1": "8ca4c0cdaceb9c9e135f0a56e88adaf588e71b34"
+  },
+  "action_space": "chip8_flight_runner",
+  "actions": [
+    {
+      "name": "KEY_5",
+      "held": [
+        87
+      ],
+      "press": null
+    },
+    {
+      "name": "KEY_7",
+      "held": [
+        65
+      ],
+      "press": null
+    },
+    {
+      "name": "KEY_8",
+      "held": [
+        83
+      ],
+      "press": null
+    },
+    {
+      "name": "KEY_9",
+      "held": [
+        68
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    }
+  ],
+  "action_set": [
+    5,
+    7,
+    8,
+    9
+  ],
+  "startup_instructions": 500,
+  "custom_startup": null,
+  "disable_delay": false,
+  "max_steps": 4500,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 15,
+    "controls": "W (key 5) up, A (key 7) left, S (key 8) down, D (key 9) right.",
+    "keymap_overlay": true,
+    "keys": {
+      "W": "CHIP-8 key 5: up",
+      "A": "CHIP-8 key 7: left",
+      "S": "CHIP-8 key 8: down",
+      "D": "CHIP-8 key 9: right"
+    }
+  },
+  "parity": true,
+  "reference": {
+    "name": "Octax (Radji 2025, arXiv 2510.01764): JAX CHIP-8 emulator + 22 arcade games with register-read rewards",
+    "repo": "https://github.com/riiswa/octax",
+    "branch": "main",
+    "commit": "3aa53b516152e97f2ed91eae6e33b6ee9a97596b",
+    "cloned": "2026-09-19",
+    "license": "MIT (code); ROMs per-game authorship in each module metadata, four are Octax-modified builds with .8o sources",
+    "engine": [
+      "octax/emulator.py",
+      "octax/instructions/*.py",
+      "octax/state.py",
+      "octax/stack.py",
+      "octax/decode.py"
+    ],
+    "env": "octax/env.py OctaxEnv, constructed as octax/environments/__init__.py create_environment does (disable_delay defaults False there)",
+    "oracle_python": "3.12.9",
+    "oracle_jax": "0.6.2",
+    "oracle_flax": "0.10.7",
+    "oracle_numpy": "2.2.6",
+    "oracle_jax_threefry_partitionable": true,
+    "step_semantics": "press action_set[a] (a == len(action_set) is NOOP); run (700 // 60) * 4 = 44 instructions; timers: zeroed if disable_delay else max(t - 1, 0) in uint8 (0 becomes 255); release the key; reward = score_fn(after) - score_fn(before); terminated = terminated_fn(after); truncated at time >= 4500. Startup instructions run once on PRNGKey(0); reset(rng) then replaces rng with PRNGKey(seed).",
+    "parity": "full state every step: pc, I, V[0..15], stack pointer, stack[0..15], delay, sound, keypad[0..15], display sha1 (64x32 bools, x-major, packbits), rng key data, score, reward, terminated, truncated; same ROM bytes, seed and action sequence; tests/gate_oracle.mjs vs tests/oracle.py",
+    "not_matched": [
+      "pixels: Octax renders the 64x32 display at 8x (512x256 RGB); PlayTrain draws it 1:1 into the middle band of a 64x64 observation (rows 16..47) and shows a 256x256 canvas to humans, colours from the `classic` scheme only",
+      "observation: Octax stacks the display after instruction 11, 22, 33 and 44 of each step (4 frames); PlayTrain observes the display after the step (the 4th of those frames); the stack is recoverable with the runtime's frame_stack=4 in grayscale",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)",
+      "termination: PlayTrain stops the episode at gameState GAMEOVER; Octax keeps stepping the terminated state (the lockstep gate compares those steps too)",
+      "truncation at 4500 steps is the sidecar's max_steps, enforced by the runtime, not by the game",
+      "sound: the sound timer is emulated bit-exactly, nothing is played",
+      "two keys held by a human resolve to the lower action index; Octax's action space has one key per action, so the case never arises for an agent"
+    ]
+  },
+  "source_sha256": "f0c71aa3535bc8586d6f068280d6315bc409c41555abc3ac5b73277ead23cf49"
+}

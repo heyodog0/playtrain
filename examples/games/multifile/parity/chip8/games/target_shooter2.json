@@ -1,0 +1,47 @@
+{
+  "game": "target_shooter2",
+  "env_id": "target_shooter2",
+  "module": "octax/environments/target_shooter.py",
+  "title": "Target Shooter - LLM-Generated RL Environment 2",
+  "authors": [
+    "Fully LLM-Generated Environment"
+  ],
+  "release": "2024",
+  "rom": "target_shooter2.ch8",
+  "sha1": "50592422956e880b8c0db188a54fa769fa0c33fc",
+  "action_set": [
+    5,
+    7,
+    8,
+    9,
+    6
+  ],
+  "startup_instructions": 0,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 2
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 3
+    },
+    "b": {
+      "op": "const",
+      "v": 1
+    }
+  },
+  "human": {
+    "keys": {
+      "5": "up",
+      "7": "left",
+      "8": "down",
+      "9": "right",
+      "6": "shoot"
+    },
+    "controls": "W (key 5) up, A (key 7) left, S (key 8) down, D (key 9) right, E (key 6) shoots."
+  }
+}

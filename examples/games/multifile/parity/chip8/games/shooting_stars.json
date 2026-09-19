@@ -1,0 +1,58 @@
+{
+  "game": "shooting_stars",
+  "env_id": "shooting_stars",
+  "module": "octax/environments/shooting_stars.py",
+  "title": "Shooting Stars",
+  "authors": [
+    "Philip Baltzer"
+  ],
+  "release": "1978",
+  "rom": "Shooting Stars [Philip Baltzer, 1978].ch8",
+  "sha1": "443550abf646bc7f475ef0466f8e1232ec7474f3",
+  "action_set": [
+    2,
+    8,
+    4,
+    6
+  ],
+  "startup_instructions": 0,
+  "custom_startup": null,
+  "disable_delay": true,
+  "score": {
+    "op": "cond",
+    "c": {
+      "op": "gt",
+      "a": {
+        "op": "V",
+        "i": 0
+      },
+      "b": {
+        "op": "const",
+        "v": 128
+      }
+    },
+    "a": {
+      "op": "u8",
+      "a": {
+        "op": "const",
+        "v": 0
+      }
+    },
+    "b": {
+      "op": "V",
+      "i": 0
+    }
+  },
+  "terminated": {
+    "op": "false"
+  },
+  "human": {
+    "keys": {
+      "2": "up",
+      "8": "down",
+      "4": "left",
+      "6": "right"
+    },
+    "controls": "2 up, S (key 8) down, Q (key 4) left, E (key 6) right."
+  }
+}

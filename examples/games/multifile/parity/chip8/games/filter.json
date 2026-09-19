@@ -1,0 +1,39 @@
+{
+  "game": "filter",
+  "env_id": "filter",
+  "module": "octax/environments/filter.py",
+  "title": "Filter",
+  "authors": [],
+  "release": null,
+  "rom": "Filter.ch8",
+  "sha1": "ae71a7b081a947f1760cdc147759803aea45e751",
+  "action_set": [
+    4,
+    6
+  ],
+  "startup_instructions": 0,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 14
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 13
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "4": "left",
+      "6": "right"
+    },
+    "controls": "Q (key 4) left, E (key 6) right."
+  }
+}
