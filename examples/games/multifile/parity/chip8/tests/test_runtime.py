@@ -6,7 +6,7 @@ from playtrain.runtime.env import load_sidecar, resolve_game_file
 
 def test_discoverable_by_name():
     names = [n for n in list_available_games() if n.startswith("chip8_")]
-    assert len(names) == 37 and {"chip8_brix", "chip8_pong", "chip8_tetris", "chip8_cavern6", "chip8_space_flight10", "chip8_target_shooter3", "chip8_deep"} <= set(names)
+    assert len(names) == 39 and {"chip8_brix", "chip8_pong", "chip8_tetris", "chip8_cavern6", "chip8_cavern4a", "chip8_cavern4b", "chip8_space_flight10", "chip8_target_shooter3", "chip8_deep"} <= set(names)
 
 
 def test_sidecar_declares_per_game_space_and_reference():

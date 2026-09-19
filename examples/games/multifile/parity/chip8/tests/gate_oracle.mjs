@@ -45,8 +45,8 @@ function jsTraj(def, rom, seed, acts) {
   for (const a of acts) { ctx.c8EnvStep(env, a); traj.push(snap(env)); }
   return traj;
 }
-function pyTraj(romPath, game, seed, acts) {
-  const out = execFileSync(PY, [join(HERE, 'oracle.py'), romPath, '--game', game, '--seed', String(seed), '--actions', acts.join(','), '--no-stop', '--json'],
+function pyTraj(romPath, game, seed, acts, module) {
+  const out = execFileSync(PY, [join(HERE, 'oracle.py'), romPath, '--game', game, '--seed', String(seed), '--actions', acts.join(','), '--no-stop', '--json', ...(module ? ['--module', module] : [])],
     { encoding: 'utf8', env: { ...process.env, CHIP8_OCTAX: OCTAX, PYTHONWARNINGS: 'ignore' }, maxBuffer: 1 << 28 });
   return JSON.parse(out.split('\n').filter(Boolean).pop());
 }
@@ -63,7 +63,7 @@ for (const game of games) {
     const rnd = lcg(seed * 7919 + 17); const acts = Array.from({ length: STEPS }, () => rnd() % (def.action_set.length + 1));
     let js, py;
     try { js = jsTraj(def, rom, seed, acts); } catch (e) { console.log(`❌ ${game} seed${seed}: JS threw ${String(e.stack).split('\n').slice(0, 2).join(' | ')}`); continue; }
-    try { py = pyTraj(romPath, envId, seed, acts); } catch (e) { console.log(`⚠️  ${game} seed${seed}: oracle failed: ${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-2).join(' | ')}`); continue; }
+    try { py = pyTraj(romPath, envId, seed, acts, def.oracle_module || null); } catch (e) { console.log(`⚠️  ${game} seed${seed}: oracle failed: ${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-2).join(' | ')}`); continue; }
     const c = py.constants;
     if (c.action_set.join() !== def.action_set.join() || c.disable_delay !== !!def.disable_delay || c.startup_instructions !== (def.startup_instructions | 0) || c.custom_startup !== !!def.custom_startup) {
       console.log(`❌ ${game}: games/${game}.json disagrees with the module: oracle action_set=${c.action_set} disable_delay=${c.disable_delay} startup=${c.startup_instructions} custom=${c.custom_startup}`); continue;

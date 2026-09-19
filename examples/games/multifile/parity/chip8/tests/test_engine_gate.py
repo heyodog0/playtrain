@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(not HOST.exists(), reason="qjs_host not built (n
 
 
 def test_corpus_size():
-    assert len(GAMES) == 37
+    assert len(GAMES) == 39
 
 
 @pytest.mark.parametrize("game", GAMES)

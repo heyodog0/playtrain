@@ -39,9 +39,14 @@ def display_bytes(display) -> bytes:
     return np.packbits(np.asarray(display, dtype=np.bool_).reshape(-1)).tobytes()
 
 
-def resolve(env_id):
-    """Mirror octax.environments.create_environment's module/rom resolution."""
+def resolve(env_id, module_name=None):
+    """Mirror octax.environments.create_environment's module/rom resolution. With `module_name`
+    the module is taken as given and the ROM is `<env_id>.ch8`: the path for cavern4a/cavern4b,
+    which create_environment cannot load (its env_id regex needs a trailing digit) although the
+    ROMs ship in the pinned commit and the cavern module's score/terminated/action_set apply."""
     env_id = env_id.replace("-", "_")
+    if module_name:
+        return importlib.import_module(f"octax.environments.{module_name}"), env_id + ".ch8"
     m = re.match(r"^(.*?)(\d+)$", env_id)
     if m:
         module = importlib.import_module(f"octax.environments.{m.group(1)}")
@@ -52,8 +57,8 @@ def resolve(env_id):
     return module, rom_file
 
 
-def build(rom_path, env_id):
-    module, rom_file = resolve(env_id)
+def build(rom_path, env_id, module_name=None):
+    module, rom_file = resolve(env_id, module_name)
     ref_rom = os.path.join(os.environ["CHIP8_OCTAX"], "roms", rom_file)
     if sha1_file(rom_path) != sha1_file(ref_rom):
         raise SystemExit(f"ROM mismatch: {rom_path} sha1 {sha1_file(rom_path)} != checkout {rom_file} {sha1_file(ref_rom)}")
@@ -90,8 +95,8 @@ def snapshot(st, t, reward, terminated, truncated, with_display):
     return row
 
 
-def run(rom_path, env_id, seed, actions, with_display=False, stop_on_end=True):
-    env, module, rom_file = build(rom_path, env_id)
+def run(rom_path, env_id, seed, actions, with_display=False, stop_on_end=True, module_name=None):
+    env, module, rom_file = build(rom_path, env_id, module_name)
     cached = env.cached_reset_state
     state, obs, info = env.reset(jax.random.PRNGKey(seed))
     traj = [snapshot(state, 0, 0.0, False, False, with_display)]
@@ -133,6 +138,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("rom_path")
     ap.add_argument("--game", required=True, help="Octax env_id: brix, cavern1, space_flight10, ...")
+    ap.add_argument("--module", default=None, help="take this octax.environments module as given (cavern4a/4b)")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--actions", default="", help="comma-separated action indices")
     ap.add_argument("--random", type=int, default=0, help="instead of --actions: N uniform random actions from a numpy RandomState(seed)")
@@ -141,11 +147,11 @@ if __name__ == "__main__":
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     if a.random:
-        env, _, _ = build(a.rom_path, a.game)
+        env, _, _ = build(a.rom_path, a.game, a.module)
         acts = [int(x) for x in np.random.RandomState(a.seed).randint(0, env.num_actions, size=a.random)]
     else:
         acts = [int(x) for x in a.actions.split(",") if x != ""]
-    out = run(a.rom_path, a.game, a.seed, acts, a.display, not a.no_stop)
+    out = run(a.rom_path, a.game, a.seed, acts, a.display, not a.no_stop, a.module)
     if a.json:
         print(json.dumps(out, sort_keys=True))
     else:

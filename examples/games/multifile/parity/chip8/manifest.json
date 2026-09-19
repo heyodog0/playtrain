@@ -315,13 +315,15 @@
           "rom": "cavern4a.ch8",
           "sha1": "4489020dfcd1bdc999ee68426e5af70f1901fd7a",
           "env_id": "cavern4a",
-          "create_environment_loadable": false
+          "create_environment_loadable": false,
+          "shipped_via_oracle_module": true
         },
         "4b": {
           "rom": "cavern4b.ch8",
           "sha1": "579846ee7e4e2175740c96bab15151b77502bda3",
           "env_id": "cavern4b",
-          "create_environment_loadable": false
+          "create_environment_loadable": false,
+          "shipped_via_oracle_module": true
         },
         "5": {
           "rom": "cavern5.ch8",
@@ -815,7 +817,7 @@
     "octax/emulator.py fetch: memory[pc] / memory[pc+1] clamp out-of-range indices (pc 4095 reads memory[4095] twice); pc is uint16 and is not masked, so it can leave 0xFFF.",
     "octax/instructions/display.py: DXYN wraps the start coordinate and clips the sprite; VF = any(display & sprite) as a bool cast to uint8. execute_clear_screen uses jnp.empty_like, which is zeros in JAX.",
     "ROM sha1 in module metadata does not match the shipped file for: flight_runner, spacejam, worm. The levelled games (cavern, space_flight, target_shooter) carry metadata for other files entirely. The reference is the bytes in the pinned commit; roms.<file>.sha1 above is what the gate verifies.",
-    "cavern4a.ch8 and cavern4b.ch8 cannot be loaded through create_environment (env_id must end in digits); the Octax paper's \"cavern 1-6\" reaches cavern1,2,3,5,6 only.",
+    "cavern4a.ch8 and cavern4b.ch8 cannot be loaded through create_environment (env_id must end in digits); the Octax paper's \"cavern 1-6\" reaches cavern1,2,3,5,6 only. Human decision 2026-09-19: both are shipped anyway; tests/oracle.py --module cavern builds OctaxEnv from the cavern module with the given ROM, and games/cavern4a.json / cavern4b.json carry oracle_module.",
     "Under uniform random actions (gate seeds 1-3, 500 steps) cavern2, cavern3, cavern5 and cavern6 terminate at step 2-3 and cavern1 at step 22-46 (V14 == 0); deep terminates at step 49 for every seed; airplane, blinky, rocket, shooting_stars, target_shooter1-3 and tetris never terminate within 500 steps. All of it matches Octax step for step; it is the ROMs' behaviour under Octax's timer rule, not a port bug.",
     "shooting_stars score_fn is `lax.cond(V0 > 128, uint8(0), V0)` (0 once V0 exceeds 128); airplane's `-V11 - V12` is uint8 arithmetic (wraps); both are transcribed as typed expression trees in games/*.json and checked by the lockstep gate."
   ]

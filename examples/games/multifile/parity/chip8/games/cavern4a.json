@@ -1,0 +1,47 @@
+{
+  "game": "cavern4a",
+  "env_id": "cavern4a",
+  "module": "octax/environments/cavern.py",
+  "title": "Cavern 4a",
+  "authors": [
+    "Matthew Mikolay"
+  ],
+  "release": "2014",
+  "rom": "cavern4a.ch8",
+  "sha1": "4489020dfcd1bdc999ee68426e5af70f1901fd7a",
+  "action_set": [
+    2,
+    4,
+    6,
+    8
+  ],
+  "startup_instructions": 250,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 0
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 14
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "2": "up",
+      "4": "left",
+      "6": "right",
+      "8": "down"
+    },
+    "controls": "2 up, Q (key 4) left, E (key 6) right, S (key 8) down."
+  },
+  "oracle_module": "cavern",
+  "note": "not loadable through octax.environments.create_environment (env_id must end in digits); shipped by human decision 2026-09-19 (PLAN section 9 Q2); the oracle builds OctaxEnv from the cavern module with this ROM"
+}
