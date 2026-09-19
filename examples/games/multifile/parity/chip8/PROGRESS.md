@@ -2,8 +2,8 @@
 
 The only record of state. `LOOP.md` reads this first every iteration.
 
-STATUS: RUNNING
-ITERATION: 10
+STATUS: DONE
+ITERATION: 11
 BRANCH: chip8 (from vgdl @ 0f341a0)
 LAST_COMMIT: 67b1d8c
 
@@ -21,7 +21,7 @@ LAST_COMMIT: 67b1d8c
 | U07 cross-engine gate, runtime, benchmark | done | G6 `41 passed` (37 bundles x seeds 1,42 x 300 steps, V8+wasm vs qjs_host byte-identical incl. obs hash); G7 NativeVecEnv 4 env steps, obs 64x64x3, display in rows 16..47, colours black/green only; G9 table under Numbers; full suite `49 passed in 115s` | f0e6599 | `tests/test_engine_gate.py` sets PLAYTRAIN_QJS_ACTIONS per game from the sidecar and leaves PLAYTRAIN_ACTION_SPACE unset (GameEnv reads the sidecar's actions itself); PLAYTRAIN_GAMES_DIR must be absolute. `native/build/qjs_host` exists on this Mac (built 2026-09-18 17:38 on the vgdl branch), so the old 'native build broken locally' note is stale for qjs_host; qjs_vec is a dylib (`libqjs_vec.dylib`), no qjs_vec_host binary. G9: 8.4k-13.2k steps/s per QuickJS env vs PLAN's 60-120k expectation: profiled (V8 110k env-only; vgdl_aliens 17k on the same host; 64px canvas variant identical) -> QuickJS interpretation of the 44-instruction loop is the cost; PLAN section 6 corrected, section 9 Q5 asks whether the AOT tier is wanted. No engine change made. |
 | U08 browser smoke | done | `PASS chip8_brix / chip8_tetris / chip8_blinky` (steps advance at 15/s, the game's first keypad key taken, canvas colours exactly 000000 + 00ff00, overlay from the sidecar, no console errors); pytest `3 passed` (browser + fresh + golden); skips as `playwright-core not resolvable` without PLAYWRIGHT_CORE_DIR | b219cf0 | playwright-core 1.58.2 lives in the scratchpad (`npm i playwright-core@1.58` in `<scratch>/pw`); its own browser revision (headless_shell-1208) is not installed, so run with `PLAYWRIGHT_CORE_DIR=<scratch>/pw PLAYWRIGHT_CHROMIUM=~/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell` (1234 also works). The page template scopes the bundle's top-level consts, so `__chip8` now also exports keyNames/keyCodes (dist rebuilt, goldens unchanged). Screenshot (scratch `shots/chip8_brix.png`, inspected): two panels, 'PlayTrain rasterizer' 256x256 and the 64x64 agent-obs preview, both showing brix letterboxed in the middle band: four rows of green bricks with one gap, the paddle below, score '01' top right, four lives dots top left, pure green on black; header 'score: 1 | lives: 1 | GAMEOVER' (brix loses its life at ~step 20 with Q held); the parity label 'exact dynamics vs Octax (Radji 2025, arXiv 2510.01764) ... 3aa53b5 . 7 documented caveats' and the overlay 'Q (key 4) moves the paddle left, E (key 6) right.' |
 | U09 report + docs | done | full suite `50 passed in 120s` with oracle + browser configured (G0-G8 in one run) | 67b1d8c (playtrain); playtrain-internal: `DSL ports design: CHIP-8 status log` | README.md written (what parity means, gate table, quirks, oracle recipe, speed, action space, adding a game). `playtrain-internal/docs/DSL_PORTS_DESIGN.md`: section 6 marked superseded (it planned a quirk-profile reference; Octax replaced it) and a 2026-09-19 status-log entry appended; that file was untracked in playtrain-internal and is now committed there on master. Memory note `chip8-loop.md` rewritten with the resume command and the facts that matter later. |
-| U10 human handoff | handoff | | | |
+| U10 human handoff | handoff | | | For the human. Play three games in a real browser (`node tools/build-pages.mjs --games examples/games/multifile/parity/chip8/dist --out /tmp/pages`, open `/tmp/pages/game/chip8_brix/index.html`, also tetris and blinky; keys 1234/QWER/ASDF/ZXCV) and confirm they feel like the Octax GIFs at 15 steps/s. Decide PLAN section 9: (1) observation last frame vs Octax's 4-frame stack (`frame_stack=4`); (2) ship cavern4a/4b (unloadable through Octax's create_environment; would need an oracle path that bypasses it); (3) ROM redistribution: Octax's MIT covers its four modified builds, the rest carry hobbyist authorship in the module metadata; (4) throughput 8-13k steps/s per QuickJS env: enough, or try the AOT tier? |
 
 Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 
@@ -91,3 +91,42 @@ G9, U07, this Mac (arm64, `benchmarks/bench_chip8.py`, qjs_host bench 20k steps;
 8 | U07 | tests/test_engine_gate.py, NativeVecEnv test in test_runtime.py, benchmarks/bench_chip8.py, PLAN section 6 corrected + Q5, Numbers table | G6 41 passed, G7 ok, G9 recorded
 9 | U08 | tests/browser_smoke.mjs + test_browser.py, __chip8.keyNames/keyCodes, dist rebuilt, pages built + screenshots inspected | G8 3 PASS
 10 | U09 | README.md, design-doc status log (playtrain-internal), memory note | 50 passed
+11 | (none) | no todo/in-progress unit left; summary written, STATUS DONE | -
+
+## Summary (2026-09-19, iteration 11)
+
+Octax's 22 CHIP-8 games are PlayTrain catalog games on branch `chip8`: 37 bundles
+(`chip8_<game>`, levels included) in `dist/`, each with a sidecar carrying its own
+action space, 4500-step budget and the reference pin. Parity is full-state lockstep
+against a live Octax (`riiswa/octax` @ 3aa53b5, jax 0.6.2): 111/111 trajectories over
+37 bundles x 3 seeds x 500 steps, every register, the stack, both timers, the keypad,
+the display hash, the rng key, score, reward, terminated and truncated, every step,
+past termination. Upstream of that: 193/193 opcode vectors recorded from Octax's own
+test-suite and 10,000 keys of threefry `split`/`randint`. Downstream: 222 goldens
+(6 seeds, checked without Python), dist freshness, 37/37 V8-vs-QuickJS byte-identical
+with observation hashes, runtime discovery + NativeVecEnv stepping, and headless-
+Chromium play of three games. `uv run --no-sync python -m pytest
+examples/games/multifile/parity/chip8/tests -q` = 50 passed with the oracle and
+browser configured (they skip, and only skip, without).
+
+What the reference turned out to be (all reproduced, none fixed; manifest
+`reference_quirks`): 16 of 22 games run with timers that underflow 0 -> 255 every
+step because `create_environment` defaults `disable_delay=False` and the decrement
+is uint8; every 8XYN writes VF; FX29 is uint8 arithmetic; BNNN jumps to
+`(NN + VX) & 0xFFF`; the stack has no bounds check; three ROM sha1s in Octax's
+metadata are wrong; cavern4a/4b cannot be loaded through Octax's API. PLAN sections
+2 and 6 were corrected from the live reference (U01, U07).
+
+Speed: 8.4k-13.2k steps/s per QuickJS env, 58k-116k on 20 envs / 10 threads, V8
+110k env-only. The cost is QuickJS interpreting 44 instructions per step, not
+rendering. No compiler was built (PLAN section 6 rule); the AOT question is the
+human's (section 9 Q5).
+
+Side effects outside the family: `examples/games/multifile/common/threefry2x32.js`
+(shared threefry core; craftax's `16_threefry.js` slimmed, three craftax-family
+manifests + bundles rebuilt, their tests green), `benchmarks/bench_chip8.py`, the
+vgdl branch committed as `0f341a0`, and `playtrain-internal/docs/DSL_PORTS_DESIGN.md`
+committed on master with a status-log entry.
+
+Left for the human (U10, PLAN section 9): observation stack default, cavern4a/4b,
+ROM redistribution, AOT tier. Nothing in the port blocks on them.
