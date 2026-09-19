@@ -228,3 +228,9 @@ cavern4b via an oracle path that builds OctaxEnv from the cavern module directly
 (3) keep the ROMs, add `roms/NOTICE.md` with per-ROM author, year, sha1 and Octax
 provenance. (5) measure the AOT tier on three bundles, change nothing either way. These
 became U11-U14 in section 8; (4) cavern4a/4b is (2).
+
+**Q5 measured (U14, 2026-09-19):** the existing AOT harness (`native/aotfork`, `qjsc -A`)
+runs chip8 bundles at 28.6k-34.6k steps/s per env, 2.5-2.7x the adopted QuickJS host and
+1.6x the fork interpreter, byte-identical to the V8 reference on 18/18 traces. Whether to
+adopt it for training is still the human's call (the fork host is a separate lineage from
+`qjs_host`); numbers in PROGRESS.md Numbers.

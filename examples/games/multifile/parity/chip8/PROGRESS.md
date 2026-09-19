@@ -73,6 +73,18 @@ G9, U07, this Mac (arm64, `benchmarks/bench_chip8.py`, qjs_host bench 20k steps;
 | wipe_off | 11,919 | 107,309 |
 | worm | 11,305 | 75,339 |
 
+### AOT tier (U14, measure only)
+
+`native/aotfork` L1 harness (ivankra QuickJS fork @ cee72b9, `qjsc -A` Futamura AOT), plain arms (no INTR, no PGO), same rasterizer, this Mac. Gate: V8 + wasm `reference_trace.mjs` vs each host, 300 steps, seeds 1 and 42, byte-identical stdout incl. obs hash; F1 stderr scanned for `Bytecode mismatch` (0 lines). Result: 18/18 PASS (3 games x 2 seeds x qjs_host, f0, f1). Bench: `bench 1 20000`, interleaved 3 reps, medians.
+
+| game | qjs_host (adopted) | f0 (fork interpreter) | f1 (qjsc -A) | f1 / qjs_host | f1 / f0 |
+|---|---|---|---|---|---|
+| chip8_brix | 12,058 | 18,895 | 31,439 | 2.61x | 1.66x |
+| chip8_tetris | 12,910 | 21,023 | 34,595 | 2.68x | 1.65x |
+| chip8_blinky | 11,635 | 17,694 | 28,645 | 2.46x | 1.62x |
+
+56 functions AOT-compiled per bundle. Build note: `build_fork.sh f0/f1` do not link `build/v8_ieee754.o` on this Mac (undefined `v8::base::ieee754::atan2` etc., pre-existing, not chip8-specific); worked around without editing the script by pointing the overridable `RA` at a scratch `libtool -static` archive of the rasterizer plus that object. Binaries live in `native/aotfork/out/` (untracked). Nothing in the runtime, hosts or engine was changed.
+
 ## Reference quirks found
 
 (Anything Octax does that a CHIP-8 reference manual would not predict, with the ROM and step where it was seen.)
