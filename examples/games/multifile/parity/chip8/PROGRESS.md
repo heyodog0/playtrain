@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 13
+ITERATION: 14
 BRANCH: chip8 (from vgdl @ 0f341a0)
-LAST_COMMIT: 63ee7a1
+LAST_COMMIT: 431d8dd
 
 ## Ledger
 
@@ -24,7 +24,7 @@ LAST_COMMIT: 63ee7a1
 | U10 human handoff | done | | | For the human. Play three games in a real browser (`node tools/build-pages.mjs --games examples/games/multifile/parity/chip8/dist --out /tmp/pages`, open `/tmp/pages/game/chip8_brix/index.html`, also tetris and blinky; keys 1234/QWER/ASDF/ZXCV) and confirm they feel like the Octax GIFs at 15 steps/s. Decide PLAN section 9: (1) observation last frame vs Octax's 4-frame stack (`frame_stack=4`); (2) ship cavern4a/4b (unloadable through Octax's create_environment; would need an oracle path that bypasses it); (3) ROM redistribution: Octax's MIT covers its four modified builds, the rest carry hobbyist authorship in the module metadata; (4) throughput 8-13k steps/s per QuickJS env: enough, or try the AOT tier?  Human answered 2026-09-19: last frame default; ship cavern4a/4b; keep ROMs + NOTICE; measure AOT only. -> U11-U14. Browser play-feel check not reported. |
 | U11 obs default docs | done | `golden ok (222)`, `dist/ fresh (37)`, `dist/chip8_brix.json obs.octax_frame_stack == 4`; pytest golden+fresh+runtime `5 passed` | 01845a3 | manifest `obs` = rgb 64 + `octax_frame_stack: 4` + note; `not_matched[1]` now states the decision and the caveat that the runtime's frame_stack=4 stacks consecutive step displays, not Octax's four intra-step frames (equal only when the display is static within a step); README says the same. Sidecars embed `obs`, so all 37 bundles' .json changed; the .js did not. |
 | U12 cavern4a/4b | done | `9/9 trajectories exact` (cavern4a, cavern4b, cavern1 x 3 seeds x 500 steps); full suite `52 passed` with 39 bundles; goldens 234 | 63ee7a1 | `tests/oracle.py --module cavern` takes the module as given and the ROM as `<env_id>.ch8` (build OctaxEnv exactly as create_environment would, minus its env_id regex). Defs carry `oracle_module: "cavern"` and `gate_oracle.mjs` forwards it. Test counts 37 -> 39 in test_lockstep, test_runtime, test_engine_gate. Under random play cavern4a/4b terminate at step 2-3 like cavern2+. |
-| U13 ROM NOTICE | todo | | | |
+| U13 ROM NOTICE | done | `2 passed` (notice fresh; all 39 .ch8 listed with current sha1) | 431d8dd | `tools/rom_notice.py [--check]` renders roms/NOTICE.md from manifest.json: file, sha1, bytes, game, title, authors, release, module, modified-by-Octax (cavern, spacejam, flight_runner, target_shooter), meta-sha1-ok. Provenance paragraph names the pinned commit, MIT for Octax's modified builds, per-ROM hobbyist authorship for the rest, and the removal procedure if an author objects. Not a legal review: the human's decision was keep + notice. |
 | U14 AOT measurement | todo | | | measure only; never change runtime/hosts/engine; blocked-with-reason is an acceptable outcome |
 
 Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
@@ -137,3 +137,4 @@ ROM redistribution, AOT tier. Nothing in the port blocks on them.
 12 | (human) | decisions on Q1-Q5 recorded; U11-U14 added; STATUS RUNNING again | -
 13 | U11 | manifest obs hint + not_matched wording, README, sidecars rebuilt | G4 222/222, G5 fresh
 14 | U12 | oracle --module, games/cavern4a|4b.json, gate forwards oracle_module, 39 bundles, 234 goldens, counts | G3 9/9, suite 52 passed
+15 | U13 | tools/rom_notice.py, roms/NOTICE.md, tests/test_rom_notice.py | 2 passed
