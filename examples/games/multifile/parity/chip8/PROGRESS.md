@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 11
+ITERATION: 12
 BRANCH: chip8 (from vgdl @ 0f341a0)
-LAST_COMMIT: 67b1d8c
+LAST_COMMIT: 01845a3
 
 ## Ledger
 
@@ -22,7 +22,7 @@ LAST_COMMIT: 67b1d8c
 | U08 browser smoke | done | `PASS chip8_brix / chip8_tetris / chip8_blinky` (steps advance at 15/s, the game's first keypad key taken, canvas colours exactly 000000 + 00ff00, overlay from the sidecar, no console errors); pytest `3 passed` (browser + fresh + golden); skips as `playwright-core not resolvable` without PLAYWRIGHT_CORE_DIR | b219cf0 | playwright-core 1.58.2 lives in the scratchpad (`npm i playwright-core@1.58` in `<scratch>/pw`); its own browser revision (headless_shell-1208) is not installed, so run with `PLAYWRIGHT_CORE_DIR=<scratch>/pw PLAYWRIGHT_CHROMIUM=~/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell` (1234 also works). The page template scopes the bundle's top-level consts, so `__chip8` now also exports keyNames/keyCodes (dist rebuilt, goldens unchanged). Screenshot (scratch `shots/chip8_brix.png`, inspected): two panels, 'PlayTrain rasterizer' 256x256 and the 64x64 agent-obs preview, both showing brix letterboxed in the middle band: four rows of green bricks with one gap, the paddle below, score '01' top right, four lives dots top left, pure green on black; header 'score: 1 | lives: 1 | GAMEOVER' (brix loses its life at ~step 20 with Q held); the parity label 'exact dynamics vs Octax (Radji 2025, arXiv 2510.01764) ... 3aa53b5 . 7 documented caveats' and the overlay 'Q (key 4) moves the paddle left, E (key 6) right.' |
 | U09 report + docs | done | full suite `50 passed in 120s` with oracle + browser configured (G0-G8 in one run) | 67b1d8c (playtrain); playtrain-internal: `DSL ports design: CHIP-8 status log` | README.md written (what parity means, gate table, quirks, oracle recipe, speed, action space, adding a game). `playtrain-internal/docs/DSL_PORTS_DESIGN.md`: section 6 marked superseded (it planned a quirk-profile reference; Octax replaced it) and a 2026-09-19 status-log entry appended; that file was untracked in playtrain-internal and is now committed there on master. Memory note `chip8-loop.md` rewritten with the resume command and the facts that matter later. |
 | U10 human handoff | done | | | For the human. Play three games in a real browser (`node tools/build-pages.mjs --games examples/games/multifile/parity/chip8/dist --out /tmp/pages`, open `/tmp/pages/game/chip8_brix/index.html`, also tetris and blinky; keys 1234/QWER/ASDF/ZXCV) and confirm they feel like the Octax GIFs at 15 steps/s. Decide PLAN section 9: (1) observation last frame vs Octax's 4-frame stack (`frame_stack=4`); (2) ship cavern4a/4b (unloadable through Octax's create_environment; would need an oracle path that bypasses it); (3) ROM redistribution: Octax's MIT covers its four modified builds, the rest carry hobbyist authorship in the module metadata; (4) throughput 8-13k steps/s per QuickJS env: enough, or try the AOT tier?  Human answered 2026-09-19: last frame default; ship cavern4a/4b; keep ROMs + NOTICE; measure AOT only. -> U11-U14. Browser play-feel check not reported. |
-| U11 obs default docs | todo | | | |
+| U11 obs default docs | done | `golden ok (222)`, `dist/ fresh (37)`, `dist/chip8_brix.json obs.octax_frame_stack == 4`; pytest golden+fresh+runtime `5 passed` | 01845a3 | manifest `obs` = rgb 64 + `octax_frame_stack: 4` + note; `not_matched[1]` now states the decision and the caveat that the runtime's frame_stack=4 stacks consecutive step displays, not Octax's four intra-step frames (equal only when the display is static within a step); README says the same. Sidecars embed `obs`, so all 37 bundles' .json changed; the .js did not. |
 | U12 cavern4a/4b | todo | | | oracle needs a `--module` path; create_environment cannot load these env_ids |
 | U13 ROM NOTICE | todo | | | |
 | U14 AOT measurement | todo | | | measure only; never change runtime/hosts/engine; blocked-with-reason is an acceptable outcome |
@@ -135,3 +135,4 @@ committed on master with a status-log entry.
 Left for the human (U10, PLAN section 9): observation stack default, cavern4a/4b,
 ROM redistribution, AOT tier. Nothing in the port blocks on them.
 12 | (human) | decisions on Q1-Q5 recorded; U11-U14 added; STATUS RUNNING again | -
+13 | U11 | manifest obs hint + not_matched wording, README, sidecars rebuilt | G4 222/222, G5 fresh
