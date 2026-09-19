@@ -1,0 +1,20 @@
+{
+ "brix/seed42": "501:22:5b01cc3e6039f8db",
+ "brix/seed7": "501:20:b5e1e23f64dcdb4b",
+ "brix/seed3": "501:22:367a99b58f63c2b7",
+ "brix/seed11": "501:20:59abca1a6c01208e",
+ "brix/seed19": "501:22:2c87ccade3480974",
+ "brix/seed23": "501:41:7e7e1d350548c4df",
+ "pong/seed42": "501:240:f1c59929b1354e60",
+ "pong/seed7": "501:355:d1387fa7e9e43863",
+ "pong/seed3": "501:356:49c195d1c2769c74",
+ "pong/seed11": "501:240:a8374e7b40faaa38",
+ "pong/seed19": "501:331:b82088dd48a36f97",
+ "pong/seed23": "501:240:d01a9f9eb324a622",
+ "tetris/seed42": "501:-1:91180a39967e3cee",
+ "tetris/seed7": "501:-1:9808c2eb8cd68254",
+ "tetris/seed3": "501:-1:1ea5707162a0e037",
+ "tetris/seed11": "501:-1:a1ea480f8d05cd1e",
+ "tetris/seed19": "501:-1:eac41af7dff05c35",
+ "tetris/seed23": "501:-1:f118a7743b265400"
+}
