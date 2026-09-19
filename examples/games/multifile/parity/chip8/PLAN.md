@@ -1,0 +1,199 @@
+# PLAN — CHIP-8 on PlayTrain, with Octax as the reference
+
+Octax (Radji, 2025; arXiv 2510.01764) is a JAX CHIP-8 emulator plus 22 arcade
+games with reward and termination read from CPU registers. This port makes the
+same games ordinary PlayTrain catalog games: one JS file each, human-playable in
+a browser, bit-exact against Octax at every step, on every PlayTrain backend.
+"Octax on PlayTrain": same ROMs, same rewards, same episode semantics, but a
+CPU-side substrate people can play, with the parity manifest the VGDL family has.
+
+Written 2026-09-19 from the VGDL port (`../vgdl/`, `playtrain-internal/docs/DSL_PORTS_DESIGN.md`).
+Its lessons are section 7; read them before section 8.
+
+## 1. Reference pins
+
+| what | value |
+|---|---|
+| repo | https://github.com/riiswa/octax |
+| commit | `3aa53b516152e97f2ed91eae6e33b6ee9a97596b` (branch main, cloned 2026-09-19) |
+| license | MIT (code). ROMs: mixed hobbyist / public-domain, per-ROM authorship in each `octax/environments/<game>.py` `metadata`; four ROMs (cavern, spacejam, flightrunner, target_shooter) are Octax's own modified builds with `.8o` sources in `roms/` |
+| engine | `octax/emulator.py`, `octax/instructions/*.py`, `octax/state.py` |
+| env | `octax/env.py` (`OctaxEnv`), game defs `octax/environments/*.py` |
+| python | 3.10-3.13, JAX CPU is enough for the oracle |
+
+## 2. Reference semantics (what "exact" means here)
+
+From `octax/env.py` and `octax/instructions/`. The oracle in U01 confirms each line
+before any JS is written; any line the oracle contradicts is corrected here first.
+
+**Reset.** `create_state(PRNGKey(0))`: 4 KB memory zeroed, font at 0x50, ROM at
+0x200, pc 0x200, I 0, V zero, 16-entry uint16 stack, display 64x32 bool, timers 0,
+keypad clear, `modern_mode=True`. Then `startup_instructions` (per game, 0 to
+13,800) run with no keys, using that PRNGKey(0). Then `reset(rng)` REPLACES the
+rng with the caller's `PRNGKey(seed)`; the startup randomness is therefore always
+the seed-0 stream and the episode randomness the caller's. Score baseline = the
+game's `score_fn` after startup.
+
+**Step.** Press key `action_set[a]` (the last action index is NOOP: no key).
+Run `instructions_per_step * frame_skip` = `(700 // 60) * 4` = **44 instructions**.
+Timers: if the game sets `disable_delay = True`, delay and sound timers are ZEROED
+after the 44 instructions; otherwise each is decremented by 1 ONCE per step (not
+per 60 Hz frame). Release the key. Observation = the display after instruction
+11, 22, 33, 44 (a 4-frame stack of the single frame every 11 instructions).
+Reward = `score_fn(after) - score_fn(before)`. Terminated = `terminated_fn`.
+Truncated at `time >= 4500` steps. There is no win state.
+
+**Opcodes (modern_mode).** 8XY6/8XYE shift VX itself (not VY) and put the shifted
+bit in VF; BNNN jumps to `NN + V[X]` (the "BXNN" quirk); FX55/FX65 leave I
+unchanged (check `misc.py` `modern_mode` branches); DXYN wraps the START
+coordinate (`% 64`, `% 32`) and CLIPS the sprite at the edges, VF = any pixel
+turned off; FX1E sets VF when I overflows 0xFFF and masks I; FX0A rewinds pc by 2
+until any key is down, then loads the LOWEST pressed key index; CXNN draws
+`jax.random.randint(subkey, 0, 256, uint8) & NN` after `split(state.rng)`, so the
+random stream is JAX threefry2x32 keyed by the episode seed; 00E0 clears; 00EE
+pops; undefined opcodes are no-ops; arithmetic is uint8 wraparound with VF set
+per `alu.py`. Stack has no overflow check in the reference; mirror that.
+
+**Games.** 22 environment modules; levelled games (cavern 1-6, space_flight 1-10,
+target_shooter 1-3) take the level in the ROM name. Reward and termination are
+small register expressions (e.g. brix: score `V5`, terminated `V14 == 4`; pong:
+score `V14 // 10 - V14 % 10`, terminated `V14 // 10 == 9 or V14 % 10 == 9`;
+shooting_stars: a `lax.cond` on `V0 > 128`; airplane: `-V11 - V12`). They are
+transcribed by hand into `games/<game>.json` (U04) and checked by the lockstep gate,
+not trusted.
+
+## 3. Architecture (mirrors `../vgdl/`)
+
+```
+parity/chip8/
+  manifest.json           family manifest: Octax pin, per-game rewards/actions/ROM sha1, not_matched
+  PLAN.md PROGRESS.md LOOP.md
+  roms/                   the .ch8 files, copied from the pinned Octax commit, sha1-verified against its metadata
+  games/<game>.json       per-game def transcribed from octax/environments/<game>.py: rom, action_set,
+                          startup_instructions, disable_delay, score, terminated, human keymap, authorship
+  src/
+    10_threefry.js        JAX threefry2x32 + split + randint(uint8), extended from
+                          ../craftax_classic/src/16_threefry.js (move the shared core to ../../common/ in U03)
+    20_cpu.js             the CPU: Uint8Array(4096) memory, V, I, pc, stack, timers, keypad, Uint8Array(2048) display
+    30_env.js             Octax step semantics: press, 44 instructions, timers, release, score/terminated
+    90_prelude.js         PlayTrain contract; drawTiles(display as Uint16 kinds, 2-entry palette); gate hooks __chip8
+  tools/bundle_chip8.mjs  one game -> dist/chip8_<game>.js (+ sidecar), ROM inlined as base64; bundle_all.mjs
+  tests/
+    oracle.py             Octax driver: same ROM, seed, actions -> per-step full state dump (JSON)
+    gate_oracle.mjs       lockstep gate, every step, every field
+    vectors/              opcode vectors generated from Octax's own tests/ (U02)
+    golden.mjs golden.json
+    test_*.py             pytest: freshness, goldens, lockstep (skips w/o oracle), cross-engine gate, runtime, browser
+  dist/                   GENERATED, committed
+```
+
+One PlayTrain `draw()` = one Octax step (44 instructions, 4 frames). Observation is
+the final frame; Octax's 4-frame stack is `not_matched` at the pixel level and
+recoverable with the runtime's `frame_stack=4` in grayscale. `max_steps = 4500`
+in the sidecar. Reward = score delta via `getGameState().score`; terminated ->
+`gameState = 'GAMEOVER'`; there is no `WIN`.
+
+**Action space.** Per game: `action_set` keys then NOOP last, exactly Octax's
+index order, so a policy trained in either transfers. Sidecar `actions` carry
+`held` browser key codes for the CHIP-8 keypad in the conventional layout
+(1 2 3 C / 4 5 6 D / 7 8 9 E / A 0 B F -> keys 1 2 3 4 / Q W E R / A S D F / Z X C V);
+`human.controls` names the game's keys in that layout.
+
+**Render.** `drawTiles(kinds, 64, 32, palette, 1, 2, x, y, w, h)` with `kinds` the
+display as Uint16 0/1 and a two-colour palette, one host call per frame.
+Colours from Octax's `classic` scheme (`rendering.py`); the browser display uses
+the same. Pixels are `not_matched` (Octax scales 8x; PlayTrain fits a 64x32 image
+into 64x64, letterboxed).
+
+## 4. Gates, in the order they must go green
+
+| gate | what it proves | file |
+|---|---|---|
+| G0 oracle | Octax runs locally under `uv`; dumps full state per step for brix, 100 steps | `tests/oracle.py` |
+| G1 opcode vectors | every instruction test in Octax's `tests/` reproduced by the JS CPU | `tests/vectors/`, `tests/test_cpu.py` |
+| G2 randint | `threefryRandint8(key, n)` matches `jax.random.randint(..., 0, 256, uint8)` for 10k keys | `tests/test_threefry.py` |
+| G3 lockstep | for every game, level, 3 seeds, 500 steps: identical `pc, I, V[0..15], sp, stack, delay, sound, keypad, display sha1, score, terminated` every step | `tests/gate_oracle.mjs`, `test_lockstep.py` |
+| G4 goldens | committed per-run hashes of G3's runs, checked without Python | `tests/golden.mjs`, `test_golden.py` |
+| G5 freshness | `dist/` is what `bundle_all.mjs` produces | `test_bundle_fresh.py` |
+| G6 cross-engine | `native/gate_qjs.sh` over all bundles with the per-game action table | `test_engine_gate.py` |
+| G7 runtime | discoverable by name, sidecar honoured, `NativeVecEnv` steps | `test_runtime.py` |
+| G8 browser | headless Chromium plays three games (skips without playwright) | `tests/browser_smoke.mjs`, `test_browser.py` |
+| G9 throughput | steps/s per game on QuickJS, 1 env and 20 env / 10 thr, recorded in PROGRESS.md | `benchmarks/` row |
+
+The "full state every step" rule is G3's whole value. Score-only gates passed a
+frozen VGDL game for a week.
+
+## 5. Not matched (write these into `manifest.json` in U05)
+
+- pixels: 8x scaled 64x32 vs a 64x32 image fitted into PlayTrain's 64x64 frame; frame stack of 4 vs last frame
+- the reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)
+- Octax's `render()` colour schemes other than `classic`
+- anything a ROM does with sound (the sound timer is emulated, nothing is played)
+
+## 6. Speed expectation
+
+44 instructions per step is roughly 2,000 interpreted operations, plus one
+`drawTiles` call. On the VGDL numbers that is 60 to 120k steps/s per core on
+QuickJS before any tuning. If G9 lands below 50k, profile before changing anything;
+the likely cost is the per-instruction decode, fixable with a 16-way switch on the
+high nibble and typed-array state, not a compiler. Do not build a compiler.
+
+## 7. Lessons from the VGDL port that bind here
+
+1. **Run the reference the way its authors ran it, and check the configuration
+   with an experiment, not a reading.** VGDL's gate passed at block size 1 while
+   every fractional-speed sprite was frozen. Here: confirm 44 instructions per
+   step, the timer rule, the key press/release timing and the seed-0 startup by
+   printing them from a live Octax env in G0 before writing JS.
+2. **The corpus is the reference's corpus, verified by hash.** The vgdl-metagen
+   "fMRI" games were re-dialected copies. Copy ROMs from the pinned Octax commit
+   and check each sha1 against the `metadata.roms` key in its game module.
+3. **Full-state lockstep, then JS-vs-JS goldens, then everything else.** State
+   includes every register and the display. Six seeds for the JS-vs-JS check;
+   the goldens' three seeds missed a frozen-missile bug the oracle caught.
+4. **The reference's RNG is part of the spec.** VGDL needed a bit-exact MT19937
+   and Python 2's `choice`; here it is JAX threefry and `randint`. Craftax already
+   has the block function in `../craftax_classic/src/16_threefry.js`; extend, do
+   not rewrite.
+5. **Interpreter first, measure, then decide.** The VGDL compile pass bought 7 to
+   25 percent because dispatch was not the bottleneck. A CHIP-8 step is 44
+   instructions; the interpreter will be fast enough. G9 decides, not intuition.
+6. **Sidecars carry the per-game action space, and every gate must be told about
+   it.** `gate_qjs.sh` needs `PLAYTRAIN_ACTION_SPACE` and `PLAYTRAIN_QJS_ACTIONS`
+   (JSON); `NativeVecEnv` reads the sidecar; the browser page reads it for the
+   keymap. Forgetting one produced a day of false divergences.
+7. **Name every function the emitter or a table might reference.** Anonymous
+   arrows have no `.name`; that produced a silent no-op once.
+8. **Keep the reference's quirks and document them in `manifest.json`
+   `not_matched` or `reference_quirks`.** Do not fix Octax; if a ROM behaves
+   oddly under Octax, that is the behaviour to match, with a note.
+9. **`uv run --no-sync` in the playtrain repo; a separate `uv venv` for the
+   oracle.** A bare `uv run` once rewrote the lockfile.
+10. **Never edit `dist/`; never weaken a gate; one task per iteration; commit
+    only green gates.**
+
+## 8. Units
+
+Branch: `chip8`, created from `vgdl` after U00. The VGDL branch holds the
+`drawTiles` primitive and the rebuilt hosts this port needs; both are uncommitted
+at the time of writing.
+
+| unit | task | done when |
+|---|---|---|
+| U00 | Commit the `vgdl` branch: everything under `examples/games/multifile/parity/vgdl/`, `crates/rasterizer/src/tiles.rs` + `lib.rs` + `three.rs`, `native/runtime/p5.*`, the four host `.cpp`, `aot_intr_list.h`, `runtime/action_spaces.json`, `runtime/p5/{p5-shim,raster-wasm}.mjs`, `runtime/p5/rasterizer.wasm`. NOT the pre-existing `reproduction/*` and `REPRODUCING.md` edits, which belong to another branch. Then `git checkout -b chip8`. | `git status` clean except `reproduction/*`, `REPRODUCING.md`, `native/aotfork/out/`, `examples/games/js/analogen_*`; `uv run --no-sync pytest examples/games/multifile/parity/vgdl/tests -q` green |
+| U01 | Scaffold + oracle: directory tree from section 3, `manifest.json` with the pinned commit, `roms/` copied and sha1-verified, `uv venv` for the oracle with `jax[cpu]` and the Octax checkout on `sys.path`, `tests/oracle.py` dumping per-step full state and the reset/step constants it observes (instructions per step, timer rule, key timing, startup rng) | G0: `oracle.py roms/Brix*.ch8 --game brix --seed 1 --actions 1,0,1,2 --json` prints 5 states; section 2 corrected if anything differs |
+| U02 | CPU core `src/20_cpu.js` + opcode vectors generated from Octax's `tests/test_*.py` via a small Python exporter into `tests/vectors/*.json` | G1 green: every vector's post-state matches |
+| U03 | `src/10_threefry.js`: split + `randint` uint8 over the shared threefry core (move the block function to `../../common/threefry2x32.js`, keep craftax's tests green) | G2 green; `uv run --no-sync pytest examples/games/multifile/parity/craftax_classic/tests/test_rng.py -q` still green |
+| U04 | `src/30_env.js` + `games/*.json` for brix, pong, tetris; lockstep gate script | G3 green on those three games, 3 seeds, 500 steps |
+| U05 | Prelude, `drawTiles` render, bundler + sidecars (per-game action space, keypad codes, human controls), `bundle_all.mjs --check`, goldens, `manifest.json` `not_matched` | G4, G5 green; `list_available_games()` shows `chip8_brix` |
+| U06 | All 22 games and their levels: transcribe the remaining `games/*.json`; run G3 over everything | G3 green for every game/level; any Octax quirk found is in `manifest.json` |
+| U07 | Cross-engine gate + runtime tests + benchmark row (`benchmarks/`, following the VGDL row) | G6, G7, G9 green; numbers in PROGRESS.md |
+| U08 | Browser: build-pages smoke via playwright, keymap overlay from sidecar | G8 green; screenshot inspected and described in PROGRESS.md |
+| U09 | Report: `README.md` for the family (what parity means, how to run the oracle, the numbers), status log in `playtrain-internal/docs/DSL_PORTS_DESIGN.md`, memory note | files written; all gates green in one `uv run --no-sync pytest examples/games/multifile/parity/chip8/tests -q` |
+| U10 | handoff: play three games in a real browser and confirm they feel like the Octax GIFs; decide whether the 4-frame stack should be the default observation | notes for the human in PROGRESS.md |
+
+## 9. Open questions for the human (do not block on them)
+
+1. Observation: last frame (PlayTrain default) or Octax's 4-frame stack via `frame_stack=4`? Affects any "same as Octax" training claim.
+2. Which of the 48 ROMs to ship: Octax's 22 game modules plus their levels, or every `.ch8` in `roms/`?
+3. ROM redistribution: Octax ships them under MIT for its modified ones and lists authorship for the rest; confirm that is acceptable for the PlayTrain repo.
