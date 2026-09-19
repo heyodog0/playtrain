@@ -37,25 +37,38 @@ game's `score_fn` after startup.
 **Step.** Press key `action_set[a]` (the last action index is NOOP: no key).
 Run `instructions_per_step * frame_skip` = `(700 // 60) * 4` = **44 instructions**.
 Timers: if the game sets `disable_delay = True`, delay and sound timers are ZEROED
-after the 44 instructions; otherwise each is decremented by 1 ONCE per step (not
-per 60 Hz frame). Release the key. Observation = the display after instruction
-11, 22, 33, 44 (a 4-frame stack of the single frame every 11 instructions).
-Reward = `score_fn(after) - score_fn(before)`. Terminated = `terminated_fn`.
-Truncated at `time >= 4500` steps. There is no win state.
+after the 44 instructions; otherwise each becomes `max(t - 1, 0)` **in uint8**, so a
+timer at 0 becomes 255 (confirmed live in U01: tetris sound 0 -> 255 -> 254, delay
+0 -> 255). `create_environment` defaults `disable_delay` to **False**; only brix,
+pong, shooting_stars, spacejam, tank and vertical_brix set True, so 16 of 22 games
+run with the underflowing timers. Release the key. Observation = the display after
+instruction 11, 22, 33, 44 (a 4-frame stack of the single frame every 11
+instructions). Reward = `score_fn(after) - score_fn(before)`. Terminated =
+`terminated_fn`. Truncated at `time >= 4500` steps. There is no win state. Octax
+keeps stepping after terminated; the oracle records that too (`--no-stop`).
 
 **Opcodes (modern_mode).** 8XY6/8XYE shift VX itself (not VY) and put the shifted
-bit in VF; BNNN jumps to `NN + V[X]` (the "BXNN" quirk); FX55/FX65 leave I
-unchanged (check `misc.py` `modern_mode` branches); DXYN wraps the START
-coordinate (`% 64`, `% 32`) and CLIPS the sprite at the edges, VF = any pixel
-turned off; FX1E sets VF when I overflows 0xFFF and masks I; FX0A rewinds pc by 2
-until any key is down, then loads the LOWEST pressed key index; CXNN draws
-`jax.random.randint(subkey, 0, 256, uint8) & NN` after `split(state.rng)`, so the
-random stream is JAX threefry2x32 keyed by the episode seed; 00E0 clears; 00EE
-pops; undefined opcodes are no-ops; arithmetic is uint8 wraparound with VF set
-per `alu.py`. Stack has no overflow check in the reference; mirror that.
+bit in VF; **every 8XYN writes VF**: 8XY0-8XY3 and the undefined N set VF = 0, and
+when X == F the flag overwrites the result (U01, `alu.py execute_alu_operation`);
+BNNN jumps to `(NN + V[X]) & 0xFFF` (the "BXNN" quirk: into the low page, never
+NNN + V0); FX55/FX65 leave I unchanged (`misc.py` `modern_mode` branches); DXYN wraps
+the START coordinate (`% 64`, `% 32`) and CLIPS the sprite at the edges, VF =
+`any(display & sprite)`; FX1E computes `I + VX` in uint16, sets VF when the sum
+exceeds 0xFFF and masks I; FX29 computes `0x50 + VX * 5` **in uint8** (VX = 60 gives
+I = 124, not 380); FX0A rewinds pc by 2 until any key is down, then loads the
+LOWEST pressed key index; CXNN draws `jax.random.randint(subkey, 0, 256, uint8) & NN`
+after `split(state.rng)`, so the random stream is JAX threefry2x32 keyed by the
+episode seed, with `jax_threefry_partitionable=True` (JAX 0.6.2, the oracle venv);
+00E0 clears; 00EE pops; every other 0NNN and every undefined opcode is a no-op;
+arithmetic is uint8 wraparound with VF set per `alu.py`. The stack has no bounds
+check: the 17th push is dropped but the pointer still increments; a pop at pointer
+0 reads and zeroes `stack[15]` and leaves pointer -1. `fetch` clamps out-of-range
+memory reads and pc is an unmasked uint16. Mirror all of it.
 
-**Games.** 22 environment modules; levelled games (cavern 1-6, space_flight 1-10,
-target_shooter 1-3) take the level in the ROM name. Reward and termination are
+**Games.** 22 environment modules; levelled games (cavern 1,2,3,5,6 (4a/4b exist as
+ROMs but `create_environment` needs a trailing digit), space_flight 1-10,
+target_shooter 1-3) take the level in the ROM name. `deep` and `vertical_brix` use a
+`custom_startup` function instead of a count. Reward and termination are
 small register expressions (e.g. brix: score `V5`, terminated `V14 == 4`; pong:
 score `V14 // 10 - V14 % 10`, terminated `V14 // 10 == 9 or V14 % 10 == 9`;
 shooting_stars: a `lax.cond` on `V0 > 128`; airplane: `-V11 - V12`). They are
@@ -68,7 +81,7 @@ not trusted.
 parity/chip8/
   manifest.json           family manifest: Octax pin, per-game rewards/actions/ROM sha1, not_matched
   PLAN.md PROGRESS.md LOOP.md
-  roms/                   the .ch8 files, copied from the pinned Octax commit, sha1-verified against its metadata
+  roms/                   the .ch8 files, copied from the pinned Octax commit, sha1 recorded in manifest.json
   games/<game>.json       per-game def transcribed from octax/environments/<game>.py: rom, action_set,
                           startup_instructions, disable_delay, score, terminated, human keymap, authorship
   src/
@@ -147,7 +160,8 @@ high nibble and typed-array state, not a compiler. Do not build a compiler.
    printing them from a live Octax env in G0 before writing JS.
 2. **The corpus is the reference's corpus, verified by hash.** The vgdl-metagen
    "fMRI" games were re-dialected copies. Copy ROMs from the pinned Octax commit
-   and check each sha1 against the `metadata.roms` key in its game module.
+   and record each file's sha1 in `manifest.json`; the `metadata.roms` keys in the
+   game modules are not reliable (U01 found three plain mismatches).
 3. **Full-state lockstep, then JS-vs-JS goldens, then everything else.** State
    includes every register and the display. Six seeds for the JS-vs-JS check;
    the goldens' three seeds missed a frozen-missile bug the oracle caught.
@@ -181,7 +195,7 @@ at the time of writing.
 | unit | task | done when |
 |---|---|---|
 | U00 | Commit the `vgdl` branch: everything under `examples/games/multifile/parity/vgdl/`, `crates/rasterizer/src/tiles.rs` + `lib.rs` + `three.rs`, `native/runtime/p5.*`, the four host `.cpp`, `aot_intr_list.h`, `runtime/action_spaces.json`, `runtime/p5/{p5-shim,raster-wasm}.mjs`, `runtime/p5/rasterizer.wasm`. NOT the pre-existing `reproduction/*` and `REPRODUCING.md` edits, which belong to another branch. Then `git checkout -b chip8`. | `git status` clean except `reproduction/*`, `REPRODUCING.md`, `native/aotfork/out/`, `examples/games/js/analogen_*`; `uv run --no-sync pytest examples/games/multifile/parity/vgdl/tests -q` green |
-| U01 | Scaffold + oracle: directory tree from section 3, `manifest.json` with the pinned commit, `roms/` copied and sha1-verified, `uv venv` for the oracle with `jax[cpu]` and the Octax checkout on `sys.path`, `tests/oracle.py` dumping per-step full state and the reset/step constants it observes (instructions per step, timer rule, key timing, startup rng) | G0: `oracle.py roms/Brix*.ch8 --game brix --seed 1 --actions 1,0,1,2 --json` prints 5 states; section 2 corrected if anything differs |
+| U01 | Scaffold + oracle: directory tree from section 3, `manifest.json` with the pinned commit, `roms/` copied and sha1-verified against the pinned commit's files (the `metadata.roms` hashes are wrong for flight_runner, spacejam, worm and every levelled game, so the file bytes are the reference), `uv venv` for the oracle with `jax[cpu]` and the Octax checkout on `sys.path`, `tests/oracle.py` dumping per-step full state and the reset/step constants it observes (instructions per step, timer rule, key timing, startup rng) | G0: `oracle.py roms/Brix*.ch8 --game brix --seed 1 --actions 1,0,1,2 --json` prints 5 states; section 2 corrected if anything differs |
 | U02 | CPU core `src/20_cpu.js` + opcode vectors generated from Octax's `tests/test_*.py` via a small Python exporter into `tests/vectors/*.json` | G1 green: every vector's post-state matches |
 | U03 | `src/10_threefry.js`: split + `randint` uint8 over the shared threefry core (move the block function to `../../common/threefry2x32.js`, keep craftax's tests green) | G2 green; `uv run --no-sync pytest examples/games/multifile/parity/craftax_classic/tests/test_rng.py -q` still green |
 | U04 | `src/30_env.js` + `games/*.json` for brix, pong, tetris; lockstep gate script | G3 green on those three games, 3 seeds, 500 steps |

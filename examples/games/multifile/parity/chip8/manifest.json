@@ -1,0 +1,812 @@
+{
+  "name": "chip8",
+  "version": "0.1.0",
+  "title": "CHIP-8 (Octax parity family)",
+  "kind": "family",
+  "note": "One CPU, 22 games. tools/bundle_chip8.mjs bundles src/*.js with one games/<game>.json and its ROM (base64) into dist/chip8_<game>.js plus a dist/chip8_<game>.json sidecar; tools/bundle_all.mjs does every game. Edit src/, games/ and roms/ never; dist/ is generated.",
+  "action_space": "per game: action_set keys in Octax index order, then NOOP last (sidecar)",
+  "max_steps": 4500,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 15,
+    "controls": "CHIP-8 keypad 1 2 3 C / 4 5 6 D / 7 8 9 E / A 0 B F on keys 1 2 3 4 / Q W E R / A S D F / Z X C V; each game names its keys in its sidecar.",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "Octax (Radji 2025, arXiv 2510.01764): JAX CHIP-8 emulator + 22 arcade games with register-read rewards",
+    "repo": "https://github.com/riiswa/octax",
+    "branch": "main",
+    "commit": "3aa53b516152e97f2ed91eae6e33b6ee9a97596b",
+    "cloned": "2026-09-19",
+    "license": "MIT (code); ROMs per-game authorship in each module metadata, four are Octax-modified builds with .8o sources",
+    "engine": [
+      "octax/emulator.py",
+      "octax/instructions/*.py",
+      "octax/state.py",
+      "octax/stack.py",
+      "octax/decode.py"
+    ],
+    "env": "octax/env.py OctaxEnv, constructed as octax/environments/__init__.py create_environment does (disable_delay defaults False there)",
+    "oracle_python": "3.12.9",
+    "oracle_jax": "0.6.2",
+    "oracle_flax": "0.10.7",
+    "oracle_numpy": "2.2.6",
+    "oracle_jax_threefry_partitionable": true,
+    "step_semantics": "press action_set[a] (a == len(action_set) is NOOP); run (700 // 60) * 4 = 44 instructions; timers: zeroed if disable_delay else max(t - 1, 0) in uint8 (0 becomes 255); release the key; reward = score_fn(after) - score_fn(before); terminated = terminated_fn(after); truncated at time >= 4500. Startup instructions run once on PRNGKey(0); reset(rng) then replaces rng with PRNGKey(seed).",
+    "parity": "full state every step: pc, I, V[0..15], stack pointer, stack[0..15], delay, sound, keypad[0..15], display sha1 (64x32 bools, x-major, packbits), rng key data, score, reward, terminated, truncated; same ROM bytes, seed and action sequence; tests/gate_oracle.mjs vs tests/oracle.py",
+    "not_matched": [
+      "(filled in U05)"
+    ]
+  },
+  "roms": {
+    "Airplane.ch8": {
+      "sha1": "fca71182a8838b686573e69b22aff945d79fe1d0",
+      "bytes": 356
+    },
+    "Blinky [Hans Christian Egeberg, 1991].ch8": {
+      "sha1": "d40abc54374e4343639f993e897e00904ddf85d9",
+      "bytes": 2356
+    },
+    "Brix [Andreas Gustafsson, 1990].ch8": {
+      "sha1": "f13766c14aeb02ad8d4d103cb5eadd282d20cddc",
+      "bytes": 280
+    },
+    "cavern1.ch8": {
+      "sha1": "f57c4583709022859bb7ba90cf7fc449bfaa5b26",
+      "bytes": 3232
+    },
+    "cavern2.ch8": {
+      "sha1": "ae59d229d6de5762549bf9bf52c23d7fa39372c7",
+      "bytes": 3232
+    },
+    "cavern3.ch8": {
+      "sha1": "df5e840c8db7acc6f63860246393ea2b8e2d3158",
+      "bytes": 3232
+    },
+    "cavern4a.ch8": {
+      "sha1": "4489020dfcd1bdc999ee68426e5af70f1901fd7a",
+      "bytes": 3232
+    },
+    "cavern4b.ch8": {
+      "sha1": "579846ee7e4e2175740c96bab15151b77502bda3",
+      "bytes": 3232
+    },
+    "cavern5.ch8": {
+      "sha1": "03364866435733eb77d9771dbaffea29c691c270",
+      "bytes": 3232
+    },
+    "cavern6.ch8": {
+      "sha1": "f918e843647154d0ee4ae1d900592f521d6def2c",
+      "bytes": 3232
+    },
+    "Deep8 (by John Earnest)(2014).ch8": {
+      "sha1": "b41cc0b5b2faabafd532d705b804abb3e8f97baf",
+      "bytes": 510
+    },
+    "Filter.ch8": {
+      "sha1": "ae71a7b081a947f1760cdc147759803aea45e751",
+      "bytes": 198
+    },
+    "flightrunner.ch8": {
+      "sha1": "8ca4c0cdaceb9c9e135f0a56e88adaf588e71b34",
+      "bytes": 307
+    },
+    "Missile [David Winter].ch8": {
+      "sha1": "0d0cc129dad3c45ba672f85fec71a668232212cc",
+      "bytes": 180
+    },
+    "Pong (1 player).ch8": {
+      "sha1": "607c4f7f4e4dce9f99d96b3182bfe7e88bb090ee",
+      "bytes": 246
+    },
+    "Rocket [Joseph Weisbecker, 1978].ch8": {
+      "sha1": "3d1d029d6e31206d245c0ba881c0d1f003953bad",
+      "bytes": 130
+    },
+    "Shooting Stars [Philip Baltzer, 1978].ch8": {
+      "sha1": "443550abf646bc7f475ef0466f8e1232ec7474f3",
+      "bytes": 204
+    },
+    "space_flight1.ch8": {
+      "sha1": "1086fe15b4608581c8715618f303af911813dc8e",
+      "bytes": 431
+    },
+    "space_flight2.ch8": {
+      "sha1": "b5de356579b3b4e83769ff21c734a0de4a57e40c",
+      "bytes": 431
+    },
+    "space_flight3.ch8": {
+      "sha1": "f68a294a869828abf2a5f77a42cf2aa40377e742",
+      "bytes": 431
+    },
+    "space_flight4.ch8": {
+      "sha1": "17332012fbe8840277c4b01162746906ef29633f",
+      "bytes": 431
+    },
+    "space_flight5.ch8": {
+      "sha1": "05e8e285872740154d60f3743e5a64a9f8c1d6c3",
+      "bytes": 431
+    },
+    "space_flight6.ch8": {
+      "sha1": "e8510d6c4ea1180f9c5dc2fcd1372518ae7f539e",
+      "bytes": 431
+    },
+    "space_flight7.ch8": {
+      "sha1": "dc70a389b9a47bbb125e11fc2b2751ce1a7a87e1",
+      "bytes": 431
+    },
+    "space_flight8.ch8": {
+      "sha1": "7f14117b1e138707ebf80ae9c5bd571d1ca46dde",
+      "bytes": 431
+    },
+    "space_flight9.ch8": {
+      "sha1": "6e73aec0c742fb20e057852cfce7f83b808e4fdb",
+      "bytes": 431
+    },
+    "space_flight10.ch8": {
+      "sha1": "621dc9c9e7ecafc00ad73f5d3421407ae7b12be2",
+      "bytes": 431
+    },
+    "spacejam.ch8": {
+      "sha1": "8d7fd91cefb8dcbd9faa270e6f39fbab73713f5b",
+      "bytes": 861
+    },
+    "Squash [David Winter].ch8": {
+      "sha1": "a58ec7cc63707f9e7274026de27c15ec1d9945bd",
+      "bytes": 211
+    },
+    "Submarine [Carmelo Cortez, 1978].ch8": {
+      "sha1": "89aadf7c28bcd1c11e71ad9bd6eeaf0e7be474f3",
+      "bytes": 288
+    },
+    "Tank.ch8": {
+      "sha1": "18b9d15f4c159e1f0ed58c2d8ec1d89325d3a3b6",
+      "bytes": 560
+    },
+    "target_shooter1.ch8": {
+      "sha1": "a57f388db66745a46a4587dc6800ff339f6bedea",
+      "bytes": 326
+    },
+    "target_shooter2.ch8": {
+      "sha1": "50592422956e880b8c0db188a54fa769fa0c33fc",
+      "bytes": 356
+    },
+    "target_shooter3.ch8": {
+      "sha1": "c2320a6f71efa1d57fc650608015ba429ca337dd",
+      "bytes": 448
+    },
+    "Tetris [Fran Dachille, 1991].ch8": {
+      "sha1": "5f518084744bf3cb8733f6e5454dfd1634320563",
+      "bytes": 494
+    },
+    "UFO [Lutz V, 1992].ch8": {
+      "sha1": "bdb92475acfe11bc7814a2f5eade13fcd09b756a",
+      "bytes": 224
+    },
+    "Vertical Brix [Paul Robson, 1996].ch8": {
+      "sha1": "da710f631f8e35534d0b9170bcf892a60f49c43d",
+      "bytes": 507
+    },
+    "Wipe Off [Joseph Weisbecker].ch8": {
+      "sha1": "d666688a8fce468a7d88b536bc1ef5f35ba12031",
+      "bytes": 206
+    },
+    "Worm V4 [RB-Revival Studios, 2007].ch8": {
+      "sha1": "54b2b475e8522421be83b643d50f48a1ccaab74f",
+      "bytes": 600
+    }
+  },
+  "games": {
+    "airplane": {
+      "module": "octax/environments/airplane.py",
+      "action_set": [
+        8
+      ],
+      "startup_instructions": 600,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "fca71182a8838b686573e69b22aff945d79fe1d0": "Airplane.ch8"
+      },
+      "authors": [],
+      "release": "19xx",
+      "title": "Airplane",
+      "rom": "Airplane.ch8",
+      "sha1": "fca71182a8838b686573e69b22aff945d79fe1d0",
+      "sha1_in_metadata": true
+    },
+    "blinky": {
+      "module": "octax/environments/blinky.py",
+      "action_set": [
+        3,
+        6,
+        7,
+        8
+      ],
+      "startup_instructions": 13800,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "5b733a60e7208f6aa0d15c99390ce4f670b2b886": "Blinky (by Hans Christian Egeberg)(1991).sc8",
+        "5370ecf9ae444c71b63dab9b1f9968a4fe67c9dd": "Blinky (fix)[Hans Christian Egeberg, 1991].ch8",
+        "d40abc54374e4343639f993e897e00904ddf85d9": "Blinky [Hans Christian Egeberg, 1991].ch8",
+        "f4169141735d8d60e51409ca7e73f4adedcefef2": "Blinky [Hans Christian Egeberg] (alt).ch8"
+      },
+      "authors": [
+        "Hans Christian Egeberg"
+      ],
+      "release": "1991",
+      "title": "Blinky",
+      "rom": "Blinky [Hans Christian Egeberg, 1991].ch8",
+      "sha1": "d40abc54374e4343639f993e897e00904ddf85d9",
+      "sha1_in_metadata": true
+    },
+    "brix": {
+      "module": "octax/environments/brix.py",
+      "action_set": [
+        4,
+        6
+      ],
+      "startup_instructions": 500,
+      "custom_startup": false,
+      "disable_delay": true,
+      "metadata_roms": {
+        "f13766c14aeb02ad8d4d103cb5eadd282d20cddc": "Brix [Andreas Gustafsson, 1990].ch8"
+      },
+      "authors": [
+        "Andreas Gustafsson"
+      ],
+      "release": "1990",
+      "title": "Brix",
+      "rom": "Brix [Andreas Gustafsson, 1990].ch8",
+      "sha1": "f13766c14aeb02ad8d4d103cb5eadd282d20cddc",
+      "sha1_in_metadata": true
+    },
+    "cavern": {
+      "module": "octax/environments/cavern.py",
+      "action_set": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "startup_instructions": 250,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "17238bcd1cb8e21142a1d7533f878c833ef19caa": "Cavern (by Matthew Mikolay)(2014).ch8"
+      },
+      "authors": [
+        "Matthew Mikolay"
+      ],
+      "release": "2014",
+      "title": "Cavern",
+      "levels": {
+        "1": {
+          "rom": "cavern1.ch8",
+          "sha1": "f57c4583709022859bb7ba90cf7fc449bfaa5b26",
+          "env_id": "cavern1",
+          "create_environment_loadable": true
+        },
+        "2": {
+          "rom": "cavern2.ch8",
+          "sha1": "ae59d229d6de5762549bf9bf52c23d7fa39372c7",
+          "env_id": "cavern2",
+          "create_environment_loadable": true
+        },
+        "3": {
+          "rom": "cavern3.ch8",
+          "sha1": "df5e840c8db7acc6f63860246393ea2b8e2d3158",
+          "env_id": "cavern3",
+          "create_environment_loadable": true
+        },
+        "4a": {
+          "rom": "cavern4a.ch8",
+          "sha1": "4489020dfcd1bdc999ee68426e5af70f1901fd7a",
+          "env_id": "cavern4a",
+          "create_environment_loadable": false
+        },
+        "4b": {
+          "rom": "cavern4b.ch8",
+          "sha1": "579846ee7e4e2175740c96bab15151b77502bda3",
+          "env_id": "cavern4b",
+          "create_environment_loadable": false
+        },
+        "5": {
+          "rom": "cavern5.ch8",
+          "sha1": "03364866435733eb77d9771dbaffea29c691c270",
+          "env_id": "cavern5",
+          "create_environment_loadable": true
+        },
+        "6": {
+          "rom": "cavern6.ch8",
+          "sha1": "f918e843647154d0ee4ae1d900592f521d6def2c",
+          "env_id": "cavern6",
+          "create_environment_loadable": true
+        }
+      }
+    },
+    "deep": {
+      "module": "octax/environments/deep.py",
+      "action_set": [
+        7,
+        8,
+        9
+      ],
+      "startup_instructions": 0,
+      "custom_startup": true,
+      "disable_delay": false,
+      "metadata_roms": {
+        "b41cc0b5b2faabafd532d705b804abb3e8f97baf": "Deep8 (by John Earnest)(2014).ch8"
+      },
+      "authors": [
+        "John Earnest"
+      ],
+      "release": "2014",
+      "title": "Deep8",
+      "rom": "Deep8 (by John Earnest)(2014).ch8",
+      "sha1": "b41cc0b5b2faabafd532d705b804abb3e8f97baf",
+      "sha1_in_metadata": true
+    },
+    "filter": {
+      "module": "octax/environments/filter.py",
+      "action_set": [
+        4,
+        6
+      ],
+      "startup_instructions": 0,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "ae71a7b081a947f1760cdc147759803aea45e751": "Filter.ch8"
+      },
+      "authors": [],
+      "release": null,
+      "title": "Filter",
+      "rom": "Filter.ch8",
+      "sha1": "ae71a7b081a947f1760cdc147759803aea45e751",
+      "sha1_in_metadata": true
+    },
+    "flight_runner": {
+      "module": "octax/environments/flight_runner.py",
+      "action_set": [
+        5,
+        7,
+        8,
+        9
+      ],
+      "startup_instructions": 500,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "821751787374cc362f4c58759961f0aa7a2fd410": "flightrunner.ch8"
+      },
+      "authors": [
+        "TodPunk"
+      ],
+      "release": "2014-11-01",
+      "title": "Flight Runner",
+      "rom": "flightrunner.ch8",
+      "sha1": "8ca4c0cdaceb9c9e135f0a56e88adaf588e71b34",
+      "sha1_in_metadata": false
+    },
+    "missile": {
+      "module": "octax/environments/missile.py",
+      "action_set": [
+        8
+      ],
+      "startup_instructions": 50,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "0d0cc129dad3c45ba672f85fec71a668232212cc": "Missile [David Winter].ch8"
+      },
+      "authors": [
+        "David Winter"
+      ],
+      "release": "1996",
+      "title": "Missile Command",
+      "rom": "Missile [David Winter].ch8",
+      "sha1": "0d0cc129dad3c45ba672f85fec71a668232212cc",
+      "sha1_in_metadata": true
+    },
+    "pong": {
+      "module": "octax/environments/pong.py",
+      "action_set": [
+        1,
+        4
+      ],
+      "startup_instructions": 0,
+      "custom_startup": false,
+      "disable_delay": true,
+      "metadata_roms": {
+        "607c4f7f4e4dce9f99d96b3182bfe7e88bb090ee": "Pong (1 player).ch8"
+      },
+      "authors": [
+        "1 player"
+      ],
+      "release": null,
+      "title": "Pong",
+      "rom": "Pong (1 player).ch8",
+      "sha1": "607c4f7f4e4dce9f99d96b3182bfe7e88bb090ee",
+      "sha1_in_metadata": true
+    },
+    "rocket": {
+      "module": "octax/environments/rocket.py",
+      "action_set": [
+        15
+      ],
+      "startup_instructions": 0,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "3d1d029d6e31206d245c0ba881c0d1f003953bad": "Rocket [Joseph Weisbecker, 1978].ch8"
+      },
+      "authors": [
+        "Joseph Weisbecker"
+      ],
+      "release": "1978-12",
+      "title": "Rocket",
+      "rom": "Rocket [Joseph Weisbecker, 1978].ch8",
+      "sha1": "3d1d029d6e31206d245c0ba881c0d1f003953bad",
+      "sha1_in_metadata": true
+    },
+    "shooting_stars": {
+      "module": "octax/environments/shooting_stars.py",
+      "action_set": [
+        2,
+        8,
+        4,
+        6
+      ],
+      "startup_instructions": 0,
+      "custom_startup": false,
+      "disable_delay": true,
+      "metadata_roms": {
+        "443550abf646bc7f475ef0466f8e1232ec7474f3": "Shooting Stars [Philip Baltzer, 1978].ch8"
+      },
+      "authors": [
+        "Philip Baltzer"
+      ],
+      "release": "1978",
+      "title": "Shooting Stars",
+      "rom": "Shooting Stars [Philip Baltzer, 1978].ch8",
+      "sha1": "443550abf646bc7f475ef0466f8e1232ec7474f3",
+      "sha1_in_metadata": true
+    },
+    "space_flight": {
+      "module": "octax/environments/space_flight.py",
+      "action_set": [
+        1,
+        4
+      ],
+      "startup_instructions": 300,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "aa4f1a282bd64a2364102abf5737a4205365a2b4": "Space Flight.ch8"
+      },
+      "authors": [],
+      "release": "19xx",
+      "title": "Space Flight",
+      "levels": {
+        "1": {
+          "rom": "space_flight1.ch8",
+          "sha1": "1086fe15b4608581c8715618f303af911813dc8e",
+          "env_id": "space_flight1",
+          "create_environment_loadable": true
+        },
+        "2": {
+          "rom": "space_flight2.ch8",
+          "sha1": "b5de356579b3b4e83769ff21c734a0de4a57e40c",
+          "env_id": "space_flight2",
+          "create_environment_loadable": true
+        },
+        "3": {
+          "rom": "space_flight3.ch8",
+          "sha1": "f68a294a869828abf2a5f77a42cf2aa40377e742",
+          "env_id": "space_flight3",
+          "create_environment_loadable": true
+        },
+        "4": {
+          "rom": "space_flight4.ch8",
+          "sha1": "17332012fbe8840277c4b01162746906ef29633f",
+          "env_id": "space_flight4",
+          "create_environment_loadable": true
+        },
+        "5": {
+          "rom": "space_flight5.ch8",
+          "sha1": "05e8e285872740154d60f3743e5a64a9f8c1d6c3",
+          "env_id": "space_flight5",
+          "create_environment_loadable": true
+        },
+        "6": {
+          "rom": "space_flight6.ch8",
+          "sha1": "e8510d6c4ea1180f9c5dc2fcd1372518ae7f539e",
+          "env_id": "space_flight6",
+          "create_environment_loadable": true
+        },
+        "7": {
+          "rom": "space_flight7.ch8",
+          "sha1": "dc70a389b9a47bbb125e11fc2b2751ce1a7a87e1",
+          "env_id": "space_flight7",
+          "create_environment_loadable": true
+        },
+        "8": {
+          "rom": "space_flight8.ch8",
+          "sha1": "7f14117b1e138707ebf80ae9c5bd571d1ca46dde",
+          "env_id": "space_flight8",
+          "create_environment_loadable": true
+        },
+        "9": {
+          "rom": "space_flight9.ch8",
+          "sha1": "6e73aec0c742fb20e057852cfce7f83b808e4fdb",
+          "env_id": "space_flight9",
+          "create_environment_loadable": true
+        },
+        "10": {
+          "rom": "space_flight10.ch8",
+          "sha1": "621dc9c9e7ecafc00ad73f5d3421407ae7b12be2",
+          "env_id": "space_flight10",
+          "create_environment_loadable": true
+        }
+      }
+    },
+    "spacejam": {
+      "module": "octax/environments/spacejam.py",
+      "action_set": [
+        5,
+        8,
+        7,
+        9
+      ],
+      "startup_instructions": 300,
+      "custom_startup": false,
+      "disable_delay": true,
+      "metadata_roms": {
+        "9f9a4affbf7afd70bb594fb321e16579318c0164": "spacejam.ch8"
+      },
+      "authors": [
+        "WilliamDonnelly"
+      ],
+      "release": "2015-10-30",
+      "title": "Spacejam!",
+      "rom": "spacejam.ch8",
+      "sha1": "8d7fd91cefb8dcbd9faa270e6f39fbab73713f5b",
+      "sha1_in_metadata": false
+    },
+    "squash": {
+      "module": "octax/environments/squash.py",
+      "action_set": [
+        1,
+        4
+      ],
+      "startup_instructions": 100,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "a58ec7cc63707f9e7274026de27c15ec1d9945bd": "Squash [David Winter].ch8"
+      },
+      "authors": [
+        "David Winter"
+      ],
+      "release": "1997",
+      "title": "Squash",
+      "rom": "Squash [David Winter].ch8",
+      "sha1": "a58ec7cc63707f9e7274026de27c15ec1d9945bd",
+      "sha1_in_metadata": true
+    },
+    "submarine": {
+      "module": "octax/environments/submarine.py",
+      "action_set": [
+        5
+      ],
+      "startup_instructions": 100,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "89aadf7c28bcd1c11e71ad9bd6eeaf0e7be474f3": "Submarine [Carmelo Cortez, 1978].ch8"
+      },
+      "authors": [
+        "Carmelo Cortez"
+      ],
+      "release": null,
+      "title": "Submarine",
+      "rom": "Submarine [Carmelo Cortez, 1978].ch8",
+      "sha1": "89aadf7c28bcd1c11e71ad9bd6eeaf0e7be474f3",
+      "sha1_in_metadata": true
+    },
+    "tank": {
+      "module": "octax/environments/tank.py",
+      "action_set": [
+        2,
+        4,
+        5,
+        6,
+        8
+      ],
+      "startup_instructions": 100,
+      "custom_startup": false,
+      "disable_delay": true,
+      "metadata_roms": {
+        "18b9d15f4c159e1f0ed58c2d8ec1d89325d3a3b6": "Tank.ch8"
+      },
+      "authors": [],
+      "release": "197x",
+      "title": "Tank Battle",
+      "rom": "Tank.ch8",
+      "sha1": "18b9d15f4c159e1f0ed58c2d8ec1d89325d3a3b6",
+      "sha1_in_metadata": true
+    },
+    "target_shooter": {
+      "module": "octax/environments/target_shooter.py",
+      "action_set": [
+        5,
+        7,
+        8,
+        9,
+        6
+      ],
+      "startup_instructions": 0,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "target_shooter_level1": "target_shooter_level1.ch8",
+        "target_shooter_level2": "target_shooter_level2.ch8",
+        "target_shooter_level3": "target_shooter_level3.ch8"
+      },
+      "authors": [
+        "Fully LLM-Generated Environment"
+      ],
+      "release": "2024",
+      "title": "Target Shooter - LLM-Generated RL Environment",
+      "levels": {
+        "1": {
+          "rom": "target_shooter1.ch8",
+          "sha1": "a57f388db66745a46a4587dc6800ff339f6bedea",
+          "env_id": "target_shooter1",
+          "create_environment_loadable": true
+        },
+        "2": {
+          "rom": "target_shooter2.ch8",
+          "sha1": "50592422956e880b8c0db188a54fa769fa0c33fc",
+          "env_id": "target_shooter2",
+          "create_environment_loadable": true
+        },
+        "3": {
+          "rom": "target_shooter3.ch8",
+          "sha1": "c2320a6f71efa1d57fc650608015ba429ca337dd",
+          "env_id": "target_shooter3",
+          "create_environment_loadable": true
+        }
+      }
+    },
+    "tetris": {
+      "module": "octax/environments/tetris.py",
+      "action_set": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "startup_instructions": 300,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "5f518084744bf3cb8733f6e5454dfd1634320563": "Tetris [Fran Dachille, 1991].ch8"
+      },
+      "authors": [
+        "Fran Dachille"
+      ],
+      "release": "1991",
+      "title": "Tetris",
+      "rom": "Tetris [Fran Dachille, 1991].ch8",
+      "sha1": "5f518084744bf3cb8733f6e5454dfd1634320563",
+      "sha1_in_metadata": true
+    },
+    "ufo": {
+      "module": "octax/environments/ufo.py",
+      "action_set": [
+        4,
+        5,
+        6
+      ],
+      "startup_instructions": 50,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "bdb92475acfe11bc7814a2f5eade13fcd09b756a": "UFO [Lutz V, 1992].ch8"
+      },
+      "authors": [
+        "Lutz V"
+      ],
+      "release": "1992",
+      "title": "UFO",
+      "rom": "UFO [Lutz V, 1992].ch8",
+      "sha1": "bdb92475acfe11bc7814a2f5eade13fcd09b756a",
+      "sha1_in_metadata": true
+    },
+    "vertical_brix": {
+      "module": "octax/environments/vertical_brix.py",
+      "action_set": [
+        1,
+        4
+      ],
+      "startup_instructions": 0,
+      "custom_startup": true,
+      "disable_delay": true,
+      "metadata_roms": {
+        "da710f631f8e35534d0b9170bcf892a60f49c43d": "Vertical Brix [Paul Robson, 1996].ch8"
+      },
+      "authors": [
+        "Paul Robson"
+      ],
+      "release": "1996",
+      "title": "Vertical Brix",
+      "rom": "Vertical Brix [Paul Robson, 1996].ch8",
+      "sha1": "da710f631f8e35534d0b9170bcf892a60f49c43d",
+      "sha1_in_metadata": true
+    },
+    "wipe_off": {
+      "module": "octax/environments/wipe_off.py",
+      "action_set": [
+        4,
+        6
+      ],
+      "startup_instructions": 500,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "d666688a8fce468a7d88b536bc1ef5f35ba12031": "Wipe Off [Joseph Weisbecker].ch8"
+      },
+      "authors": [
+        "Joseph Weisbecker"
+      ],
+      "release": "19xx",
+      "title": "Wipe Off",
+      "rom": "Wipe Off [Joseph Weisbecker].ch8",
+      "sha1": "d666688a8fce468a7d88b536bc1ef5f35ba12031",
+      "sha1_in_metadata": true
+    },
+    "worm": {
+      "module": "octax/environments/worm.py",
+      "action_set": [
+        2,
+        8,
+        4,
+        6
+      ],
+      "startup_instructions": 1600,
+      "custom_startup": false,
+      "disable_delay": false,
+      "metadata_roms": {
+        "a1c1e0e7b01004be3ee77c69030e6b536cb316e6": "Worm V4 [RB-Revival Studios, 2007].ch8",
+        "2d415bf1f31777b22ad73208c4d1ad27d5d4f367": "SuperWorm V4 (by RB & Revival Studios)(2007).sc8"
+      },
+      "authors": [
+        "RB-Revival Studios",
+        "Martijn Wenting"
+      ],
+      "release": "2007",
+      "title": "SuperWorm V4",
+      "rom": "Worm V4 [RB-Revival Studios, 2007].ch8",
+      "sha1": "54b2b475e8522421be83b643d50f48a1ccaab74f",
+      "sha1_in_metadata": false
+    }
+  },
+  "reference_quirks": [
+    "octax/environments/__init__.py:64 create_environment defaults disable_delay to False; only brix, pong, shooting_stars, spacejam, tank, vertical_brix set True. OctaxEnv.__init__ default True is not what the games run with.",
+    "octax/env.py step, disable_delay False: jnp.maximum(timer - 1, 0) on uint8; a timer at 0 becomes 255 every step (checked live: 0 -> 255, 1 -> 0).",
+    "octax/instructions/alu.py execute_alu_operation: every 8XYN writes VF, including 8XY0-8XY3 (VF := 0) and undefined N (VX unchanged, VF := 0); when X == F the flag overwrites the result (8F14 with VF=200, V1=100 leaves VF = 1).",
+    "octax/instructions/misc.py execute_font_character: FONT_START + VX * 5 is uint8 arithmetic; VX = 60 gives I = 124, not 380.",
+    "octax/instructions/control_flow.py execute_jump_with_offset_modern: BXNN jumps to (NN + VX) & 0xFFF, i.e. into the font/zero page, never NNN + V0.",
+    "octax/stack.py: no bounds check. 17 pushes leave pointer 17 with the 17th address dropped (scatter out of range is a no-op); a pop at pointer 0 yields pointer -1 and stack[15] (negative index wraps), and zeroes stack[15].",
+    "octax/emulator.py fetch: memory[pc] / memory[pc+1] clamp out-of-range indices (pc 4095 reads memory[4095] twice); pc is uint16 and is not masked, so it can leave 0xFFF.",
+    "octax/instructions/display.py: DXYN wraps the start coordinate and clips the sprite; VF = any(display & sprite) as a bool cast to uint8. execute_clear_screen uses jnp.empty_like, which is zeros in JAX.",
+    "ROM sha1 in module metadata does not match the shipped file for: flight_runner, spacejam, worm. The levelled games (cavern, space_flight, target_shooter) carry metadata for other files entirely. The reference is the bytes in the pinned commit; roms.<file>.sha1 above is what the gate verifies.",
+    "cavern4a.ch8 and cavern4b.ch8 cannot be loaded through create_environment (env_id must end in digits); the Octax paper's \"cavern 1-6\" reaches cavern1,2,3,5,6 only."
+  ]
+}
