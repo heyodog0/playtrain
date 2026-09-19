@@ -2,8 +2,8 @@
 
 The only record of state. `LOOP.md` reads this first every iteration.
 
-STATUS: RUNNING
-ITERATION: 15
+STATUS: DONE
+ITERATION: 16
 BRANCH: chip8 (from vgdl @ 0f341a0)
 LAST_COMMIT: b10d65f
 
@@ -151,3 +151,17 @@ ROM redistribution, AOT tier. Nothing in the port blocks on them.
 14 | U12 | oracle --module, games/cavern4a|4b.json, gate forwards oracle_module, 39 bundles, 234 goldens, counts | G3 9/9, suite 52 passed
 15 | U13 | tools/rom_notice.py, roms/NOTICE.md, tests/test_rom_notice.py | 2 passed
 16 | U14 | AOT hosts built (f0 + f1 x 3), gated vs V8, benched; numbers in PROGRESS + PLAN Q5 | 18/18 PASS, 2.5-2.7x
+17 | (none) | no todo/in-progress unit left; second summary written, STATUS DONE | -
+
+## Summary 2 (2026-09-19, iteration 17, after the human's decisions)
+
+U11-U14 closed the four section-9 questions: the last frame stays the default
+observation (sidecars carry `obs.octax_frame_stack: 4` and the caveat that the
+runtime's step-level frame stack is not Octax's intra-step stack); cavern4a and
+cavern4b ship (39 bundles, 234 goldens, lockstep exact via `oracle.py --module
+cavern`); `roms/NOTICE.md` records every ROM's authorship and Octax provenance with a
+freshness test; the AOT tier was measured, not adopted: 28.6k-34.6k steps/s per env
+on `qjsc -A`, 2.5-2.7x the adopted QuickJS host, byte-identical to V8 on 18/18
+traces. The suite is 52 tests, all green with the oracle and browser configured.
+Adopting the AOT host for training is the remaining decision, and it is outside
+this port.
