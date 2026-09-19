@@ -54,7 +54,9 @@
   "max_steps": 4500,
   "obs": {
     "rgb": true,
-    "rgb_size": 64
+    "rgb_size": 64,
+    "octax_frame_stack": 4,
+    "note": "PlayTrain observes the display after each step (the last of Octax's 4 frames). Decided 2026-09-19 (PLAN section 9 Q1): last frame stays the default; a 'same observation as Octax' setup uses the runtime's frame_stack=4 in grayscale, which stacks the last four steps' displays (Octax stacks the four 11-instruction frames within one step, so the two stacks differ in time resolution)."
   },
   "human": {
     "steps_per_second": 15,
@@ -91,7 +93,7 @@
     "parity": "full state every step: pc, I, V[0..15], stack pointer, stack[0..15], delay, sound, keypad[0..15], display sha1 (64x32 bools, x-major, packbits), rng key data, score, reward, terminated, truncated; same ROM bytes, seed and action sequence; tests/gate_oracle.mjs vs tests/oracle.py",
     "not_matched": [
       "pixels: Octax renders the 64x32 display at 8x (512x256 RGB); PlayTrain draws it 1:1 into the middle band of a 64x64 observation (rows 16..47) and shows a 256x256 canvas to humans, colours from the `classic` scheme only",
-      "observation: Octax stacks the display after instruction 11, 22, 33 and 44 of each step (4 frames); PlayTrain observes the display after the step (the 4th of those frames); the stack is recoverable with the runtime's frame_stack=4 in grayscale",
+      "observation: Octax stacks the display after instruction 11, 22, 33 and 44 of each step (4 frames); PlayTrain observes the display after the step (the 4th of those frames). Human decision 2026-09-19: the last frame stays the default (obs.octax_frame_stack records Octax's count). frame_stack=4 grayscale in the runtime gives a 4-deep stack of consecutive STEP displays, not Octax's intra-step frames; the two are equal only when the display does not change within a step.",
       "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)",
       "termination: PlayTrain stops the episode at gameState GAMEOVER; Octax keeps stepping the terminated state (the lockstep gate compares those steps too)",
       "truncation at 4500 steps is the sidecar's max_steps, enforced by the runtime, not by the game",

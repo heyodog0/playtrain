@@ -52,8 +52,10 @@ steps after `terminated` (Octax keeps stepping; so does the gate). Checked:
 
 Deliberately not matched (manifest `reference.not_matched`): pixels (Octax renders
 8x, PlayTrain draws the 64x32 display 1:1 into rows 16..47 of a 64x64 frame),
-Octax's 4-frame observation stack (the last frame is observed; `frame_stack=4`
-recovers it), the reset's one NOOP frame, stopping at GAMEOVER, and sound.
+Octax's 4-frame observation stack (the last frame is observed, by decision; the
+runtime's `frame_stack=4` gives a stack of the last four *steps'* displays, which is
+Octax's intra-step stack only when the display does not change within a step), the
+reset's one NOOP frame, stopping at GAMEOVER, and sound.
 
 ## Quirks that are the reference
 
