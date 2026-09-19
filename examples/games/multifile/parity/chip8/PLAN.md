@@ -146,10 +146,14 @@ frozen VGDL game for a week.
 ## 6. Speed expectation
 
 44 instructions per step is roughly 2,000 interpreted operations, plus one
-`drawTiles` call. On the VGDL numbers that is 60 to 120k steps/s per core on
-QuickJS before any tuning. If G9 lands below 50k, profile before changing anything;
-the likely cost is the per-instruction decode, fixable with a 16-way switch on the
-high nibble and typed-array state, not a compiler. Do not build a compiler.
+`drawTiles` call. **Measured in U07 (G9, this Mac, arm64):** V8 runs the env alone at
+110k steps/s; QuickJS (`qjs_host bench`) runs the bundles at 8.4k-13.2k steps/s per
+env, and `vgdl_aliens` gets 17k on the same host, so the cost is QuickJS interpreting
+the 44-instruction loop, not rendering (a 64px canvas variant measured the same as the
+256px one). 20 envs on 10 threads give 58k-116k steps/s per game. The original 60-120k
+single-env expectation was wrong; the interpreter already has the 16-way switch and
+typed-array state that section suggested. Do not build a compiler; the AOT tier, if it
+is ever wanted, is a separate decision for the human (section 9).
 
 ## 7. Lessons from the VGDL port that bind here
 
@@ -212,3 +216,4 @@ at the time of writing.
 2. Which of the 48 ROMs to ship: Octax's 22 game modules plus their levels, or every `.ch8` in `roms/`?
 3. ROM redistribution: Octax ships them under MIT for its modified ones and lists authorship for the rest; confirm that is acceptable for the PlayTrain repo.
 4. cavern4a.ch8 and cavern4b.ch8 ship in Octax's `roms/` but `create_environment("cavern4a")` cannot load them (the env_id must end in digits), so U06 ships cavern 1, 2, 3, 5, 6 only. Add them as `cavern4a`/`cavern4b` defs (the oracle would need a `--rom-only` path that bypasses create_environment) or leave them out?
+5. Throughput: 8-13k steps/s per QuickJS env (G9). Is that enough for the intended training runs, or should the AOT tier be tried on these bundles? Nothing in this port depends on the answer.
