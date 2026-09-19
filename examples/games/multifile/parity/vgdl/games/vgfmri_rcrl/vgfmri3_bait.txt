@@ -1,0 +1,45 @@
+BasicGame
+    SpriteSet
+        hole > Immovable color=BLUE
+        avatar > MovingAvatar color=DARKBLUE
+        mushroom > Immovable color=RED
+        key > Resource color=ORANGE limit=1
+        goal > Immovable color=GREEN
+        box > Passive color=BROWN
+        wall > Immovable color=DARKGRAY
+
+    LevelMapping
+        A > avatar 
+        0 > hole 
+        1 > box 
+        k > key 
+        g > goal 
+        m > mushroom 
+
+    InteractionSet
+        avatar wall > stepBack
+        avatar hole > killSprite
+        box avatar > bounceForward
+        box wall > stepBack
+        box box > stepBack
+        box mushroom > undoAll
+
+        
+        hole box > killSprite
+        hole box > changeScore value=1
+        box hole > killSprite
+
+        avatar key > changeScore value=1
+        avatar key > changeResource resource=key value=1
+        
+        key avatar > killSprite
+        goal avatar >killIfOtherHasMore resource=key limit=1
+        avatar goal > stepBack
+        
+        mushroom avatar > changeScore value=1
+        mushroom avatar > killSprite
+    
+
+    TerminationSet
+        SpriteCounter stype=goal limit=0 win=True bonus=10
+        SpriteCounter stype=avatar limit=0 win=False

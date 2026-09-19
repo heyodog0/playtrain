@@ -264,6 +264,25 @@ function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx
     atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH);
 }
 
+// Tile-grid blit: one call for a whole grid of tiles (crates/rasterizer/src/tiles.rs).
+// dst rect is in LOGICAL pixels here (this is the p5 surface); mapped to device
+// pixels the way image() is. On the pure-JS canvas (browser display) the same
+// grid is drawn cell by cell with fillRect on a tilePx==1 palette, which is what
+// a human sees; observations always come from the wasm or native rasterizer.
+function drawTiles(kinds, gw, gh, atlas, tilePx, nTiles, x, y, w, h) {
+  const dx = Math.round(x * _devSx), dy = Math.round(y * _devSy), dw = Math.round(w * _devSx), dh = Math.round(h * _devSy);
+  if (typeof _ctx.drawTiles === 'function') { _ctx.drawTiles(kinds, gw, gh, atlas, tilePx, nTiles, dx, dy, dw, dh); return; }
+  const cw = w / gw, ch = h / gh, stride = tilePx * tilePx * 4;
+  const prev = _ctx.fillStyle;
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    const k = kinds[gy * gw + gx]; if (k >= nTiles) continue;
+    const o = k * stride;   // top-left texel stands for the tile on the display canvas
+    _ctx.fillStyle = `rgba(${atlas[o]},${atlas[o + 1]},${atlas[o + 2]},${atlas[o + 3] / 255})`;
+    _ctx.fillRect(x + gx * cw, y + gy * ch, cw, ch);
+  }
+  _ctx.fillStyle = prev;
+}
+
 // One upright billboard, depth-tested against the voxel view's ray depths.
 // Mirrors p5::voxelSprite in native/runtime/p5.cpp.
 function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
@@ -695,7 +714,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite, voxelDusk,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

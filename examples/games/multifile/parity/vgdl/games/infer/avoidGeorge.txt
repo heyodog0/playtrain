@@ -1,0 +1,46 @@
+BasicGame
+    SpriteSet
+	floor > Immovable img=colors/LIGHTGRAY
+        annoyed > RandomNPC speed=0.2 img=colors/PURPLE
+        cigarette > Flicker img=colors/BROWN limit=5 singleton=True 
+        quiet > RandomNPC speed=0.2 cons=1 img=colors/GREEN
+        avatar > ShootAvatar stype=cigarette img=colors/DARKBLUE speed=1
+        george > Chaser img=colors/LIGHTBLUE stype=quiet speed=0.15 fleeing=False
+        kennel > Immovable img=colors/BLUE
+        puppy > Chaser stype=annoyed cooldown=5 img=colors/ORANGE fleeing=False
+        wall > Immovable img=colors/DARKGRAY
+
+    LevelMapping
+        . > floor
+        A > floor   avatar
+        c > floor   quiet
+        g > floor   george
+        k > floor  kennel
+        p > floor  puppy
+        w > floor  wall
+        a > floor annoyed
+
+    InteractionSet
+        annoyed cigarette > transformTo stype=quiet scoreChange=1
+        annoyed puppy > transformTo stype=quiet scoreChange=1
+        annoyed wall > stepBack
+        avatar george > killSprite scoreChange=-1
+        avatar wall > stepBack
+        kennel cigarette > transformTo stype=puppy 
+        quiet george > transformTo stype=annoyed
+        quiet wall > stepBack
+        puppy wall > stepBack
+        
+        annoyed EOS > killSprite
+        avatar EOS > killSprite
+        cigarette EOS > killSprite
+        george EOS > killSprite
+        kennel EOS > killSprite
+        puppy EOS > killSprite
+        quiet EOS > killSprite
+        wall EOS > killSprite
+
+    TerminationSet
+        SpriteCounter stype=avatar  win=False
+        SpriteCounter stype=quiet   win=False
+        Timeout limit=500 win=True

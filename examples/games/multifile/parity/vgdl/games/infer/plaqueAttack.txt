@@ -1,0 +1,73 @@
+BasicGame
+  SpriteSet
+    floor > Immovable img=colors/LIGHTGRAY
+
+    fullMolarInf > Immovable img=colors/YELLOW
+    fullMolarSup > Immovable img=colors/RED
+    deadMolarInf > Immovable img=colors/GREEN
+    deadMolarSup > Immovable img=colors/BLUE
+
+    avatar  > ShootAvatar stype=fluor img=colors/DARKBLUE frameRate=8 speed=1
+    hotdoghole > SpawnPoint stype=hotdog  prob=0.15 cooldown=10 total=5 img=colors/PURPLE
+    burgerhole > SpawnPoint stype=burger  prob=0.18 cooldown=10 total=5 img=colors/LIGHTBLUE
+    burger > Chaser speed=1 cooldown=10 stype=fullMolarSup img=colors/BROWN fleeing=False
+    hotdog > Chaser speed=1 cooldown=10 stype=fullMolarInf img=colors/ORANGE fleeing=False
+
+    fluor > Missile img=colors/LIGHTRED speed=1
+    wall > Immovable img=colors/GRAY
+
+  LevelMapping
+    h > hotdog floor
+    d > hotdoghole floor
+    b > burger floor
+    v > burgerhole floor
+    n > fullMolarSup floor
+    m > fullMolarInf floor
+    . > floor
+    A > avatar floor
+    w > floor wall
+    p > floor deadMolarInf
+
+  InteractionSet
+    avatar wall > stepBack
+    hotdog wall > stepBack
+    burger wall > stepBack
+
+    fluor hotdog > killSprite
+    hotdog fluor > killSprite scoreChange=1
+    fluor burger > killSprite
+    burger fluor > killSprite scoreChange=1
+    
+    fluor wall   > killSprite
+
+
+    fullMolarInf hotdog > transformTo stype=deadMolarInf scoreChange=-1
+    hotdog deadMolarInf > killSprite 
+    fullMolarInf burger > transformTo stype=deadMolarInf scoreChange=-1
+    burger deadMolarInf > killSprite 
+    deadMolarInf avatar > transformTo stype=fullMolarInf scoreChange=1
+    
+    
+    fullMolarSup hotdog > transformTo stype=deadMolarSup
+    hotdog deadMolarSup > killSprite  scoreChange=-1
+    fullMolarSup burger > transformTo stype=deadMolarSup 
+    burger deadMolarSup > killSprite scoreChange=-1
+    deadMolarSup avatar > transformTo stype=fullMolarSup scoreChange=1
+
+    avatar EOS > killSprite
+    burger EOS > killSprite
+    burgerhole EOS > killSprite
+    deadMolarInf EOS > killSprite
+    deadMolarSup EOS > killSprite
+    fluor EOS > killSprite
+    fullMolarInf EOS > killSprite
+    fullMolarSup EOS > killSprite
+    hotdog EOS > killSprite
+    hotdoghole EOS > killSprite
+    wall EOS > killSprite
+
+
+  TerminationSet
+    Timeout limit=3000 win=False
+    MultiSpriteCounter stype1=fullMolarInf stype2=fullMolarSup limit=0 win=False
+    MultiSpriteCounter stype1=hotdoghole stype2=hotdog stype3=burger stype4=burgerhole limit=0 win=True

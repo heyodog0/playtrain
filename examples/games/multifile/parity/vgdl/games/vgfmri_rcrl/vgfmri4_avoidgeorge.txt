@@ -1,0 +1,38 @@
+BasicGame
+    SpriteSet
+	annoyed > RandomNPC speed=0.25 cons=2 color=PURPLE        
+        citizen >
+            quiet > RandomNPC speed=0.25 cons=1 color=PINK
+            avatar > ShootAvatar stype=cigarette  color=DARKBLUE
+
+
+        george > Chaser stype=citizen color=YELLOW speed=0.15 frameRate=8
+        cigarette > Flicker color=BROWN limit=5 rotateInPlace=False singleton=True 
+        wall > Immovable color=DARKGRAY
+
+    TerminationSet
+        SpriteCounter stype=avatar  win=False
+        SpriteCounter stype=quiet   win=False
+        Timeout limit=400 win=True bonus=0.02
+
+    InteractionSet
+        quiet george > transformTo stype=annoyed
+	avatar george > changeScore value=-1
+        avatar george > killSprite 
+
+	annoyed cigarette > changeScore value=1
+        annoyed cigarette > transformTo stype=quiet 
+
+        annoyed wall > stepBack
+        quiet wall > stepBack
+        avatar wall > stepBack
+	george wall > stepBack
+    LevelMapping
+        g > george
+        c > quiet
+        A > avatar
+        w > wall
+
+
+
+

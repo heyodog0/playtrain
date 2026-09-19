@@ -1,0 +1,55 @@
+BasicGame
+
+  SpriteSet
+    floor > Immovable img=colors/LIGHTGRAY
+    avatar > MovingAvatar img=colors/DARKBLUE
+    bee > RandomNPC img=colors/YELLOW cooldown=4
+    distractor > Immovable img=colors/RED
+    fence > Immovable img=colors/PURPLE
+    goal > Immovable img=colors/GREEN
+    obstacle > Immovable img=colors/ORANGE
+    sparrow1 > Chaser stype=obstacle img=colors/LIGHTGREEN cooldown=4
+    wall > Immovable img=colors/DARKGRAY
+    
+  LevelMapping
+    . > floor
+    1 > floor  sparrow1
+    b > floor  bee
+    d > floor  distractor
+    f > floor  fence
+    g > floor  goal
+    o > floor  obstacle
+    A > floor avatar
+    w > floor wall
+    
+  InteractionSet
+    avatar bee > killSprite
+    avatar obstacle > killSprite
+    avatar wall > stepBack
+    bee distractor > stepBack
+    bee fence > stepBack
+    bee obstacle > stepBack
+    bee sparrow1 > killSprite
+    bee wall > stepBack
+    distractor avatar > killSprite
+    fence avatar > killSprite
+    goal avatar > killSprite scoreChange=1
+    obstacle sparrow1 > killSprite
+    sparrow1 fence > stepBack
+    sparrow1 wall > stepBack
+    bee EOS > stepBack
+    sparrow1 EOS > stepBack
+    avatar EOS > stepBack
+
+    avatar EOS > killSprite
+    bee EOS > killSprite
+    distractor EOS > killSprite
+    fence EOS > killSprite
+    goal EOS > killSprite
+    obstacle EOS > killSprite
+    sparrow1 EOS > killSprite
+    wall EOS > killSprite
+  TerminationSet
+    Timeout limit=3000 win=False
+    SpriteCounter stype=goal   limit=0 win=True
+    SpriteCounter stype=avatar limit=0 win=False

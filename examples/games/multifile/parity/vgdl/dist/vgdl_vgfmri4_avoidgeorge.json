@@ -1,0 +1,104 @@
+{
+  "name": "vgdl_vgfmri4_avoidgeorge",
+  "version": "0.1.0",
+  "title": "VGDL vgfmri4_avoidgeorge",
+  "family": "vgdl",
+  "corpus": "vgfmri_rcrl",
+  "game": "vgfmri4_avoidgeorge",
+  "block_size": 30,
+  "profile": "rcrl",
+  "compiled": true,
+  "levels": 9,
+  "level_mode": "seed",
+  "render": "tiles",
+  "action_space": "vgdl6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "SPACE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "py-vgdl, Tsividis lineage, as used for the theory-based RL fMRI study (Tomov et al. 2023): tomov/RC_RL branch fmri, vgdl/ + fmri_all_games/",
+    "repo": "https://github.com/tomov/RC_RL",
+    "branch": "fmri",
+    "commit": "3388f9caa9c611e5cd1dbd262c38df24087c9963",
+    "path": "vgdl",
+    "games_path": "fmri_all_games",
+    "python": "2.7 (image rcrl-oracle: pygame 1.9.6, numpy 1.16.4, scipy 1.2.3, pybrain 0.3)",
+    "block_size": 30,
+    "block_size_note": "BasicGame.buildLevel sets block_size = 30 unconditionally; the square_size header is ignored.",
+    "step_semantics": "RLEnvironmentNonStatic.step as driven by VGDLEnv (the DDQN wrapper): visualize=True so kills flush at the start of each action; softReset() performs one action-less step before the first agent action; actions are single keys [NOOP, RIGHT, LEFT, UP, DOWN, SPACE]; on NOOP the avatar is not updated at all.",
+    "parity": "full state every step: time, score, ended, won, and every live (non-kill-list) sprite's (type, x, y, resources incl. defaultdict zero entries); same seed (module random seeded before softReset) and action sequence; tests/gate_oracle_rcrl.mjs vs tests/oracle_rcrl.py",
+    "group_order": "abstract sprite groups are assembled in Python 2 dict order; <game>.groups.json captures it from the oracle and the bundle embeds it",
+    "not_matched": [
+      "pixels (RC_RL draws 30px squares with pygame; PlayTrain draws fitted cells into a 64x64 frame) — colours are RC_RL's palette",
+      "reward: VGDLEnv returns +1/-1 on termination and the score delta otherwise; PlayTrain reports the score delta every step",
+      "the real-time human loop (core.tick, frame_rate 20, terminations checked before the update) is not the reference; the RL step is",
+      "the RNG: RC_RL's module-level random is unseeded, so the reference is only reproducible once seeded, which the oracle does",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+    ]
+  },
+  "status": null,
+  "source_sha256": {
+    "spec": "9ebd8343a2b989b245be1af36ec2266ea4571aed57fba611ef665f62a1fe0c51",
+    "levels": [
+      "56345ad9b4b360cbe6a6875a88b4e658a2196b2623d83cbf325b67b76f7bd946",
+      "25c8841546c021b6951c512de3e2193c3b29b71fc772989ffe1a013f9b0bdfed",
+      "d4c0660f9536efe947fa5add898704c1553a1ae60450974a16d60546ddd794db",
+      "5756be85f2d09c28a06003b0ea4202dfb26158bf08f158f5e6f1eb9849443a37",
+      "b53bf0b5d025a745b8e8522dccfe8a600a0b7885d07edef8a84a35500f39a450",
+      "a4661ace8eb9c216d160219b93d900e7a909793f0daad97502fd255403bcc559",
+      "ea84b19e176a755489e4de4245af4ab32b76a54bc4a8d3a480d1b62354f7e3eb",
+      "69e4cb3b016cb34ff4a803529962aaf20dd63f7cd26522843ec0aa9616837c16",
+      "d1dc1117f18b89d50ca5ecdbfdc12d6299be0221095a75bf2e965a22e1a76833"
+    ]
+  }
+}

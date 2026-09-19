@@ -677,6 +677,7 @@ impl Three {
                 let col = |i: usize| [xv[i].r, xv[i].g, xv[i].b];
                 let vpos = |i: usize| [xv[i].vx, xv[i].vy, xv[i].vz];
                 let nrm = |i: usize| [xv[i].wnx, xv[i].wny, xv[i].wnz];
+                let gcols = [col(ia), col(ib), col(ic)];
                 let shading = if cur.mat.use_specular && cur.lights.on {
                     Shading::Phong {
                         vp: [vpos(ia), vpos(ib), vpos(ic)],
@@ -686,7 +687,7 @@ impl Three {
                         eye_z,
                     }
                 } else {
-                    Shading::Gouraud(&[col(ia), col(ib), col(ic)])
+                    Shading::Gouraud(&gcols)
                 };
                 raster_tri(view, px, zb, &pv, &shading);
             } else {

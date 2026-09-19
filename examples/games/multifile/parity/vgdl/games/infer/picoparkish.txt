@@ -1,0 +1,32 @@
+BasicGame
+    SpriteSet
+        floor > Immovable img=colors/LIGHTGRAY
+        wall > Immovable img=colors/DARKGRAY
+        breakwall > Immovable img=colors/BROWN
+        button > Immovable img=colors/YELLOW
+        exit > Immovable img=colors/GREEN
+        avatar > GravityAvatar img=colors/RED
+
+    LevelMapping
+        . > floor
+        # > floor wall
+        W > floor breakwall
+        B > floor button
+        D > floor exit
+        A > floor avatar
+
+    TerminationSet
+        SpriteCounter stype=avatar limit=0 win=False
+
+    InteractionSet
+        avatar wall > stepBack
+        avatar breakwall > stepBack
+        
+        avatar button > DestroyAllBreakwalls
+        avatar exit > killSprite scoreChange=100
+        
+        avatar EOS > stepBack
+        wall EOS > killSprite
+        breakwall EOS > killSprite
+        button EOS > killSprite
+        exit EOS > killSprite

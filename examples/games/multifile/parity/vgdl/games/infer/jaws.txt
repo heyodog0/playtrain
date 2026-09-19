@@ -1,0 +1,43 @@
+BasicGame
+    SpriteSet
+        floor > Immovable img=colors/LIGHTGRAY
+        wall > Immovable img=colors/DARKGRAY
+        whalehole  > SpawnPoint img=colors/PURPLE stype=whale prob=0.1 cooldown=10
+        piranhahole  >  SpawnPoint img=colors/GREEN stype=piranha prob=0.15 cooldown=10
+
+        avatar  > MovingAvatar img=colors/DARKBLUE
+        shark  > Chaser speed=0.1 cooldown=2 img=colors/ORANGE  stype=avatar
+        whale  > Missile  orientation=RIGHT  speed=0.1 img=colors/BROWN 
+        piranha > Missile orientation=LEFT speed=0.1 img=colors/PINK
+
+    LevelMapping
+        . > floor
+        w > wall
+        1 > floor piranhahole
+        2 > floor whalehole
+        3 > floor shark
+        A > floor avatar
+
+    TerminationSet
+        SpriteCounter stype=avatar limit=0 win=False
+        Timeout limit=500 win=True
+
+    InteractionSet
+
+        avatar shark  > killSprite
+        avatar whale  > killSprite
+        avatar piranha > killSprite
+
+        avatar wall > stepBack
+        shark wall > stepBack
+        whale wall > killSprite
+        piranha wall > killSprite
+        
+        avatar EOS > killSprite
+        piranha EOS > killSprite
+        piranhahole EOS > killSprite
+        shark EOS > killSprite
+        wall EOS > killSprite
+        whale EOS > killSprite
+        whalehole EOS > killSprite
+

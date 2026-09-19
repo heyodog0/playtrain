@@ -1,0 +1,104 @@
+{
+  "name": "vgdl_vgfmri3_lemmings",
+  "version": "0.1.0",
+  "title": "VGDL vgfmri3_lemmings",
+  "family": "vgdl",
+  "corpus": "vgfmri_rcrl",
+  "game": "vgfmri3_lemmings",
+  "block_size": 30,
+  "profile": "rcrl",
+  "compiled": true,
+  "levels": 9,
+  "level_mode": "seed",
+  "render": "tiles",
+  "action_space": "vgdl6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "SPACE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "py-vgdl, Tsividis lineage, as used for the theory-based RL fMRI study (Tomov et al. 2023): tomov/RC_RL branch fmri, vgdl/ + fmri_all_games/",
+    "repo": "https://github.com/tomov/RC_RL",
+    "branch": "fmri",
+    "commit": "3388f9caa9c611e5cd1dbd262c38df24087c9963",
+    "path": "vgdl",
+    "games_path": "fmri_all_games",
+    "python": "2.7 (image rcrl-oracle: pygame 1.9.6, numpy 1.16.4, scipy 1.2.3, pybrain 0.3)",
+    "block_size": 30,
+    "block_size_note": "BasicGame.buildLevel sets block_size = 30 unconditionally; the square_size header is ignored.",
+    "step_semantics": "RLEnvironmentNonStatic.step as driven by VGDLEnv (the DDQN wrapper): visualize=True so kills flush at the start of each action; softReset() performs one action-less step before the first agent action; actions are single keys [NOOP, RIGHT, LEFT, UP, DOWN, SPACE]; on NOOP the avatar is not updated at all.",
+    "parity": "full state every step: time, score, ended, won, and every live (non-kill-list) sprite's (type, x, y, resources incl. defaultdict zero entries); same seed (module random seeded before softReset) and action sequence; tests/gate_oracle_rcrl.mjs vs tests/oracle_rcrl.py",
+    "group_order": "abstract sprite groups are assembled in Python 2 dict order; <game>.groups.json captures it from the oracle and the bundle embeds it",
+    "not_matched": [
+      "pixels (RC_RL draws 30px squares with pygame; PlayTrain draws fitted cells into a 64x64 frame) — colours are RC_RL's palette",
+      "reward: VGDLEnv returns +1/-1 on termination and the score delta otherwise; PlayTrain reports the score delta every step",
+      "the real-time human loop (core.tick, frame_rate 20, terminations checked before the update) is not the reference; the RL step is",
+      "the RNG: RC_RL's module-level random is unseeded, so the reference is only reproducible once seeded, which the oracle does",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+    ]
+  },
+  "status": null,
+  "source_sha256": {
+    "spec": "e683babf7262566d81a03ae9325aaaad5a34f4c916367d32f562c81eee1a8726",
+    "levels": [
+      "b6c3648a1f8083150c45a5749d08b4dea8517699ed5db9a3dae1c54307ee59b3",
+      "505e5fee2fa57bc68ee015183bee68a6f61ae2e0466fb4b9643ccaf9833baafe",
+      "4943a1e4e377971b6b014508a18b8cfafcfc20f8ec73620af6bce43d4c6c0bc2",
+      "e594a7c391e8747a0547165d6bad61efbd40e5a057e562a56c21dbc8743ec305",
+      "1c7e0ef4e2822d6962717e52b045f9beb3a98d3318f0bf286bd951177aaea679",
+      "3c706683fa6e8fbfc4785e06da791e05b6db31f0bc7144db95396a25cf237c8a",
+      "0252ce9203e396f34276d66cbea09836b74d74238edb1b673491da7333bda93b",
+      "767d4c9b00c2d63e4621757fce16c5cc373d813f5a7d1e37d1f269c7cf354b22",
+      "9a7c9388171b3cff9e0e8fc4662735462fd521b2e0c873f7b4edf875576d122b"
+    ]
+  }
+}

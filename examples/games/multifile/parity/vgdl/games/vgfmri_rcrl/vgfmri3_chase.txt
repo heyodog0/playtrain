@@ -1,0 +1,33 @@
+BasicGame
+    SpriteSet
+        carcass > Immovable color=BROWN
+        goat > stype=avatar
+            angry  > Chaser cooldown=8 color=GOLD
+            scared > Fleeing cooldown=3 color=RED
+        avatar > MovingAvatar color=DARKBLUE
+        wall > Immovable color=DARKGRAY
+
+    InteractionSet
+        angry   wall   > stepBack
+        scared   wall   > stepBack
+        angry scared > nothing
+        scared scared > nothing
+        angry angry > nothing
+        carcass avatar > nothing
+        avatar wall    > stepBack
+        avatar angry > changeScore value=-1
+        avatar  angry  > killSprite 
+        angry carcass > nothing
+        carcass scared > killSprite
+        scared avatar > changeScore value=1
+        scared avatar  > transformTo stype=carcass
+        scared carcass > transformTo stype=angry
+
+    LevelMapping
+        0 > scared
+	1 > angry
+        w > wall
+
+    TerminationSet
+        SpriteCounter stype=scared win=True 
+        SpriteCounter stype=avatar win=False

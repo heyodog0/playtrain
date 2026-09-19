@@ -136,6 +136,20 @@ export function makeWasmBackend(ex) {
       }
     }
 
+    // ---- tile-grid blit (crates/rasterizer/src/tiles.rs) ----
+    // kinds change every frame and are copied each call; the atlas is uploaded
+    // once by identity, like the voxel atlas.
+    drawTiles(kinds, gw, gh, atlas, tilePx, nTiles, dx, dy, dw, dh) {
+      const abytes = atlas.length;
+      ex.rs_tiles_atlas_ptr(abytes);
+      const ap = ex.rs_tiles_atlas_ptr(abytes);
+      if (this._tilesAtlasStaged !== atlas) { new Uint8Array(mem(), ap, abytes).set(atlas); this._tilesAtlasStaged = atlas; }
+      ex.rs_tiles_kinds_ptr(kinds.length);
+      const kp = ex.rs_tiles_kinds_ptr(kinds.length);
+      new Uint16Array(mem(), kp, kinds.length).set(kinds);
+      ex.rs_draw_tiles(this._h, kp, gw, gh, ap, tilePx, nTiles, dx, dy, dw, dh);
+    }
+
     voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
       const ap = this._stage('atlas', atlas, Uint8Array);
       if (Number.isInteger(yawQ)) {

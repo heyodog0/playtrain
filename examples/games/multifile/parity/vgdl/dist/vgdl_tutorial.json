@@ -1,0 +1,108 @@
+{
+  "name": "vgdl_tutorial",
+  "version": "0.1.0",
+  "title": "VGDL tutorial",
+  "family": "vgdl",
+  "corpus": "infer",
+  "game": "tutorial",
+  "block_size": 50,
+  "profile": "colas",
+  "compiled": true,
+  "levels": 2,
+  "level_mode": "seed",
+  "render": "tiles",
+  "action_space": "vgdl6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "SPACE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "py-vgdl, Colas lineage, as ported to gymnasium by Tomov (language_and_experience @ dbp); infer-vgdl vendors the same engine plus GravityAvatar, DestroyAllBreakwalls and BothPlayersOnExit for picoparkish and tutorial",
+    "repo": "https://github.com/tomov/language_and_experience",
+    "commit": "97fb71d1fd8aa3d81eeba4fefe6d9ec36596adb0",
+    "path": "src/vgdl",
+    "license": "see upstream",
+    "block_size": 50,
+    "block_size_note": "play_human.py and src/utils.py run at block_size=50; 1 is the planning-only fast mode in which every fractional-speed sprite is frozen. The vgdl-metagen gate ran at 1. fmri-gym's vgdl backend wraps this same fork, so the DBP study's VGDL games are this corpus.",
+    "parity": "full state every step: time, score, ended, won, and every live sprite's (type, x, y, resources); same seed and action sequence; tests/gate_oracle.mjs vs tests/oracle.py",
+    "not_matched": [
+      "pixels (py-vgdl draws sprites at block_size with pygame; PlayTrain draws 8px cells scaled into a 64x64 frame)",
+      "reward: PlayTrain reward is the score delta per step; infer-vgdl's gym wrapper is not the reference here",
+      "multi-key actions: the vgdl6 space holds one key per action, so py-vgdl's largest-combination tie-break (SPACE beats arrows when both are held) is never exercised; default8's LEFT_D/RIGHT_D would be, and are reproduced",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+    ],
+    "branch": "dbp",
+    "superset": {
+      "repo": "https://github.com/heyodog0/infer-vgdl",
+      "commit": "ac1237d8fb5b36479ba1981c4217585c03e6b932",
+      "path": "src/vgdl",
+      "adds": [
+        "GravityAvatar",
+        "DestroyAllBreakwalls",
+        "BothPlayersOnExit"
+      ],
+      "games_only_here": [
+        "picoparkish",
+        "tutorial"
+      ]
+    },
+    "specs_identical_across_forks": true
+  },
+  "status": null,
+  "source_sha256": {
+    "spec": "689d11ed1bea63db3396747af4b81ef3049c8d2a75054c96c9170f8df3e78c15",
+    "levels": [
+      "779e10b340630c7ac06de44fdb574635d2ac3b2aef88816e1516a33cd0cb2479",
+      "ca0a2713cc0b1f74dd7546dc22f7505eb67166420506ba437387122659391817"
+    ]
+  }
+}

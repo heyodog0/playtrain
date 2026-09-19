@@ -1,0 +1,104 @@
+{
+  "name": "vgdl_vgfmri4_bait",
+  "version": "0.1.0",
+  "title": "VGDL vgfmri4_bait",
+  "family": "vgdl",
+  "corpus": "vgfmri_rcrl",
+  "game": "vgfmri4_bait",
+  "block_size": 30,
+  "profile": "rcrl",
+  "compiled": true,
+  "levels": 9,
+  "level_mode": "seed",
+  "render": "tiles",
+  "action_space": "vgdl6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "SPACE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "py-vgdl, Tsividis lineage, as used for the theory-based RL fMRI study (Tomov et al. 2023): tomov/RC_RL branch fmri, vgdl/ + fmri_all_games/",
+    "repo": "https://github.com/tomov/RC_RL",
+    "branch": "fmri",
+    "commit": "3388f9caa9c611e5cd1dbd262c38df24087c9963",
+    "path": "vgdl",
+    "games_path": "fmri_all_games",
+    "python": "2.7 (image rcrl-oracle: pygame 1.9.6, numpy 1.16.4, scipy 1.2.3, pybrain 0.3)",
+    "block_size": 30,
+    "block_size_note": "BasicGame.buildLevel sets block_size = 30 unconditionally; the square_size header is ignored.",
+    "step_semantics": "RLEnvironmentNonStatic.step as driven by VGDLEnv (the DDQN wrapper): visualize=True so kills flush at the start of each action; softReset() performs one action-less step before the first agent action; actions are single keys [NOOP, RIGHT, LEFT, UP, DOWN, SPACE]; on NOOP the avatar is not updated at all.",
+    "parity": "full state every step: time, score, ended, won, and every live (non-kill-list) sprite's (type, x, y, resources incl. defaultdict zero entries); same seed (module random seeded before softReset) and action sequence; tests/gate_oracle_rcrl.mjs vs tests/oracle_rcrl.py",
+    "group_order": "abstract sprite groups are assembled in Python 2 dict order; <game>.groups.json captures it from the oracle and the bundle embeds it",
+    "not_matched": [
+      "pixels (RC_RL draws 30px squares with pygame; PlayTrain draws fitted cells into a 64x64 frame) — colours are RC_RL's palette",
+      "reward: VGDLEnv returns +1/-1 on termination and the score delta otherwise; PlayTrain reports the score delta every step",
+      "the real-time human loop (core.tick, frame_rate 20, terminations checked before the update) is not the reference; the RL step is",
+      "the RNG: RC_RL's module-level random is unseeded, so the reference is only reproducible once seeded, which the oracle does",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+    ]
+  },
+  "status": null,
+  "source_sha256": {
+    "spec": "d793b2a8c92e767ae2716923be946b4c4e8fb8b2e108bd8eb5d85d394c36ee93",
+    "levels": [
+      "010a0b22dc0b3654ecbe637abd125a275f8661e839b0dce7704eb633b33cbfa6",
+      "580bd3b37b97001a07459f5644bdeedf3e3437b4ec2c27b0c5b5baca9ba757db",
+      "21fc424f1df086ea8dcc268cd230abacfadb9cff500f62271c7543e53496adea",
+      "f91a0b8c5750eef6a21720792ceb45b01b691dbd66fb7f1d797357ad9e803461",
+      "428c2d55cf4c93570ed63eee239e4d1de380fe0bb27f975776a0e17b76140d94",
+      "6f24b49fc7f0d1b1c072a4d19807fba9ca5f721af70a6d98f915d831561ee94e",
+      "d86e9c141c32cc28ac4ddf1dd080bef02d5d3558088f5bafcee35b24eb5b035b",
+      "01afdecaac0b2a4a126a55fe89f961df18bf4cc5fad0140dc1c54553f9b2c54a",
+      "03b3e18f03d774a5c5c5aca01a97e319807743199490b8710487b0097c0a30df"
+    ]
+  }
+}

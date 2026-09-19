@@ -1,0 +1,72 @@
+BasicGame
+  SpriteSet
+    floor > Immovable img=colors/LIGHTGRAY
+    avatar > MovingAvatar img=colors/DARKBLUE
+    box > Passive img=colors/ORANGE
+    converter1 > Passive img=colors/RED
+    converter2 > Immovable img=colors/PURPLE
+    converter3 > Immovable img=colors/PINK
+    fire > Immovable img=colors/YELLOW
+    poison > Immovable img=colors/WHITE
+    probe > Passive img=colors/BLUE
+    wall > Immovable img=colors/DARKGRAY
+
+  LevelMapping
+    . > floor
+    a > floor  box
+    e > floor  converter1
+    f > floor  fire
+    p > floor  poison
+    w > floor  wall
+    x > floor  probe
+    y > floor  converter2
+    z > floor  converter3
+    A > floor avatar
+  InteractionSet
+    avatar fire > stepBack
+    avatar poison > killSprite
+    avatar wall > stepBack
+
+    box avatar > bounceForward
+    box box > stepBack
+    box converter2 > transformTo stype=fire
+    box fire > stepBack
+    box probe > stepBack
+    box wall > stepBack
+
+    converter1 poison > stepBack
+    box poison > stepBack
+    probe poison > stepBack
+
+    converter1 wall > stepBack
+    converter2 wall > stepBack
+    converter3 wall > stepBack
+    converter1 avatar > transformTo stype=fire
+    converter1 box > bounceForward
+    converter2 fire > killSprite
+    converter3 avatar > transformTo stype=box
+
+    fire probe > killSprite scoreChange=1
+    probe fire > killSprite 
+    
+    probe avatar > bounceForward
+    probe box > stepBack
+    probe converter1 > stepBack
+    probe converter2 > stepBack    
+    probe converter3 > stepBack
+    probe probe > stepBack
+    probe wall > stepBack
+    
+    avatar EOS > killSprite
+    box EOS > killSprite
+    converter1 EOS > killSprite
+    converter2 EOS > killSprite
+    converter3 EOS > killSprite
+    fire EOS > killSprite
+    probe EOS > killSprite
+    wall EOS > killSprite
+
+  TerminationSet
+    SpriteCounter stype=avatar  limit=0 win=False
+    SpriteCounter stype=probe limit=0 win=True
+    Timeout limit=3000 win=False

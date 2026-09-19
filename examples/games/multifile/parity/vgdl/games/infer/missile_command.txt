@@ -1,0 +1,41 @@
+BasicGame
+  SpriteSet
+    floor > Immovable img=colors/LIGHTGRAY
+    city  > RandomNPC img=colors/GREEN speed=0.2
+    explosion > Flicker limit=5 img=colors/PINK
+    avatar  > ShootAvatar stype=explosion img=colors/DARKBLUE
+    incoming_slow  > Chaser stype=city img=colors/RED speed=0.1
+    incoming_fast  > Chaser stype=city img=colors/GOLD speed=0.3
+    wall > Immovable img=colors/DARKGRAY
+
+  LevelMapping
+    . > floor
+    c > floor city
+    m > floor incoming_slow
+    f > floor incoming_fast
+    w > floor wall
+    A > floor avatar
+
+  InteractionSet
+    incoming_slow wall  > stepBack
+    incoming_fast wall  > stepBack
+    avatar wall  > stepBack
+    incoming_slow city > killSprite scoreChange=-1
+    city incoming_slow > killSprite
+    incoming_fast city > killSprite scoreChange=-1
+    city incoming_fast > killSprite
+    incoming_slow explosion > killSprite scoreChange=1
+    incoming_fast explosion > killSprite scoreChange=1
+    city wall > stepBack
+    
+    avatar EOS > killSprite
+    city EOS > killSprite
+    explosion EOS > killSprite
+    incoming_fast EOS > killSprite
+    incoming_slow EOS > killSprite
+    wall EOS > killSprite
+
+  TerminationSet
+    SpriteCounter stype=city   win=False
+    MultiSpriteCounter stype1=incoming_slow stype2=incoming_fast win=True
+    Timeout limit=2000 win=False

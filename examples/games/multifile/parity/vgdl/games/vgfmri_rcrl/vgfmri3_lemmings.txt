@@ -1,0 +1,36 @@
+BasicGame
+    SpriteSet
+        hole   > Immovable color=LIGHTBLUE 
+        shovel > Flicker color=BROWN limit=1 singleton=True 
+
+        entrance > SpawnPoint total=6 cooldown=35 stype=lemming color=PURPLE 
+        goal > Immovable color=GREEN 
+
+        avatar  > ShootAvatar stype=shovel color=DARKBLUE
+        lemming > Chaser  stype=goal speed=1 cooldown=5 color=RED
+        wall > Immovable color=DARKGRAY
+    LevelMapping
+        x > goal
+        e > entrance
+        h > hole
+        A > avatar
+        w > wall
+
+    TerminationSet
+        SpriteCounter  stype=avatar  limit=0 win=False
+        MultiSpriteCounter stype1=entrance stype2=lemming limit=0 win=True bonus=10
+
+    InteractionSet
+        avatar hole  > killSprite 
+	avatar hole > changeScore value=-5
+        lemming hole  > killSprite 
+	lemming hole > changeScore value=-2
+
+        avatar wall > stepBack
+        lemming wall > stepBack
+	avatar EOS > stepBack
+        lemming EOS > stepBack
+        wall shovel  > killSprite 
+	wall shovel > changeScore value=-1
+        lemming goal > killSprite 
+	lemming goal > changeScore value=2
