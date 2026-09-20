@@ -11,6 +11,7 @@
 #include <cstdio>
 #include "vfs.hpp"
 #include <map>
+#include <unordered_map>
 namespace twin {
 using ps::json;
 static const int PS_CELL = 5;
@@ -30,6 +31,8 @@ class PsTwin : public Twin {
   double score_ = 0, lives_ = 1; std::string gameState_ = "PLAYING";
   std::vector<uint16_t> kinds_; int kindsW_ = 0, kindsH_ = 0;
   std::vector<std::vector<uint8_t>> atlasTiles_; std::map<std::string, int> atlasIndex_; std::vector<std::string> atlasKeys_; std::vector<uint8_t> atlas_; bool atlasDirty_ = true;
+  std::map<std::vector<int32_t>, int> atlasByMask_;   // cell words -> tile: the id list is a function of the cell mask (STRIDE_OBJ > 2)
+  std::unordered_map<uint64_t, int> atlasByMask64_;    // the same for STRIDE_OBJ <= 2 (every corpus game)
   int symObjects_ = 0, symMW_ = 0, symMH_ = 0, symDim_ = 0;
  public:
   PsTwin(const json& state, const json& def, std::string& err) : def_(def) {
@@ -57,7 +60,7 @@ class PsTwin : public Twin {
     levelIdx_ = levelMode_ == "fixed" ? fixedLevel_ : playable_[seed % (uint32_t)playable_.size()];
     loadLevel(levelIdx_, seed_);
     score_ = 0; lives_ = 1; gameState_ = "PLAYING";
-    atlasTiles_.clear(); atlasIndex_.clear(); atlasKeys_.clear(); atlas_.clear(); atlasDirty_ = true;
+    atlasTiles_.clear(); atlasIndex_.clear(); atlasKeys_.clear(); atlas_.clear(); atlasDirty_ = true; atlasByMask_.clear(); atlasByMask64_.clear();
   }
   int actionFromKeys() const { for (int i = 0; i < 5; i++) if (p5::keyIsDown(PS_ACTION_KEYS[i])) return i; return PS_NOOP; }
   int step(int a) { if (a == PS_NOOP || a < 0 || a > 4) return 0; vm_.processInput(a); return runAgains(); }
@@ -107,8 +110,21 @@ class PsTwin : public Twin {
     int mini, minj, maxi, maxj; viewport(mini, minj, maxi, maxj);
     int w = maxi - mini, h = maxj - minj; if (w <= 0 || h <= 0) return;
     if (kindsW_ != w || kindsH_ != h) { kinds_.assign((size_t)w * h, 0); kindsW_ = w; kindsH_ = h; }
-    std::vector<int> ids;
-    for (int i = mini; i < maxi; i++) for (int j = minj; j < maxj; j++) { cellIds(j + i * vm_.level.height, ids); kinds_[(size_t)(j - minj) * w + (i - mini)] = (uint16_t)tileFor(ids); }
+    std::vector<int> ids; std::vector<int32_t> key(S_.SO);
+    for (int i = mini; i < maxi; i++) for (int j = minj; j < maxj; j++) {
+      int pos = j + i * vm_.level.height; const int32_t* c = vm_.level.objects.data() + (size_t)pos * S_.SO;
+      int tile;
+      if (S_.SO <= 2) {
+        uint64_t k64 = (uint32_t)c[0] | (S_.SO == 2 ? ((uint64_t)(uint32_t)c[1] << 32) : 0);
+        auto it = atlasByMask64_.find(k64);
+        if (it != atlasByMask64_.end()) tile = it->second; else { cellIds(pos, ids); tile = tileFor(ids); atlasByMask64_[k64] = tile; }
+      } else {
+        for (int k = 0; k < S_.SO; k++) key[k] = c[k];
+        auto it = atlasByMask_.find(key);
+        if (it != atlasByMask_.end()) tile = it->second; else { cellIds(pos, ids); tile = tileFor(ids); atlasByMask_[key] = tile; }
+      }
+      kinds_[(size_t)(j - minj) * w + (i - mini)] = (uint16_t)tile;
+    }
     if (atlasDirty_) { atlas_.resize(atlasTiles_.size() * PS_CELL * PS_CELL * 4); for (size_t t = 0; t < atlasTiles_.size(); t++) std::copy(atlasTiles_[t].begin(), atlasTiles_[t].end(), atlas_.begin() + t * PS_CELL * PS_CELL * 4); atlasDirty_ = false; }
     int x = (int)std::floor((canvasW_ - w * PS_CELL) / 2.0), y = (int)std::floor((canvasH_ - h * PS_CELL) / 2.0);
     p5::drawTiles(kinds_.data(), w, h, atlas_.data(), PS_CELL, (int)atlasTiles_.size(), x, y, w * PS_CELL, h * PS_CELL);

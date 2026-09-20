@@ -11,6 +11,9 @@
 namespace ps {
 using json = nlohmann::json;
 using BV = std::vector<int32_t>;
+constexpr int MAXW = 64;   // max BitVec words (2048 objects, 320 layers; one reference test has more than 1024 objects): fixed-size scratch, no heap in the step path
+// A row's matches, flat: stride 1 (index) for 0 ellipses, 2 (index,k) for 1, 3 (index,k1,k2) for 2
+struct RowMatches { int stride = 1; std::vector<int> flat; int count() const { return (int)flat.size() / stride; } };
 struct Replacement { BV oc, os, mc, ms, mlm, rem, rdm; };
 struct Cell { bool ellipsis = false; BV op, om, mp, mm; std::vector<BV> aop; bool hasRep = false; Replacement rep; };
 struct Rule {
@@ -65,11 +68,13 @@ class VM {
   std::vector<int> startMovement(int dir);
   bool cellMatches(const Cell& c, int i) const;
   bool rowMatches0(const std::vector<Cell>& row, int i, int d) const;
-  void rowMatches1(const std::vector<Cell>& row, int i, int kmax, int kmin, int d, std::vector<std::vector<int>>& out) const;
-  void rowMatches2(const std::vector<Cell>& row, int i, int kmax, int kmin, int k1max, int k1min, int k2max, int k2min, int d, std::vector<std::vector<int>>& out) const;
-  bool matchRow(const Rule& r, int ri, int d, std::vector<std::vector<int>>& out) const;
-  bool findMatches(const Rule& r, std::vector<std::vector<std::vector<int>>>& matches) const;
-  bool applyAt(const Rule& r, const std::vector<std::vector<int>>& tuple, bool check, int d);
+  void rowMatches1(const std::vector<Cell>& row, int i, int kmax, int kmin, int d, std::vector<int>& out) const;
+  void rowMatches2(const std::vector<Cell>& row, int i, int kmax, int kmin, int k1max, int k1min, int k2max, int k2min, int d, std::vector<int>& out) const;
+  bool matchRow(const Rule& r, int ri, int d, RowMatches& out) const;
+  bool findMatches(const Rule& r, std::vector<RowMatches>& matches) const;
+  // tuple = one entry per row: pointer into that row's flat storage (stride per row)
+  bool applyAt(const Rule& r, const int* const* tuple, bool check, int d);
+  std::vector<RowMatches> scratchMatches_; std::vector<int> scratchTuple_; std::vector<const int*> scratchPtrs_; std::vector<int32_t> startObjects_, startMovements_;
   bool replaceCell(const Cell& c, const Rule& r, int idx);
   bool tryApply(const Rule& r); void queueCommands(const Rule& r);
   bool applyRandomRuleGroup(const std::vector<Rule>& g); bool applyRuleGroup(const std::vector<Rule>& g);

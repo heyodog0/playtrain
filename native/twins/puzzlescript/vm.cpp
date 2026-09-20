@@ -6,11 +6,15 @@
 namespace ps {
 static BV toBV(const json& j) { BV v; for (const auto& x : j) v.push_back((int32_t)x.get<long long>()); return v; }
 static const int DIR_DELTA[17][2] = {{0, 0}, {0, -1}, {0, 1}, {0, 0}, {-1, 0}, {0, 0}, {0, 0}, {0, 0}, {1, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+static inline void rawShiftOr(int32_t* a, int32_t mask, int shift) { int inner = shift & 31, outer = shift >> 5; a[outer] |= (int32_t)((uint32_t)mask << inner); if (inner > 27) a[outer + 1] |= (int32_t)(mask >> (32 - inner)); }
+static inline void rawShiftClear(int32_t* a, int32_t mask, int shift) { int inner = shift & 31, outer = shift >> 5; a[outer] &= ~(int32_t)((uint32_t)mask << inner); if (inner > 27) a[outer + 1] &= ~(int32_t)((uint32_t)mask >> (32 - inner)); }
+static inline int32_t rawGetShiftOr(const int32_t* a, int32_t mask, int shift) { int inner = shift & 31, outer = shift >> 5; int32_t ret = (int32_t)((uint32_t)a[outer] >> inner); if (inner > 27) ret |= (int32_t)((uint32_t)a[outer + 1] << (32 - inner)); return ret & mask; }
 static bool dirKnown(int m) { return m == 1 || m == 2 || m == 4 || m == 8 || m == 15 || m == 16 || m == 3; }
 
 bool State::load(const json& j, std::string& err) {
   try {
     SO = j["STRIDE_OBJ"]; SM = j["STRIDE_MOV"]; LAYER_COUNT = j["LAYER_COUNT"]; objectCount = j["objectCount"];
+    if (SO > MAXW || SM > MAXW) { err = "ps state: more than 2048 objects or 320 layers"; return false; }
     idDict.clear(); for (const auto& n : j["idDict"]) idDict.push_back(n.is_string() ? n.get<std::string>() : "");
     objLayer.assign(idDict.size(), 0); for (const auto& o : j["objects"]) { int id = o["id"]; if (id >= 0 && id < (int)objLayer.size()) objLayer[id] = o["layer"]; }
     layerMasks.clear(); for (const auto& m : j["layerMasks"]) layerMasks.push_back(toBV(m));
@@ -171,9 +175,8 @@ std::vector<int> VM::getPlayerPositions() const {
 }
 void VM::moveEntitiesAtIndex(int pos, const BV& entityMask, int dirMask) {
   int SO = S->SO, SM = S->SM; const int32_t* cell = level.objects.data() + (size_t)pos * SO;
-  BV movementMask(level.movements.begin() + (size_t)pos * SM, level.movements.begin() + (size_t)(pos + 1) * SM);
-  for (int i = 0; i < S->objectCount; i++) if (bvGet(entityMask, i) && (cell[i >> 5] & (int32_t)(1u << (i & 31)))) bvShiftOr(movementMask, dirMask, 5 * S->objLayer[i]);
-  for (int i = 0; i < SM; i++) level.movements[(size_t)pos * SM + i] = movementMask[i];
+  int32_t* movementMask = level.movements.data() + (size_t)pos * SM;   // in place: the JS reads, ORs per layer, writes back
+  for (int i = 0; i < S->objectCount; i++) if (bvGet(entityMask, i) && (cell[i >> 5] & (int32_t)(1u << (i & 31)))) rawShiftOr(movementMask, dirMask, 5 * S->objLayer[i]);
   int col = pos / level.height, row = pos % level.height;
   for (int i = 0; i < SM; i++) { level.colCellContents_Movements[col][i] |= movementMask[i]; level.rowCellContents_Movements[row][i] |= movementMask[i]; level.mapCellContents_Movements[i] |= movementMask[i]; }
 }
@@ -198,31 +201,28 @@ int VM::deltaIndex(int dir) const { return dirKnown(dir) ? DIR_DELTA[dir][0] * l
 // ---------- matching ----------
 bool VM::cellMatches(const Cell& c, int i) const {
   const int32_t* co = level.objects.data() + (size_t)i * S->SO; const int32_t* cm = level.movements.data() + (size_t)i * S->SM;
-  int n = std::max(S->SO, S->SM);
-  for (int w = 0; w < n; w++) {
-    int32_t op = w < S->SO ? c.op[w] : 0, om = w < S->SO ? c.om[w] : 0, mp = w < S->SM ? c.mp[w] : 0, mm = w < S->SM ? c.mm[w] : 0;
-    if (op && (co[w] & op) != op) return false;
-    if (om && (co[w] & om)) return false;
-    if (mp && (cm[w] & mp) != mp) return false;
-    if (mm && (cm[w] & mm)) return false;
-  }
-  for (const BV& a : c.aop) { int32_t acc = 0; for (int w = 0; w < S->SO; w++) if (a[w]) acc |= (co[w] & a[w]); if (!acc) return false; }
+  const int SO = S->SO, SM = S->SM;
+  const int32_t* op = c.op.data(); const int32_t* om = c.om.data(); const int32_t* mp = c.mp.data(); const int32_t* mm = c.mm.data();
+  for (int w = 0; w < SO; w++) { if (op[w] && (co[w] & op[w]) != op[w]) return false; if (om[w] && (co[w] & om[w])) return false; }
+  for (int w = 0; w < SM; w++) { if (mp[w] && (cm[w] & mp[w]) != mp[w]) return false; if (mm[w] && (cm[w] & mm[w])) return false; }
+  for (const BV& a : c.aop) { int32_t acc = 0; const int32_t* ad = a.data(); for (int w = 0; w < SO; w++) acc |= (co[w] & ad[w]); if (!acc) return false; }
   return true;
 }
 bool VM::rowMatches0(const std::vector<Cell>& row, int i, int d) const {
-  for (size_t k = 0; k < row.size(); k++) if (!cellMatches(row[k], i + (int)k * d)) return false;
+  const Cell* cells = row.data(); int n = (int)row.size();
+  for (int k = 0; k < n; k++) if (!cellMatches(cells[k], i + k * d)) return false;
   return true;
 }
-void VM::rowMatches1(const std::vector<Cell>& row, int i, int kmax, int kmin, int d, std::vector<std::vector<int>>& out) const {
+void VM::rowMatches1(const std::vector<Cell>& row, int i, int kmax, int kmin, int d, std::vector<int>& out) const {
   size_t e = 0; while (e < row.size() && !row[e].ellipsis) e++;
   for (size_t c = 0; c < e; c++) if (!cellMatches(row[c], i + (int)c * d)) return;
   for (int k = kmin; k < kmax; k++) {
     bool ok = true;
     for (size_t c = e + 1; c < row.size() && ok; c++) if (!cellMatches(row[c], i + d * (k + (int)c - 1))) ok = false;
-    if (ok) out.push_back({i, k});
+    if (ok) { out.push_back(i); out.push_back(k); }
   }
 }
-void VM::rowMatches2(const std::vector<Cell>& row, int i, int kmax, int kmin, int k1max, int k1min, int k2max, int k2min, int d, std::vector<std::vector<int>>& out) const {
+void VM::rowMatches2(const std::vector<Cell>& row, int i, int kmax, int kmin, int k1max, int k1min, int k2max, int k2min, int d, std::vector<int>& out) const {
   int e1 = -1, e2 = -1; for (size_t c = 0; c < row.size(); c++) if (row[c].ellipsis) { if (e1 < 0) e1 = (int)c; else { e2 = (int)c; break; } }
   for (int c = 0; c < e1; c++) if (!cellMatches(row[c], i + c * d)) return;
   for (int k1 = k1min; k1 < k1max; k1++) {
@@ -230,91 +230,101 @@ void VM::rowMatches2(const std::vector<Cell>& row, int i, int kmax, int kmin, in
     if (!ok) continue;
     for (int k2 = k2min; k1 + k2 < kmax && k2 < k2max; k2++) {
       bool ok2 = true; for (int c = e2 + 1; c < (int)row.size() && ok2; c++) if (!cellMatches(row[c], i + d * (k1 + k2 + c - 2))) ok2 = false;
-      if (ok2) out.push_back({i, k1, k2});
+      if (ok2) { out.push_back(i); out.push_back(k1); out.push_back(k2); }
     }
   }
 }
-// matchCellRow / matchCellRowWildCard: out receives [i] tuples (ell 0) or [i,k..] tuples
-bool VM::matchRow(const Rule& r, int ri, int d, std::vector<std::vector<int>>& out) const {
+// matchCellRow / matchCellRowWildCard
+bool VM::matchRow(const Rule& r, int ri, int d, RowMatches& out) const {
   const std::vector<Cell>& row = r.patterns[ri]; int ell = r.ell[ri];
+  out.stride = ell == 0 ? 1 : ell == 1 ? 2 : 3; out.flat.clear();
   if (!bvSubset(r.crm[ri], level.mapCellContents.data()) || !bvSubset(r.crmm[ri], level.mapCellContents_Movements.data())) return false;
   int xmin = 0, xmax = level.width, ymin = 0, ymax = level.height;
   int len = (int)row.size() - (ell == 0 ? 0 : ell);
   switch (r.dir) { case 1: ymin += len - 1; break; case 2: ymax -= len - 1; break; case 4: xmin += len - 1; break; case 8: xmax -= len - 1; break; default: break; }
-  bool horizontal = r.dir > 2;
+  bool horizontal = r.dir > 2; const int H = level.height, W = level.width;
   auto tryCell = [&](int x, int y) {
-    int i = x * level.height + y;
-    if (ell == 0) { if (rowMatches0(row, i, d)) out.push_back({i}); return; }
+    int i = x * H + y;
+    if (ell == 0) { if (rowMatches0(row, i, d)) out.flat.push_back(i); return; }
     int kmax = 0;
-    if (r.dir == 4) kmax = x - len + 2; else if (r.dir == 8) kmax = level.width - (x + len) + 1; else if (r.dir == 2) kmax = level.height - (y + len) + 1; else if (r.dir == 1) kmax = y - len + 2;
-    if (ell == 1) rowMatches1(row, i, kmax, 0, d, out); else rowMatches2(row, i, kmax, 0, kmax, 0, kmax, 0, d, out);
+    if (r.dir == 4) kmax = x - len + 2; else if (r.dir == 8) kmax = W - (x + len) + 1; else if (r.dir == 2) kmax = H - (y + len) + 1; else if (r.dir == 1) kmax = y - len + 2;
+    if (ell == 1) rowMatches1(row, i, kmax, 0, d, out.flat); else rowMatches2(row, i, kmax, 0, kmax, 0, kmax, 0, d, out.flat);
   };
+  const BV& crm = r.crm[ri]; const BV& crmm = r.crmm[ri];
   if (horizontal) {
-    for (int y = ymin; y < ymax; y++) { if (!bvSubset(r.crm[ri], level.rowCellContents[y].data()) || !bvSubset(r.crmm[ri], level.rowCellContents_Movements[y].data())) continue; for (int x = xmin; x < xmax; x++) tryCell(x, y); }
+    for (int y = ymin; y < ymax; y++) { if (!bvSubset(crm, level.rowCellContents[y].data()) || !bvSubset(crmm, level.rowCellContents_Movements[y].data())) continue; for (int x = xmin; x < xmax; x++) tryCell(x, y); }
   } else {
-    for (int x = xmin; x < xmax; x++) { if (!bvSubset(r.crm[ri], level.colCellContents[x].data()) || !bvSubset(r.crmm[ri], level.colCellContents_Movements[x].data())) continue; for (int y = ymin; y < ymax; y++) tryCell(x, y); }
+    for (int x = xmin; x < xmax; x++) { if (!bvSubset(crm, level.colCellContents[x].data()) || !bvSubset(crmm, level.colCellContents_Movements[x].data())) continue; for (int y = ymin; y < ymax; y++) tryCell(x, y); }
   }
-  return !out.empty();
+  return !out.flat.empty();
 }
-bool VM::findMatches(const Rule& r, std::vector<std::vector<std::vector<int>>>& matches) const {
-  matches.clear();
+bool VM::findMatches(const Rule& r, std::vector<RowMatches>& matches) const {
+  size_t n = r.patterns.size(); if (matches.size() < n) matches.resize(n);
+  for (size_t ri = 0; ri < n; ri++) matches[ri].flat.clear();
   if (!bvSubset(r.ruleMask, level.mapCellContents.data())) return false;
   int d = deltaIndex(r.dir);
-  for (size_t ri = 0; ri < r.patterns.size(); ri++) { std::vector<std::vector<int>> m; if (!matchRow(r, (int)ri, d, m)) { matches.clear(); return false; } matches.push_back(std::move(m)); }
+  for (size_t ri = 0; ri < n; ri++) if (!matchRow(r, (int)ri, d, matches[ri])) return false;
   return true;
 }
-// generateTuples: for each row, for each value, for each existing tuple -> tuple + value (first row varies fastest)
-static std::vector<std::vector<std::vector<int>>> generateTuples(const std::vector<std::vector<std::vector<int>>>& lists) {
-  std::vector<std::vector<std::vector<int>>> tuples(1);
-  for (const auto& row : lists) { std::vector<std::vector<std::vector<int>>> nt; for (const auto& val : row) for (const auto& t : tuples) { auto n = t; n.push_back(val); nt.push_back(std::move(n)); } tuples = std::move(nt); }
-  return tuples;
+// generateTuples order: the first row varies fastest (for each row, for each value, for each existing tuple)
+template <class F> static void forEachTuple(const std::vector<RowMatches>& m, size_t nrows, std::vector<const int*>& ptrs, F&& f) {
+  std::vector<int> idx(nrows, 0); ptrs.resize(nrows);
+  size_t total = 1; for (size_t r = 0; r < nrows; r++) total *= (size_t)m[r].count();
+  for (size_t t = 0; t < total; t++) {
+    for (size_t r = 0; r < nrows; r++) ptrs[r] = m[r].flat.data() + (size_t)idx[r] * m[r].stride;
+    f((const int* const*)ptrs.data(), t);
+    for (size_t r = 0; r < nrows; r++) { if (++idx[r] < m[r].count()) break; idx[r] = 0; }
+  }
 }
 
 // ---------- replacement ----------
 bool VM::replaceCell(const Cell& c, const Rule& rule, int idx) {
   if (!c.hasRep) return false;
-  int SO = S->SO, SM = S->SM; const Replacement& rep = c.rep;
-  BV objectsSet = rep.os, objectsClear = rep.oc, movementsSet = rep.ms, movementsClear(SM);
-  for (int i = 0; i < SM; i++) movementsClear[i] = rep.mc[i] | rep.mlm[i];
+  const int SO = S->SO, SM = S->SM; const Replacement& rep = c.rep;
+  int32_t objectsSet[MAXW], objectsClear[MAXW], movementsSet[MAXW], movementsClear[MAXW];
+  for (int i = 0; i < SO; i++) { objectsSet[i] = rep.os[i]; objectsClear[i] = rep.oc[i]; }
+  for (int i = 0; i < SM; i++) { movementsSet[i] = rep.ms[i]; movementsClear[i] = rep.mc[i] | rep.mlm[i]; }
   if (!bvZero(rep.rem)) {
-    std::vector<int> choices; for (int i = 0; i < 32 * SO; i++) if (bvGet(rep.rem, i)) choices.push_back(i);
-    int rand = choices[(size_t)std::floor(rng.uniform() * choices.size())];
+    int choices[256]; int nc = 0; for (int i = 0; i < 32 * SO; i++) if (bvGet(rep.rem, i)) choices[nc++] = i;
+    int rand = choices[(size_t)std::floor(rng.uniform() * nc)];
     int layer = S->objLayer[rand];
-    bvSet(objectsSet, rand); for (int i = 0; i < SO; i++) objectsClear[i] |= S->layerMasks[layer][i];
-    bvShiftOr(movementsClear, 0x1f, 5 * layer);
+    objectsSet[rand >> 5] |= (int32_t)(1u << (rand & 31)); for (int i = 0; i < SO; i++) objectsClear[i] |= S->layerMasks[layer][i];
+    rawShiftOr(movementsClear, 0x1f, 5 * layer);
   }
   if (!bvZero(rep.rdm)) {
-    for (int layer = 0; layer < S->LAYER_COUNT; layer++) if (bvGet(rep.rdm, 5 * layer)) { int randomDir = (int)std::floor(rng.uniform() * 4); bvSet(movementsSet, randomDir + 5 * layer); }
+    for (int layer = 0; layer < S->LAYER_COUNT; layer++) if (bvGet(rep.rdm, 5 * layer)) { int randomDir = (int)std::floor(rng.uniform() * 4); int bit = randomDir + 5 * layer; movementsSet[bit >> 5] |= (int32_t)(1u << (bit & 31)); }
   }
   int32_t* cell = level.objects.data() + (size_t)idx * SO; int32_t* mov = level.movements.data() + (size_t)idx * SM;
-  BV oldCell(cell, cell + SO), cur(SO), oldMov(mov, mov + SM), curMov(SM);
-  for (int i = 0; i < SO; i++) cur[i] = (oldCell[i] & ~objectsClear[i]) | objectsSet[i];
-  for (int i = 0; i < SM; i++) curMov[i] = (oldMov[i] & ~movementsClear[i]) | movementsSet[i];
+  int32_t cur[MAXW], curMov[MAXW]; bool same = true;
+  for (int i = 0; i < SO; i++) { cur[i] = (cell[i] & ~objectsClear[i]) | objectsSet[i]; if (cur[i] != cell[i]) same = false; }
+  for (int i = 0; i < SM; i++) { curMov[i] = (mov[i] & ~movementsClear[i]) | movementsSet[i]; if (curMov[i] != mov[i]) same = false; }
   bool rigidchange = false;
   if (rule.rigid) {
     auto it = S->groupNumber_to_RigidGroupIndex.find(rule.group); int rgi = (it == S->groupNumber_to_RigidGroupIndex.end() ? 0 : it->second) + 1;
-    BV rigidMask(SM, 0); for (int layer = 0; layer < S->LAYER_COUNT; layer++) bvShiftOr(rigidMask, rgi, layer * 5);
+    int32_t rigidMask[MAXW]; for (int i = 0; i < SM; i++) rigidMask[i] = 0;
+    for (int layer = 0; layer < S->LAYER_COUNT; layer++) rawShiftOr(rigidMask, rgi, layer * 5);
     for (int i = 0; i < SM; i++) rigidMask[i] &= rep.mlm[i];
-    BV scratchA(SM, 0), scratchB(SM, 0);
-    BV& curRGI = S->rigid ? level.rigidGroupIndexMask[idx] : scratchA; BV& curRMA = S->rigid ? level.rigidMovementAppliedMask[idx] : scratchB;
-    if (!bvSubset(rigidMask, curRGI.data()) && !bvSubset(rep.mlm, curRMA.data())) {
-      for (int i = 0; i < SM; i++) { curRGI[i] |= rigidMask[i]; curRMA[i] |= rep.mlm[i]; }
-      rigidchange = true;
-    }
+    int32_t scratchA[MAXW] = {0}, scratchB[MAXW] = {0};
+    int32_t* curRGI = S->rigid ? level.rigidGroupIndexMask[idx].data() : scratchA; int32_t* curRMA = S->rigid ? level.rigidMovementAppliedMask[idx].data() : scratchB;
+    bool sub1 = true, sub2 = true;
+    for (int i = 0; i < SM; i++) { if ((rigidMask[i] & curRGI[i]) != rigidMask[i]) sub1 = false; if ((rep.mlm[i] & curRMA[i]) != rep.mlm[i]) sub2 = false; }
+    if (!sub1 && !sub2) { for (int i = 0; i < SM; i++) { curRGI[i] |= rigidMask[i]; curRMA[i] |= rep.mlm[i]; } rigidchange = true; }
   }
-  if (oldCell == cur && oldMov == curMov && !rigidchange) return false;
-  for (int i = 0; i < SO; i++) { sfxCreateMask[i] |= cur[i] & ~oldCell[i]; sfxDestroyMask[i] |= oldCell[i] & ~cur[i]; }
+  if (same && !rigidchange) return false;
+  for (int i = 0; i < SO; i++) { sfxCreateMask[i] |= cur[i] & ~cell[i]; sfxDestroyMask[i] |= cell[i] & ~cur[i]; }
   for (int i = 0; i < SO; i++) cell[i] = cur[i];
   for (int i = 0; i < SM; i++) mov[i] = curMov[i];
   int col = idx / level.height, row = idx % level.height;
-  for (int i = 0; i < SM; i++) { level.colCellContents_Movements[col][i] |= curMov[i]; level.rowCellContents_Movements[row][i] |= curMov[i]; level.mapCellContents_Movements[i] |= curMov[i]; }
-  for (int i = 0; i < SO; i++) { level.colCellContents[col][i] |= cur[i]; level.rowCellContents[row][i] |= cur[i]; level.mapCellContents[i] |= cur[i]; }
+  int32_t* ccm = level.colCellContents_Movements[col].data(); int32_t* rcm = level.rowCellContents_Movements[row].data(); int32_t* mcm = level.mapCellContents_Movements.data();
+  for (int i = 0; i < SM; i++) { ccm[i] |= curMov[i]; rcm[i] |= curMov[i]; mcm[i] |= curMov[i]; }
+  int32_t* cc = level.colCellContents[col].data(); int32_t* rc = level.rowCellContents[row].data(); int32_t* mc = level.mapCellContents.data();
+  for (int i = 0; i < SO; i++) { cc[i] |= cur[i]; rc[i] |= cur[i]; mc[i] |= cur[i]; }
   return true;
 }
-bool VM::applyAt(const Rule& r, const std::vector<std::vector<int>>& tuple, bool check, int delta) {
+bool VM::applyAt(const Rule& r, const int* const* tuple, bool check, int delta) {
   if (check) {
     for (size_t ri = 0; ri < r.patterns.size(); ri++) {
-      const auto& t = tuple[ri]; std::vector<std::vector<int>> tmp;
+      const int* t = tuple[ri]; std::vector<int>& tmp = scratchTuple_; tmp.clear();
       if (r.ell[ri] == 0) { if (!rowMatches0(r.patterns[ri], t[0], delta)) return false; }
       else if (r.ell[ri] == 1) { rowMatches1(r.patterns[ri], t[0], t[1] + 1, t[1], delta, tmp); if (tmp.empty()) return false; }
       else { rowMatches2(r.patterns[ri], t[0], t[1] + t[2] + 1, t[1] + t[2], t[1] + 1, t[1], t[2] + 1, t[2], delta, tmp); if (tmp.empty()) return false; }
@@ -346,20 +356,28 @@ void VM::queueCommands(const Rule& r) {
 }
 bool VM::tryApply(const Rule& r) {
   int delta = deltaIndex(r.dir);
-  std::vector<std::vector<std::vector<int>>> matches;
+  std::vector<RowMatches>& matches = scratchMatches_;
   if (!findMatches(r, matches)) return false;
   bool result = false;
-  if (r.hasRep) { auto tuples = generateTuples(matches); for (size_t ti = 0; ti < tuples.size(); ti++) { bool ok = applyAt(r, tuples[ti], ti > 0, delta); result = ok || result; } }
+  if (r.hasRep) forEachTuple(matches, r.patterns.size(), scratchPtrs_, [&](const int* const* tuple, size_t ti) { bool ok = applyAt(r, tuple, ti > 0, delta); result = ok || result; });
   queueCommands(r);
   return result;
 }
 bool VM::applyRandomRuleGroup(const std::vector<Rule>& g) {
-  std::vector<std::pair<int, std::vector<std::vector<int>>>> matches;
-  for (size_t ri = 0; ri < g.size(); ri++) { std::vector<std::vector<std::vector<int>>> m; if (findMatches(g[ri], m)) for (auto& t : generateTuples(m)) matches.push_back({(int)ri, t}); }
+  // all (rule, tuple) pairs in the JS order: rules in group order, tuples in generateTuples order
+  struct M { int rule; std::vector<int> tuple; };   // tuple flattened row by row (3 ints per row: index, k1, k2)
+  std::vector<M> matches; std::vector<RowMatches> m;
+  for (size_t ri = 0; ri < g.size(); ri++) {
+    if (!findMatches(g[ri], m)) continue;
+    forEachTuple(m, g[ri].patterns.size(), scratchPtrs_, [&](const int* const* tuple, size_t) {
+      M x; x.rule = (int)ri; for (size_t row = 0; row < g[ri].patterns.size(); row++) { int st = m[row].stride; for (int q = 0; q < 3; q++) x.tuple.push_back(q < st ? tuple[row][q] : 0); }
+      matches.push_back(std::move(x)); });
+  }
   if (matches.empty()) return false;
   auto& match = matches[(size_t)std::floor(rng.uniform() * matches.size())];
-  const Rule& rule = g[match.first];
-  bool modified = applyAt(rule, match.second, false, deltaIndex(rule.dir));
+  const Rule& rule = g[match.rule];
+  std::vector<const int*> ptrs(rule.patterns.size()); for (size_t row = 0; row < rule.patterns.size(); row++) ptrs[row] = match.tuple.data() + row * 3;
+  bool modified = applyAt(rule, ptrs.data(), false, deltaIndex(rule.dir));
   queueCommands(rule);
   return modified;
 }
@@ -391,54 +409,60 @@ bool VM::repositionEntitiesOnLayer(int idx, int layer, int dirMask) {
   int dx = DIR_DELTA[dirMask][0], dy = DIR_DELTA[dirMask][1];
   int tx = idx / level.height, ty = idx % level.height, maxx = level.width - 1, maxy = level.height - 1;
   if ((tx == 0 && dx < 0) || (tx == maxx && dx > 0) || (ty == 0 && dy < 0) || (ty == maxy && dy > 0)) return false;
-  int target = idx + dy + dx * level.height; int SO = S->SO, SM = S->SM;
-  const BV& layerMask = S->layerMasks[layer];
-  BV targetMask(level.objects.begin() + (size_t)target * SO, level.objects.begin() + (size_t)(target + 1) * SO);
-  BV sourceMask(level.objects.begin() + (size_t)idx * SO, level.objects.begin() + (size_t)(idx + 1) * SO);
-  if (bvAnyCommon(layerMask, targetMask) && dirMask != 16) return false;
+  int target = idx + dy + dx * level.height; const int SO = S->SO, SM = S->SM;
+  const int32_t* layerMask = S->layerMasks[layer].data();
+  int32_t targetMask[MAXW], sourceMask[MAXW], moving[MAXW];
+  const int32_t* tcell = level.objects.data() + (size_t)target * SO; const int32_t* scell = level.objects.data() + (size_t)idx * SO;
+  bool common = false; for (int i = 0; i < SO; i++) { targetMask[i] = tcell[i]; sourceMask[i] = scell[i]; if (layerMask[i] & targetMask[i]) common = true; }
+  if (common && dirMask != 16) return false;
   for (const SfxEntry& o : S->sfxMovement[layer]) {
-    if (bvAnyCommon(o.objectMask, sourceMask)) {
-      BV movementMask(level.movements.begin() + (size_t)idx * SM, level.movements.begin() + (size_t)(idx + 1) * SM);
-      if (bvAnyCommon(movementMask, o.directionMask) && std::find(seedsToPlay_CanMove.begin(), seedsToPlay_CanMove.end(), o.seed) == seedsToPlay_CanMove.end()) seedsToPlay_CanMove.push_back(o.seed);
+    bool any = false; for (int i = 0; i < SO; i++) if (o.objectMask[i] & sourceMask[i]) any = true;
+    if (any) {
+      const int32_t* mv = level.movements.data() + (size_t)idx * SM; bool anyDir = false; for (int i = 0; i < SM; i++) if (mv[i] & o.directionMask[i]) anyDir = true;
+      if (anyDir && std::find(seedsToPlay_CanMove.begin(), seedsToPlay_CanMove.end(), o.seed) == seedsToPlay_CanMove.end()) seedsToPlay_CanMove.push_back(o.seed);
     }
   }
-  BV moving = sourceMask; for (int i = 0; i < SO; i++) { sourceMask[i] &= ~layerMask[i]; moving[i] &= layerMask[i]; targetMask[i] |= moving[i]; }
-  for (int i = 0; i < SO; i++) level.objects[(size_t)idx * SO + i] = sourceMask[i];
-  for (int i = 0; i < SO; i++) level.objects[(size_t)target * SO + i] = targetMask[i];
+  for (int i = 0; i < SO; i++) { moving[i] = sourceMask[i] & layerMask[i]; sourceMask[i] &= ~layerMask[i]; targetMask[i] |= moving[i]; }
+  int32_t* sc = level.objects.data() + (size_t)idx * SO; for (int i = 0; i < SO; i++) sc[i] = sourceMask[i];
+  int32_t* tc = level.objects.data() + (size_t)target * SO; for (int i = 0; i < SO; i++) tc[i] = targetMask[i];
   int col = target / level.height, row = target % level.height;
-  for (int i = 0; i < SO; i++) { level.colCellContents[col][i] |= moving[i]; level.rowCellContents[row][i] |= moving[i]; }
+  int32_t* cc = level.colCellContents[col].data(); int32_t* rc = level.rowCellContents[row].data();
+  for (int i = 0; i < SO; i++) { cc[i] |= moving[i]; rc[i] |= moving[i]; }
   return true;
 }
 bool VM::repositionEntitiesAtCell(int idx) {
-  int SM = S->SM; BV movementMask(level.movements.begin() + (size_t)idx * SM, level.movements.begin() + (size_t)(idx + 1) * SM);
-  if (bvZero(movementMask)) return false;
+  const int SM = S->SM; int32_t* movementMask = level.movements.data() + (size_t)idx * SM;
+  bool zero = true; for (int i = 0; i < SM; i++) if (movementMask[i]) zero = false;
+  if (zero) return false;
   bool moved = false;
   for (int layer = 0; layer < S->LAYER_COUNT; layer++) {
-    int32_t layerMovement = bvGetShiftOr(movementMask, 0x1f, 5 * layer);
-    if (layerMovement != 0) { if (repositionEntitiesOnLayer(idx, layer, layerMovement)) { bvShiftClear(movementMask, layerMovement, 5 * layer); moved = true; } }
+    int32_t layerMovement = rawGetShiftOr(movementMask, 0x1f, 5 * layer);
+    if (layerMovement != 0) { if (repositionEntitiesOnLayer(idx, layer, layerMovement)) { rawShiftClear(movementMask, layerMovement, 5 * layer); moved = true; } }
   }
-  for (int i = 0; i < SM; i++) level.movements[(size_t)idx * SM + i] = movementMask[i];
   int col = idx / level.height, row = idx % level.height;
-  for (int i = 0; i < SM; i++) { level.colCellContents_Movements[col][i] |= movementMask[i]; level.rowCellContents_Movements[row][i] |= movementMask[i]; level.mapCellContents_Movements[i] |= movementMask[i]; }
+  int32_t* ccm = level.colCellContents_Movements[col].data(); int32_t* rcm = level.rowCellContents_Movements[row].data(); int32_t* mcm = level.mapCellContents_Movements.data();
+  for (int i = 0; i < SM; i++) { ccm[i] |= movementMask[i]; rcm[i] |= movementMask[i]; mcm[i] |= movementMask[i]; }
   return moved;
 }
 bool VM::resolveMovements(std::vector<uint8_t>& banned) {
   bool moved = true;
   while (moved) { moved = false; for (int i = 0; i < level.n_tiles; i++) moved = repositionEntitiesAtCell(i) || moved; }
-  bool doUndo = false; int SO = S->SO, SM = S->SM;
+  bool doUndo = false; const int SO = S->SO, SM = S->SM;
   for (int i = 0; i < level.n_tiles; i++) {
-    BV cellMask(level.objects.begin() + (size_t)i * SO, level.objects.begin() + (size_t)(i + 1) * SO);
-    BV movementMask(level.movements.begin() + (size_t)i * SM, level.movements.begin() + (size_t)(i + 1) * SM);
-    if (!bvZero(movementMask)) {
+    const int32_t* cellMask = level.objects.data() + (size_t)i * SO;
+    int32_t* mv = level.movements.data() + (size_t)i * SM;
+    bool nz = false; for (int w = 0; w < SM; w++) if (mv[w]) nz = true;
+    if (nz) {
+      int32_t movementMask[MAXW]; for (int w = 0; w < SM; w++) movementMask[w] = mv[w];
       if (S->rigid) {
-        const BV& rma = level.rigidMovementAppliedMask[i];
-        if (!bvZero(rma)) {
-          for (int w = 0; w < SM; w++) movementMask[w] &= rma[w];
-          if (!bvZero(movementMask)) {
+        const int32_t* rma = level.rigidMovementAppliedMask[i].data(); bool rnz = false; for (int w = 0; w < SM; w++) if (rma[w]) rnz = true;
+        if (rnz) {
+          bool mnz = false; for (int w = 0; w < SM; w++) { movementMask[w] &= rma[w]; if (movementMask[w]) mnz = true; }
+          if (mnz) {
             for (int j = 0; j < S->LAYER_COUNT; j++) {
-              int32_t layerSection = bvGetShiftOr(movementMask, 0x1f, 5 * j);
+              int32_t layerSection = rawGetShiftOr(movementMask, 0x1f, 5 * j);
               if (layerSection != 0) {
-                int rgi = bvGetShiftOr(level.rigidGroupIndexMask[i], 0x1f, 5 * j) - 1;
+                int rgi = rawGetShiftOr(level.rigidGroupIndexMask[i].data(), 0x1f, 5 * j) - 1;
                 int groupIndex = rgi >= 0 && rgi < (int)S->rigidGroupIndex_to_GroupIndex.size() ? S->rigidGroupIndex_to_GroupIndex[rgi] : -1;
                 if (groupIndex >= 0) { if ((size_t)groupIndex >= banned.size()) banned.resize(groupIndex + 1, 0); if (banned[groupIndex] != 1) { banned[groupIndex] = 1; doUndo = true; } }
                 break;
@@ -448,10 +472,11 @@ bool VM::resolveMovements(std::vector<uint8_t>& banned) {
         }
       }
       for (const SfxEntry& o : S->sfxMovementFailure) {
-        if (bvAnyCommon(cellMask, o.objectMask) && bvAnyCommon(o.directionMask, movementMask) && std::find(seedsToPlay_CantMove.begin(), seedsToPlay_CantMove.end(), o.seed) == seedsToPlay_CantMove.end()) seedsToPlay_CantMove.push_back(o.seed);
+        bool a1 = false, a2 = false; for (int w = 0; w < SO; w++) if (cellMask[w] & o.objectMask[w]) a1 = true; for (int w = 0; w < SM; w++) if (o.directionMask[w] & movementMask[w]) a2 = true;
+        if (a1 && a2 && std::find(seedsToPlay_CantMove.begin(), seedsToPlay_CantMove.end(), o.seed) == seedsToPlay_CantMove.end()) seedsToPlay_CantMove.push_back(o.seed);
       }
     }
-    for (int j = 0; j < SM; j++) level.movements[(size_t)i * SM + j] = 0;
+    for (int j = 0; j < SM; j++) mv[j] = 0;
     if (S->rigid) { std::fill(level.rigidGroupIndexMask[i].begin(), level.rigidGroupIndexMask[i].end(), 0); std::fill(level.rigidMovementAppliedMask[i].begin(), level.rigidMovementAppliedMask[i].end(), 0); }
   }
   return doUndo;
@@ -465,7 +490,8 @@ bool VM::processInput(int dirIn, bool dontDoWin, bool dontModify) {
   std::vector<uint8_t> bannedGroup(S->rules.size(), 0);
   level.commandQueue.clear(); level.commandQueueSourceRules.clear(); level.commandMessage.clear();
   bool rigidloop = false;
-  std::vector<int32_t> startObjects = level.objects, startMovementsV = level.movements;
+  std::vector<int32_t>& startObjects = startObjects_; std::vector<int32_t>& startMovementsV = startMovements_;
+  if (S->rigid) { startObjects = level.objects; startMovementsV = level.movements; }   // only a rigid rollback reads these
   std::fill(sfxCreateMask.begin(), sfxCreateMask.end(), 0); std::fill(sfxDestroyMask.begin(), sfxDestroyMask.end(), 0);
   seedsToPlay_CanMove.clear(); seedsToPlay_CantMove.clear();
   calculateRowColMasks();
