@@ -1,0 +1,35 @@
+{
+  "game": "midas",
+  "title": "Midas",
+  "author": "wanderlands",
+  "dropdown_group": "Advanced",
+  "source": "src/demo/midas.txt",
+  "sha256": "34bb5a593dd0879ba533fb57449acf452dea0b9507ca3eb5c1a0439de7405b06",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    11,
+    13,
+    15,
+    17,
+    19,
+    21,
+    23,
+    25,
+    27,
+    29
+  ],
+  "levels": 31,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved."
+  }
+}

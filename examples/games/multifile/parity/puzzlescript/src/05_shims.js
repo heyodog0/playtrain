@@ -43,3 +43,6 @@ if (typeof outputString === 'undefined') psShimGlobal.outputString = '';
 if (typeof editor === 'undefined') psShimGlobal.editor = { getValue: function psShimEditorGetValue() { return psShimGlobal.levelString; } };
 if (typeof PuzzleScriptTestAssertions === 'undefined') psShimGlobal.PuzzleScriptTestAssertions = { push: psShimNoop, equal: psShimNoop };
 if (typeof UnitTestingThrow === 'undefined') psShimGlobal.UnitTestingThrow = function psShimUnitTestingThrow(e) { throw e; };
+// Audio: the engine's own `muted` state (set by the prelude) returns from playSound before any of this is reached;
+// these inert stand-ins only guarantee that no other path can throw ReferenceError where the browser globals are absent.
+if (typeof Audio === 'undefined') psShimGlobal.Audio = function psShimAudio() { this.src = ''; this.play = psShimNoop; this.pause = psShimNoop; };

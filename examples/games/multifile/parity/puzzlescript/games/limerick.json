@@ -1,0 +1,30 @@
+{
+  "game": "limerick",
+  "title": "Lime Rick",
+  "author": "Tommi Tuovinen",
+  "dropdown_group": "Intermediate",
+  "source": "src/demo/limerick.txt",
+  "sha256": "7079dc4d37f015b34de542da41f31ea08725166d4487f5dc6bd483d7eabe4c21",
+  "level_mode": "seed",
+  "playable_levels": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    17,
+    19
+  ],
+  "levels": 21,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Lime Rick by Tommi Tuovinen: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  }
+}

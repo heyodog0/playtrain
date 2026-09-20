@@ -1,0 +1,32 @@
+{
+  "game": "kettle",
+  "title": "Kettle",
+  "author": "increpare",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/kettle.txt",
+  "sha256": "82a818e730c7b0b8c831613cb28d85b79c4eda8236e49720fade3efc6cb3f19e",
+  "level_mode": "seed",
+  "playable_levels": [
+    1,
+    4,
+    7,
+    10,
+    13,
+    16,
+    19,
+    22,
+    25,
+    28,
+    31
+  ],
+  "levels": 35,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage",
+    "color_palette"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Kettle by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved."
+  }
+}

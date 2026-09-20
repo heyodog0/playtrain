@@ -1,0 +1,25 @@
+{
+  "game": "zenpuzzlegarden",
+  "title": "Zen Puzzle Garden",
+  "author": "lexaloffle",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/zenpuzzlegarden.txt",
+  "sha256": "ac4f075d9e6b47616d60553eb4801813ee2d92f058397af40126620bd03358bf",
+  "level_mode": "seed",
+  "playable_levels": [
+    1,
+    3,
+    5,
+    7,
+    9
+  ],
+  "levels": 11,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+  }
+}

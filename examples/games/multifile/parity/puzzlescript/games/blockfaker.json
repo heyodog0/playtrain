@@ -1,0 +1,30 @@
+{
+  "game": "blockfaker",
+  "title": "Block Faker",
+  "author": "Droqen",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/blockfaker.txt",
+  "sha256": "a86083d40cc0e5f6b3d7fa1efe048d317fdaf456bd44bc2531786d94266b3408",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    2,
+    4,
+    6,
+    8
+  ],
+  "levels": 10,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage",
+    "require_player_movement",
+    "key_repeat_interval",
+    "background_color",
+    "text_color",
+    "color_palette"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+  }
+}

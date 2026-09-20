@@ -1,0 +1,22 @@
+{
+  "game": "sokoban_basic",
+  "title": "Simple Block Pushing Game",
+  "author": "David Skinner",
+  "dropdown_group": "Tutorial",
+  "source": "src/demo/sokoban_basic.txt",
+  "sha256": "c389821b95fadf1d764e63c7592c1888cff9d214951db08bd9b7f52661c3faa8",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    1
+  ],
+  "levels": 2,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
+  }
+}

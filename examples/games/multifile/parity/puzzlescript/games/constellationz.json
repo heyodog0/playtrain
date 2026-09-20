@@ -1,0 +1,31 @@
+{
+  "game": "constellationz",
+  "title": "constellation z",
+  "author": "increpare",
+  "dropdown_group": "Intermediate",
+  "source": "src/demo/constellationz.txt",
+  "sha256": "0845e21feed1301d398e02fe3e9ac52c077cfee4cb82819e739ae1ead1c524df",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "levels": 12,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. constellation z by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved."
+  }
+}

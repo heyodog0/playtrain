@@ -1,0 +1,22 @@
+{
+  "game": "sokoban_match3",
+  "title": "Match 3 Block Push",
+  "author": "increpare",
+  "dropdown_group": "Tutorial",
+  "source": "src/demo/sokoban_match3.txt",
+  "sha256": "fc268e570b9d92011f3c47c0ec6082cd871619a3b6b9d320397920d29d862ee7",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    1
+  ],
+  "levels": 2,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Match 3 Block Push by increpare: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
+  }
+}

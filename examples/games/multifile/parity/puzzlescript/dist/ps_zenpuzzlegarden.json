@@ -1,0 +1,128 @@
+{
+  "name": "ps_zenpuzzlegarden",
+  "version": "0.1.0",
+  "title": "PuzzleScript Zen Puzzle Garden",
+  "family": "puzzlescript",
+  "game": "zenpuzzlegarden",
+  "author": "lexaloffle",
+  "source": "src/demo/zenpuzzlegarden.txt",
+  "action_space": "ps6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "ACTION",
+      "held": [
+        88
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    }
+  ],
+  "level_mode": "seed",
+  "playable_levels": [
+    1,
+    3,
+    5,
+    7,
+    9
+  ],
+  "levels": 11,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "max_steps": 1000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move, X acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved.",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "PuzzleScript (increpare): the engine itself, vendored",
+    "repo": "https://github.com/increpare/PuzzleScript",
+    "branch": "master",
+    "commit": "d236596d993b6ebb7988f1a078f582c0840ccbca",
+    "cloned": "2026-09-20",
+    "license": "MIT (engine). Games: src/demo/README says only the editor-dropdown examples can be assumed MIT; the corpus is exactly that list.",
+    "engine_load_order": [
+      "js/storagewrapper.js",
+      "js/bitvec.js",
+      "js/level.js",
+      "js/languageConstants.js",
+      "js/globalVariables.js",
+      "js/debug.js",
+      "js/font.js",
+      "js/rng.js",
+      "js/riffwave.js",
+      "js/sfxr.js",
+      "js/codemirror/stringstream.js",
+      "js/colorhelpers.js",
+      "js/colors.js",
+      "js/engine.js",
+      "js/parser.js",
+      "js/compiler.js",
+      "js/soundbar.js"
+    ],
+    "render_file": "js/graphics.js",
+    "reference_tests": {
+      "files": [
+        "tests/testdata.js",
+        "tests/errormessage_testdata.js",
+        "tests/testingFrameWork.js"
+      ],
+      "count": 770,
+      "runner": "src/tests/run_tests_node.js",
+      "checkout_result_2026-09-20": "Failed 0, Errors 0, 770 tests in 6.7 s (node 24.3.0)"
+    },
+    "driving_protocol": "compile([\"loadLevel\", n], text, String(seed)); while (againing) { againing = false; processInput(-1); }; per action a in 0..4: processInput(a) then the same loop; NOOP (5): nothing. unitTesting = false so DoWin sets `winning` instead of calling nextLevel(). The episode ends at winning.",
+    "rng": "rng.js RC4 keyed by the seed string (RandomGen = new RNG(seed) in loadLevelFromLevelDat); a falsy seed would fall back to Math.random() + Date.now(), so the seed is always a non-empty string",
+    "parity": "lockstep: convertLevelToString(), sha1(level.objects), curlevel, winning, againing, textMode, messagetext, backups.length, movements all zero, RandomGen RC4 i/j/sha1(s) after reset and after every step (tests/gate_oracle.mjs vs tests/oracle.mjs on the unmodified checkout)",
+    "not_matched": [
+      "pixels: the reference draws at a window-dependent cell size with the canvas letterboxed; PlayTrain draws 5 px cells into a canvas sized for the largest playable level (or the flick/zoom screen) and the rasterizer scales that to 64x64. Sprite ids and positions are gated (G8), pixel values are not",
+      "undo (Z), restart (R), level select, the title screen, message screens and the key press that moves from `winning` to the next level: the episode ends at winning (gameState WIN, reward 1)",
+      "sound: sfxr is loaded because the compiler needs it; nothing is played",
+      "realtime_interval games: none in the corpus; no step model is defined for them",
+      "key repeat and the browser's input buffering: one action per step, no repeats",
+      "the reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)",
+      "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
+    ]
+  },
+  "source_sha256": "dfa74a3f40a9aa54b2139b739d3ad96145b05d4c8ecc712654f51d29f5784812"
+}

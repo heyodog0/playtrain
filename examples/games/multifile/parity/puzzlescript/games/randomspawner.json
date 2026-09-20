@@ -1,0 +1,21 @@
+{
+  "game": "randomspawner",
+  "title": "Robot Spawner",
+  "author": "increpare",
+  "dropdown_group": "Tutorial",
+  "source": "src/demo/randomspawner.txt",
+  "sha256": "9520d1b66a0641322dd113fe16bde23b67fc10299bef78dfadfe94a63569973e",
+  "level_mode": "seed",
+  "playable_levels": [
+    0
+  ],
+  "levels": 1,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Robot Spawner by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  }
+}

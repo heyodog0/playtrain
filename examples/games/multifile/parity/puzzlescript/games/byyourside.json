@@ -1,0 +1,32 @@
+{
+  "game": "byyourside",
+  "title": "By Your Side",
+  "author": "Alan Hazelden",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/byyourside.txt",
+  "sha256": "0bd4f168a0efb8c3376b276d6695af796c4c07b6d7f1cd2453f072fc35d28e47",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "levels": 12,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage",
+    "require_player_movement",
+    "key_repeat_interval"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. By Your Side by Alan Hazelden: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  }
+}

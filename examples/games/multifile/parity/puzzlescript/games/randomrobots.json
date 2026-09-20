@@ -1,0 +1,21 @@
+{
+  "game": "randomrobots",
+  "title": "Random Robots",
+  "author": "increpare",
+  "dropdown_group": "Tutorial",
+  "source": "src/demo/randomrobots.txt",
+  "sha256": "f69f5fc81d84b66978dfb484e3af3ef27939a58e152515b5c6035238f904537a",
+  "level_mode": "seed",
+  "playable_levels": [
+    0
+  ],
+  "levels": 1,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Random Robots by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  }
+}

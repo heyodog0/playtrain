@@ -1,0 +1,23 @@
+{
+  "game": "notsnake",
+  "title": "Notsnake",
+  "author": "Terry Cavanagh",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/notsnake.txt",
+  "sha256": "b9e4dfb30e6d92583ca42e2a858b2db0842caec88fee7bd9963d73acd08559d6",
+  "level_mode": "seed",
+  "playable_levels": [
+    0
+  ],
+  "levels": 1,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage",
+    "color_palette",
+    "require_player_movement"
+  ],
+  "human": {
+    "controls": "Arrows move, X acts. Notsnake by Terry Cavanagh: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  }
+}

@@ -56,7 +56,13 @@
     "rng": "rng.js RC4 keyed by the seed string (RandomGen = new RNG(seed) in loadLevelFromLevelDat); a falsy seed would fall back to Math.random() + Date.now(), so the seed is always a non-empty string",
     "parity": "lockstep: convertLevelToString(), sha1(level.objects), curlevel, winning, againing, textMode, messagetext, backups.length, movements all zero, RandomGen RC4 i/j/sha1(s) after reset and after every step (tests/gate_oracle.mjs vs tests/oracle.mjs on the unmodified checkout)",
     "not_matched": [
-      "(filled in U03)"
+      "pixels: the reference draws at a window-dependent cell size with the canvas letterboxed; PlayTrain draws 5 px cells into a canvas sized for the largest playable level (or the flick/zoom screen) and the rasterizer scales that to 64x64. Sprite ids and positions are gated (G8), pixel values are not",
+      "undo (Z), restart (R), level select, the title screen, message screens and the key press that moves from `winning` to the next level: the episode ends at winning (gameState WIN, reward 1)",
+      "sound: sfxr is loaded because the compiler needs it; nothing is played",
+      "realtime_interval games: none in the corpus; no step model is defined for them",
+      "key repeat and the browser's input buffering: one action per step, no repeats",
+      "the reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)",
+      "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
   "vendored": {
