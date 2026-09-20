@@ -5,7 +5,7 @@ The only record of state. `LOOP.md` reads this first every iteration.
 STATUS: RUNNING
 ITERATION: 10
 BRANCH: twins (from puzzlescript @ 8fc96c6)
-LAST_COMMIT: 903ac8a
+LAST_COMMIT: 8a61311
 
 ## Ledger
 
