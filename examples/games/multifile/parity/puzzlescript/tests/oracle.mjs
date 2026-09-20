@@ -75,7 +75,8 @@ export function playableLevels(ctx) {
 
 export function compileGame(ctx, text, levelIndex, seedStr) {
   ctx.levelString = text;
-  vm.runInContext(`unitTesting = false; lazyFunctionGeneration = false; errorStrings = []; errorCount = 0;`, ctx);
+  // unitTesting false so DoWin sets `winning`; muted = 1 is the engine's own mute (the runner mutes through unitTesting)
+  vm.runInContext(`unitTesting = false; lazyFunctionGeneration = false; muted = 1; errorStrings = []; errorCount = 0;`, ctx);
   vm.runInContext(`compile(["loadLevel", ${levelIndex}], levelString, ${JSON.stringify(seedStr)});`, ctx);
   const errors = vm.runInContext(`errorCount`, ctx);
   agains(ctx);
@@ -100,7 +101,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const ctx = makeContext(); loadEngine(ctx, join(REF, 'src'), ENGINE_FILES);
   if (args.includes('--info')) {
     ctx.levelString = text;
-    vm.runInContext(`unitTesting = false; lazyFunctionGeneration = false; errorStrings = []; errorCount = 0; compile(["restart"], levelString, "1");`, ctx);
+    vm.runInContext(`unitTesting = false; lazyFunctionGeneration = false; muted = 1; errorStrings = []; errorCount = 0; compile(["restart"], levelString, "1");`, ctx);
     const info = vm.runInContext(`({ title: state.metadata.title || null, author: state.metadata.author || null, metadata: Object.keys(state.metadata),
       levels: state.levels.length, playable: state.levels.map((l, i) => l.message === undefined ? i : -1).filter(i => i >= 0),
       errors: errorCount, winconditions: state.winconditions.length, objects: Object.keys(state.objects).length, layers: state.collisionLayers.length,
