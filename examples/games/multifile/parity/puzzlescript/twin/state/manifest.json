@@ -1,0 +1,121 @@
+{
+ "blockfaker": {
+  "text_sha256": "a86083d40cc0e5f6b3d7fa1efe048d317fdaf456bd44bc2531786d94266b3408",
+  "state_sha256": "3502eed40935a2be78c38a118e1659456a91b23a818e578cf03d3733bb32d7b2",
+  "rules": 2,
+  "lateRules": 5,
+  "levels": 10
+ },
+ "byyourside": {
+  "text_sha256": "0bd4f168a0efb8c3376b276d6695af796c4c07b6d7f1cd2453f072fc35d28e47",
+  "state_sha256": "910e2c96da0cff50d25fecb738adef801ce6c23e7abfb6548f0669b138ec48ee",
+  "rules": 2,
+  "lateRules": 4,
+  "levels": 12
+ },
+ "constellationz": {
+  "text_sha256": "0845e21feed1301d398e02fe3e9ac52c077cfee4cb82819e739ae1ead1c524df",
+  "state_sha256": "3518f0236b529cb09e858aaef412574fe62dde48fd794c30509aec437b84ba66",
+  "rules": 0,
+  "lateRules": 4,
+  "levels": 12
+ },
+ "kettle": {
+  "text_sha256": "82a818e730c7b0b8c831613cb28d85b79c4eda8236e49720fade3efc6cb3f19e",
+  "state_sha256": "d0bdccb45374e5f44fb936b05a96bb63ac26095aee34fc99ad58b331494d7a0d",
+  "rules": 14,
+  "lateRules": 0,
+  "levels": 35
+ },
+ "limerick": {
+  "text_sha256": "7079dc4d37f015b34de542da41f31ea08725166d4487f5dc6bd483d7eabe4c21",
+  "state_sha256": "8f2e5b1d775c285ddf765dd4961b9e1ed7fdc138597fbf175414323aebfa85ae",
+  "rules": 11,
+  "lateRules": 0,
+  "levels": 21
+ },
+ "microban": {
+  "text_sha256": "2383697a036cd6c9a555af759f046cf8d4ba606facad9bb5502512c6ee753581",
+  "state_sha256": "768a4ecf2e57b3d3ba1b68999625e3ae48e6a9ab6ff5a99a0812bc2a25d36a56",
+  "rules": 1,
+  "lateRules": 0,
+  "levels": 21
+ },
+ "midas": {
+  "text_sha256": "34bb5a593dd0879ba533fb57449acf452dea0b9507ca3eb5c1a0439de7405b06",
+  "state_sha256": "41a395270cf79ba90540efb409fdacc9c7f74f315e468b5ec6556e1f7409227c",
+  "rules": 6,
+  "lateRules": 9,
+  "levels": 31
+ },
+ "nekopuzzle": {
+  "text_sha256": "fb60ce89274c0330b4748b9404830370622bc61461800344570a5e258c34f7f2",
+  "state_sha256": "b4a1c9a8c4e86707874a6abee692eaedc427793a8ea1d794eb678a8318a4c678",
+  "rules": 2,
+  "lateRules": 0,
+  "levels": 21
+ },
+ "notsnake": {
+  "text_sha256": "b9e4dfb30e6d92583ca42e2a858b2db0842caec88fee7bd9963d73acd08559d6",
+  "state_sha256": "684b493bcbe5d532dcb4e2b55fbb982d1bf1868ef86114347a31addcfdffa885",
+  "rules": 2,
+  "lateRules": 0,
+  "levels": 1
+ },
+ "octat": {
+  "text_sha256": "231789b56afa70030cdcf832dbf3d97b7c887cca2f254b7a2f03e125b87512b1",
+  "state_sha256": "5eed0c3246a45ff0c7a1d305628ce5cb8424068d1582ca0cb4789a3794e67a11",
+  "rules": 1,
+  "lateRules": 4,
+  "levels": 17
+ },
+ "randomrobots": {
+  "text_sha256": "f69f5fc81d84b66978dfb484e3af3ef27939a58e152515b5c6035238f904537a",
+  "state_sha256": "4116292fe88d3b312cbd3f9e3c7cf4d6a0977057c7b7f454712c08c104862c71",
+  "rules": 1,
+  "lateRules": 0,
+  "levels": 1
+ },
+ "randomspawner": {
+  "text_sha256": "9520d1b66a0641322dd113fe16bde23b67fc10299bef78dfadfe94a63569973e",
+  "state_sha256": "a5c4baeee27faa4b064d9e526d36cee2ccfe682fefe59bc3638bf6b86369c231",
+  "rules": 2,
+  "lateRules": 0,
+  "levels": 1
+ },
+ "sokoban_basic": {
+  "text_sha256": "c389821b95fadf1d764e63c7592c1888cff9d214951db08bd9b7f52661c3faa8",
+  "state_sha256": "507c853c21f9fce5138eefe5b4723c5d20334eff9b78c48e72572c1112a462b1",
+  "rules": 1,
+  "lateRules": 0,
+  "levels": 2
+ },
+ "sokoban_eyeball": {
+  "text_sha256": "811e22e97ae3cfc1d0349cf52f7181b14c04cb19a82e7f00d5404196a5aa0dd8",
+  "state_sha256": "bd51e2c37c29307153756a7954ecfc50e278d212b6dafc8e480871af8065a264",
+  "rules": 1,
+  "lateRules": 0,
+  "levels": 1
+ },
+ "sokoban_match3": {
+  "text_sha256": "fc268e570b9d92011f3c47c0ec6082cd871619a3b6b9d320397920d29d862ee7",
+  "state_sha256": "540831850f61c2840fecd471314ae1c5e32496dacb559151fcea76a81586bd78",
+  "rules": 1,
+  "lateRules": 1,
+  "levels": 2
+ },
+ "whaleworld": {
+  "text_sha256": "997ef71db79f08781f16f1a0a6be1c225e684292a868271fd085fc487cd2fbfa",
+  "state_sha256": "d3afc867b03cf04ed0606ca5dda743f973c73786262a775f92b3e865994041ee",
+  "rules": 5,
+  "lateRules": 3,
+  "levels": 17
+ },
+ "zenpuzzlegarden": {
+  "text_sha256": "ac4f075d9e6b47616d60553eb4801813ee2d92f058397af40126620bd03358bf",
+  "state_sha256": "5445ea73f3586656b5ad783d41a8db7082a55b23e9a1381457f357e9af2896e1",
+  "rules": 2,
+  "lateRules": 1,
+  "levels": 11
+ }
+}

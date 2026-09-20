@@ -26,4 +26,5 @@ case "$(uname)" in
 esac
 $CXX $DEFS $SRCS common/twin_host.cpp "$RASTER_LIB" "$FROZEN" $EXTRA -o "$OUT/twin_host"
 if [ -f chip8/cpu.cpp ]; then $CXX tests/test_vectors.cpp chip8/cpu.cpp chip8/threefry.cpp -o "$OUT/test_vectors"; fi
+if [ -f puzzlescript/vm.cpp ]; then $CXX tests/test_ps_reference.cpp puzzlescript/vm.cpp -o "$OUT/test_ps_reference"; fi
 echo "built $LIB and $OUT/twin_host ($DEFS)"
