@@ -21,6 +21,7 @@ void vec_close(void*); const char* vec_error(void*); const char* vec_last_error(
 int twin_debug_state(void*, int, double*, double*, char*, int);
 const char* twin_debug_snapshot(void*, int);
 int twin_debug_n_actions(void*);
+void twin_debug_reset(void*, int, uint32_t);
 }
 
 // ECMAScript Number.prototype.toString for the values a game reports: shortest round-trip decimal.
@@ -79,6 +80,7 @@ int main(int argc, char** argv) {
     double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     printf("bench(twin): %ld steps in %.4fs = %.0f steps/sec\n", n, secs, n / secs);
   } else if (!strcmp(mode, "snap")) {
+    twin_debug_reset(h, 0, seed);                     // the hook's reset: no NOOP frame
     printf("%s\n", twin_debug_snapshot(h, 0));
     const char* p = argv[4];
     while (p && *p) { a32 = (int32_t)strtol(p, (char**)&p, 10); if (*p == ',') p++;

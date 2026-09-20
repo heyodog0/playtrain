@@ -25,4 +25,5 @@ case "$(uname)" in
   *)      $CXX $DEFS -shared $SRCS "$RASTER_LIB" "$NATIVE/frozenmath/libfrozenmath_pic.a" $EXTRA -o "$OUT/libtwin_vec.so"; LIB="$OUT/libtwin_vec.so";;
 esac
 $CXX $DEFS $SRCS common/twin_host.cpp "$RASTER_LIB" "$FROZEN" $EXTRA -o "$OUT/twin_host"
+if [ -f chip8/cpu.cpp ]; then $CXX tests/test_vectors.cpp chip8/cpu.cpp chip8/threefry.cpp -o "$OUT/test_vectors"; fi
 echo "built $LIB and $OUT/twin_host ($DEFS)"
