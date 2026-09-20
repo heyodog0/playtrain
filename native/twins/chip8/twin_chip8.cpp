@@ -30,6 +30,7 @@ class Chip8Twin : public Twin {
     if (gameState_ == "PLAYING") { chip8::stepEnv(env_, actionFromKeys()); score_ = env_.score; if (env_.terminated) gameState_ = "GAMEOVER"; }
     render();
   }
+  void hookStep(int action) override { chip8::stepEnv(env_, action); }   // __chip8.step: c8EnvStep, nothing else
   GameState getGameState() override { GameState g; g.score = score_; g.lives = 1; g.gameState = gameState_; return g; }
   std::string snapshot() const override {
     // JSON.stringify(__chip8.snap()): key order and JS number formatting matter (the goldens hash this text)

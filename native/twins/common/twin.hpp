@@ -26,6 +26,9 @@ class Twin {
   virtual int symbolicDim() const { return 0; }   // > 0: getObservation exists
   virtual void getObservation(float* out, int dim) { (void)out; (void)dim; }
   virtual std::string snapshot() const { return "{}"; }   // the family hook's snap() shape, JSON
+  // The family hook's step (`__chip8.step(a)`, `__ps.step(a)`): the ENV step with an action index, no draw, no
+  // PlayTrain episode bookkeeping. The lockstep and golden gates drive this; draw() is what the host drives.
+  virtual void hookStep(int action) { (void)action; }
 };
 
 // What the registry learns from the bundle's sidecar (<bundle>.json).

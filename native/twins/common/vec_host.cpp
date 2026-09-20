@@ -336,6 +336,10 @@ const char* twin_debug_snapshot(void* h, int idx) {
   return buf.c_str();
 }
 int twin_debug_n_actions(void* h) { return h ? ((VecHost*)h)->actions.n() : 0; }
+void twin_debug_step(void* h, int idx, int action) {
+  VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return;
+  Env& e = H->envs[idx]; e.select(); e.twin->hookStep(action);
+}
 // Hook-style reset: resetGame(seed) with NO draw, like the families' gate hooks (`__chip8.reset`, `__ps.reset`), so
 // `twin_host snap` lines up step for step with the JS snapshots the goldens hash.
 void twin_debug_reset(void* h, int idx, uint32_t seed) {

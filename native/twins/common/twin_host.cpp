@@ -22,6 +22,7 @@ int twin_debug_state(void*, int, double*, double*, char*, int);
 const char* twin_debug_snapshot(void*, int);
 int twin_debug_n_actions(void*);
 void twin_debug_reset(void*, int, uint32_t);
+void twin_debug_step(void*, int, int);
 }
 
 // ECMAScript Number.prototype.toString for the values a game reports: shortest round-trip decimal.
@@ -84,7 +85,7 @@ int main(int argc, char** argv) {
     printf("%s\n", twin_debug_snapshot(h, 0));
     const char* p = argv[4];
     while (p && *p) { a32 = (int32_t)strtol(p, (char**)&p, 10); if (*p == ',') p++;
-      vec_step(h, &a32, obs.data(), &rew, &term, &trunc);
+      twin_debug_step(h, 0, a32);                    // the hook's step: env only, past termination too
       printf("%s\n", twin_debug_snapshot(h, 0)); }
   } else { fprintf(stderr, "unknown mode %s\n", mode); return 2; }
   if (const char* e = vec_error(h)) { fprintf(stderr, "twin_host: %s\n", e); return 1; }
