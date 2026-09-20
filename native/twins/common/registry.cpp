@@ -1,6 +1,7 @@
 // registry.cpp — bundle path -> sidecar -> family/game -> twin. The sidecar (dist/<name>.json) names the family and
 // the game; the family directory is dist/.. and holds games/*.json, roms/, and the serialised specs the twins load.
 #include "twin.hpp"
+#include "vfs.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -17,10 +18,10 @@ bool read_game_info(const std::string& game_path, GameInfo& info, std::string& e
   std::string side_path = game_path;
   if (side_path.size() > 3 && side_path.compare(side_path.size() - 3, 3, ".js") == 0) side_path = side_path.substr(0, side_path.size() - 3) + ".json";
   else side_path += ".json";
-  std::ifstream f(side_path);
-  if (!f) { err = "twin: no sidecar at " + side_path; return false; }
+  std::string text;
+  if (!readFile(side_path, text)) { err = "twin: no sidecar at " + side_path; return false; }
   nlohmann::json side;
-  try { f >> side; } catch (const std::exception& e) { err = std::string("twin: bad sidecar JSON: ") + e.what(); return false; }
+  try { side = nlohmann::json::parse(text); } catch (const std::exception& e) { err = std::string("twin: bad sidecar JSON: ") + e.what(); return false; }
   info.family = side.value("family", "");
   info.game = side.value("game", "");
   info.corpus = side.value("corpus", ""); info.level_mode = side.value("level_mode", "seed"); info.render = side.value("render", "tiles");

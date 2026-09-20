@@ -88,8 +88,11 @@ for (const name of games) {
   const source = readFileSync(join(GAMES_DIR, `${name}.js`), 'utf8');
   const sidecar = sidecarFor(name);
   if (sidecar) withSidecar++;
+  // a .wasm game's glue names its module; inline it so the page stays self-contained
+  const wasmDecl = /^const __PT_WASM_FILE = "([^"]+)";$/m.exec(source);
+  const wasmBytes = wasmDecl ? readFileSync(join(GAMES_DIR, wasmDecl[1])) : null;
   writeFile(join(OUT_DIR, 'game', name, 'index.html'),
-            playPage(name, source, { homeHref: '/', sidecar }));
+            playPage(name, source, { homeHref: '/', sidecar, wasmBytes }));
 }
 if (withSidecar) console.log(`  ${withSidecar} with a sidecar (own pacing, controls, parity label)`);
 

@@ -15,7 +15,7 @@ OPT="-O3"; SAN=""
 if [ "${DEBUG:-}" = 1 ]; then OPT="-O1 -g"; SAN="-fsanitize=address,undefined -fno-omit-frame-pointer"; fi
 CXX="clang++ -std=c++17 $OPT $SAN -ffp-contract=off -fno-fast-math -Wall -Wno-unused-parameter -fPIC -I $NATIVE/runtime -I common -I third_party"
 DEFS=""
-SRCS="common/vec_host.cpp common/registry.cpp common/blank_twin.cpp $NATIVE/runtime/p5.cpp $OUT/v8_ieee754.o"
+SRCS="common/vec_host.cpp common/registry.cpp common/blank_twin.cpp common/vfs.cpp $NATIVE/runtime/p5.cpp $OUT/v8_ieee754.o"
 for fam in chip8 vgdl puzzlescript; do
   if ls $fam/*.cpp >/dev/null 2>&1; then SRCS="$SRCS $(ls $fam/*.cpp | tr '\n' ' ')"; DEFS="$DEFS -DTWIN_HAVE_$(echo $fam | tr a-z A-Z)"; fi
 done

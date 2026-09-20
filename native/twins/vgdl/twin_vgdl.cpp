@@ -7,7 +7,7 @@
 #include "engine.hpp"
 #include "../common/jsnum.hpp"
 #include <cstdio>
-#include <fstream>
+#include "vfs.hpp"
 namespace twin {
 using vgdl::json;
 
@@ -142,9 +142,9 @@ class VgdlTwin : public Twin {
 
 std::unique_ptr<Twin> make_vgdl_twin(const GameInfo& info, std::string& err) {
   std::string path = info.dir + "/twin/" + info.corpus + "/" + info.game + ".json";
-  std::ifstream f(path);
-  if (!f) { err = "vgdl: no twin spec at " + path + " (run tools/twin_spec.mjs)"; return nullptr; }
-  json j; try { f >> j; } catch (const std::exception& e) { err = std::string("vgdl: bad twin spec: ") + e.what(); return nullptr; }
+  std::string text;
+  if (!readFile(path, text)) { err = "vgdl: no twin spec at " + path + " (run tools/twin_spec.mjs)"; return nullptr; }
+  json j; try { j = json::parse(text); } catch (const std::exception& e) { err = std::string("vgdl: bad twin spec: ") + e.what(); return nullptr; }
   std::string profile = j.value("profile", "colas");
   if (profile != "colas" && profile != "rcrl") { err = "vgdl: unknown profile '" + profile + "'"; return nullptr; }
   std::vector<std::string> levels; for (auto& L : j["levels"]) levels.push_back(L.get<std::string>());

@@ -158,6 +158,14 @@ function loadGame(gamePath, needsMatter) {
   }
 
   const gameCode = readFileSync(gamePath, 'utf8');
+  // A .wasm game (native/twins/wasm/build_game.mjs): the .js is a small glue that declares
+  // `const __PT_WASM_FILE = "<name>.wasm"` and instantiates the module from __PT_WASM_BYTES,
+  // which we read from beside the bundle. The glue then defines the usual contract functions.
+  const wasmDecl = /^const __PT_WASM_FILE = "([^"]+)";$/m.exec(gameCode);
+  if (wasmDecl) {
+    const wasmPath = join(dirname(gamePath), wasmDecl[1]);
+    globalThis.__PT_WASM_BYTES = new Uint8Array(readFileSync(wasmPath));
+  }
   vm.runInThisContext(gameCode, { filename: gamePath });
 
   // Verify the game exports the required interface

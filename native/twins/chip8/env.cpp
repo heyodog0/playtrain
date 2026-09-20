@@ -1,13 +1,13 @@
 #include "env.hpp"
 #include <cmath>
 #include <cstring>
-#include <fstream>
+#include "../common/vfs.hpp"
 namespace chip8 {
 using nlohmann::json;
 
 bool loadDef(const std::string& path, Def& d, std::string& err) {
-  std::ifstream f(path); if (!f) { err = "chip8: cannot open " + path; return false; }
-  try { f >> d.j; } catch (const std::exception& ex) { err = std::string("chip8: bad def JSON: ") + ex.what(); return false; }
+  std::string text; if (!twin::readFile(path, text)) { err = "chip8: cannot open " + path; return false; }
+  try { d.j = json::parse(text); } catch (const std::exception& ex) { err = std::string("chip8: bad def JSON: ") + ex.what(); return false; }
   d.action_set.clear(); for (const auto& k : d.j["action_set"]) d.action_set.push_back(k.get<int>());
   d.startup_instructions = d.j.value("startup_instructions", 0);
   d.custom_startup = d.j["custom_startup"].is_null() ? std::string() : d.j["custom_startup"].get<std::string>();

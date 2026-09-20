@@ -134,7 +134,7 @@ ${autoOpenScript}
 
 // All games render live by PlayTrain's own rasterizer (the agent's renderer). Matter.js games
 // also get matter.min.js inlined so the `Matter` global is available before the game runs.
-function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sidecar = null } = {}) {
+function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sidecar = null, wasmBytes = null } = {}) {
   // A multi-file game ships <name>.json beside its bundle. Three things come
   // from it: the human tick rate (Craftax is turn-based; 60fps is unplayable),
   // the controls overlay, and the parity label. Catalog games have no sidecar
@@ -163,6 +163,17 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sid
   // Classic <script> executes before the deferred type="module" boot, so window.Matter is
   // set by the time the game source is eval'd — the browser analogue of game-env.mjs.
   const matterScript = needsMatter ? `<script>${matterBundle()}</script>\n` : '';
+  // A .wasm game (native/twins/wasm/build_game.mjs): its glue expects globalThis.__PT_WASM_MODULE. The module is
+  // inlined (base64, like rasterizer.wasm) and compiled with a top-level await before the boot IIFE evals the glue,
+  // so the page stays a single self-contained file. Sync compile of a large module is disallowed on the main thread.
+  const wasmPre = wasmBytes
+    ? `{
+  const __b = atob(${JSON.stringify(Buffer.from(wasmBytes).toString('base64'))});
+  const __bytes = new Uint8Array(__b.length);
+  for (let i = 0; i < __b.length; i++) __bytes[i] = __b.charCodeAt(i);
+  globalThis.__PT_WASM_MODULE = await WebAssembly.compile(__bytes);
+}
+` : '';
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${name} — PlayTrain tester</title>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
@@ -186,7 +197,7 @@ ${controlsHtml}
 
 ${matterScript}<script type="module">
 ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
-
+${wasmPre}
 // ---- boot (IIFE so its locals can't collide with shim top-level names, e.g. loop()) ----
 // install OUR p5 globals (backed by raster.mjs), run the game, blit pixels.
 (function () {

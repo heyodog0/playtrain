@@ -4,8 +4,7 @@
 #include "p5.hpp"
 #include "env.hpp"
 #include <cstdio>
-#include <fstream>
-#include <iterator>
+#include "vfs.hpp"
 namespace twin {
 using chip8::Env;
 
@@ -48,9 +47,9 @@ class Chip8Twin : public Twin {
 std::unique_ptr<Twin> make_chip8_twin(const GameInfo& info, std::string& err) {
   chip8::Def d;
   if (!chip8::loadDef(info.dir + "/games/" + info.game + ".json", d, err)) return nullptr;
-  std::ifstream rf(info.dir + "/roms/" + d.j["rom"].get<std::string>(), std::ios::binary);
-  if (!rf) { err = "chip8: cannot open ROM for " + info.game; return nullptr; }
-  std::vector<uint8_t> rom((std::istreambuf_iterator<char>(rf)), std::istreambuf_iterator<char>());
+  std::string romText;
+  if (!readFile(info.dir + "/roms/" + d.j["rom"].get<std::string>(), romText)) { err = "chip8: cannot open ROM for " + info.game; return nullptr; }
+  std::vector<uint8_t> rom(romText.begin(), romText.end());
   return std::unique_ptr<Twin>(new Chip8Twin(d, std::move(rom)));
 }
 }

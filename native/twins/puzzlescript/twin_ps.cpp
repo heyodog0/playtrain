@@ -9,7 +9,7 @@
 #include "../common/jsnum.hpp"
 #include <algorithm>
 #include <cstdio>
-#include <fstream>
+#include "vfs.hpp"
 #include <map>
 namespace twin {
 using ps::json;
@@ -154,10 +154,10 @@ class PsTwin : public Twin {
 
 std::unique_ptr<Twin> make_puzzlescript_twin(const GameInfo& info, std::string& err) {
   std::string sp = info.dir + "/twin/state/ps_" + info.game + ".json", dp = info.dir + "/games/" + info.game + ".json";
-  std::ifstream sf(sp), df(dp);
-  if (!sf) { err = "puzzlescript: no twin state at " + sp + " (run tools/twin_state.mjs --games)"; return nullptr; }
-  if (!df) { err = "puzzlescript: no game def at " + dp; return nullptr; }
-  json state, def; try { sf >> state; df >> def; } catch (const std::exception& e) { err = std::string("puzzlescript: bad JSON: ") + e.what(); return nullptr; }
+  std::string st, dt;
+  if (!readFile(sp, st)) { err = "puzzlescript: no twin state at " + sp + " (run tools/twin_state.mjs --games)"; return nullptr; }
+  if (!readFile(dp, dt)) { err = "puzzlescript: no game def at " + dp; return nullptr; }
+  json state, def; try { state = json::parse(st); def = json::parse(dt); } catch (const std::exception& e) { err = std::string("puzzlescript: bad JSON: ") + e.what(); return nullptr; }
   std::unique_ptr<PsTwin> t(new PsTwin(state, def, err));
   if (!err.empty()) return nullptr;
   return std::unique_ptr<Twin>(t.release());
