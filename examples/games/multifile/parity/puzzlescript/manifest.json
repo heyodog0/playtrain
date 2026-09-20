@@ -1,0 +1,1146 @@
+{
+  "name": "puzzlescript",
+  "version": "0.1.0",
+  "title": "PuzzleScript (reference-engine identity family)",
+  "kind": "family",
+  "note": "The reference engine's own files run inside every bundle: tools/bundle_puzzlescript.mjs concatenates a constants header, src/05_shims.js, reference/js/* in the reference's load order, and src/90_prelude.js with one games/<game>.txt into dist/ps_<game>.js plus a sidecar. Edit src/ only; never reference/, games/*.txt or dist/. The manifest deliberately has no `sources` key (tools/bundle_multifile.py --all would treat the family as one game).",
+  "action_space": "ps6: UP LEFT DOWN RIGHT ACTION NOOP (processInput dir codes 0-4, then no input)",
+  "max_steps": 1000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move, X acts. One key press is one turn.",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "PuzzleScript (increpare): the engine itself, vendored",
+    "repo": "https://github.com/increpare/PuzzleScript",
+    "branch": "master",
+    "commit": "d236596d993b6ebb7988f1a078f582c0840ccbca",
+    "cloned": "2026-09-20",
+    "license": "MIT (engine). Games: src/demo/README says only the editor-dropdown examples can be assumed MIT; the corpus is exactly that list.",
+    "engine_load_order": [
+      "js/storagewrapper.js",
+      "js/bitvec.js",
+      "js/level.js",
+      "js/languageConstants.js",
+      "js/globalVariables.js",
+      "js/debug.js",
+      "js/font.js",
+      "js/rng.js",
+      "js/riffwave.js",
+      "js/sfxr.js",
+      "js/codemirror/stringstream.js",
+      "js/colorhelpers.js",
+      "js/colors.js",
+      "js/engine.js",
+      "js/parser.js",
+      "js/compiler.js",
+      "js/soundbar.js"
+    ],
+    "render_file": "js/graphics.js",
+    "reference_tests": {
+      "files": [
+        "tests/testdata.js",
+        "tests/errormessage_testdata.js",
+        "tests/testingFrameWork.js"
+      ],
+      "count": 770,
+      "runner": "src/tests/run_tests_node.js",
+      "checkout_result_2026-09-20": "Failed 0, Errors 0, 770 tests in 6.7 s (node 24.3.0)"
+    },
+    "driving_protocol": "compile([\"loadLevel\", n], text, String(seed)); while (againing) { againing = false; processInput(-1); }; per action a in 0..4: processInput(a) then the same loop; NOOP (5): nothing. unitTesting = false so DoWin sets `winning` instead of calling nextLevel(). The episode ends at winning.",
+    "rng": "rng.js RC4 keyed by the seed string (RandomGen = new RNG(seed) in loadLevelFromLevelDat); a falsy seed would fall back to Math.random() + Date.now(), so the seed is always a non-empty string",
+    "parity": "lockstep: convertLevelToString(), sha1(level.objects), curlevel, winning, againing, textMode, messagetext, backups.length, movements all zero, RandomGen RC4 i/j/sha1(s) after reset and after every step (tests/gate_oracle.mjs vs tests/oracle.mjs on the unmodified checkout)",
+    "not_matched": [
+      "(filled in U03)"
+    ]
+  },
+  "vendored": {
+    "js/storagewrapper.js": {
+      "sha256": "3b6b3dfee738beefa33ed0d38a3c26b16557c45a59378cf382f62b270bf41014",
+      "source": "src/js/storagewrapper.js",
+      "bytes": 532
+    },
+    "js/bitvec.js": {
+      "sha256": "51e1fdd82fc4f82e509d09da47659867152cf1d406629b1384269f7d4dfbab3f",
+      "source": "src/js/bitvec.js",
+      "bytes": 9248
+    },
+    "js/level.js": {
+      "sha256": "7db48c669bdb1e9a0d40eb737388e95ca3e2c2e022e23d71eb4e5a13dd882271",
+      "source": "src/js/level.js",
+      "bytes": 3450
+    },
+    "js/languageConstants.js": {
+      "sha256": "f6556cb9b0a4fc0a1e10ff2b32303d7cbd98001be87027957554b0db33ab2245",
+      "source": "src/js/languageConstants.js",
+      "bytes": 3737
+    },
+    "js/globalVariables.js": {
+      "sha256": "2bf86edcc90c5c14cec4a7fc127dfb3949b417fb81ae99447bca6a3165fad80f",
+      "source": "src/js/globalVariables.js",
+      "bytes": 2970
+    },
+    "js/debug.js": {
+      "sha256": "8171973b6d5d0f3858a17a4acb4e82bbf42c8ace9bd8934a88a390ef66c67709",
+      "source": "src/js/debug.js",
+      "bytes": 2926
+    },
+    "js/font.js": {
+      "sha256": "da17f798ddf0b4a1d6a778396c96d0d2f3eaf7511d0e3bf8fdfa83fda9f436eb",
+      "source": "src/js/font.js",
+      "bytes": 32574
+    },
+    "js/rng.js": {
+      "sha256": "9570e7354eb86fe13f22c1e74c258c5e0e39fd8b69e117096463be8d8612b723",
+      "source": "src/js/rng.js",
+      "bytes": 6274
+    },
+    "js/riffwave.js": {
+      "sha256": "ceb9eea1c48f2b47a3c4e78d0be370ee7545ff66afe32efadd9e5341e662c697",
+      "source": "src/js/riffwave.js",
+      "bytes": 4106
+    },
+    "js/sfxr.js": {
+      "sha256": "ef22624b39d49921366a7c1327d06a818f8bcdef1310b18631bceadad42718ec",
+      "source": "src/js/sfxr.js",
+      "bytes": 31778
+    },
+    "js/codemirror/stringstream.js": {
+      "sha256": "78947b75195ee9b03d09c0bc9e6008e9821a76ed3414c9355f6ab2b056f89b2b",
+      "source": "src/js/codemirror/stringstream.js",
+      "bytes": 3176
+    },
+    "js/colorhelpers.js": {
+      "sha256": "cfefd6f524866fe1c07cf2e2b448e66b858bd5ceadcef948fe03e2a69ed9e53e",
+      "source": "src/js/colorhelpers.js",
+      "bytes": 1897
+    },
+    "js/colors.js": {
+      "sha256": "b842cef3c8252d430aaa500269a0c6f19d57ea5697de88f679b553b2e084a798",
+      "source": "src/js/colors.js",
+      "bytes": 8542
+    },
+    "js/engine.js": {
+      "sha256": "6e563b7337622fc287bc88f88789ba244bd00f03d5dcc827454b186676f42093",
+      "source": "src/js/engine.js",
+      "bytes": 89417
+    },
+    "js/parser.js": {
+      "sha256": "7378224b3121ca14c55d7edcb4fc7eefe93bb4284c716c9ad9bc6c1954e2a907",
+      "source": "src/js/parser.js",
+      "bytes": 75638
+    },
+    "js/compiler.js": {
+      "sha256": "af9942db8ec7798e21824b8600095dbd38b6ed65450561e9d5774f5469352544",
+      "source": "src/js/compiler.js",
+      "bytes": 129212
+    },
+    "js/soundbar.js": {
+      "sha256": "8dc24f1d4f2d14b44fcbb0a2bddd5c572252e478e6d26af8350364ab59457b86",
+      "source": "src/js/soundbar.js",
+      "bytes": 925
+    },
+    "js/graphics.js": {
+      "sha256": "84b574ae005c9c1eed1193a095ba83f8d9f2d98328ea75deb65bed73b5fb219c",
+      "source": "src/js/graphics.js",
+      "bytes": 24174
+    },
+    "tests/testdata.js": {
+      "sha256": "268181467a35ac4a535cff3a19a66deb9ce02aa80762fb83f9b0805b31c4ac46",
+      "source": "src/tests/resources/testdata.js",
+      "bytes": 3978084
+    },
+    "tests/errormessage_testdata.js": {
+      "sha256": "d9524a787323f848304dd4b0b63c06453f8d5fbc4cebe5f9217238614354af59",
+      "source": "src/tests/resources/errormessage_testdata.js",
+      "bytes": 1171073
+    },
+    "tests/testingFrameWork.js": {
+      "sha256": "bba9bc7ebf5aa63b97a0ebf99abc990984194f66e0f997cddf13aecb54447ce0",
+      "source": "src/tests/resources/testingFrameWork.js",
+      "bytes": 3810
+    }
+  },
+  "corpus": {
+    "dropdown_order": [
+      "sokoban_basic",
+      "sokoban_eyeball",
+      "sokoban_match3",
+      "randomrobots",
+      "randomspawner",
+      "blockfaker",
+      "byyourside",
+      "kettle",
+      "microban",
+      "nekopuzzle",
+      "notsnake",
+      "zenpuzzlegarden",
+      "limerick",
+      "octat",
+      "constellationz",
+      "midas",
+      "whaleworld"
+    ],
+    "games": {
+      "sokoban_basic": {
+        "dropdown_group": "Tutorial",
+        "dropdown_label": "Basic",
+        "title": "Simple Block Pushing Game",
+        "author": "David Skinner",
+        "source": "src/demo/sokoban_basic.txt",
+        "sha256": "c389821b95fadf1d764e63c7592c1888cff9d214951db08bd9b7f52661c3faa8",
+        "levels": 2,
+        "playable_levels": [
+          0,
+          1
+        ],
+        "level_sizes": [
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 5,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "sokoban_eyeball": {
+        "dropdown_group": "Tutorial",
+        "dropdown_label": "Eyeball",
+        "title": "EYE EYE EYE",
+        "author": "increpare",
+        "source": "src/demo/sokoban_eyeball.txt",
+        "sha256": "811e22e97ae3cfc1d0349cf52f7181b14c04cb19a82e7f00d5404196a5aa0dd8",
+        "levels": 1,
+        "playable_levels": [
+          0
+        ],
+        "level_sizes": [
+          [
+            9,
+            7
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 0,
+        "objects": 5,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "sokoban_match3": {
+        "dropdown_group": "Tutorial",
+        "dropdown_label": "Match 3",
+        "title": "Match 3 Block Push",
+        "author": "increpare",
+        "source": "src/demo/sokoban_match3.txt",
+        "sha256": "fc268e570b9d92011f3c47c0ec6082cd871619a3b6b9d320397920d29d862ee7",
+        "levels": 2,
+        "playable_levels": [
+          0,
+          1
+        ],
+        "level_sizes": [
+          [
+            9,
+            7
+          ],
+          [
+            9,
+            8
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 5,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "randomrobots": {
+        "dropdown_group": "Tutorial",
+        "dropdown_label": "Random Robots",
+        "title": "Random Robots",
+        "author": "increpare",
+        "source": "src/demo/randomrobots.txt",
+        "sha256": "f69f5fc81d84b66978dfb484e3af3ef27939a58e152515b5c6035238f904537a",
+        "levels": 1,
+        "playable_levels": [
+          0
+        ],
+        "level_sizes": [
+          [
+            11,
+            9
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 0,
+        "objects": 3,
+        "layers": 2,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "randomspawner": {
+        "dropdown_group": "Tutorial",
+        "dropdown_label": "Random Robot Spawner",
+        "title": "Robot Spawner",
+        "author": "increpare",
+        "source": "src/demo/randomspawner.txt",
+        "sha256": "9520d1b66a0641322dd113fe16bde23b67fc10299bef78dfadfe94a63569973e",
+        "levels": 1,
+        "playable_levels": [
+          0
+        ],
+        "level_sizes": [
+          [
+            7,
+            7
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 0,
+        "objects": 6,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "blockfaker": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Block Faker (Droqen)",
+        "title": "Block Faker",
+        "author": "Droqen",
+        "source": "src/demo/blockfaker.txt",
+        "sha256": "a86083d40cc0e5f6b3d7fa1efe048d317fdaf456bd44bc2531786d94266b3408",
+        "levels": 10,
+        "playable_levels": [
+          0,
+          2,
+          4,
+          6,
+          8
+        ],
+        "level_sizes": [
+          [
+            16,
+            12
+          ],
+          [
+            10,
+            8
+          ],
+          [
+            16,
+            11
+          ],
+          [
+            14,
+            14
+          ],
+          [
+            14,
+            14
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 11,
+        "layers": 4,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "require_player_movement",
+          "key_repeat_interval",
+          "background_color",
+          "text_color",
+          "color_palette"
+        ]
+      },
+      "byyourside": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "By Your Side (Draknek)",
+        "title": "By Your Side",
+        "author": "Alan Hazelden",
+        "source": "src/demo/byyourside.txt",
+        "sha256": "0bd4f168a0efb8c3376b276d6695af796c4c07b6d7f1cd2453f072fc35d28e47",
+        "levels": 12,
+        "playable_levels": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "level_sizes": [
+          [
+            21,
+            17
+          ],
+          [
+            21,
+            17
+          ],
+          [
+            21,
+            17
+          ],
+          [
+            21,
+            13
+          ],
+          [
+            21,
+            15
+          ],
+          [
+            21,
+            15
+          ],
+          [
+            21,
+            15
+          ],
+          [
+            20,
+            15
+          ],
+          [
+            20,
+            15
+          ],
+          [
+            20,
+            15
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 23,
+        "layers": 4,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "require_player_movement",
+          "key_repeat_interval"
+        ]
+      },
+      "kettle": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Kettle (increpare)",
+        "title": "Kettle",
+        "author": "increpare",
+        "source": "src/demo/kettle.txt",
+        "sha256": "82a818e730c7b0b8c831613cb28d85b79c4eda8236e49720fade3efc6cb3f19e",
+        "levels": 35,
+        "playable_levels": [
+          1,
+          4,
+          7,
+          10,
+          13,
+          16,
+          19,
+          22,
+          25,
+          28,
+          31
+        ],
+        "level_sizes": [
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            13
+          ],
+          [
+            15,
+            14
+          ],
+          [
+            15,
+            14
+          ],
+          [
+            15,
+            15
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 8,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "color_palette"
+        ]
+      },
+      "microban": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Microban (D. Skinner)",
+        "title": "Microban",
+        "author": "David Skinner",
+        "source": "src/demo/microban.txt",
+        "sha256": "2383697a036cd6c9a555af759f046cf8d4ba606facad9bb5502512c6ee753581",
+        "levels": 21,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11,
+          13,
+          15,
+          17,
+          19
+        ],
+        "level_sizes": [
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            6
+          ],
+          [
+            8,
+            6
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            12,
+            6
+          ],
+          [
+            7,
+            8
+          ],
+          [
+            8,
+            12
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            11,
+            8
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 5,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "nekopuzzle": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Neko Puzzle (Lexaloffle)",
+        "title": "neko puzzle",
+        "author": "lexaloffle",
+        "source": "src/demo/nekopuzzle.txt",
+        "sha256": "fb60ce89274c0330b4748b9404830370622bc61461800344570a5e258c34f7f2",
+        "levels": 21,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11,
+          13,
+          15,
+          17,
+          19
+        ],
+        "level_sizes": [
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            7
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 3,
+        "layers": 2,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "notsnake": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Notsnake (Terry Cavanagh)",
+        "title": "Notsnake",
+        "author": "Terry Cavanagh",
+        "source": "src/demo/notsnake.txt",
+        "sha256": "b9e4dfb30e6d92583ca42e2a858b2db0842caec88fee7bd9963d73acd08559d6",
+        "levels": 1,
+        "playable_levels": [
+          0
+        ],
+        "level_sizes": [
+          [
+            8,
+            5
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 3,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "color_palette",
+          "require_player_movement"
+        ]
+      },
+      "zenpuzzlegarden": {
+        "dropdown_group": "Elementary",
+        "dropdown_label": "Zen Puzzle Garden (Lexaloffle)",
+        "title": "Zen Puzzle Garden",
+        "author": "lexaloffle",
+        "source": "src/demo/zenpuzzlegarden.txt",
+        "sha256": "ac4f075d9e6b47616d60553eb4801813ee2d92f058397af40126620bd03358bf",
+        "levels": 11,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9
+        ],
+        "level_sizes": [
+          [
+            12,
+            12
+          ],
+          [
+            12,
+            12
+          ],
+          [
+            12,
+            12
+          ],
+          [
+            12,
+            11
+          ],
+          [
+            12,
+            12
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 6,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "limerick": {
+        "dropdown_group": "Intermediate",
+        "dropdown_label": "Lime Rick (kissmaj7)",
+        "title": "Lime Rick",
+        "author": "Tommi Tuovinen",
+        "source": "src/demo/limerick.txt",
+        "sha256": "7079dc4d37f015b34de542da41f31ea08725166d4487f5dc6bd483d7eabe4c21",
+        "levels": 21,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11,
+          13,
+          15,
+          17,
+          19
+        ],
+        "level_sizes": [
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            17
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            14
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            15
+          ],
+          [
+            19,
+            15
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 11,
+        "layers": 4,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "octat": {
+        "dropdown_group": "Intermediate",
+        "dropdown_label": "Octat (increpare)",
+        "title": "Octat",
+        "author": "increpare",
+        "source": "src/demo/octat.txt",
+        "sha256": "231789b56afa70030cdcf832dbf3d97b7c887cca2f254b7a2f03e125b87512b1",
+        "levels": 17,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11,
+          13,
+          15
+        ],
+        "level_sizes": [
+          [
+            10,
+            10
+          ],
+          [
+            11,
+            10
+          ],
+          [
+            11,
+            10
+          ],
+          [
+            11,
+            10
+          ],
+          [
+            11,
+            10
+          ],
+          [
+            11,
+            11
+          ],
+          [
+            11,
+            3
+          ],
+          [
+            9,
+            5
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 6,
+        "layers": 6,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "noundo",
+          "require_player_movement"
+        ]
+      },
+      "constellationz": {
+        "dropdown_group": "Intermediate",
+        "dropdown_label": "Constellation Z (increpare)",
+        "title": "constellation z",
+        "author": "increpare",
+        "source": "src/demo/constellationz.txt",
+        "sha256": "0845e21feed1301d398e02fe3e9ac52c077cfee4cb82819e739ae1ead1c524df",
+        "levels": 12,
+        "playable_levels": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "level_sizes": [
+          [
+            14,
+            14
+          ],
+          [
+            14,
+            14
+          ],
+          [
+            14,
+            14
+          ],
+          [
+            14,
+            14
+          ],
+          [
+            14,
+            14
+          ],
+          [
+            35,
+            25
+          ],
+          [
+            36,
+            18
+          ],
+          [
+            36,
+            18
+          ],
+          [
+            14,
+            25
+          ],
+          [
+            36,
+            18
+          ],
+          [
+            14,
+            26
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 3,
+        "objects": 6,
+        "layers": 3,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "midas": {
+        "dropdown_group": "Advanced",
+        "dropdown_label": "Midas (Wanderlands)",
+        "title": "Midas",
+        "author": "wanderlands",
+        "source": "src/demo/midas.txt",
+        "sha256": "34bb5a593dd0879ba533fb57449acf452dea0b9507ca3eb5c1a0439de7405b06",
+        "levels": 31,
+        "playable_levels": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          11,
+          13,
+          15,
+          17,
+          19,
+          21,
+          23,
+          25,
+          27,
+          29
+        ],
+        "level_sizes": [
+          [
+            14,
+            6
+          ],
+          [
+            15,
+            7
+          ],
+          [
+            15,
+            8
+          ],
+          [
+            14,
+            6
+          ],
+          [
+            17,
+            9
+          ],
+          [
+            21,
+            15
+          ],
+          [
+            21,
+            11
+          ],
+          [
+            21,
+            10
+          ],
+          [
+            21,
+            12
+          ],
+          [
+            21,
+            13
+          ],
+          [
+            21,
+            17
+          ],
+          [
+            21,
+            12
+          ],
+          [
+            21,
+            13
+          ],
+          [
+            21,
+            16
+          ],
+          [
+            21,
+            14
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 13,
+        "layers": 5,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage"
+        ]
+      },
+      "whaleworld": {
+        "dropdown_group": "Advanced",
+        "dropdown_label": "2D Whale World (increpare)",
+        "title": "2D Whale World",
+        "author": "increpare",
+        "source": "src/demo/whaleworld.txt",
+        "sha256": "997ef71db79f08781f16f1a0a6be1c225e684292a868271fd085fc487cd2fbfa",
+        "levels": 17,
+        "playable_levels": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11,
+          13,
+          15
+        ],
+        "level_sizes": [
+          [
+            16,
+            15
+          ],
+          [
+            11,
+            9
+          ],
+          [
+            16,
+            14
+          ],
+          [
+            16,
+            13
+          ],
+          [
+            17,
+            13
+          ],
+          [
+            17,
+            16
+          ],
+          [
+            16,
+            13
+          ],
+          [
+            11,
+            11
+          ]
+        ],
+        "compile_errors": 0,
+        "winconditions": 1,
+        "objects": 7,
+        "layers": 5,
+        "metadata_keys": [
+          "title",
+          "author",
+          "homepage",
+          "background_color",
+          "text_color",
+          "color_palette",
+          "run_rules_on_level_start",
+          "require_player_movement"
+        ]
+      }
+    }
+  },
+  "excluded": {
+    "blank": "the editor's \"Blank Project\" template, not a game",
+    "realtime_interval games": "chaos wizard, easyenigma: not in the dropdown, and realtime (PLAN section 9 Q3)",
+    "other src/demo games": "not in the dropdown; the demo README does not establish their license (PLAN section 9 Q2)"
+  },
+  "reference_quirks": [
+    "Level indices count message screens: microban has 21 levels of which 10 are playable (odd indices). compile([\"loadLevel\", n]) on a message level leaves textMode true and `level` unset; the prelude only ever loads playable levels."
+  ]
+}

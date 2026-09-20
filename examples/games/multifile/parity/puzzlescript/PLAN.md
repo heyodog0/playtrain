@@ -64,12 +64,15 @@ playable level `seed % nPlayable`; `"fixed"` pins one. Message levels are never
 picked. The engine's own `curlevel` is set accordingly before `loadLevelFromState`.
 
 **Realtime.** `realtime_interval` games autotick (`processInput(-1)`) every interval
-in the browser. Two of 94 demos use it. They are excluded from the parity corpus in
-U01 and get a documented step model (`ticks_per_step`) only if the human asks
-(section 9).
+in the browser. Two of 94 demos use it; neither is in the editor dropdown, so the
+corpus (U01: 17 games, 0 realtime) has none. A step model (`ticks_per_step`) exists
+only if the human asks (section 9).
 
-**RNG.** `random` rules and `randomDir` draw from `RandomGen` (RC4). The only other
-randomness in the engine is the fallback seed above. Seed string = `String(seed)`.
+**RNG.** `random` rules and `randomDir` draw from `RandomGen` (RC4: `RandomGen._state.{s,i,j}`).
+The only other randomness in the engine is the fallback seed above. Seed string = `String(seed)`.
+
+**Level indices count message screens** (U01: microban has 21 levels, playable 1,3,5,...,19).
+`compile(["loadLevel", n])` on a message level leaves `textMode` true and no `level`.
 
 **State that the gate compares every step.** `convertLevelToString()` (the reference's
 own serialiser: every cell's sorted object names, `debug.js`), `curlevel`, `winning`,
