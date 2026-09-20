@@ -3,15 +3,15 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 0
-BRANCH: (create `twins` from `puzzlescript` in U00)
-LAST_COMMIT: -
+ITERATION: 1
+BRANCH: twins (from puzzlescript @ 8fc96c6)
+LAST_COMMIT: 7e6c6c0
 
 ## Ledger
 
 | unit | status | gate output (last line) | commit | notes for the next iteration |
 |---|---|---|---|---|
-| U00 branch, skeleton, json.hpp | todo | | | |
+| U00 branch, skeleton, json.hpp | done | chip8 `54 passed in 134s`, puzzlescript `36 passed in 125s` (oracles + browser configured) | 7e6c6c0 | json.hpp 3.11.3 (919,975 bytes) vendored, sha256 in manifest.json; `native/twins/build/` gitignored; skeleton dirs common/ chip8/ vgdl/ puzzlescript/ tests/ third_party/ |
 | U01 common vec host + registry + twin_host + blank twin + build.sh | todo | | | copy the STRUCTURE of native/qjs/qjs_vec_host.cpp (pool, spin barrier, slab, autoreset, action table), not the QuickJS parts; reuse native/qjs/action_table.hpp as-is |
 | U02 CHIP-8 twin: CPU, threefry, env | todo | | | vectors: parity/chip8/tests/vectors/{octax_tests,randint_10k}.json |
 | U03 CHIP-8 lockstep + goldens | todo | | | snapshot shape: parity/chip8/src/90_prelude.js `__chip8.snap()`; golden hash: parity/chip8/tests/golden.mjs |
@@ -37,3 +37,4 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 ## Iteration log
 
 (one line per iteration: `N | unit | what changed | gate`)
+1 | U00 | branch twins, harness + manifest + json.hpp committed | both family suites green
