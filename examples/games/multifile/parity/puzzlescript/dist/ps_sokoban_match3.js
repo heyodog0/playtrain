@@ -16159,6 +16159,9 @@ function psTileFor(ids) {
   return idx;
 }
 
+// Atlas keys by tile index (Object.keys would put integer-like keys such as '0' first).
+function psAtlasKeys() { const keys = []; for (const k in psAtlasIndex) keys[psAtlasIndex[k]] = k; return keys; }
+
 function psRender() {
   background(psBg[0], psBg[1], psBg[2]);
   if (!level || !level.objects) return;
@@ -16198,7 +16201,7 @@ globalThis.__ps = {
   snap: () => ({ level: convertLevelToString(), objects: Array.from(level.objects), curlevel, winning, againing, textMode, messagetext,
     backups: backups.length, movements_zero: !level.movements || level.movements.every(v => v === 0),
     rng: { i: RandomGen._state.i, j: RandomGen._state.j, s: Array.from(RandomGen._state.s) }, width: level.width, height: level.height }),
-  tiles: () => { psRender(); const [mini, minj, maxi, maxj] = psViewport(); return { viewport: [mini, minj, maxi, maxj], kinds: Array.from(psKinds.subarray(0, psKindsW * psKindsH)), keys: Object.keys(psAtlasIndex), w: psKindsW, h: psKindsH }; },
+  tiles: () => { psRender(); const [mini, minj, maxi, maxj] = psViewport(); return { viewport: [mini, minj, maxi, maxj], kinds: Array.from(psKinds.subarray(0, psKindsW * psKindsH)), keys: psAtlasKeys(), w: psKindsW, h: psKindsH }; },
   keyCodes: () => PS_ACTION_KEYS,
 };
 

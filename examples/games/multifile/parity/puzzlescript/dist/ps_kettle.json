@@ -131,5 +131,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "bfeaf8350606d63827b76dc9894a506633bfcb5925ae962ba9bf84c325f751d9"
+  "source_sha256": "8b3b3c3243e110b2823d082515d2cca98f8ad7c2bf6fa90cf5a76d014bbaf4f0"
 }
