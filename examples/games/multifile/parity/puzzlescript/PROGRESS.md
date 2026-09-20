@@ -3,15 +3,15 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 0
-BRANCH: (create `puzzlescript` from `chip8` in U00)
-LAST_COMMIT: -
+ITERATION: 1
+BRANCH: puzzlescript (from chip8 @ 64e8a3f)
+LAST_COMMIT: e80d7c4
 
 ## Ledger
 
 | unit | status | gate output (last line) | commit | notes for the next iteration |
 |---|---|---|---|---|
-| U00 branch + harness | todo | | | |
+| U00 branch + harness | done | chip8 suite `54 passed in 132s` (with oracle + browser configured) | e80d7c4 | branch created from chip8 tip 64e8a3f; only `native/aotfork/out/` and `analogen_*` untracked |
 | U01 pin, vendor, corpus, oracle | todo | | | checkout: `git clone https://github.com/increpare/PuzzleScript` into the scratchpad, `git checkout d236596d993b6ebb7988f1a078f582c0840ccbca`; the dropdown example list is in the editor source (grep `demo/` in `src/js/editor.js` / `src/editor.html`) |
 | U02 shims + 770 reference tests in the bundle | todo | | | |
 | U03 prelude, bundler, sidecars, corpus compile | todo | | | |
@@ -36,3 +36,4 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 ## Iteration log
 
 (one line per iteration: `N | unit | what changed | gate`)
+1 | U00 | branch puzzlescript, harness committed | chip8 54 passed
