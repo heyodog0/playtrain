@@ -114,7 +114,7 @@ function psViewport() {
 function psCellKey(posIndex) {
   const cell = level.getCellInto(posIndex, _o12);
   const ids = [];
-  for (let k = 0; k < state.objectCount; k++) if (cell.get(k) !== 0) ids.push(k);
+  for (let k = 0; k < state.objectCount; k++) if (cell.get(k)) ids.push(k);      // BitVec.get returns a boolean
   return ids;
 }
 

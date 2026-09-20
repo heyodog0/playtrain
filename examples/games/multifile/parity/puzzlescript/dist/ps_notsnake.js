@@ -12,6 +12,9 @@ const PS_GAME_DEF = {"game":"notsnake","title":"Notsnake","author":"Terry Cavana
 var psShimNoop = function psShimNoop() {};
 var psShimGlobal = (typeof globalThis !== 'undefined') ? globalThis : this;
 
+if (typeof console === 'undefined') {                           // qjs_host defines no console at all
+  psShimGlobal.console = { log: psShimNoop, warn: psShimNoop, error: psShimNoop, info: psShimNoop };
+}
 if (typeof performance === 'undefined') {                       // globalVariables.js tick_lazy_function_generation
   psShimGlobal.performance = { now: function psShimPerformanceNow() { return Date.now(); } };
 }
@@ -16128,7 +16131,7 @@ function psViewport() {
 function psCellKey(posIndex) {
   const cell = level.getCellInto(posIndex, _o12);
   const ids = [];
-  for (let k = 0; k < state.objectCount; k++) if (cell.get(k) !== 0) ids.push(k);
+  for (let k = 0; k < state.objectCount; k++) if (cell.get(k)) ids.push(k);      // BitVec.get returns a boolean
   return ids;
 }
 

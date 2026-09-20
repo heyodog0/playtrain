@@ -6,6 +6,9 @@
 var psShimNoop = function psShimNoop() {};
 var psShimGlobal = (typeof globalThis !== 'undefined') ? globalThis : this;
 
+if (typeof console === 'undefined') {                           // qjs_host defines no console at all
+  psShimGlobal.console = { log: psShimNoop, warn: psShimNoop, error: psShimNoop, info: psShimNoop };
+}
 if (typeof performance === 'undefined') {                       // globalVariables.js tick_lazy_function_generation
   psShimGlobal.performance = { now: function psShimPerformanceNow() { return Date.now(); } };
 }
