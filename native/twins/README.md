@@ -71,7 +71,7 @@ self-contained play pages (the module is inlined and compiled before the glue ru
 | CHIP-8 (39) | 8.5k-13.4k | 213k-305k | 49k-114k | 1.02M-1.65M | 110k |
 | VGDL Colas / infer (12) | 14.6k-79k | 141k-222k | 69k-198k | 670k-1.01M | ~17k (aliens, node backend) |
 | VGDL RC_RL / vgfmri (14) | 15.6k-54k | 105k-201k | 28k-292k | 301k-781k | |
-| PuzzleScript (17) | 1.2k-13.2k | 27k-168k | 3.7k-82k | 27k-679k | 51k-258k (sokoban_basic 258k) |
+| PuzzleScript (17) | 1.2k-13.1k | 90k-404k | 3.7k-92k | 209k-1255k | 51k-258k (sokoban_basic 258k) |
 
 Per game tables, protocol and caveats: `PROGRESS.md` > Numbers. Two measured negatives also recorded there:
 pre-populating PuzzleScript's `CACHE_*` matcher tables at bundle time changes nothing (the matchers were never on the

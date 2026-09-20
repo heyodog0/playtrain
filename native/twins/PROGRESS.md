@@ -162,6 +162,42 @@ Twin 1 env 27k-168k (11x-23x QuickJS on the same game), 20 env / 10 thr 27k-679k
 
 Build: 82 games in 89 s (family objects once, then embed + entry + link per game). The wasm game draws through the page's own p5 shim, so its frame is the shim's frame: the same drawTiles/rect/fill stream the JS prelude issues, which is what makes the three traces identical without any pixel work in the twin.
 
+### PuzzleScript twin after the allocation-free rewrite (2026-09-20, post-loop; same protocol)
+
+Profiling kettle showed malloc/free and the per-cell string keys of the tile atlas dominating. Rewrite: fixed-size
+stack arrays (MAXW = 64 words) for every BitVec temporary in replace/reposition/resolve, flat per-row match storage
+with an odometer over tuples (generateTuples order kept: first row fastest), scratch buffers on the VM, the rigid
+rollback copies taken only when the game has rigid rules, atlas tiles looked up by the raw cell words (uint64 for
+STRIDE_OBJ <= 2). Semantics untouched: 470/470 reference tests (ASan/UBSan and release), 51/51 lockstep, 51/51 tile
+lists, 102 goldens, 34/34 traces (rgb + symbolic), 4/4 vec, wasm games rebuilt and 34/34; 153 gates green.
+
+| game | QuickJS 1 env | twin 1 env | QuickJS 20 env / 10 thr | twin 20 env / 10 thr |
+|---|---|---|---|---|
+| blockfaker | 5,921 | 273,048 | 20,510 | 604,613 |
+| byyourside | 1,165 | 90,025 | 10,009 | 538,779 |
+| constellationz | 3,024 | 263,602 | 3,695 | 209,263 |
+| kettle | 2,288 | 109,967 | 12,901 | 405,087 |
+| limerick | 1,548 | 94,374 | 14,799 | 629,519 |
+| microban | 12,780 | 404,017 | 61,969 | 1,255,022 |
+| midas | 3,457 | 171,305 | 12,065 | 447,488 |
+| nekopuzzle | 9,903 | 184,158 | 75,003 | 766,647 |
+| notsnake | 13,105 | 171,696 | 92,678 | 691,560 |
+| octat | 3,628 | 128,704 | 29,287 | 690,995 |
+| randomrobots | 5,660 | 139,051 | 46,336 | 643,742 |
+| randomspawner | 3,576 | 110,642 | 27,275 | 521,107 |
+| sokoban_basic | 12,292 | 170,165 | 77,189 | 788,976 |
+| sokoban_eyeball | 9,274 | 164,917 | 58,664 | 683,819 |
+| sokoban_match3 | 7,685 | 158,339 | 56,387 | 709,199 |
+| whaleworld | 3,078 | 143,213 | 10,604 | 387,531 |
+| zenpuzzlegarden | 4,270 | 144,489 | 33,275 | 723,880 |
+
+Twin 1 env 90,025-404,017 (was 27k-168k), 20 env / 10 thr 209,263-1,255,022 (was 27k-679k). Every rule-heavy game is
+now above V8's in-process engine speed (kettle ~109k vs 51k, limerick ~90k vs 59k); sokoban_basic at 1 env (165k) is the
+one game still under V8 (258k), and reaches ~590k on 20/10. Against PuzzleJAX's Fig. 2 (RTX 4090 peaks: kettle/limerick
+~80k, zen ~1.2M): the twin on 10 laptop threads is 4-5x ahead on the hard games and ~1.5x short on zen. What remains in
+the kettle profile: the render (drawTiles + 64x64 readback, ~35%) and the per-turn level scans (matchRow,
+calculateRowColMasks, resolveMovements) that the engine's semantics require.
+
 ## Reference quirks found
 
 (Anything the JS bundles do that their PLAN sections did not predict, found while porting; with the bundle, seed and step.)
