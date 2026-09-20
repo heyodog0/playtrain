@@ -4,13 +4,41 @@
   "title": "native twins: C++ engines for the chip8, vgdl and puzzlescript families behind the vec_* ABI",
   "branch": "twins (from puzzlescript)",
   "third_party": {
-    "json.hpp": {"project": "nlohmann/json", "version": "3.11.3", "license": "MIT", "source": "https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp", "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"}
+    "json.hpp": {
+      "project": "nlohmann/json",
+      "version": "3.11.3",
+      "license": "MIT",
+      "source": "https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp",
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+    }
   },
   "references": {
-    "chip8": {"bundles": "examples/games/multifile/parity/chip8/dist", "goldens": "examples/games/multifile/parity/chip8/tests/golden.json", "vectors": ["examples/games/multifile/parity/chip8/tests/vectors/octax_tests.json", "examples/games/multifile/parity/chip8/tests/vectors/randint_10k.json"]},
-    "vgdl": {"bundles": "examples/games/multifile/parity/vgdl/dist", "goldens": "examples/games/multifile/parity/vgdl/tests/golden.json"},
-    "puzzlescript": {"bundles": "examples/games/multifile/parity/puzzlescript/dist", "goldens": "examples/games/multifile/parity/puzzlescript/tests/golden.json", "reference_tests": "examples/games/multifile/parity/puzzlescript/reference/tests/testdata.js"}
+    "chip8": {
+      "bundles": "examples/games/multifile/parity/chip8/dist",
+      "goldens": "examples/games/multifile/parity/chip8/tests/golden.json",
+      "vectors": [
+        "examples/games/multifile/parity/chip8/tests/vectors/octax_tests.json",
+        "examples/games/multifile/parity/chip8/tests/vectors/randint_10k.json"
+      ]
+    },
+    "vgdl": {
+      "bundles": "examples/games/multifile/parity/vgdl/dist",
+      "goldens": "examples/games/multifile/parity/vgdl/tests/golden.json"
+    },
+    "puzzlescript": {
+      "bundles": "examples/games/multifile/parity/puzzlescript/dist",
+      "goldens": "examples/games/multifile/parity/puzzlescript/tests/golden.json",
+      "reference_tests": "examples/games/multifile/parity/puzzlescript/reference/tests/testdata.js"
+    }
   },
   "abi": "native/qjs/qjs_vec_host.cpp exports as bound by src/playtrain/runtime/native_vec_env.py (see PLAN.md section 1)",
-  "numbers": {}
+  "numbers": {
+    "chip8": {
+      "twin_1env_steps_per_s": "213k-305k",
+      "twin_20env_10thr": "1.02M-1.65M",
+      "qjs_1env": "8.5k-13.4k",
+      "qjs_20env_10thr": "49k-114k",
+      "machine": "Mac arm64, 2026-09-20"
+    }
+  }
 }
