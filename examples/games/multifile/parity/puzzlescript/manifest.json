@@ -1141,6 +1141,8 @@
     "other src/demo games": "not in the dropdown; the demo README does not establish their license (PLAN section 9 Q2)"
   },
   "reference_quirks": [
-    "Level indices count message screens: microban has 21 levels of which 10 are playable (odd indices). compile([\"loadLevel\", n]) on a message level leaves textMode true and `level` unset; the prelude only ever loads playable levels."
+    "Level indices count message screens: microban has 21 levels of which 10 are playable (odd indices). compile([\"loadLevel\", n]) on a message level leaves textMode true and `level` unset; the prelude only ever loads playable levels.",
+    "sfxr.js ends with `if (typeof exports != 'undefined') { require('./riffwave') ... }`: the engine must be loaded as a classic script (browser <script>, qjs_host, a vm context, an .mjs file), never wrapped as a CommonJS module, or it calls require() for a file that is not there.",
+    "globalVariables.js tick_lazy_function_generation calls performance.now(); QuickJS has no `performance`, so src/05_shims.js provides one backed by Date.now(). debug.js stripHTMLTags needs a DOM; the reference's own node runner overrides it, and so does tests/run_reference_tests.mjs (the prelude never calls it)."
   ]
 }

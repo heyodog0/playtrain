@@ -35,12 +35,14 @@ def oracle(*args: str) -> subprocess.CompletedProcess:
 
 
 def run_js(script: Path, *args: str) -> subprocess.CompletedProcess:
-    """Concatenate SOURCES plus `script` into one flat file and run it with node (one global script, never eval)."""
+    """Concatenate SOURCES plus `script` into one flat file and run it with node (one script scope, never eval).
+    The file is .mjs, not .cjs: sfxr.js does `if (typeof exports != 'undefined') require('./riffwave')`, so a
+    CommonJS wrapper would make the vendored engine call require(). Snippets may use top-level `import`."""
     if NODE is None:
         pytest.skip("node not on PATH")
     import tempfile
     text = "\n".join(p.read_text() for p in SOURCES) + "\n" + Path(script).read_text()
-    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False, dir=tempfile.gettempdir()) as fh:
+    with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False, dir=tempfile.gettempdir()) as fh:
         fh.write(text)
         tmp = fh.name
     try:
