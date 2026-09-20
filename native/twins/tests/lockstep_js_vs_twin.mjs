@@ -31,13 +31,21 @@ function loadBundle(file) {
   const ctx = { console, createCanvas() {}, background() {}, noStroke() {}, fill() {}, rect() {}, drawTiles() {}, keyIsDown: () => false };
   ctx.globalThis = ctx; vm.createContext(ctx); vm.runInContext(readFileSync(file, 'utf8'), ctx, { filename: file }); ctx.setup(); return ctx;
 }
-function jsTraj(ctx, seed, acts) {
-  const g = ctx[HOOK]; g.reset(seed); const out = [JSON.stringify(g.snap())];
+const VG_KEYS = [[273], [274], [276], [275], [], [32]];   // sidecar vgdl6 order UP DOWN LEFT RIGHT NOOP SPACE
+function jsTraj(ctx, seed, acts, level) {
+  const g = ctx[HOOK];
+  if (family === 'vgdl') {
+    g.resetLevel(level, seed); const snap = () => JSON.stringify({ ...g.state(), sprites: g.snapshot() }); const out = [snap()];
+    for (const a of acts) { if (g.state().ended) break; g.tickKeys(VG_KEYS[a]); out.push(snap()); }
+    return out;
+  }
+  g.reset(seed); const out = [JSON.stringify(g.snap())];
   for (const a of acts) { if (family === 'puzzlescript' && g.snap().winning) break; g.step(a); out.push(JSON.stringify(g.snap())); }
   return out;
 }
-function twinTraj(bundle, seed, acts) {
-  return execFileSync(HOST, [bundle, 'snap', String(seed), acts.join(',')], { encoding: 'utf8', maxBuffer: 1 << 28 }).trim().split('\n');
+function twinTraj(bundle, seed, acts, level) {
+  const extra = level == null ? [] : [String(level)];
+  return execFileSync(HOST, [bundle, 'snap', String(seed), acts.join(','), ...extra], { encoding: 'utf8', maxBuffer: 1 << 28 }).trim().split('\n');
 }
 
 let pass = 0, total = 0;
@@ -46,17 +54,18 @@ if (!GOLDEN) {
     const bundle = join(FAM, 'dist', PREFIX + game + '.js');
     const nA = JSON.parse(readFileSync(join(FAM, 'dist', PREFIX + game + '.json'), 'utf8')).actions.length;
     const ctx = loadBundle(bundle);
-    for (const seed of SEEDS) {
-      total++;
+    const levels = family === 'vgdl' ? Array.from({ length: ctx[HOOK].levels() }, (_, i) => i) : [null];
+    for (const level of levels) for (const seed of SEEDS) {
+      total++; const tag = level == null ? `${game} seed${seed}` : `${game} lvl${level} seed${seed}`;
       const rnd = lcg(seed * 7919 + 17); const acts = Array.from({ length: STEPS }, () => rnd() % nA);
-      const js = jsTraj(ctx, seed, acts);
-      let tw; try { tw = twinTraj(bundle, seed, acts.slice(0, js.length - 1)); } catch (e) { console.log(`❌ ${game} seed${seed}: twin_host failed: ${String(e.stderr || e.message).split('\n').filter(Boolean).pop()}`); continue; }
+      const js = jsTraj(ctx, seed, acts, level);
+      let tw; try { tw = twinTraj(bundle, seed, acts.slice(0, js.length - 1), level); } catch (e) { console.log(`❌ ${tag}: twin_host failed: ${String(e.stderr || e.message).split('\n').filter(Boolean).pop()}`); continue; }
       let bad = -1; const n = Math.min(js.length, tw.length);
       for (let i = 0; i < n; i++) if (js[i] !== tw[i]) { bad = i; break; }
       if (bad < 0 && js.length !== tw.length) bad = n;
-      if (bad < 0) { pass++; console.log(`✅ ${game} seed${seed}: ${js.length} snapshots identical`); }
+      if (bad < 0) { pass++; console.log(`✅ ${tag}: ${js.length} snapshots identical`); }
       else {
-        console.log(`❌ ${game} seed${seed}: diverge at step ${bad} (action ${bad > 0 ? acts[bad - 1] : '-'})`);
+        console.log(`❌ ${tag}: diverge at step ${bad} (action ${bad > 0 ? acts[bad - 1] : '-'})`);
         const a = js[bad] || '', b = tw[bad] || ''; let k = 0; while (k < a.length && a[k] === b[k]) k++;
         console.log(`   js:   ...${a.slice(Math.max(0, k - 60), k + 100)}\n   twin: ...${b.slice(Math.max(0, k - 60), k + 100)}`);
       }
@@ -67,11 +76,25 @@ if (!GOLDEN) {
 
 // ---- goldens: the family's golden.mjs recipe over the twin's snapshots ----
 const golden = JSON.parse(readFileSync(join(FAM, 'tests', 'golden.json'), 'utf8'));
-const GSEEDS = [42, 7, 3, 11, 19, 23];
+const GSEEDS = family === 'vgdl' ? [42, 7, 3] : [42, 7, 3, 11, 19, 23];
 let bad = 0, n = 0;
 for (const game of games) {
   const bundle = join(FAM, 'dist', PREFIX + game + '.js');
   const side = JSON.parse(readFileSync(join(FAM, 'dist', PREFIX + game + '.json'), 'utf8')); const nA = side.actions.length;
+  if (family === 'vgdl') {
+    // golden.mjs parses --steps as parseInt(args[-1 + 1]) = NaN under --write/--check, so its loop never runs and the
+    // committed hashes cover the reset snapshot only (steps == 1). Reproduced as committed; the family bug is logged in
+    // native/twins/PROGRESS.md. --steps N here hashes N steps the way golden.mjs meant to.
+    const GSTEPS = opt('steps', null) == null ? 0 : STEPS;
+    for (let lvl = 0; lvl < side.levels; lvl++) for (const seed of GSEEDS) {
+      const rnd = lcg(seed * 7919 + lvl); const acts = Array.from({ length: GSTEPS }, () => rnd() % 6);
+      const tw = twinTraj(bundle, seed, acts, lvl); const h = createHash('sha256'); let steps = 0;
+      for (let k = 0; k < tw.length; k++) { h.update(tw[k]); steps++; if (JSON.parse(tw[k]).ended) break; }
+      const key = `${side.corpus}/${game}/lvl${lvl}/seed${seed}`, val = `${steps}:${h.digest('hex').slice(0, 16)}`;
+      n++; if (golden[key] !== val) { bad++; console.log(`MISMATCH ${key}: golden ${golden[key]} twin ${val}`); }
+    }
+    continue;
+  }
   for (const seed of GSEEDS) {
     const rnd = lcg(seed * 7919 + 17); const acts = Array.from({ length: STEPS }, () => rnd() % nA);
     let key, val;

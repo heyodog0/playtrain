@@ -23,8 +23,10 @@ PREFIX = {"chip8": "chip8_", "vgdl": "vgdl_", "puzzlescript": "ps_"}
 
 
 def single(host: Path, bundle: Path, steps: int, env: dict) -> float:
-    out = subprocess.run([str(host), str(bundle), "bench", "1", str(steps)], capture_output=True, text=True, env=env).stdout
-    return float(out.split("= ")[1].split(" ")[0])
+    proc = subprocess.run([str(host), str(bundle), "bench", "1", str(steps)], capture_output=True, text=True, env=env)
+    if proc.returncode != 0 or "= " not in proc.stdout:
+        raise RuntimeError((proc.stdout + proc.stderr).strip().splitlines()[-1] if (proc.stdout + proc.stderr).strip() else "no output")
+    return float(proc.stdout.split("= ")[1].split(" ")[0])
 
 
 def vec(game: str, lib: Path, n: int, threads: int, steps: int, na: int) -> float:
@@ -53,7 +55,10 @@ if __name__ == "__main__":
         side = json.loads((dist / f"{name}.json").read_text()); na = len(side["actions"])
         env = {**os.environ, "PLAYTRAIN_QJS_ACTIONS": json.dumps(side["actions"])}
         q1 = single(QJS_HOST, dist / f"{name}.js", a.qjs_steps, env) if QJS_HOST.exists() else float("nan")
-        t1 = single(TWIN_HOST, dist / f"{name}.js", a.steps, env)
+        try:
+            t1 = single(TWIN_HOST, dist / f"{name}.js", a.steps, env)
+        except RuntimeError as e:   # a family profile the twin does not cover yet (vgdl rcrl until U06)
+            print(f"| {g} | - | skipped: {e} | - | - |", flush=True); continue
         qv = vec(name, ROOT / "native" / "build" / ("libqjs_vec.dylib" if platform.system() == "Darwin" else "libqjs_vec.so"), 20, 10, a.vec_steps, na)
         tv = vec(name, TWIN_LIB, 20, 10, a.vec_steps, na)
         print(f"| {g} | {q1:,.0f} | {t1:,.0f} | {qv:,.0f} | {tv:,.0f} |", flush=True)

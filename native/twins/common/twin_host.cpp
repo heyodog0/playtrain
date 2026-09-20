@@ -1,7 +1,7 @@
 // twin_host.cpp — CLI over the twin vec host, one env, for the gates.
 //   twin_host <bundle.js> trace <seed> <n>     reference_trace.mjs / qjs_host trace format (byte-diffable)
 //   twin_host <bundle.js> bench <seed> <n>     steps/s with observation readback, like qjs_host bench
-//   twin_host <bundle.js> snap  <seed> <a,b,..>  per-step JSON snapshots (the family hook's snap() shape), one per line
+//   twin_host <bundle.js> snap  <seed> <a,b,..> [level]  per-step JSON snapshots (the family hook's snap() shape), one per line
 // Env TWIN_OBS_MODE=symbolic selects symbolic observations when the sidecar declares them.
 #include <chrono>
 #include <cmath>
@@ -11,6 +11,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include "jsnum.hpp"
 
 extern "C" {
 void* vec_create(const char*, int, int, int, int, int);
@@ -22,18 +23,11 @@ int twin_debug_state(void*, int, double*, double*, char*, int);
 const char* twin_debug_snapshot(void*, int);
 int twin_debug_n_actions(void*);
 void twin_debug_reset(void*, int, uint32_t);
+void twin_debug_reset_level(void*, int, uint32_t, int);
 void twin_debug_step(void*, int, int);
 }
 
-// ECMAScript Number.prototype.toString for the values a game reports: shortest round-trip decimal.
-static void jsnum(double v, char* out, size_t n) {
-  if (v == 0) { snprintf(out, n, "0"); return; }
-  if (std::isnan(v)) { snprintf(out, n, "NaN"); return; }
-  if (std::isinf(v)) { snprintf(out, n, v > 0 ? "Infinity" : "-Infinity"); return; }
-  if (v == std::floor(v) && std::fabs(v) < 1e21) { snprintf(out, n, "%.0f", v); return; }
-  for (int p = 1; p <= 17; p++) { char b[64]; snprintf(b, sizeof b, "%.*g", p, v); if (strtod(b, nullptr) == v) { snprintf(out, n, "%s", b); return; } }
-  snprintf(out, n, "%.17g", v);
-}
+using twin::jsnum;
 
 static uint64_t fnv1a(const uint8_t* p, size_t n) { uint64_t h = 1469598103934665603ULL; for (size_t i = 0; i < n; i++) { h ^= p[i]; h *= 1099511628211ULL; } return h; }
 
@@ -81,7 +75,8 @@ int main(int argc, char** argv) {
     double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     printf("bench(twin): %ld steps in %.4fs = %.0f steps/sec\n", n, secs, n / secs);
   } else if (!strcmp(mode, "snap")) {
-    twin_debug_reset(h, 0, seed);                     // the hook's reset: no NOOP frame
+    if (argc > 5) twin_debug_reset_level(h, 0, seed, atoi(argv[5]));   // vgdl: __vgdl.resetLevel(level, seed)
+    else twin_debug_reset(h, 0, seed);                // the hook's reset: no NOOP frame
     printf("%s\n", twin_debug_snapshot(h, 0));
     const char* p = argv[4];
     while (p && *p) { a32 = (int32_t)strtol(p, (char**)&p, 10); if (*p == ',') p++;

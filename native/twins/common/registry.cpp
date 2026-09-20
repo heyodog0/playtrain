@@ -23,6 +23,8 @@ bool read_game_info(const std::string& game_path, GameInfo& info, std::string& e
   try { f >> side; } catch (const std::exception& e) { err = std::string("twin: bad sidecar JSON: ") + e.what(); return false; }
   info.family = side.value("family", "");
   info.game = side.value("game", "");
+  info.corpus = side.value("corpus", ""); info.level_mode = side.value("level_mode", "seed"); info.render = side.value("render", "tiles");
+  info.level_index = side.contains("level_index") && side["level_index"].is_number() ? side["level_index"].get<int>() : 0;
   info.dir = dirname_of(dirname_of(game_path));
   info.actions_held.clear(); info.action_names.clear();
   if (side.contains("actions")) for (const auto& a : side["actions"]) {

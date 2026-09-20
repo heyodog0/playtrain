@@ -347,6 +347,12 @@ void twin_debug_reset(void* h, int idx, uint32_t seed) {
   Env& e = H->envs[idx]; e.select(); p5::setKeysDown(nullptr, 0); e.twin->resetGame(seed); e.steps = 0;
   e.lastScore = e.twin->getGameState().score;
 }
+// `__vgdl.resetLevel(idx, seed)`: the hook's reset with an explicit level.
+void twin_debug_reset_level(void* h, int idx, uint32_t seed, int level) {
+  VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return;
+  Env& e = H->envs[idx]; e.select(); p5::setKeysDown(nullptr, 0); e.twin->hookReset(seed, level); e.steps = 0;
+  e.lastScore = e.twin->getGameState().score;
+}
 
 }  // extern "C"
 #if defined(__GNUC__)

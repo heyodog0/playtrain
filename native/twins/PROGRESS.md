@@ -3,7 +3,7 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 5
+ITERATION: 6
 BRANCH: twins (from puzzlescript @ 8fc96c6)
 LAST_COMMIT: 7da6655
 
@@ -16,7 +16,7 @@ LAST_COMMIT: 7da6655
 | U02 CHIP-8 twin: CPU, threefry, env | done | `193/193 vectors match (15 legacy-mode)` + `keys ok; randint 10000/10000; split sha1 ok` under ASan/UBSan (DEBUG=1) and release; pytest `4 passed`; brix seed 1: 7 hook snapshots text-identical to the JS | 5d099e4 | `chip8/{cpu,threefry,env}.cpp` port 20_cpu.js / common threefry / 30_env.js line for line (c8Eval over the def's expression trees with u8 wrap via fmod and `v|0` as ToInt32); `twin_chip8.cpp` is 90_prelude.js (keypad key codes, first held key in action_set order, GAMEOVER at terminated, 2-colour tiles in the 256x256 band; `snapshot()` emits JSON.stringify(__chip8.snap()) with `nlohmann::ordered_json` and integral doubles as integers so the text hashes equally). `twin_host snap` now resets like the gate hook (no NOOP draw: `twin_debug_reset`), which is what lines its snapshots up with the JS; `vec_reset` keeps the host's NOOP frame. `tests/test_vectors.cpp` carries a 40-line SHA-1 for the split-stream check. Brix trace: GAMEOVER at step 18 with LEFT held, like the JS host. |
 | U03 CHIP-8 lockstep + goldens | done | `117/117 trajectories identical` (39 bundles x seeds 1,2,3 x 500 steps, snapshot text equality); `golden ok (234 trajectories)` against parity/chip8/tests/golden.json; pytest `6 passed` | 6bf6699 | `tests/lockstep_js_vs_twin.mjs <family> [games] [--steps] [--seeds] [--golden]`: JS bundle in a node vm via the family hook vs `twin_host snap`, text-equal snapshots; `--golden` re-runs the family's golden.mjs recipe (6 seeds, LCG actions, sha256 over the JSON texts) on the twin. First run was 27/117: `snap` stepped through draw(), which stops at GAMEOVER, while `__chip8.step` steps the env past termination (the goldens include those steps). Added `Twin::hookStep(a)` (= the hook's env step) and `twin_debug_step`; `snap` uses hookStep, the host's vec_step still drives draw(). |
 | U04 CHIP-8 trace + vec + bench | done | T4 `78 pass, 0 fail` (39 bundles x seeds 1,42 x 300 steps vs reference_trace.mjs, obs hash included; pytest 40 passed); T5 `4 passed` (brix, tetris, cavern1, space_flight3: 8 envs x 200 steps identical obs/rew/term/trunc between libtwin_vec and libqjs_vec); T7 table under Numbers | 7da6655 | Twin 1 env 213k-305k steps/s (cavern4a/b lowest, 5-line lookups over a 3.2 KB ROM cost nothing: their extra time is the rasterizer on busier displays), 20 env / 10 thr 1.02M-1.65M; QuickJS host 8.5k-13.4k / 49k-114k on the same protocol. Per-env twin cost is ~3.3 us, of which the emulator is well under 1 us: the tile blit + 64x64 readback is the rest (blank twin: 1.33M/s). `benchmarks/bench_twins.py <family>` runs both hosts. |
-| U05 VGDL twin, Colas profile | in-progress | (no gate run yet) | - | DONE so far: `parity/vgdl/tools/twin_spec.mjs` runs the JS parser and writes `parity/vgdl/twin/<corpus>/<game>.json` = {corpus, game, block_size, profile, spec{header,defs,keys,charMap,interactions,terminations,singletons[]}, levels[], groupOrder} for all 26 games (`--check` for freshness); files generated, NOT yet committed. NEXT: `vgdl/mt19937.cpp` (10_rng_mt19937.js: init_genrand, init_by_array seed of |n| limbs, genrand u32, random() 53-bit, randbelow rejection), `vgdl/engine.cpp` = 30_engine.js line for line (types with typed-array fields, cell grids, vgCreate/Kill/Flush, updaters incl. GravityAvatar, effects table incl. teleportToExit/DestroyAllBreakwalls, vgApplyEffect with the outer/inner swap and EOS reverse order, vgCollectType aligned probe, terminations, resources as per-sprite maps), `vgdl/twin_vgdl.cpp` = 90_prelude.js (canvas = max level dims x 8, vgFitLevel, level = seed % n, tiles render: statics as kinds grid with palette index type+1 in one drawTiles, movers as rects, VG_COLORS table for `img=colors/NAME`), registry: family vgdl -> `twin/<corpus>/<game>.json` (sidecar has corpus). Gate hook shape: JSON.stringify({t, score, ended, won, sprites}) with sprites rows [key,x,y,[[res,val]..]] sorted by their JSON text; hook actions KEYS=[[273],[274],[276],[275],[],[32]] (= sidecar vgdl6 order); goldens key `infer/<game>/lvl<l>/seed<s>` value `steps:hash16`, 3 seeds [42,7,3], 300 steps, stops at ended. Needs `Twin::hookReset(seed, level)` + `twin_host snap --level`. |
+| U05 VGDL twin, Colas profile | done | T2 `138/138 trajectories identical` (12 infer games x 46 levels x seeds 1,2,3 x 300 steps, every snapshot text-equal to the `__vgdl` hook) and `92/92` at 1500 steps x seeds 11,23; T3 `golden ok (138 trajectories)` (all infer entries of parity/vgdl/tests/golden.json); ASan/UBSan clean (DEBUG=1) and release; pytest `52 passed` | (this commit) | `vgdl/mt19937.cpp` = 10_rng_mt19937.js (CPython seeding over the 32-bit limbs of the seed, 53-bit random(), rejection randbelow). `vgdl/engine.cpp` = 30_engine.js line for line: types as per-field vectors + per-type cell grid, kill/create/resource deferral, updaters incl. GravityAvatar, the 20 effects, vgApplyEffect outer/inner swap + EOS reverse order, the aligned collision probe, abstract-group snapshots only during the collision phase (fresh during updates and terminations, as the JS), terminations, snapshot rows sorted by their JSON text. `vgdl/twin_vgdl.cpp` = 90_prelude.js: canvas = largest level x 8, vgFitLevel, level = seed % n (or the sidecar's fixed index), all three render modes (dist uses tiles), VG_COLORS, hook actions from the sidecar's held codes via the same key map as vgActiveKeys. V8 Math.hypot reproduced (scale by max + Kahan) for unit vectors. New `Twin::hookReset(seed, level)` + `twin_debug_reset_level` + `twin_host snap ... [level]`; registry reads corpus/level_mode/render/level_index from the sidecar; `common/jsnum.hpp` shared. FINDING: `parity/vgdl/tests/golden.mjs` parses `--steps` as `parseInt(args[indexOf+1])` = `parseInt("--check")` = NaN under --write/--check, so its loop never runs and every committed golden hashes the RESET snapshot only (`1:<hash>`); the twin reproduces those as committed and `--steps N` in the harness hashes N steps the way the recipe meant to. Fixing golden.mjs is a family edit (out of this loop's scope): handoff. The rcrl-profile bundles (vgfmri_rcrl corpus) are refused with a clear error until U06; bench skips them. |
 | U06 VGDL RC_RL profile + trace/vec/bench | todo | | | group order per game from <game>.groups.json |
 | U07 PuzzleScript CACHE precompile + AOT measurement | todo | | | engine caches: CACHE_RULE_CELLROWMATCHESFUNCTION, CACHE_MATCHCELLROW, CACHE_MATCHCELLROWWILDCARD, CACHE_CELLPATTERN_MATCHFUNCTION/REPLACEFUNCTION, CACHE_RULE_APPLYAT, CACHE_MOVEENTITIESATINDEX, CACHE_CALCULATEROWCOLMASKS, CACHE_REPOSITIONENTITIESATCELL (keys = generated source) |
 | U08 PuzzleScript rule VM: 770 reference tests | todo | | | may span iterations; record passed/770 and the first failing test name each time |
@@ -76,9 +76,31 @@ For reference: V8 emulator-only (no render) 110k; QuickJS + qjsc -A (U14 of the 
 | wipe_off | 12,467 | 288,812 | 108,082 | 1,622,115 |
 | worm | 11,357 | 277,743 | 68,707 | 1,363,262 |
 
+### VGDL, Colas profile / infer corpus (U05, this Mac, arm64; `benchmarks/bench_twins.py vgdl`, same protocol as CHIP-8; block_size 50, 64x64 rgb)
+
+| game | QuickJS 1 env | twin 1 env | QuickJS 20 env / 10 thr | twin 20 env / 10 thr |
+|---|---|---|---|---|
+| aliens | 16,696 | 116,309 | 147,628 | 831,827 |
+| avoidGeorge | 21,675 | 109,964 | 150,188 | 747,730 |
+| beesAndBirds | 22,021 | 85,057 | 173,552 | 807,705 |
+| jaws | 27,032 | 114,717 | 156,456 | 734,128 |
+| missile_command | 19,315 | 82,768 | 148,860 | 791,957 |
+| picoparkish | 79,383 | 69,315 | 222,371 | 670,126 |
+| plaqueAttack | 14,612 | 98,661 | 141,354 | 827,929 |
+| portals | 23,250 | 71,641 | 155,155 | 715,265 |
+| preconditions | 48,321 | 141,145 | 187,182 | 940,230 |
+| pushBoulders | 22,525 | 130,931 | 159,454 | 922,367 |
+| relational | 28,437 | 191,082 | 162,073 | 983,566 |
+| tutorial | 36,001 | 197,608 | 165,954 | 1,009,570 |
+
+Twin 1 env 69k-198k (picoparkish lowest: GravityAvatar scans every wall/avatar sprite per probe, as the JS does; QuickJS is unusually fast there for the same reason its tick is short), 20 env / 10 thr 670k-1.01M. (Note: the columns above were printed by the bench in the order qjs1, qjs-vec, twin1, twin-vec and are re-ordered here to the table's header.)
+
 ## Reference quirks found
 
 (Anything the JS bundles do that their PLAN sections did not predict, found while porting; with the bundle, seed and step.)
+
+- vgdl: `tests/golden.mjs` `--check`/`--write` run with STEPS = NaN (see U05), so golden.json's 516 entries are reset-state hashes; the JS-vs-py oracle gate (`gate_oracle.mjs`) is what actually proves the trajectories. Twin T3 reproduces golden.json as committed; T2 (138 x 300 + 92 x 1500 steps lockstep) is the real trajectory gate.
+- vgdl: the twin's hook reset must pick the level exactly like `resetLevel(idx, seed)`; the PlayTrain `resetGame(seed)` path picks `seed % nLevels`. Both are reproduced (`twin_host snap <seed> <acts> [level]`).
 
 ## Iteration log
 
@@ -89,3 +111,4 @@ For reference: V8 emulator-only (no render) 110k; QuickJS + qjsc -A (U14 of the 
 4 | U03 | tests/lockstep_js_vs_twin.mjs, test_chip8_lockstep.py, Twin::hookStep + twin_debug_step | T2 117/117, T3 234/234
 5 | U04 | tests/test_chip8_trace.py, test_chip8_vec.py, benchmarks/bench_twins.py, Numbers table | T4 78/78, T5 4/4, T7 recorded
 6 | U05 (in-progress) | tools/twin_spec.mjs + twin/ (26 spec files); design decisions recorded in PLAN section 9 (engines only, wasm target U12, package split U13) | -
+7 | U05 | vgdl/{mt19937,engine,twin_vgdl}.cpp, common/jsnum.hpp, Twin::hookReset + twin_debug_reset_level + snap [level], lockstep harness vgdl branch (per level + golden recipe), test_vgdl_lockstep.py, bench skips uncovered profiles; golden.mjs NaN-steps finding | T2 138/138 + 92/92 (1500 steps), T3 138/138, 52 passed

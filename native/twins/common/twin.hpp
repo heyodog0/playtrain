@@ -29,11 +29,15 @@ class Twin {
   // The family hook's step (`__chip8.step(a)`, `__ps.step(a)`): the ENV step with an action index, no draw, no
   // PlayTrain episode bookkeeping. The lockstep and golden gates drive this; draw() is what the host drives.
   virtual void hookStep(int action) { (void)action; }
+  // The family hook's reset with an explicit level (`__vgdl.resetLevel(idx, seed)`); level < 0 = resetGame(seed).
+  virtual void hookReset(uint32_t seed, int level) { (void)level; resetGame(seed); }
 };
 
 // What the registry learns from the bundle's sidecar (<bundle>.json).
 struct GameInfo {
   std::string family, game, dir;                  // dir = the family directory (dist/..)
+  std::string corpus, level_mode, render;         // vgdl: sidecar corpus / level_mode ('seed'|'fixed') / render
+  int level_index = 0;                            // vgdl: VG_LEVEL_INDEX when level_mode == 'fixed'
   std::vector<std::vector<int>> actions_held;     // sidecar actions[i].held key codes
   std::vector<std::string> action_names;
   int symbolic_dim = 0;                           // sidecar obs.symbolic, 0 if none

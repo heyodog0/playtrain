@@ -39,5 +39,5 @@ def test_twin_host_trace_shape():
 
 
 def test_family_without_twin_fails_loudly():
-    proc = twin_host(str(PARITY / "vgdl" / "dist" / "vgdl_aliens.js"), "trace", "1", "1")
-    assert proc.returncode != 0 and "vgdl twin not built" in (proc.stdout + proc.stderr)
+    proc = twin_host(str(PARITY / "puzzlescript" / "dist" / "ps_blockfaker.js"), "trace", "1", "1")
+    assert proc.returncode != 0 and "puzzlescript twin not built" in (proc.stdout + proc.stderr)
