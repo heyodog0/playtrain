@@ -25,6 +25,8 @@ struct Type {
   bool chaser = false, fleeing = false, isResource = false; double value = 1; std::string resType;
   bool singleton = false, aligned = true, inert = false, jpDirty = false;
   Updater upd = nullptr;
+  // RC_RL profile (35_rcrl.js) fields
+  bool oriented = false, bomber = false, random = false, isAvatarCls = false, hasProb = false; double spawnCooldown = 1; int rcEffId = -1;
   int cap = 0, n = 0; std::vector<int> live, freeList;
   std::vector<int> x, y, lx, ly, lastmove; std::vector<double> ox, oy;
   std::vector<int> age, counter; std::vector<uint8_t> killed; std::vector<int> jpT, jpI, seq, jump, next, cell;
@@ -32,7 +34,7 @@ struct Type {
   std::vector<int> head;
 };
 struct Effect {
-  std::string actor, actee, name; double score = 0; json args;
+  std::string actor, actee, name; double score = 0; json args; int rcId = -1;   // rcId: RC_EFFECTS index, -1 = unknown
   void (*fn)(Engine&, Type*, int, Type*, int, const json&) = nullptr;
   Type* A = nullptr; Type* P = nullptr;
 };
@@ -49,10 +51,19 @@ struct Engine {
   int seq = 0; bool ssOn = false; std::map<std::string, Group> ss; std::map<std::string, double> resLimits;
   std::vector<Effect*> stepBacks, moveEffs, nonMove;
   MT rng; std::vector<int> cand; std::vector<int> n0;
-  // API
+  // RC_RL profile state (35_rcrl.js)
+  bool rcrl = false; std::vector<Effect*> rcEffects; std::vector<Termination*> rcTerms; std::vector<std::string> groupOrder;
+  std::map<std::string, std::vector<Type*>> rcMembers; long spriteBonusT = -1, timeoutBonusT = -1; int avatarT = -1;
+  // API (Colas)
   void init(const json& specJson, int blockSize);
   void reset(const std::string& levelStr, uint32_t seed);
   void tick(const std::vector<int>& keysDown);
+  // API (RC_RL): rcInit builds the sprite_order types; rcTick(keys, isNull) — isNull = the soft-reset step
+  void rcInit(const json& specJson, int blockSize, const std::vector<std::string>& groupOrder);
+  void rcReset(const std::string& levelStr, uint32_t seed);
+  void rcTick(const std::vector<int>& keysDown, bool isNull);
+  void rcEvents(); void rcFlush(); void rcCheckTerminations(); int rcCreate(const std::string& key, int x, int y);
+  int rcNumSprites(const std::string& st); const std::vector<Type*>& rcMemberTypes(const std::string& st);
   std::string snapshotJson() const;            // the JSON.stringify of the hook's snapshot rows (sprites only)
   // internals shared with the updaters / effects
   int create(const std::string& key, int x, int y, bool skipSingleton = false);
@@ -78,5 +89,7 @@ struct Engine {
   Group scratchGroup;
 };
 double resGet(const Type& t, int i, const std::string& r);
+void makeType(Type& t, int idx, const std::string& key, const json& def);   // engine.cpp: vgMakeType
+Updater colasUpdaterBase();
 void resSet(Type& t, int i, const std::string& r, double v);
 }

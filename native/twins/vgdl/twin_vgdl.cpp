@@ -28,21 +28,30 @@ static RGB colorOf(const json& img) {
   for (auto& c : C) if (name == c.first) return c.second;
   return dflt;
 }
+static RGB rcColorOf(const json& color) {
+  static const std::pair<const char*, RGB> C[] = {
+    {"GREEN", {129, 199, 132}}, {"BLUE", {25, 118, 210}}, {"RED", {211, 47, 47}}, {"GRAY", {69, 90, 100}}, {"WHITE", {250, 250, 250}},
+    {"BROWN", {109, 76, 65}}, {"BLACK", {55, 71, 79}}, {"ORANGE", {230, 81, 0}}, {"YELLOW", {255, 245, 157}}, {"PINK", {255, 138, 128}},
+    {"GOLD", {255, 196, 0}}, {"LIGHTRED", {255, 82, 82}}, {"LIGHTORANGE", {255, 112, 67}}, {"LIGHTBLUE", {144, 202, 249}},
+    {"LIGHTGREEN", {185, 246, 202}}, {"LIGHTGRAY", {207, 216, 220}}, {"DARKGRAY", {68, 90, 100}}, {"DARKBLUE", {1, 87, 155}}, {"PURPLE", {92, 107, 192}}};
+  if (color.is_string()) { std::string s = color.get<std::string>(); for (auto& c : C) if (s == c.first) return c.second; }
+  return RGB{140, 20, 140};
+}
 static const int VG_CELL_MAX = 8;
 // p5 key code -> VGDL key, in vgActiveKeys order (ascending VGDL codes): SPACE, UP, DOWN, RIGHT, LEFT
 static const int KEYMAP[5][2] = {{32, vgdl::K_SPACE}, {38, vgdl::K_UP}, {40, vgdl::K_DOWN}, {39, vgdl::K_RIGHT}, {37, vgdl::K_LEFT}};
 
 class VgdlTwin : public Twin {
-  vgdl::Engine E_; std::vector<std::string> levels_; std::string levelMode_, render_; int levelIndex_ = 0;
+  vgdl::Engine E_; std::vector<std::string> levels_; std::string levelMode_, render_; int levelIndex_ = 0; bool rcrl_ = false;
   std::vector<RGB> colors_; int canvasW_ = 0, canvasH_ = 0, cell_ = 8, offX_ = 0, offY_ = 0, bgType_ = -1, levelIdx_ = 0;
   std::vector<uint16_t> kinds_; std::vector<uint8_t> palette_; std::vector<int> staticN_; int kindsW_ = 0, kindsH_ = 0;
   double score_ = 0, lives_ = 1; std::string gameState_ = "PLAYING"; bool prepared_ = false;
   std::vector<std::vector<int>> actionKeys_;   // action index -> VGDL keys (from the sidecar's held codes)
  public:
-  VgdlTwin(const json& spec, int block, std::vector<std::string> levels, const GameInfo& info) : levels_(std::move(levels)) {
+  VgdlTwin(const json& spec, int block, std::vector<std::string> levels, const GameInfo& info, bool rcrl, const std::vector<std::string>& groupOrder) : levels_(std::move(levels)), rcrl_(rcrl) {
     levelMode_ = info.level_mode; render_ = info.render; levelIndex_ = info.level_index;
-    E_.init(spec, block);
-    for (auto& t : E_.types) colors_.push_back(colorOf(t.args.contains("img") ? t.args["img"] : json()));
+    if (rcrl_) E_.rcInit(spec, block, groupOrder); else E_.init(spec, block);
+    for (auto& t : E_.types) colors_.push_back(rcrl_ ? rcColorOf(t.args.contains("color") ? t.args["color"] : json()) : colorOf(t.args.contains("img") ? t.args["img"] : json()));
     int W = 0, H = 0;
     for (auto& L : levels_) { int h = 0, w = 0; size_t p = 0; while (p <= L.size()) { size_t q = L.find('\n', p); if (q == std::string::npos) q = L.size(); if (q > p) { h++; if ((int)(q - p) > w) w = (int)(q - p); } p = q + 1; } if (h > H) H = h; if (w > W) W = w; }
     canvasW_ = W * VG_CELL_MAX; canvasH_ = H * VG_CELL_MAX;
@@ -108,18 +117,21 @@ class VgdlTwin : public Twin {
   }
   void setup() override { p5::createCanvas(canvasW_, canvasH_); }
   void resetLevel(int idx, uint32_t seed) {
-    levelIdx_ = idx; E_.reset(levels_[idx], seed); fitLevel(); pickBackground(); score_ = 0; lives_ = 1; gameState_ = "PLAYING";
+    levelIdx_ = idx; if (rcrl_) E_.rcReset(levels_[idx], seed); else E_.reset(levels_[idx], seed); fitLevel(); pickBackground(); score_ = 0; lives_ = 1; gameState_ = "PLAYING";
   }
   void resetGame(uint32_t seed) override { resetLevel(levelMode_ == "fixed" ? levelIndex_ : (int)(seed % (uint32_t)levels_.size()), seed); }
   void hookReset(uint32_t seed, int level) override { if (level < 0) resetGame(seed); else resetLevel(level, seed); }
   std::vector<int> activeKeys() const { std::vector<int> k; for (auto& m : KEYMAP) if (p5::keyIsDown(m[0])) k.push_back(m[1]); return k; }
   void draw() override {
-    if (!E_.ended) E_.tick(activeKeys());
+    if (!E_.ended) { if (rcrl_) E_.rcTick(activeKeys(), false); else E_.tick(activeKeys()); }
     score_ = E_.score;
     if (E_.ended) gameState_ = E_.won ? "WIN" : "GAMEOVER";
     render();
   }
-  void hookStep(int action) override { E_.tick(action >= 0 && action < (int)actionKeys_.size() ? actionKeys_[action] : std::vector<int>()); }
+  void hookStep(int action) override {
+    const std::vector<int>& ks = action >= 0 && action < (int)actionKeys_.size() ? actionKeys_[action] : std::vector<int>();
+    if (rcrl_) E_.rcTick(ks, false); else E_.tick(ks);   // __vgdl.tickKeys(keys): [] is NOOP (avatar skipped in rcrl)
+  }
   GameState getGameState() override { GameState g; g.score = score_; g.lives = lives_; g.gameState = gameState_; return g; }
   std::string snapshot() const override {
     // JSON.stringify({...state(), sprites: snapshot()}) = {"t":..,"score":..,"ended":..,"won":..,"sprites":[..]}
@@ -132,9 +144,11 @@ std::unique_ptr<Twin> make_vgdl_twin(const GameInfo& info, std::string& err) {
   std::ifstream f(path);
   if (!f) { err = "vgdl: no twin spec at " + path + " (run tools/twin_spec.mjs)"; return nullptr; }
   json j; try { f >> j; } catch (const std::exception& e) { err = std::string("vgdl: bad twin spec: ") + e.what(); return nullptr; }
-  if (j.value("profile", "colas") != "colas") { err = "vgdl: profile '" + j.value("profile", "") + "' has no twin yet (U06)"; return nullptr; }
+  std::string profile = j.value("profile", "colas");
+  if (profile != "colas" && profile != "rcrl") { err = "vgdl: unknown profile '" + profile + "'"; return nullptr; }
   std::vector<std::string> levels; for (auto& L : j["levels"]) levels.push_back(L.get<std::string>());
   if (levels.empty()) { err = "vgdl: no levels for " + info.game; return nullptr; }
-  return std::unique_ptr<Twin>(new VgdlTwin(j["spec"], j.value("block_size", 1), std::move(levels), info));
+  std::vector<std::string> groupOrder; if (j.contains("groupOrder") && j["groupOrder"].is_array()) for (auto& k : j["groupOrder"]) groupOrder.push_back(k.get<std::string>());
+  return std::unique_ptr<Twin>(new VgdlTwin(j["spec"], j.value("block_size", 1), std::move(levels), info, profile == "rcrl", groupOrder));
 }
 }

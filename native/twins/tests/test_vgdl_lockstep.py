@@ -1,25 +1,38 @@
-"""T2/T3 (VGDL, Colas profile / infer corpus): every snapshot of every level of every infer bundle identical between
-the JS bundle (`__vgdl` hook) and the twin (46 levels x 3 seeds x 300 steps), and the twin reproduces the infer
-entries of the family's committed golden.json (138 entries; reset-snapshot hashes, see the note in the harness)."""
+"""T2/T3 (VGDL, both profiles): every snapshot of every level of every bundle identical between the JS bundle
+(`__vgdl` hook) and the twin (infer / Colas: 46 levels; vgfmri_rcrl / RC_RL: 126 levels; x 3 seeds x 300 steps),
+and the twin reproduces every entry of the family's committed golden.json (138 + 378; reset-snapshot hashes, see the
+note in the harness)."""
 import json
 
+import pytest
 from conftest import PARITY, ensure_built, node
 
 MANIFEST = json.loads((PARITY / "vgdl" / "manifest.json").read_text())
-GAMES = MANIFEST["corpora"]["infer"]["games"]
-N_LEVELS = sum(json.loads((PARITY / "vgdl" / "dist" / f"vgdl_{g}.json").read_text())["levels"] for g in GAMES)
+CORPORA = {c: MANIFEST["corpora"][c]["games"] for c in ("infer", "vgfmri_rcrl")}
 
 
-def test_lockstep_js_vs_twin():
+def n_levels(games):
+    return sum(json.loads((PARITY / "vgdl" / "dist" / f"vgdl_{g}.json").read_text())["levels"] for g in games)
+
+
+def test_corpus_sizes():
+    assert len(CORPORA["infer"]) == 12 and len(CORPORA["vgfmri_rcrl"]) == 14
+    assert n_levels(CORPORA["infer"]) == 46 and n_levels(CORPORA["vgfmri_rcrl"]) == 126
+
+
+@pytest.mark.parametrize("corpus", list(CORPORA))
+def test_lockstep_js_vs_twin(corpus):
     ensure_built()
-    assert len(GAMES) == 12
-    proc = node("tests/lockstep_js_vs_twin.mjs", "vgdl", ",".join(GAMES), "--steps", "300", "--seeds", "1,2,3")
+    games = CORPORA[corpus]; n = 3 * n_levels(games)
+    proc = node("tests/lockstep_js_vs_twin.mjs", "vgdl", ",".join(games), "--steps", "300", "--seeds", "1,2,3")
     assert proc.returncode == 0, proc.stdout[-6000:] + proc.stderr[-2000:]
-    assert proc.stdout.strip().endswith(f"{3 * N_LEVELS}/{3 * N_LEVELS} trajectories identical")
+    assert proc.stdout.strip().endswith(f"{n}/{n} trajectories identical")
 
 
-def test_twin_reproduces_family_goldens():
+@pytest.mark.parametrize("corpus", list(CORPORA))
+def test_twin_reproduces_family_goldens(corpus):
     ensure_built()
-    proc = node("tests/lockstep_js_vs_twin.mjs", "vgdl", ",".join(GAMES), "--golden")
+    games = CORPORA[corpus]; n = 3 * n_levels(games)
+    proc = node("tests/lockstep_js_vs_twin.mjs", "vgdl", ",".join(games), "--golden")
     assert proc.returncode == 0, proc.stdout[-6000:] + proc.stderr[-2000:]
-    assert proc.stdout.strip().endswith(f"golden ok ({3 * N_LEVELS} trajectories)")
+    assert proc.stdout.strip().endswith(f"golden ok ({n} trajectories)")

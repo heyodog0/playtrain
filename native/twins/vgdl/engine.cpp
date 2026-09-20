@@ -55,6 +55,7 @@ static double jsHypot(double x, double y) {
   return std::sqrt(sum) * mx;
 }
 
+static void updBase(Engine& E, Type& t, int i);
 // ---------- types ----------
 static void typeAlloc(Type& t, int cap) {
   auto grow = [&](auto& v, auto zero) { v.resize(cap, zero); };
@@ -64,7 +65,7 @@ static void typeAlloc(Type& t, int cap) {
   for (int i = t.cap; i < cap; i++) t.freeList.push_back(i);
   t.cap = cap;
 }
-static void makeType(Type& t, int idx, const std::string& key, const json& def) {
+void makeType(Type& t, int idx, const std::string& key, const json& def) {
   t.idx = idx; t.key = key; t.cls = def.value("cls", ""); if (def.contains("cls") && def["cls"].is_null()) t.cls = "";
   const json& A = def["args"]; t.args = A;
   t.stypes.clear(); for (const auto& s : def["stypes"]) t.stypes.push_back(s.get<std::string>());
@@ -89,6 +90,7 @@ static void makeType(Type& t, int idx, const std::string& key, const json& def) 
   typeAlloc(t, 16);
 }
 
+Updater colasUpdaterBase() { return updBase; }
 // ---------- cell grid ----------
 static inline int cellOf(const Engine& E, int x, int y) {
   int cx = (int)std::floor((double)x / E.B), cy = (int)std::floor((double)y / E.B);
