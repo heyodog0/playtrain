@@ -189,6 +189,8 @@ Branch: `twins`, created from `puzzlescript` in U00.
 | U07 | PuzzleScript quick win on the existing QuickJS path: `parity/puzzlescript/tools/precompile_caches.mjs` pre-populates the engine's `CACHE_*` tables with statically emitted functions at bundle time so no `new Function` runs; 770 tests + goldens + G6 unchanged; measure `qjsc -A` on 3 bundles with `native/aotfork` | 770/770 and G3/G4/G6 green with precompiled bundles; AOT numbers recorded (accept or reject the change on the numbers; document either way) |
 | U08 | PuzzleScript rule VM, part 1: `parity/puzzlescript/tools/twin_state.mjs` (compiled state -> JSON, per game, freshness-checked), `vm.cpp`/`rules.cpp`/`rc4.cpp` implementing section 2; the 770 reference tests through the VM (a node tool exports each test's game text -> compiled state + inputs + expected level string; C++ reads and replays, undo/restart included) | T1: 770/770. May span iterations: the row records `passed/770` and the first failing test each time |
 | U09 | PuzzleScript twin integration: `twin_ps.cpp` (prelude semantics, level pick, tile atlas render, `getObservation`), lockstep vs JS (17 x 3 x 300), goldens (102), render draw list, obs trace, vec, bench | T2 51/51, T3 102/102, T6, T4 34/34, T5, T7 |
+| U12 | wasm game format (raylib model): Emscripten build of the twins to `dist/<name>.wasm` exporting setup/resetGame/draw/getGameState and importing the p5 calls (background, drawTiles, rect, fill, noStroke, keyIsDown, createCanvas); a wasm branch in `tools/play-templates.mjs` and `runtime/p5/game-env.mjs` (runtime change: human-approved 2026-09-20); `twin_host trace` == wasm trace == JS trace, byte for byte | native vs wasm vs JS traces identical on chip8 (39), vgdl (26), puzzlescript (17); brix plays in headless Chromium from the .wasm |
+| U13 | package split: move `native/twins/` to a sibling `playtrain-engines` (depends on playtrain for p5.hpp, the rasterizer, the reference bundles); the rule: nothing ships that does not pass the gates against a PlayTrain bundle | decision + migration notes for the human (U11) |
 | U10 | Report: `native/twins/README.md`, numbers table (QuickJS vs node vs twin per family), status log in `playtrain-internal/docs/DSL_PORTS_DESIGN.md`, memory note; all twin tests green in one `uv run --no-sync python -m pytest native/twins/tests -q` | files written; one green run |
 | U11 | handoff: whether `libtwin_vec` becomes the default `lib_path` for these families (runtime change), cluster numbers, and the AOT decision from U07 | notes for the human in PROGRESS.md |
 
@@ -198,3 +200,12 @@ Branch: `twins`, created from `puzzlescript` in U00.
 2. Cluster runs: the node-backend benchmark (jobs 47370091 / 47372830) is queued; twins should be benchmarked on the same node type once they exist.
 3. PuzzleScript symbolic vs pixel observations for training: the twin implements both; which is the default is a training decision.
 4. If the PuzzleScript VM stalls on a semantics corner (rigid bodies are the likely one), is a 17-game corpus with one game marked `blocked` acceptable, or is 770/770 the bar? (The plan says 770/770.)
+
+**Decided by the human, 2026-09-20 (after U04):** the twins are ENGINE ports only (three engines; games stay
+VGDL text / PuzzleScript text / ROMs, readable and browser-playable). JS stays the specification and the human
+runtime; the C++ is an accelerator accepted only through the gates. Proceed with VGDL (U05, U06) and PuzzleScript
+(U07-U09). Then U12: the raylib model, the same C++ compiled with Emscripten to a `.wasm` game the play page and the
+node backend load (one source, native for training, wasm for play), gated byte-identical against native and JS.
+Then U13: the package moves to a sibling `playtrain-engines`. V8 embedding was considered as the "keep all JS"
+alternative (9-20x, one engine job) and set aside in favour of the engine twins; it remains the lever for the
+hand-written p5 catalog if that ever needs it.
