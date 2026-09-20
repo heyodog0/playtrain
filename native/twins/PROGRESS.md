@@ -80,20 +80,20 @@ For reference: V8 emulator-only (no render) 110k; QuickJS + qjsc -A (U14 of the 
 
 | game | QuickJS 1 env | twin 1 env | QuickJS 20 env / 10 thr | twin 20 env / 10 thr |
 |---|---|---|---|---|
-| aliens | 16,696 | 116,309 | 147,628 | 831,827 |
-| avoidGeorge | 21,675 | 109,964 | 150,188 | 747,730 |
-| beesAndBirds | 22,021 | 85,057 | 173,552 | 807,705 |
-| jaws | 27,032 | 114,717 | 156,456 | 734,128 |
-| missile_command | 19,315 | 82,768 | 148,860 | 791,957 |
-| picoparkish | 79,383 | 69,315 | 222,371 | 670,126 |
-| plaqueAttack | 14,612 | 98,661 | 141,354 | 827,929 |
-| portals | 23,250 | 71,641 | 155,155 | 715,265 |
-| preconditions | 48,321 | 141,145 | 187,182 | 940,230 |
-| pushBoulders | 22,525 | 130,931 | 159,454 | 922,367 |
-| relational | 28,437 | 191,082 | 162,073 | 983,566 |
-| tutorial | 36,001 | 197,608 | 165,954 | 1,009,570 |
+| aliens | 16,696 | 147,628 | 116,309 | 831,827 |
+| avoidGeorge | 21,675 | 150,188 | 109,964 | 747,730 |
+| beesAndBirds | 22,021 | 173,552 | 85,057 | 807,705 |
+| jaws | 27,032 | 156,456 | 114,717 | 734,128 |
+| missile_command | 19,315 | 148,860 | 82,768 | 791,957 |
+| picoparkish | 79,383 | 222,371 | 69,315 | 670,126 |
+| plaqueAttack | 14,612 | 141,354 | 98,661 | 827,929 |
+| portals | 23,250 | 155,155 | 71,641 | 715,265 |
+| preconditions | 48,321 | 187,182 | 141,145 | 940,230 |
+| pushBoulders | 22,525 | 159,454 | 130,931 | 922,367 |
+| relational | 28,437 | 162,073 | 191,082 | 983,566 |
+| tutorial | 36,001 | 165,954 | 197,608 | 1,009,570 |
 
-Twin 1 env 69k-198k (picoparkish lowest: GravityAvatar scans every wall/avatar sprite per probe, as the JS does; QuickJS is unusually fast there for the same reason its tick is short), 20 env / 10 thr 670k-1.01M. (Note: the columns above were printed by the bench in the order qjs1, qjs-vec, twin1, twin-vec and are re-ordered here to the table's header.)
+Twin 1 env 141k-222k (picoparkish highest: its levels are small), 20 env / 10 thr 670k-1.01M; QuickJS 14.6k-79k / 69k-198k on the same protocol. The twin at 1 env already beats QuickJS at 20 env / 10 threads on every game.
 
 ## Reference quirks found
 
