@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 6
+ITERATION: 7
 BRANCH: puzzlescript (from chip8 @ 64e8a3f)
-LAST_COMMIT: f2b139b
+LAST_COMMIT: 7b595af
 
 ## Ledger
 
@@ -17,7 +17,7 @@ LAST_COMMIT: f2b139b
 | U03 prelude, bundler, sidecars, corpus compile | done | `17/17 bundles ok` (compile 9-20 ms each under node, 0 errors, playable counts match the manifest, 3 seeds stepped); pytest `7 passed`; `list_available_games()` shows 17 `ps_*` | a2bcea5 | `src/90_prelude.js`: compile once (unitTesting false, lazyFunctionGeneration false, `muted = 1`), reset = setGameState's flag resets + `loadLevelFromState(state, idx, String(seed))` + again loop, level = playable[seed % n]; one draw() = one processInput + again loop, WIN at `winning`; render composites each cell's ascending-id object stack into a growing 5x5 RGBA atlas, one drawTiles call, viewport as redraw() (flick/zoom); hooks `__ps` (reset, step, snap, tiles, playable, compileErrors). Sound: 11 games threw `Audio is not defined` on a rule-triggered sound (the reference runner never reaches it because unitTesting mutes); fixed by the engine's own `muted` flag plus an inert `Audio` shim. Sidecar actions ps6 = UP 38, LEFT 37, DOWN 40, RIGHT 39, ACTION X 88, NOOP. `not_matched` written. Canvas = largest playable level x 5 px (or the flick/zoom screen). |
 | U04 lockstep, goldens, freshness | done | `51/51 trajectories exact` (17 games x seeds 1,2,3 x 300 steps, 15 fields incl. convertLevelToString, sha1(objects), RC4 i/j/sha1(s), again count); `golden ok (102)`; `dist/ fresh (17)`; pytest `10 passed` | b5d3d53 | `tests/gate_oracle.mjs` runs the bundle in a node vm and the checkout in-process via oracle.mjs's exports (2.9 s for the corpus). The oracle had to set the engine's `muted = 1` too: with unitTesting false, a rule-triggered sound in sokoban_basic/eyeball/match3/whaleworld crashed the reference inside riffwave's base64 (`src[i] << 16` on an undefined buffer), a path the reference runner never reaches. Wins under random play within 300 steps: octat lvl3 seed1 at step 188; kettle and nekopuzzle reach WIN in the corpus check. Goldens: 6 seeds x 300 steps, key `game/lvl<n>/seed<s>`, value `steps:won_at:hash16`. |
 | U05 QuickJS: reference tests + cross-engine gate | done | 770/770 under qjs_host (`score=770 lives=0`, 80 s vs 8 s node); `GATE PASS` x17 (300 steps, seeds 1, 42, obs hash included); pytest `19 passed in 90s` | f2b139b | qjs_host defines no `console`: shim adds a no-op one; the flat test script reports through getGameState() (score = passed, lives = failed + errored) because the trace line is qjs_host's only output. Found and fixed a prelude render bug on the way: `BitVec.get` returns a boolean and `!== 0` treated false as set, so every cell composited into one tile (goldens unaffected: state only). The obs now shows the level (microban 9 colours, 1181 lit px). gate_qjs.sh's action formula `(i*3+1) % 6` alternates LEFT/ACTION only, so sokoban-like games show 1-4 distinct frames in the trace (the player leans on a wall); dynamics coverage comes from G3/G4, not this gate. |
-| U06 runtime + throughput | todo | | | |
+| U06 runtime + throughput | done | G7 `2 passed` (sidecar; NativeVecEnv 4 envs x 100 steps, obs 64x64x3 with >= 4 colours and > 10% lit); G10 table under Numbers | 7b595af | Compile under QuickJS is ~20 ms per game (PLAN Q5 closed). 1 env: 1,174 (byyourside) to 13,396 (notsnake) steps/s; 20 env / 10 thr: 4,718 (constellationz) to 96,940 (notsnake). Sokoban-likes ~10-13k, rule-heavy games 1-4k. PLAN section 6 rewritten with the numbers. |
 | U07 render gate | todo | | | |
 | U08 browser smoke | todo | | | playwright-core in `<scratch>/pw`, Chromium `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/...` (see chip8 PROGRESS U08) |
 | U09 report + docs | todo | | | |
@@ -29,7 +29,29 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 
 (G10 results go here: game, compile time on QuickJS, steps/s 1 env / 1 thread, 20 env / 10 thr.)
 
-First datapoint (U05): the 770 reference tests (compile + simulate, mixed) take 8.0 s under node and 79.9 s under qjs_host on this Mac: QuickJS is ~10x slower on this engine. Per-game compile time under QuickJS and steps/s are U06.
+First datapoint (U05): the 770 reference tests (compile + simulate, mixed) take 8.0 s under node and 79.9 s under qjs_host on this Mac: QuickJS is ~10x slower on this engine.
+
+G10 (U06, this Mac, arm64, `benchmarks/bench_puzzlescript.py`): the first column is the wall time of a whole 1-step `qjs_host bench` run (process start + engine load + compile + one turn), so compile is at most ~20 ms for every corpus game under QuickJS; 1-env steps/s from `qjs_host bench 3000` with the bench's own action formula; 20 env / 10 threads from NativeVecEnv, 200 batched steps after 10 warm-up. Random play resets on win under autoreset, so the 20-env column includes level reloads.
+
+| game | QuickJS load + compile (1-step run, s) | 1 env / 1 thread steps/s (qjs_host bench, 3000 steps) | 20 env / 10 thr (NativeVecEnv) |
+|---|---|---|---|
+| blockfaker | 0.02 | 5,989 | 22,741 |
+| byyourside | 0.02 | 1,174 | 10,577 |
+| constellationz | 0.02 | 3,086 | 4,718 |
+| kettle | 0.02 | 2,298 | 14,543 |
+| limerick | 0.02 | 1,585 | 14,900 |
+| microban | 0.02 | 12,794 | 65,494 |
+| midas | 0.02 | 3,525 | 13,025 |
+| nekopuzzle | 0.02 | 10,201 | 78,113 |
+| notsnake | 0.02 | 13,396 | 96,940 |
+| octat | 0.02 | 3,674 | 31,816 |
+| randomrobots | 0.02 | 5,795 | 51,560 |
+| randomspawner | 0.02 | 3,621 | 35,915 |
+| sokoban_basic | 0.02 | 12,660 | 89,788 |
+| sokoban_eyeball | 0.01 | 9,577 | 63,742 |
+| sokoban_match3 | 0.02 | 7,905 | 62,316 |
+| whaleworld | 0.02 | 3,106 | 11,415 |
+| zenpuzzlegarden | 0.02 | 4,362 | 29,991 |
 
 ## Reference quirks found
 
@@ -48,3 +70,4 @@ First datapoint (U05): the 770 reference tests (compile + simulate, mixed) take 
 4 | U03 | src/90_prelude.js, tools/bundle_puzzlescript.mjs + bundle_all.mjs, games/*.json x17, dist/ x17 + sidecars, tests/corpus_check.mjs + test_corpus.py, manifest not_matched, Audio shim | G2 17/17
 5 | U04 | tests/gate_oracle.mjs, golden.mjs + golden.json (102), test_lockstep/test_golden/test_bundle_fresh, oracle muted | G3 51/51, G4 102, G5 fresh
 6 | U05 | tests/test_engine_gate.py (770 under qjs_host + gate_qjs.sh x17), console shim, BitVec.get fix, dist rebuilt | G6 19 passed
+7 | U06 | tests/test_runtime.py, benchmarks/bench_puzzlescript.py, Numbers table, PLAN section 6 + Q5 | G7 2 passed, G10 recorded
