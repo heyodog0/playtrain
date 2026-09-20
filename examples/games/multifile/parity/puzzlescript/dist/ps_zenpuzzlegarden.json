@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -70,7 +70,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -124,5 +124,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "a2758836bc51b60e27e19bc9f382c602de96caeda9ad78e000a87a1a9216f380"
+  "source_sha256": "03f117d38c1d56629b0916da9e261f7baaac7818fce586ab0fbce9262cea9f8a"
 }

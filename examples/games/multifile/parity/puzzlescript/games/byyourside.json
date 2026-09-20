@@ -27,6 +27,6 @@
     "key_repeat_interval"
   ],
   "human": {
-    "controls": "Arrows move, X acts. By Your Side by Alan Hazelden: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. By Your Side by Alan Hazelden: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
   }
 }

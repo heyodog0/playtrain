@@ -25,6 +25,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Lime Rick by Tommi Tuovinen: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Lime Rick by Tommi Tuovinen: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
   }
 }

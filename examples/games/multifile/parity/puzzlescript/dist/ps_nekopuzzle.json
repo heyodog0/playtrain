@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -75,7 +75,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -129,5 +129,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "fb6adebb1df1ecd74c4daf5b068349b120f795c251f6052aedf82255fcf0b757"
+  "source_sha256": "7a8c0f8065ed336746c53738b5cf19489b96f41533e794c978db05bba06349fe"
 }

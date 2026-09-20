@@ -16,6 +16,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Robot Spawner by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Robot Spawner by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
   }
 }

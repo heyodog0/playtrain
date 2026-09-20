@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -76,7 +76,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. constellation z by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. constellation z by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -130,5 +130,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "d6cdb420b4a706f8b9758f246d589c5949f76fd2c59040cd11bf28cc1e253b04"
+  "source_sha256": "e64991ee5523e395e552723872b850b359b614a93932528d9d701b7f350d8618"
 }

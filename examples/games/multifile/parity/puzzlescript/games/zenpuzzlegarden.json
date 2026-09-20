@@ -20,6 +20,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
   }
 }

@@ -26,6 +26,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. constellation z by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. constellation z by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved."
   }
 }

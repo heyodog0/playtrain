@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -67,7 +67,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -121,5 +121,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "8b2dc74e863aa2aea751d66e34e244e2c8026c76d8a1fbb8f19045c62baeb10b"
+  "source_sha256": "e544aae3414b83bd8b3875da7dc06a2824a6f7c74b0906ebbe0846786782e68c"
 }

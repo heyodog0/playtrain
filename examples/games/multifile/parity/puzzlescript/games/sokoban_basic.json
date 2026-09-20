@@ -17,6 +17,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
   }
 }

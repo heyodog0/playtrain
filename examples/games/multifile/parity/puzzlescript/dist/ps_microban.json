@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -75,7 +75,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Microban by David Skinner: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Microban by David Skinner: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -129,5 +129,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "0fe7e6fbeb915d938648949a2f90dd7011659d3badb3f115db69fa32745f378a"
+  "source_sha256": "3263cc7314bc1e5895fe6c1ad1c784c39b542aa0d05fc1cfae81a7053122e569"
 }

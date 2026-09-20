@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -75,7 +75,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -129,5 +129,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "2bf84f8240a7f69ed23d2e3a5eb18bfb9868d9646f6d8b745bf80f0cdfb73a61"
+  "source_sha256": "3009ce1789844e6aeaeef345222e540bac42b7e0e3b99a7508168ac05147a3a4"
 }

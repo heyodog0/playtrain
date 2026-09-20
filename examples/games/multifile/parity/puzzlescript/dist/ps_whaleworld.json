@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -78,7 +78,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. 2D Whale World by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. 2D Whale World by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -132,5 +132,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "ab85fe4ba3c10bbe3192d71cd0786f657c1f78ad826411c313f9cf85bd5ff53a"
+  "source_sha256": "f680fc26d8638c5007825b34a52f88ba2c75d0e1c8e3ad246abfd0c54e92842d"
 }

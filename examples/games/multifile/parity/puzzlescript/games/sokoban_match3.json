@@ -17,6 +17,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Match 3 Block Push by increpare: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Match 3 Block Push by increpare: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
   }
 }

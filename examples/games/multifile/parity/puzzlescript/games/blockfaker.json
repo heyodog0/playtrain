@@ -25,6 +25,6 @@
     "color_palette"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
   }
 }

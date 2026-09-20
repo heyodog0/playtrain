@@ -18,6 +18,6 @@
     "require_player_movement"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Notsnake by Terry Cavanagh: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Notsnake by Terry Cavanagh: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
   }
 }

@@ -4,6 +4,14 @@
 // and localStorage already exist; only the missing names are added). Shims add globals the engine expects from a
 // browser; they never change engine behaviour. Every function has a name.
 var psShimNoop = function psShimNoop() {};
+// Where does this script's top-level `let` live? As a classic script (browser <script>, qjs_host, a node vm script) it
+// is in the global lexical environment and code built with `new Function` can see it. Under an indirect eval, as
+// PlayTrain's play page loads a game, `let`/`const` are scoped to the eval and `new Function` code cannot see them;
+// the engine builds its rule matchers with `new Function`, so the bundler emits accessor bridges guarded by this flag.
+let psShimProbe = 1;
+var psShimEvalScoped = (function psShimDetectEvalScope() {
+  try { return (new Function('return typeof psShimProbe'))() === 'undefined'; } catch (e) { return true; }
+})();
 var psShimGlobal = (typeof globalThis !== 'undefined') ? globalThis : this;
 
 if (typeof console === 'undefined') {                           // qjs_host defines no console at all

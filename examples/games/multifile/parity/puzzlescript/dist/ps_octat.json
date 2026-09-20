@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -75,7 +75,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Octat by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Octat by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -129,5 +129,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "4ff2c65bf461c443e4486b95b371a08077d35286765ff94bb288805d32b35dfe"
+  "source_sha256": "f833700e53853dc7ba31f379a977ec35270a3898ed7d23251f7dd01288c09225"
 }

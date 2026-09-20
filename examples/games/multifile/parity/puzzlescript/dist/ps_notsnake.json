@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -68,7 +68,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Notsnake by Terry Cavanagh: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Notsnake by Terry Cavanagh: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -122,5 +122,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "f68538bbfae49b0b54d7c4aa1ef0038b13552ddd8845ce1868b83b661b37f8fa"
+  "source_sha256": "7134e8dff6b4ac53e61dc63f5f5a92a4c3a326d8e2078d6d71702aa96ddb40a2"
 }

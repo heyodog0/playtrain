@@ -25,6 +25,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
   }
 }

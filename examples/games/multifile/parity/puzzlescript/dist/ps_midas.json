@@ -39,7 +39,7 @@
     {
       "name": "ACTION",
       "held": [
-        88
+        32
       ],
       "press": null
     },
@@ -80,7 +80,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved.",
+    "controls": "Arrows move, SPACE acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved.",
     "keymap_overlay": true
   },
   "parity": true,
@@ -134,5 +134,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "037cfa26f28626e72f794c380b5d18c80e4e590cc6cd7f93bf899b031b264ea9"
+  "source_sha256": "5d69f319af1584aa777d96a62eb89d4abac72b4fc127ffe9edd5160faa9decb1"
 }

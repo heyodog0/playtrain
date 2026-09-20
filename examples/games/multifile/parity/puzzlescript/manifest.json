@@ -4,7 +4,7 @@
   "title": "PuzzleScript (reference-engine identity family)",
   "kind": "family",
   "note": "The reference engine's own files run inside every bundle: tools/bundle_puzzlescript.mjs concatenates a constants header, src/05_shims.js, reference/js/* in the reference's load order, and src/90_prelude.js with one games/<game>.txt into dist/ps_<game>.js plus a sidecar. Edit src/ only; never reference/, games/*.txt or dist/. The manifest deliberately has no `sources` key (tools/bundle_multifile.py --all would treat the family as one game).",
-  "action_space": "ps6: UP LEFT DOWN RIGHT ACTION NOOP (processInput dir codes 0-4, then no input)",
+  "action_space": "ps6: UP LEFT DOWN RIGHT ACTION NOOP (processInput dir codes 0-4, then no input); ACTION is held as space (32)",
   "max_steps": 1000,
   "obs": {
     "rgb": true,
@@ -12,7 +12,7 @@
   },
   "human": {
     "steps_per_second": 8,
-    "controls": "Arrows move, X acts. One key press is one turn.",
+    "controls": "Arrows move, SPACE acts (the reference takes enter, space, c and x). One key press is one turn.",
     "keymap_overlay": true
   },
   "reference": {
@@ -1149,6 +1149,7 @@
   "reference_quirks": [
     "Level indices count message screens: microban has 21 levels of which 10 are playable (odd indices). compile([\"loadLevel\", n]) on a message level leaves textMode true and `level` unset; the prelude only ever loads playable levels.",
     "sfxr.js ends with `if (typeof exports != 'undefined') { require('./riffwave') ... }`: the engine must be loaded as a classic script (browser <script>, qjs_host, a vm context, an .mjs file), never wrapped as a CommonJS module, or it calls require() for a file that is not there.",
-    "globalVariables.js tick_lazy_function_generation calls performance.now(); QuickJS has no `performance`, so src/05_shims.js provides one backed by Date.now(). debug.js stripHTMLTags needs a DOM; the reference's own node runner overrides it, and so does tests/run_reference_tests.mjs (the prelude never calls it)."
+    "globalVariables.js tick_lazy_function_generation calls performance.now(); QuickJS has no `performance`, so src/05_shims.js provides one backed by Date.now(). debug.js stripHTMLTags needs a DOM; the reference's own node runner overrides it, and so does tests/run_reference_tests.mjs (the prelude never calls it).",
+    "PlayTrain's play page loads a game with an indirect eval, under which the engine's top-level `let`/`const` are eval-scoped and invisible to the rule matchers the engine builds with `new Function` (`_movementVecs is not defined` on the first turn). The reference runs as classic <script>s, where they are global. The bundler emits a guarded accessor bridge (05_shims.js psShimEvalScoped) so the same bundle works in both hosts; nothing in the engine or the page changed."
   ]
 }

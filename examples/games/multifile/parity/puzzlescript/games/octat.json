@@ -25,6 +25,6 @@
     "require_player_movement"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Octat by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Octat by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved."
   }
 }

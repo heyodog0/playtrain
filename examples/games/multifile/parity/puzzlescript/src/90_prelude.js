@@ -9,7 +9,7 @@
 // id, as graphics.js redraw() does) into a growing 5x5 tile atlas and draws the level with one drawTiles call.
 
 const PS_CELL = 5;
-const PS_ACTION_KEYS = [38, 37, 40, 39, 88];          // UP LEFT DOWN RIGHT ACTION(X): processInput dir 0..4
+const PS_ACTION_KEYS = [38, 37, 40, 39, 32];          // UP LEFT DOWN RIGHT ACTION(space): processInput dir 0..4; the reference takes enter, space, c and x for action
 const PS_NOOP = 5;
 
 let score = 0, lives = 1, gameState = 'PLAYING';

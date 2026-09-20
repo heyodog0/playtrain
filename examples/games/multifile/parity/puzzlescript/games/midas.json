@@ -30,6 +30,6 @@
     "homepage"
   ],
   "human": {
-    "controls": "Arrows move, X acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved."
+    "controls": "Arrows move, SPACE acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved."
   }
 }
