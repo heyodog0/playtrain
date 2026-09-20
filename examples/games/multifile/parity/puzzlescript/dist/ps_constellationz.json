@@ -72,7 +72,15 @@
   "max_steps": 1000,
   "obs": {
     "rgb": true,
-    "rgb_size": 64
+    "rgb_size": 64,
+    "symbolic": 5616,
+    "symbolic_layout": {
+      "objects": 6,
+      "max_width": 36,
+      "max_height": 26,
+      "dim": 5616,
+      "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
+    }
   },
   "human": {
     "steps_per_second": 8,
@@ -130,5 +138,5 @@
       "light-theme detection: the engine reads document.body.classList for its default colours; the shim reports no light theme (dark defaults), as the reference's own test runner does"
     ]
   },
-  "source_sha256": "e64991ee5523e395e552723872b850b359b614a93932528d9d701b7f350d8618"
+  "source_sha256": "7762bbea72357299fd8b3a55d2121bd67d2b931777f47039ba66346a23da2f3a"
 }

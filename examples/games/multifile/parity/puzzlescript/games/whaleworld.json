@@ -29,5 +29,47 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. 2D Whale World by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 7,
+  "level_sizes": [
+    [
+      16,
+      15
+    ],
+    [
+      11,
+      9
+    ],
+    [
+      16,
+      14
+    ],
+    [
+      16,
+      13
+    ],
+    [
+      17,
+      13
+    ],
+    [
+      17,
+      16
+    ],
+    [
+      16,
+      13
+    ],
+    [
+      11,
+      11
+    ]
+  ],
+  "symbolic": {
+    "objects": 7,
+    "max_width": 17,
+    "max_height": 16,
+    "dim": 1904,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

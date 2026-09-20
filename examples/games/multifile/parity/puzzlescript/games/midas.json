@@ -31,5 +31,75 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 13,
+  "level_sizes": [
+    [
+      14,
+      6
+    ],
+    [
+      15,
+      7
+    ],
+    [
+      15,
+      8
+    ],
+    [
+      14,
+      6
+    ],
+    [
+      17,
+      9
+    ],
+    [
+      21,
+      15
+    ],
+    [
+      21,
+      11
+    ],
+    [
+      21,
+      10
+    ],
+    [
+      21,
+      12
+    ],
+    [
+      21,
+      13
+    ],
+    [
+      21,
+      17
+    ],
+    [
+      21,
+      12
+    ],
+    [
+      21,
+      13
+    ],
+    [
+      21,
+      16
+    ],
+    [
+      21,
+      14
+    ]
+  ],
+  "symbolic": {
+    "objects": 13,
+    "max_width": 21,
+    "max_height": 17,
+    "dim": 4641,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

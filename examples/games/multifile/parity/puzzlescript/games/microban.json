@@ -26,5 +26,55 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Microban by David Skinner: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 5,
+  "level_sizes": [
+    [
+      6,
+      7
+    ],
+    [
+      6,
+      7
+    ],
+    [
+      9,
+      6
+    ],
+    [
+      8,
+      6
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      12,
+      6
+    ],
+    [
+      7,
+      8
+    ],
+    [
+      8,
+      12
+    ],
+    [
+      6,
+      7
+    ],
+    [
+      11,
+      8
+    ]
+  ],
+  "symbolic": {
+    "objects": 5,
+    "max_width": 12,
+    "max_height": 12,
+    "dim": 720,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

@@ -173,6 +173,24 @@ function draw() {
 
 function getGameState() { return { score: score, lives: lives, gameState: gameState }; }
 
+// ---- symbolic observation (PLAN 3.6 contract: a Float32Array the hosts hand on untouched) ----
+// PS_GAME_DEF.symbolic: {objects, max_width, max_height, dim}. Layout [object k][row y][col x] over the largest
+// playable level, 1.0 where object k's bit is set in the cell, cells beyond the current level 0. This is the
+// multihot level state PuzzleJAX observes; no rasterizer work happens in this mode.
+let psObs = null;
+function getObservation() {
+  const S = PS_GAME_DEF.symbolic;
+  if (!psObs) psObs = new Float32Array(S.dim);
+  psObs.fill(0);
+  if (!level || !level.objects) return psObs;
+  const W = level.width, H = level.height, n = S.objects, MW = S.max_width, MH = S.max_height;
+  for (let x = 0; x < W && x < MW; x++) for (let y = 0; y < H && y < MH; y++) {
+    const cell = level.getCellInto(y + x * H, _o12);
+    for (let k = 0; k < n; k++) if (cell.get(k)) psObs[(k * MH + y) * MW + x] = 1;
+  }
+  return psObs;
+}
+
 // gate hooks (node harnesses only)
 globalThis.__ps = {
   reset: (seed) => { psCompile(); resetGame(seed >>> 0); },

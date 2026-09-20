@@ -26,5 +26,47 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Octat by increpare: level = seed % 8 of the 8 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 6,
+  "level_sizes": [
+    [
+      10,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      11,
+      11
+    ],
+    [
+      11,
+      3
+    ],
+    [
+      9,
+      5
+    ]
+  ],
+  "symbolic": {
+    "objects": 6,
+    "max_width": 11,
+    "max_height": 11,
+    "dim": 726,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

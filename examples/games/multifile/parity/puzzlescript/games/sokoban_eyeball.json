@@ -17,5 +17,19 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. EYE EYE EYE by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 5,
+  "level_sizes": [
+    [
+      9,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 5,
+    "max_width": 9,
+    "max_height": 7,
+    "dim": 315,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

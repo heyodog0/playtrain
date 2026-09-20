@@ -18,5 +18,23 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Simple Block Pushing Game by David Skinner: level = seed % 2 of the 2 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 5,
+  "level_sizes": [
+    [
+      6,
+      7
+    ],
+    [
+      6,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 5,
+    "max_width": 6,
+    "max_height": 7,
+    "dim": 210,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

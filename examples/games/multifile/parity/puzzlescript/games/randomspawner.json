@@ -17,5 +17,19 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Robot Spawner by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 6,
+  "level_sizes": [
+    [
+      7,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 6,
+    "max_width": 7,
+    "max_height": 7,
+    "dim": 294,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

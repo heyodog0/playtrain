@@ -28,5 +28,55 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. By Your Side by Alan Hazelden: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 23,
+  "level_sizes": [
+    [
+      21,
+      17
+    ],
+    [
+      21,
+      17
+    ],
+    [
+      21,
+      17
+    ],
+    [
+      21,
+      13
+    ],
+    [
+      21,
+      15
+    ],
+    [
+      21,
+      15
+    ],
+    [
+      21,
+      15
+    ],
+    [
+      20,
+      15
+    ],
+    [
+      20,
+      15
+    ],
+    [
+      20,
+      15
+    ]
+  ],
+  "symbolic": {
+    "objects": 23,
+    "max_width": 21,
+    "max_height": 17,
+    "dim": 8211,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

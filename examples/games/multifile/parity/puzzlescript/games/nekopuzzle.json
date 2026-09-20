@@ -26,5 +26,55 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 3,
+  "level_sizes": [
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      8
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 3,
+    "max_width": 8,
+    "max_height": 8,
+    "dim": 192,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

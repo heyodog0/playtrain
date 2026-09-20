@@ -26,5 +26,35 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 11,
+  "level_sizes": [
+    [
+      16,
+      12
+    ],
+    [
+      10,
+      8
+    ],
+    [
+      16,
+      11
+    ],
+    [
+      14,
+      14
+    ],
+    [
+      14,
+      14
+    ]
+  ],
+  "symbolic": {
+    "objects": 11,
+    "max_width": 16,
+    "max_height": 14,
+    "dim": 2464,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

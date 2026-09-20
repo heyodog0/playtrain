@@ -17,5 +17,19 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Random Robots by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 3,
+  "level_sizes": [
+    [
+      11,
+      9
+    ]
+  ],
+  "symbolic": {
+    "objects": 3,
+    "max_width": 11,
+    "max_height": 9,
+    "dim": 297,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

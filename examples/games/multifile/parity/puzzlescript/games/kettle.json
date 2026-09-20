@@ -28,5 +28,59 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Kettle by increpare: level = seed % 11 of the 11 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 8,
+  "level_sizes": [
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      13
+    ],
+    [
+      15,
+      14
+    ],
+    [
+      15,
+      14
+    ],
+    [
+      15,
+      15
+    ]
+  ],
+  "symbolic": {
+    "objects": 8,
+    "max_width": 15,
+    "max_height": 15,
+    "dim": 1800,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

@@ -21,5 +21,35 @@
   ],
   "human": {
     "controls": "Arrows move, SPACE acts. Zen Puzzle Garden by lexaloffle: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 6,
+  "level_sizes": [
+    [
+      12,
+      12
+    ],
+    [
+      12,
+      12
+    ],
+    [
+      12,
+      12
+    ],
+    [
+      12,
+      11
+    ],
+    [
+      12,
+      12
+    ]
+  ],
+  "symbolic": {
+    "objects": 6,
+    "max_width": 12,
+    "max_height": 12,
+    "dim": 864,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
   }
 }

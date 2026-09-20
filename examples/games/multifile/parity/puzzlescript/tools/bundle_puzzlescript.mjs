@@ -52,7 +52,7 @@ if (args.includes('--sidecar')) {
   const side = {
     name, version: manifest.version, title: `PuzzleScript ${def.title}`, family: 'puzzlescript', game, author: def.author, source: def.source,
     action_space: 'ps6', actions, level_mode: def.level_mode, playable_levels: def.playable_levels, levels: def.levels, metadata_keys: def.metadata_keys,
-    max_steps: manifest.max_steps, obs: manifest.obs,
+    max_steps: manifest.max_steps, obs: { ...manifest.obs, symbolic: def.symbolic.dim, symbolic_layout: def.symbolic },
     human: { steps_per_second: manifest.human.steps_per_second, controls: def.human.controls, keymap_overlay: true },
     parity: true, reference: manifest.reference, source_sha256: sha256(out),
   };
