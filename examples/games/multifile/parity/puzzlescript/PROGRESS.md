@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 5
+ITERATION: 6
 BRANCH: puzzlescript (from chip8 @ 64e8a3f)
-LAST_COMMIT: b5d3d53
+LAST_COMMIT: f2b139b
 
 ## Ledger
 
@@ -16,7 +16,7 @@ LAST_COMMIT: b5d3d53
 | U02 shims + 770 reference tests in the bundle | done | `Passed: 770 / Failed: 0 / Errors: 0` in 8.0 s under node; pytest `5 passed` | 3306015 | `src/05_shims.js`: guarded (typeof) versions of everything run_tests_node.js installs, plus `performance.now` for QuickJS; all functions named. `tests/run_reference_tests.mjs` builds the exact bundler concatenation (src/0*, reference engine order, src/9*) + vendored test data + a copy of the runner loop, runs it in a fresh vm context; `--emit <file>` writes the flat script for U05's QuickJS run (it prints via `print` when that exists). Quirks recorded: sfxr.js's `typeof exports` require() guard (never wrap as CommonJS: conftest.run_js now writes .mjs), performance.now, stripHTMLTags. |
 | U03 prelude, bundler, sidecars, corpus compile | done | `17/17 bundles ok` (compile 9-20 ms each under node, 0 errors, playable counts match the manifest, 3 seeds stepped); pytest `7 passed`; `list_available_games()` shows 17 `ps_*` | a2bcea5 | `src/90_prelude.js`: compile once (unitTesting false, lazyFunctionGeneration false, `muted = 1`), reset = setGameState's flag resets + `loadLevelFromState(state, idx, String(seed))` + again loop, level = playable[seed % n]; one draw() = one processInput + again loop, WIN at `winning`; render composites each cell's ascending-id object stack into a growing 5x5 RGBA atlas, one drawTiles call, viewport as redraw() (flick/zoom); hooks `__ps` (reset, step, snap, tiles, playable, compileErrors). Sound: 11 games threw `Audio is not defined` on a rule-triggered sound (the reference runner never reaches it because unitTesting mutes); fixed by the engine's own `muted` flag plus an inert `Audio` shim. Sidecar actions ps6 = UP 38, LEFT 37, DOWN 40, RIGHT 39, ACTION X 88, NOOP. `not_matched` written. Canvas = largest playable level x 5 px (or the flick/zoom screen). |
 | U04 lockstep, goldens, freshness | done | `51/51 trajectories exact` (17 games x seeds 1,2,3 x 300 steps, 15 fields incl. convertLevelToString, sha1(objects), RC4 i/j/sha1(s), again count); `golden ok (102)`; `dist/ fresh (17)`; pytest `10 passed` | b5d3d53 | `tests/gate_oracle.mjs` runs the bundle in a node vm and the checkout in-process via oracle.mjs's exports (2.9 s for the corpus). The oracle had to set the engine's `muted = 1` too: with unitTesting false, a rule-triggered sound in sokoban_basic/eyeball/match3/whaleworld crashed the reference inside riffwave's base64 (`src[i] << 16` on an undefined buffer), a path the reference runner never reaches. Wins under random play within 300 steps: octat lvl3 seed1 at step 188; kettle and nekopuzzle reach WIN in the corpus check. Goldens: 6 seeds x 300 steps, key `game/lvl<n>/seed<s>`, value `steps:won_at:hash16`. |
-| U05 QuickJS: reference tests + cross-engine gate | todo | | | `native/build/qjs_host` exists on this Mac; per-run `PLAYTRAIN_QJS_ACTIONS` |
+| U05 QuickJS: reference tests + cross-engine gate | done | 770/770 under qjs_host (`score=770 lives=0`, 80 s vs 8 s node); `GATE PASS` x17 (300 steps, seeds 1, 42, obs hash included); pytest `19 passed in 90s` | f2b139b | qjs_host defines no `console`: shim adds a no-op one; the flat test script reports through getGameState() (score = passed, lives = failed + errored) because the trace line is qjs_host's only output. Found and fixed a prelude render bug on the way: `BitVec.get` returns a boolean and `!== 0` treated false as set, so every cell composited into one tile (goldens unaffected: state only). The obs now shows the level (microban 9 colours, 1181 lit px). gate_qjs.sh's action formula `(i*3+1) % 6` alternates LEFT/ACTION only, so sokoban-like games show 1-4 distinct frames in the trace (the player leans on a wall); dynamics coverage comes from G3/G4, not this gate. |
 | U06 runtime + throughput | todo | | | |
 | U07 render gate | todo | | | |
 | U08 browser smoke | todo | | | playwright-core in `<scratch>/pw`, Chromium `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/...` (see chip8 PROGRESS U08) |
@@ -28,6 +28,8 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 ## Numbers
 
 (G10 results go here: game, compile time on QuickJS, steps/s 1 env / 1 thread, 20 env / 10 thr.)
+
+First datapoint (U05): the 770 reference tests (compile + simulate, mixed) take 8.0 s under node and 79.9 s under qjs_host on this Mac: QuickJS is ~10x slower on this engine. Per-game compile time under QuickJS and steps/s are U06.
 
 ## Reference quirks found
 
@@ -45,3 +47,4 @@ Status values: `todo`, `in-progress`, `done`, `blocked`, `handoff`.
 3 | U02 | src/05_shims.js, tests/run_reference_tests.mjs, test_reference_tests.py, conftest .mjs, 2 quirks | G1 770/770
 4 | U03 | src/90_prelude.js, tools/bundle_puzzlescript.mjs + bundle_all.mjs, games/*.json x17, dist/ x17 + sidecars, tests/corpus_check.mjs + test_corpus.py, manifest not_matched, Audio shim | G2 17/17
 5 | U04 | tests/gate_oracle.mjs, golden.mjs + golden.json (102), test_lockstep/test_golden/test_bundle_fresh, oracle muted | G3 51/51, G4 102, G5 fresh
+6 | U05 | tests/test_engine_gate.py (770 under qjs_host + gate_qjs.sh x17), console shim, BitVec.get fix, dist rebuilt | G6 19 passed
