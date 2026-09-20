@@ -163,13 +163,14 @@ oracle is the unmodified checkout driven the way its author's test runner drives
 
 ## 6. Speed expectation
 
-Unknown until measured; that is the point of T0. The reference runs its 770 tests
-(compile + simulate) in 6.3 s on V8 here. Compile is heavy and uses `new Function`;
-QuickJS supports it but the AOT tier cannot compile dynamically generated functions,
-so `qjsc -A` will not help the rule matchers. Measure compile time per game and
-steps/s on QuickJS in G10; if compile on QuickJS is more than a few seconds for a
-corpus game, cache the compiled state per bundle at bundle time is a section 9
-question, not a unit. Do not build a compiler.
+Measured in U05/U06 (this Mac, arm64). QuickJS runs the reference's 770 tests in 80 s vs
+8 s on node (~10x). Compile is not a problem: a whole 1-step `qjs_host` run (process
+start + engine load + compile + one turn) takes ~20 ms for every corpus game, so section 9
+Q5 (precompile at bundle time) is closed by measurement: no. Throughput on QuickJS is
+1.2k-13.4k steps/s per env depending on the game's rule load (notsnake, sokoban_basic,
+microban at the top; byyourside, limerick, kettle at the bottom), 4.7k-97k on 20 envs /
+10 threads. `new Function`-generated matchers mean `qjsc -A` cannot help the hot path.
+Do not build a compiler.
 
 ## 7. Lessons from the VGDL and CHIP-8 ports that bind here
 
@@ -227,4 +228,4 @@ Branch: `puzzlescript`, created from `chip8` in U00.
 2. Corpus license: only the editor-dropdown examples are safe per the demo README. Ship those only (default), or ask the other authors?
 3. Realtime games (`chaos wizard`, `easyenigma`): exclude (default) or define `ticks_per_step`?
 4. Reward shaping: none by default (0 until win). A manifest `reward` block naming counted objects is a design-doc idea; want it?
-5. If QuickJS compile time per game is seconds: precompile at bundle time (serialise `state`) or accept it?
+5. ~~If QuickJS compile time per game is seconds: precompile at bundle time?~~ Closed by measurement (U06): compile is ~20 ms under QuickJS.
