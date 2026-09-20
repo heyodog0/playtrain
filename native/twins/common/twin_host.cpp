@@ -24,7 +24,8 @@ const char* twin_debug_snapshot(void*, int);
 int twin_debug_n_actions(void*);
 void twin_debug_reset(void*, int, uint32_t);
 void twin_debug_reset_level(void*, int, uint32_t, int);
-void twin_debug_step(void*, int, int);
+const char* twin_debug_render(void*, int);
+int twin_debug_step(void*, int, int);
 }
 
 using twin::jsnum;
@@ -32,7 +33,7 @@ using twin::jsnum;
 static uint64_t fnv1a(const uint8_t* p, size_t n) { uint64_t h = 1469598103934665603ULL; for (size_t i = 0; i < n; i++) { h ^= p[i]; h *= 1099511628211ULL; } return h; }
 
 int main(int argc, char** argv) {
-  if (argc < 4) { fprintf(stderr, "usage: twin_host <bundle.js> trace|bench|snap <seed> <n|actions>\n"); return 2; }
+  if (argc < 4) { fprintf(stderr, "usage: twin_host <bundle.js> trace|bench|snap|tiles <seed> <n|actions>\n"); return 2; }
   const char* game = argv[1]; const char* mode = argv[2];
   uint32_t seed = (uint32_t)strtoul(argv[3], nullptr, 10);
   void* h = vec_create(game, 1, 64, 100000, 1, 0);
@@ -74,14 +75,23 @@ int main(int argc, char** argv) {
     }
     double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     printf("bench(twin): %ld steps in %.4fs = %.0f steps/sec\n", n, secs, n / secs);
+  } else if (!strcmp(mode, "tiles")) {                // `__ps.tiles()` after the hook reset and after every step
+    twin_debug_reset(h, 0, seed);
+    printf("%s\n", twin_debug_render(h, 0));
+    const char* p = argv[4];
+    while (p && *p) { a32 = (int32_t)strtol(p, (char**)&p, 10); if (*p == ',') p++;
+      twin_debug_step(h, 0, a32); printf("%s\n", twin_debug_render(h, 0)); }
   } else if (!strcmp(mode, "snap")) {
     if (argc > 5) twin_debug_reset_level(h, 0, seed, atoi(argv[5]));   // vgdl: __vgdl.resetLevel(level, seed)
     else twin_debug_reset(h, 0, seed);                // the hook's reset: no NOOP frame
-    printf("%s\n", twin_debug_snapshot(h, 0));
+    // TWIN_SNAP_AGAINS=1: append the hook step's return value (puzzlescript again count) as "agains" (golden.mjs hashes it)
+    bool withAgains = getenv("TWIN_SNAP_AGAINS") != nullptr;
+    auto emit = [&](const char* js, int agains) { if (!withAgains) { printf("%s\n", js); return; } std::string t(js); if (!t.empty() && t.back() == '}') { t.pop_back(); t += ",\"agains\":" + std::to_string(agains) + "}"; } printf("%s\n", t.c_str()); };
+    emit(twin_debug_snapshot(h, 0), 0);
     const char* p = argv[4];
     while (p && *p) { a32 = (int32_t)strtol(p, (char**)&p, 10); if (*p == ',') p++;
-      twin_debug_step(h, 0, a32);                    // the hook's step: env only, past termination too
-      printf("%s\n", twin_debug_snapshot(h, 0)); }
+      int ag = twin_debug_step(h, 0, a32);           // the hook's step: env only, past termination too
+      emit(twin_debug_snapshot(h, 0), ag); }
   } else { fprintf(stderr, "unknown mode %s\n", mode); return 2; }
   if (const char* e = vec_error(h)) { fprintf(stderr, "twin_host: %s\n", e); return 1; }
   vec_close(h);

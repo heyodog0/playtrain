@@ -51,6 +51,7 @@ export function serializeState(ctx) {
   const meta = {}; for (const k of ['run_rules_on_level_start', 'require_player_movement', 'noundo', 'norestart', 'noaction', 'throttle_movement', 'realtime_interval', 'again_interval', 'key_repeat_interval', 'flickscreen', 'zoomscreen', 'background_color', 'text_color', 'title', 'author']) if (k in s.metadata) meta[k] = s.metadata[k] === undefined ? true : s.metadata[k];
   const sfxo = (o) => ({ objectMask: bv(o.objectMask), directionMask: bv(o.directionMask), layer: o.layer, seed: o.seed });
   return {
+    bgcolor: s.bgcolor, fgcolor: s.fgcolor,
     STRIDE_OBJ: s.STRIDE_OBJ, STRIDE_MOV: s.STRIDE_MOV, LAYER_COUNT: s.LAYER_COUNT, objectCount: s.objectCount, idDict: s.idDict,
     objects: s.idDict.map(n => { const o = s.objects[n]; return { name: n, id: o.id, layer: o.layer, colors: o.colors, sprite: o.spritematrix }; }),
     layerMasks: s.layerMasks.map(bv), playerMask: [s.playerMask[0], bv(s.playerMask[1])], backgroundid: s.backgroundid, backgroundlayer: s.backgroundlayer,

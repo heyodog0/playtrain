@@ -28,9 +28,11 @@ class Twin {
   virtual std::string snapshot() const { return "{}"; }   // the family hook's snap() shape, JSON
   // The family hook's step (`__chip8.step(a)`, `__ps.step(a)`): the ENV step with an action index, no draw, no
   // PlayTrain episode bookkeeping. The lockstep and golden gates drive this; draw() is what the host drives.
-  virtual void hookStep(int action) { (void)action; }
+  virtual int hookStep(int action) { (void)action; return 0; }   // returns the family hook's step value (puzzlescript: again count)
   // The family hook's reset with an explicit level (`__vgdl.resetLevel(idx, seed)`); level < 0 = resetGame(seed).
   virtual void hookReset(uint32_t seed, int level) { (void)level; resetGame(seed); }
+  // The family's render hook (`__ps.tiles()`): render through p5 and describe the tile list as JSON.
+  virtual std::string renderSnapshot() { return "{}"; }
 };
 
 // What the registry learns from the bundle's sidecar (<bundle>.json).

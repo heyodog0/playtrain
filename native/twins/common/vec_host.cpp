@@ -336,9 +336,9 @@ const char* twin_debug_snapshot(void* h, int idx) {
   return buf.c_str();
 }
 int twin_debug_n_actions(void* h) { return h ? ((VecHost*)h)->actions.n() : 0; }
-void twin_debug_step(void* h, int idx, int action) {
-  VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return;
-  Env& e = H->envs[idx]; e.select(); e.twin->hookStep(action);
+int twin_debug_step(void* h, int idx, int action) {
+  VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return 0;
+  Env& e = H->envs[idx]; e.select(); return e.twin->hookStep(action);
 }
 // Hook-style reset: resetGame(seed) with NO draw, like the families' gate hooks (`__chip8.reset`, `__ps.reset`), so
 // `twin_host snap` lines up step for step with the JS snapshots the goldens hash.
@@ -346,6 +346,10 @@ void twin_debug_reset(void* h, int idx, uint32_t seed) {
   VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return;
   Env& e = H->envs[idx]; e.select(); p5::setKeysDown(nullptr, 0); e.twin->resetGame(seed); e.steps = 0;
   e.lastScore = e.twin->getGameState().score;
+}
+const char* twin_debug_render(void* h, int idx) {
+  VecHost* H = (VecHost*)h; if (!H || idx < 0 || idx >= H->num_envs) return "{}";
+  Env& e = H->envs[idx]; e.select(); static thread_local std::string buf; buf = e.twin->renderSnapshot(); return buf.c_str();
 }
 // `__vgdl.resetLevel(idx, seed)`: the hook's reset with an explicit level.
 void twin_debug_reset_level(void* h, int idx, uint32_t seed, int level) {

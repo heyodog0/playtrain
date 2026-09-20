@@ -38,6 +38,8 @@ def test_twin_host_trace_shape():
     assert len(lines) == 4 and all(re.fullmatch(r"\d+ a=\d+ reward=0 term=0 trunc=0 score=0 lives=1 state=PLAYING obshash=\d+", l) for l in lines[1:]), lines
 
 
-def test_family_without_twin_fails_loudly():
-    proc = twin_host(str(PARITY / "puzzlescript" / "dist" / "ps_blockfaker.js"), "trace", "1", "1")
-    assert proc.returncode != 0 and "puzzlescript twin not built" in (proc.stdout + proc.stderr)
+def test_family_without_twin_fails_loudly(tmp_path):
+    (tmp_path / "x_game.js").write_text("function setup(){}\n")
+    (tmp_path / "x_game.json").write_text('{"family": "nosuchfamily", "game": "x", "actions": []}\n')
+    proc = twin_host(str(tmp_path / "x_game.js"), "trace", "1", "1")
+    assert proc.returncode != 0 and "no twin for family 'nosuchfamily'" in (proc.stdout + proc.stderr)

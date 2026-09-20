@@ -128,9 +128,10 @@ class VgdlTwin : public Twin {
     if (E_.ended) gameState_ = E_.won ? "WIN" : "GAMEOVER";
     render();
   }
-  void hookStep(int action) override {
+  int hookStep(int action) override {
     const std::vector<int>& ks = action >= 0 && action < (int)actionKeys_.size() ? actionKeys_[action] : std::vector<int>();
     if (rcrl_) E_.rcTick(ks, false); else E_.tick(ks);   // __vgdl.tickKeys(keys): [] is NOOP (avatar skipped in rcrl)
+    return 0;
   }
   GameState getGameState() override { GameState g; g.score = score_; g.lives = lives_; g.gameState = gameState_; return g; }
   std::string snapshot() const override {

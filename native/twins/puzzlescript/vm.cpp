@@ -18,6 +18,10 @@ bool State::load(const json& j, std::string& err) {
     const json& md = j["metadata"];
     run_rules_on_level_start = md.contains("run_rules_on_level_start"); require_player_movement = md.contains("require_player_movement");
     noundo = md.contains("noundo"); norestart = md.contains("norestart");
+    hasFlick = md.contains("flickscreen") && md["flickscreen"].is_array(); if (hasFlick) { flick[0] = md["flickscreen"][0]; flick[1] = md["flickscreen"][1]; }
+    hasZoom = md.contains("zoomscreen") && md["zoomscreen"].is_array(); if (hasZoom) { zoom[0] = md["zoomscreen"][0]; zoom[1] = md["zoomscreen"][1]; }
+    if (j.contains("bgcolor") && j["bgcolor"].is_string()) bgcolor = j["bgcolor"];
+    objects.clear(); for (const auto& o : j["objects"]) { Obj x; x.name = o["name"]; x.id = o["id"]; x.layer = o["layer"]; if (o["colors"].is_array()) for (const auto& c : o["colors"]) x.colors.push_back(c.is_string() ? c.get<std::string>() : ""); if (o["sprite"].is_array()) for (const auto& row : o["sprite"]) { std::vector<int> r; for (const auto& v : row) r.push_back(v.is_number() ? v.get<int>() : -1); x.sprite.push_back(r); } objects.push_back(x); }
     rigid = j["rigid"].get<bool>();
     rigidGroupIndex_to_GroupIndex.clear(); for (const auto& x : j["rigidGroupIndex_to_GroupIndex"]) rigidGroupIndex_to_GroupIndex.push_back(x.is_null() ? -1 : x.get<int>());
     groupNumber_to_RigidGroupIndex.clear(); for (auto it = j["groupNumber_to_RigidGroupIndex"].begin(); it != j["groupNumber_to_RigidGroupIndex"].end(); ++it) groupNumber_to_RigidGroupIndex[std::stoi(it.key())] = it.value().get<int>();
@@ -61,7 +65,7 @@ void VM::rebuildLevelArrays() {
   level.mapCellContents.assign(S->SO, 0); level.mapCellContents_Movements.assign(S->SM, 0);
   if (S->rigid) { level.rigidMovementAppliedMask.assign(level.n_tiles, BV(S->SM, 0)); level.rigidGroupIndexMask.assign(level.n_tiles, BV(S->SM, 0)); }
 }
-Backup VM::backupLevel() const { Backup b; b.dat = level.objects; b.width = level.width; b.height = level.height; return b; }
+Backup VM::backupLevel() const { Backup b; b.dat = level.objects; b.width = level.width; b.height = level.height; b.ofd = oldflickscreendat; return b; }
 static void applyDiff(const Backup& diff, std::vector<int32_t>& objs) {
   size_t index = 0;
   while (index < diff.dat.size()) {
@@ -73,7 +77,7 @@ static void applyDiff(const Backup& diff, std::vector<int32_t>& objs) {
 }
 static Backup unconsolidateDiff(const Backup& before, const Backup& after) {
   if (!before.diff) return before;
-  Backup b; b.dat = after.dat; applyDiff(before, b.dat); b.width = before.width; b.height = before.height; return b;
+  Backup b; b.dat = after.dat; applyDiff(before, b.dat); b.width = before.width; b.height = before.height; b.ofd = before.ofd; return b;
 }
 static Backup consolidateDiff(const Backup& before, const Backup& after) {
   if (before.width != after.width || before.height != after.height || before.dat.size() != after.dat.size()) return before;
@@ -88,13 +92,14 @@ static Backup consolidateDiff(const Backup& before, const Backup& after) {
       else chain = false;
     }
   }
-  Backup b; b.diff = true; b.dat = result; b.width = before.width; b.height = before.height; return b;
+  Backup b; b.diff = true; b.dat = result; b.width = before.width; b.height = before.height; b.ofd = before.ofd; return b;
 }
 void VM::addUndoState(const Backup& b) {
   backups.push_back(b);
   if (backups.size() > 2 && !backups[backups.size() - 1].diff) backups[backups.size() - 3] = consolidateDiff(backups[backups.size() - 3], backups[backups.size() - 2]);
 }
 void VM::restoreLevel(const Backup& lev) {
+  oldflickscreendat = lev.ofd;
   if (lev.diff) applyDiff(lev, level.objects); else level.objects = lev.dat;
   if (level.width != lev.width || level.height != lev.height) { level.width = lev.width; level.height = lev.height; level.n_tiles = lev.width * lev.height; rebuildLevelArrays(); }
   else {
@@ -136,6 +141,8 @@ void VM::loadLevelFromLevelDat(const LevelDef* dat, const std::string* seed) {
   if (!dat->message) {
     textMode = false;
     level.width = dat->width; level.height = dat->height; level.objects = dat->objects; rebuildLevelArrays();
+    if (S->hasFlick) oldflickscreendat = {0, 0, std::min(S->flick[0], level.width), std::min(S->flick[1], level.height)};
+    else if (S->hasZoom) oldflickscreendat = {0, 0, std::min(S->zoom[0], level.width), std::min(S->zoom[1], level.height)};
     level.commandQueue.clear(); level.commandQueueSourceRules.clear(); level.commandMessage.clear();
     backups.clear(); restartTarget = backupLevel(); hasRestartTarget = true;
     if (S->run_rules_on_level_start) { runrulesonlevelstart_phase = true; processInput(-1, true); runrulesonlevelstart_phase = false; }
@@ -149,7 +156,7 @@ void VM::loadLevelFromState(int levelIndex, const std::string* seed) {
 }
 void VM::compileLoad(int levelIndex, const std::string* seed) {
   // setGameState(state, ["loadLevel", i], seed)
-  winning = false; againing = false; backups.clear();
+  winning = false; againing = false; backups.clear(); oldflickscreendat.clear();
   sfxCreateMask.assign(S->SO, 0); sfxDestroyMask.assign(S->SO, 0);
   curlevel = levelIndex; titleScreen = false; textMode = false;
   loadLevelFromState(levelIndex, seed);
@@ -496,8 +503,9 @@ void VM::playSounds() {
 }
 bool VM::processCommandQueue(const Backup& bak, bool dontModify, bool dontDoWin, int inputDir) {
   auto has = [&](const char* s) { return std::find(level.commandQueue.begin(), level.commandQueue.end(), s) != level.commandQueue.end(); };
-  if (has("cancel")) { bool commandsLeft = level.commandQueue.size() > 1; addUndoState(bak); doUndo(true, false); return commandsLeft; }
-  if (has("restart")) { addUndoState(bak); if (!dontModify) doRestart(true); }
+  auto outputCommands = [&]() { if (!unitTesting && has("message")) { textMode = true; titleScreen = false; } };   // processOutputCommands: showTempMessage
+  if (has("cancel")) { if (!dontModify) outputCommands(); bool commandsLeft = level.commandQueue.size() > 1; addUndoState(bak); doUndo(true, false); return commandsLeft; }
+  if (has("restart")) { if (!dontModify) outputCommands(); addUndoState(bak); if (!dontModify) doRestart(true); }
   bool modified = false;
   for (size_t k = 0; k < level.objects.size(); k++) {
     if (level.objects[k] != bak.dat[k]) {
@@ -507,7 +515,7 @@ bool VM::processCommandQueue(const Backup& bak, bool dontModify, bool dontDoWin,
     }
   }
   if (dontModify && (has("win") || has("restart"))) return true;
-  if (!dontModify) { playSounds(); if (!unitTesting && has("message")) { textMode = true; titleScreen = false; } }
+  if (!dontModify) { playSounds(); outputCommands(); }
   if (!textMode) checkWin(dontDoWin);
   if (!winning) {
     if (has("checkpoint")) { restartTarget = backupLevel(); hasRestartTarget = true; hasUsedCheckpoint = true; }
@@ -551,6 +559,7 @@ void VM::nextLevel() {
     if (curlevel < (int)S->levels.size() - 1) { curlevel++; textMode = false; titleScreen = false; loadLevelFromState(curlevel, nullptr); }
     else { curlevel = 0; goToTitleScreen(); }
   }
+  if (S->hasFlick) oldflickscreendat = {0, 0, std::min(S->flick[0], level.width), std::min(S->flick[1], level.height)};
 }
 
 // ---------- gates ----------

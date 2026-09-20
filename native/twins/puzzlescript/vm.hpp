@@ -23,13 +23,15 @@ struct State {
   int SO = 1, SM = 1, LAYER_COUNT = 1, objectCount = 0; std::vector<std::string> idDict; std::vector<int> objLayer;
   std::vector<BV> layerMasks; bool playerAggregate = false; BV playerMask;
   bool run_rules_on_level_start = false, require_player_movement = false, noundo = false, norestart = false;
+  bool hasFlick = false, hasZoom = false; int flick[2] = {0, 0}, zoom[2] = {0, 0}; std::string bgcolor = "#000000";
+  struct Obj { std::string name; int id = 0, layer = 0; std::vector<std::string> colors; std::vector<std::vector<int>> sprite; }; std::vector<Obj> objects;
   bool rigid = false; std::vector<int> rigidGroupIndex_to_GroupIndex; std::map<int, int> groupNumber_to_RigidGroupIndex;
   struct Win { int kind; BV f1, f2; bool aggr1, aggr2; }; std::vector<Win> winconditions;
   std::vector<LevelDef> levels; std::vector<std::vector<Rule>> rules, lateRules; std::map<int, int> loopPoint, lateLoopPoint;
   std::vector<SfxEntry> sfxCreation, sfxDestruction, sfxMovementFailure; std::vector<std::vector<SfxEntry>> sfxMovement;
   bool load(const json& j, std::string& err);
 };
-struct Backup { bool diff = false; std::vector<int32_t> dat; int width = 0, height = 0; };
+struct Backup { bool diff = false; std::vector<int32_t> dat; int width = 0, height = 0; std::vector<int> ofd; };
 struct Level {
   int width = 0, height = 0, n_tiles = 0; std::vector<int32_t> objects, movements;
   std::vector<BV> rigidMovementAppliedMask, rigidGroupIndexMask, rowCellContents, rowCellContents_Movements, colCellContents, colCellContents_Movements;
@@ -41,7 +43,7 @@ class VM {
   const State* S = nullptr; Level level; RC4 rng; bool unitTesting = true;
   // engine globals
   int curlevel = 0; bool winning = false, againing = false, textMode = true, titleScreen = true, restarting = false, runrulesonlevelstart_phase = false;
-  std::string messagetext; std::vector<Backup> backups; Backup restartTarget; bool hasRestartTarget = false, hasUsedCheckpoint = false;
+  std::vector<int> oldflickscreendat; std::string messagetext; std::vector<Backup> backups; Backup restartTarget; bool hasRestartTarget = false, hasUsedCheckpoint = false;
   BV sfxCreateMask, sfxDestroyMask; std::vector<std::string> seedsToPlay_CanMove, seedsToPlay_CantMove, soundHistory;
   // API
   void setState(const State* s);

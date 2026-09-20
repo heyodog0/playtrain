@@ -21,6 +21,7 @@ const positional = args.slice(1).filter((a, i, arr) => !a.startsWith('--') && !(
 const STEPS = parseInt(opt('steps', '500'), 10);
 const SEEDS = opt('seeds', '1,2,3').split(',').map(Number);
 const GOLDEN = args.includes('--golden');
+const TILES = args.includes('--tiles');   // puzzlescript: compare __ps.tiles() (viewport, kinds, atlas keys) instead of snap()
 const FAM = join(REPO, 'examples', 'games', 'multifile', 'parity', family);
 const PREFIX = { chip8: 'chip8_', puzzlescript: 'ps_', vgdl: 'vgdl_' }[family];
 const HOOK = { chip8: '__chip8', puzzlescript: '__ps', vgdl: '__vgdl' }[family];
@@ -39,13 +40,14 @@ function jsTraj(ctx, seed, acts, level) {
     for (const a of acts) { if (g.state().ended) break; g.tickKeys(VG_KEYS[a]); out.push(snap()); }
     return out;
   }
-  g.reset(seed); const out = [JSON.stringify(g.snap())];
-  for (const a of acts) { if (family === 'puzzlescript' && g.snap().winning) break; g.step(a); out.push(JSON.stringify(g.snap())); }
+  g.reset(seed); const shot = () => JSON.stringify(TILES ? g.tiles() : g.snap()); const out = [shot()];
+  for (const a of acts) { if (family === 'puzzlescript' && g.snap().winning) break; g.step(a); out.push(shot()); }
   return out;
 }
 function twinTraj(bundle, seed, acts, level) {
   const extra = level == null ? [] : [String(level)];
-  return execFileSync(HOST, [bundle, 'snap', String(seed), acts.join(','), ...extra], { encoding: 'utf8', maxBuffer: 1 << 28 }).trim().split('\n');
+  const env = GOLDEN && family === 'puzzlescript' ? { ...process.env, TWIN_SNAP_AGAINS: '1' } : process.env;   // golden.mjs hashes the again count per step
+  return execFileSync(HOST, [bundle, TILES ? 'tiles' : 'snap', String(seed), acts.join(','), ...extra], { encoding: 'utf8', maxBuffer: 1 << 28, env }).trim().split('\n');
 }
 
 let pass = 0, total = 0;
@@ -103,8 +105,9 @@ for (const game of games) {
       for (let i = 0; i < tw.length; i++) { h.update(tw[i]); if (i > 0 && term < 0 && JSON.parse(tw[i]).terminated) term = JSON.parse(tw[i]).t; }
       key = `${game}/seed${seed}`; val = `${STEPS + 1}:${term}:${h.digest('hex').slice(0, 16)}`;
     } else if (family === 'puzzlescript') {
-      // golden.mjs: reset snap, then steps until winning (checked BEFORE stepping), hash of a reduced snapshot
-      const tw = twinTraj(bundle, seed, acts); const h = createHash('sha256'); let steps = 1, won = -1;
+      // golden.mjs: 300 steps (its default), reset snap, then steps until winning (checked BEFORE stepping), hash of a reduced snapshot
+      const gacts = opt('steps', null) == null ? acts.slice(0, 300) : acts;
+      const tw = twinTraj(bundle, seed, gacts); const h = createHash('sha256'); let steps = 1, won = -1;
       const reduce = (s, agains) => { const o = JSON.parse(s); return JSON.stringify({ level: o.level, objects: createHash('sha1').update(Buffer.from(Int32Array.from(o.objects).buffer)).digest('hex'), curlevel: o.curlevel, winning: o.winning, againing: o.againing, textMode: o.textMode, messagetext: o.messagetext, backups: o.backups, movements_zero: o.movements_zero, rng_i: o.rng.i, rng_j: o.rng.j, rng_s: createHash('sha1').update(Buffer.from(Uint8Array.from(o.rng.s))).digest('hex'), width: o.width, height: o.height, agains }); };
       h.update(reduce(tw[0], 0));
       for (let k = 1; k < tw.length; k++) { const prev = JSON.parse(tw[k - 1]); if (prev.winning) { won = steps - 1; break; } h.update(reduce(tw[k], JSON.parse(tw[k]).agains)); steps++; }
