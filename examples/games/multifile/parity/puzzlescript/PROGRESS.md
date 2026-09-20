@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 7
+ITERATION: 8
 BRANCH: puzzlescript (from chip8 @ 64e8a3f)
-LAST_COMMIT: 7b595af
+LAST_COMMIT: 948342b
 
 ## Ledger
 
@@ -18,7 +18,7 @@ LAST_COMMIT: 7b595af
 | U04 lockstep, goldens, freshness | done | `51/51 trajectories exact` (17 games x seeds 1,2,3 x 300 steps, 15 fields incl. convertLevelToString, sha1(objects), RC4 i/j/sha1(s), again count); `golden ok (102)`; `dist/ fresh (17)`; pytest `10 passed` | b5d3d53 | `tests/gate_oracle.mjs` runs the bundle in a node vm and the checkout in-process via oracle.mjs's exports (2.9 s for the corpus). The oracle had to set the engine's `muted = 1` too: with unitTesting false, a rule-triggered sound in sokoban_basic/eyeball/match3/whaleworld crashed the reference inside riffwave's base64 (`src[i] << 16` on an undefined buffer), a path the reference runner never reaches. Wins under random play within 300 steps: octat lvl3 seed1 at step 188; kettle and nekopuzzle reach WIN in the corpus check. Goldens: 6 seeds x 300 steps, key `game/lvl<n>/seed<s>`, value `steps:won_at:hash16`. |
 | U05 QuickJS: reference tests + cross-engine gate | done | 770/770 under qjs_host (`score=770 lives=0`, 80 s vs 8 s node); `GATE PASS` x17 (300 steps, seeds 1, 42, obs hash included); pytest `19 passed in 90s` | f2b139b | qjs_host defines no `console`: shim adds a no-op one; the flat test script reports through getGameState() (score = passed, lives = failed + errored) because the trace line is qjs_host's only output. Found and fixed a prelude render bug on the way: `BitVec.get` returns a boolean and `!== 0` treated false as set, so every cell composited into one tile (goldens unaffected: state only). The obs now shows the level (microban 9 colours, 1181 lit px). gate_qjs.sh's action formula `(i*3+1) % 6` alternates LEFT/ACTION only, so sokoban-like games show 1-4 distinct frames in the trace (the player leans on a wall); dynamics coverage comes from G3/G4, not this gate. |
 | U06 runtime + throughput | done | G7 `2 passed` (sidecar; NativeVecEnv 4 envs x 100 steps, obs 64x64x3 with >= 4 colours and > 10% lit); G10 table under Numbers | 7b595af | Compile under QuickJS is ~20 ms per game (PLAN Q5 closed). 1 env: 1,174 (byyourside) to 13,396 (notsnake) steps/s; 20 env / 10 thr: 4,718 (constellationz) to 96,940 (notsnake). Sokoban-likes ~10-13k, rule-heavy games 1-4k. PLAN section 6 rewritten with the numbers. |
-| U07 render gate | todo | | | |
+| U07 render gate | done | `3538 states checked, 0 mismatches` (17 games x 10 seeds x up to 21 states: every cell's ordered sprite ids + viewport); pytest render+golden+fresh+corpus+runtime `7 passed` | 948342b | `tests/render_gate.mjs` loads the bundle then the reference's graphics.js in the same vm context with a document whose canvases record drawImage; sizes the fake canvas to 5 px/cell, calls canvasResize() (which itself redraws: those draws are discarded) then redraw(), decodes (sprite canvas -> index via canvasdict, (x - xoffset)/cellwidth) and compares with `__ps.tiles()`. Fixed on the way: `__ps.tiles()` listed atlas keys via Object.keys, which orders integer-like keys first (`'0'` before `'0,3'`), misaligning key <-> tile index; render output itself was right. No flickscreen/zoomscreen game in the corpus, so the viewport path is exercised only as the whole level. |
 | U08 browser smoke | todo | | | playwright-core in `<scratch>/pw`, Chromium `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/...` (see chip8 PROGRESS U08) |
 | U09 report + docs | todo | | | |
 | U10 human handoff | handoff | | | |
@@ -71,3 +71,4 @@ G10 (U06, this Mac, arm64, `benchmarks/bench_puzzlescript.py`): the first column
 5 | U04 | tests/gate_oracle.mjs, golden.mjs + golden.json (102), test_lockstep/test_golden/test_bundle_fresh, oracle muted | G3 51/51, G4 102, G5 fresh
 6 | U05 | tests/test_engine_gate.py (770 under qjs_host + gate_qjs.sh x17), console shim, BitVec.get fix, dist rebuilt | G6 19 passed
 7 | U06 | tests/test_runtime.py, benchmarks/bench_puzzlescript.py, Numbers table, PLAN section 6 + Q5 | G7 2 passed, G10 recorded
+8 | U07 | tests/render_gate.mjs + test_render.py, psAtlasKeys() in the prelude, dist rebuilt | G8 3538/3538
