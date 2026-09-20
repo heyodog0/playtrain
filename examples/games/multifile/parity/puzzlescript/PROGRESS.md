@@ -3,9 +3,9 @@
 The only record of state. `LOOP.md` reads this first every iteration.
 
 STATUS: RUNNING
-ITERATION: 8
+ITERATION: 9
 BRANCH: puzzlescript (from chip8 @ 64e8a3f)
-LAST_COMMIT: 948342b
+LAST_COMMIT: fba2f41
 
 ## Ledger
 
@@ -19,7 +19,7 @@ LAST_COMMIT: 948342b
 | U05 QuickJS: reference tests + cross-engine gate | done | 770/770 under qjs_host (`score=770 lives=0`, 80 s vs 8 s node); `GATE PASS` x17 (300 steps, seeds 1, 42, obs hash included); pytest `19 passed in 90s` | f2b139b | qjs_host defines no `console`: shim adds a no-op one; the flat test script reports through getGameState() (score = passed, lives = failed + errored) because the trace line is qjs_host's only output. Found and fixed a prelude render bug on the way: `BitVec.get` returns a boolean and `!== 0` treated false as set, so every cell composited into one tile (goldens unaffected: state only). The obs now shows the level (microban 9 colours, 1181 lit px). gate_qjs.sh's action formula `(i*3+1) % 6` alternates LEFT/ACTION only, so sokoban-like games show 1-4 distinct frames in the trace (the player leans on a wall); dynamics coverage comes from G3/G4, not this gate. |
 | U06 runtime + throughput | done | G7 `2 passed` (sidecar; NativeVecEnv 4 envs x 100 steps, obs 64x64x3 with >= 4 colours and > 10% lit); G10 table under Numbers | 7b595af | Compile under QuickJS is ~20 ms per game (PLAN Q5 closed). 1 env: 1,174 (byyourside) to 13,396 (notsnake) steps/s; 20 env / 10 thr: 4,718 (constellationz) to 96,940 (notsnake). Sokoban-likes ~10-13k, rule-heavy games 1-4k. PLAN section 6 rewritten with the numbers. |
 | U07 render gate | done | `3538 states checked, 0 mismatches` (17 games x 10 seeds x up to 21 states: every cell's ordered sprite ids + viewport); pytest render+golden+fresh+corpus+runtime `7 passed` | 948342b | `tests/render_gate.mjs` loads the bundle then the reference's graphics.js in the same vm context with a document whose canvases record drawImage; sizes the fake canvas to 5 px/cell, calls canvasResize() (which itself redraws: those draws are discarded) then redraw(), decodes (sprite canvas -> index via canvasdict, (x - xoffset)/cellwidth) and compares with `__ps.tiles()`. Fixed on the way: `__ps.tiles()` listed atlas keys via Object.keys, which orders integer-like keys first (`'0'` before `'0,3'`), misaligning key <-> tile index; render output itself was right. No flickscreen/zoomscreen game in the corpus, so the viewport path is exercised only as the whole level. |
-| U08 browser smoke | todo | | | playwright-core in `<scratch>/pw`, Chromium `~/Library/Caches/ms-playwright/chromium_headless_shell-1243/...` (see chip8 PROGRESS U08) |
+| U08 browser smoke | done | `PASS ps_microban / ps_kettle / ps_midas` (turns 0->5/8/6 on arrow keys, 3-5 colours, overlay from the sidecar, no console errors); full suite `36 passed` with PS_REF + playwright | fba2f41 | Two findings. (1) The play page loads a game with `(0, eval)(text)`; under an indirect eval the engine's top-level `let`/`const` are eval-scoped, invisible to the matchers the engine builds with `new Function` -> `_movementVecs is not defined` on the first turn (node vm and qjs_host run the bundle as a classic script, so they never saw it). Fix without touching engine or page: `05_shims.js` detects eval scoping (`new Function('return typeof psShimProbe')`) and the bundler emits a generated bridge after the engine: for each of the 191 top-level let/const names in the vendored files, a global accessor closing over the real binding (setter for lets). No-op as a classic script; goldens, lockstep, G6 unchanged. (2) The page forwards only keys 32 37-40 65 66 68 83 87 to the game, so X (88) could never act for a human; ACTION is now held as space (32), one of the reference's four action keys (enter, space, c, x). Screenshot (scratch `shots_ps/ps_midas.png`, inspected): two panels, the 105x85 rasterizer view and the 64x64 obs preview, both showing the Midas level letterboxed: white room, grey structure, orange pieces, one blue player cell; header 'score: 0 | lives: 1 | PLAYING'; parity label 'exact dynamics vs PuzzleScript (increpare): the engine itself, vendored d236596 . 7 documented caveats'; overlay 'Arrows move, SPACE acts. Midas by wanderlands: level = seed % 15 ...'. |
 | U09 report + docs | todo | | | |
 | U10 human handoff | handoff | | | |
 
@@ -72,3 +72,4 @@ G10 (U06, this Mac, arm64, `benchmarks/bench_puzzlescript.py`): the first column
 6 | U05 | tests/test_engine_gate.py (770 under qjs_host + gate_qjs.sh x17), console shim, BitVec.get fix, dist rebuilt | G6 19 passed
 7 | U06 | tests/test_runtime.py, benchmarks/bench_puzzlescript.py, Numbers table, PLAN section 6 + Q5 | G7 2 passed, G10 recorded
 8 | U07 | tests/render_gate.mjs + test_render.py, psAtlasKeys() in the prelude, dist rebuilt | G8 3538/3538
+9 | U08 | tests/browser_smoke.mjs + test_browser.py, eval-scope bridge (shim probe + bundler), ACTION=space in prelude/sidecars/controls, manifest quirk, dist rebuilt | G9 3 PASS, suite 36 passed
