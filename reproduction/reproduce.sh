@@ -16,7 +16,7 @@ PY="uv run --no-project --with matplotlib --with numpy --with pillow"
 PYTB="$PY --with tensorboard"
 ok=0; fail=0; skipped=0
 
-STEPS="env_efficiency panel_a backend_ladder bench_setup bench_scaling env_cost env_cost_check t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return p5_subset hyperparams envpool_config"
+STEPS="env_efficiency panel_a backend_ladder bench_setup bench_scaling env_cost env_cost_check envcost_table t1a t1a_nodes t1b dbuf dbuf_check human_cohort human_wallclock human_crossings schematic eval learning suite_check suite_grids llm_cost action_space step_return p5_subset hyperparams envpool_config"
 ALL=0; SEL=""
 case "${1:-}" in
   --list) printf '%s\n' $STEPS; exit 0 ;;
@@ -74,6 +74,11 @@ fi
 if want env_cost_check; then
 step "Figure 12 numbers  (paper: background 390 ns, pong 11 cmds, miner 75% on 787)"
 ( cd figures && uv run --no-project python tools/check_env_cost.py ) ; done_ $?
+fi
+
+if want envcost_table; then
+step "Table 14, per-game cost  (all 87 cells against percmd.json)"
+( cd figures && uv run --no-project python tools/check_envcost_table.py ) ; done_ $?
 fi
 
 if want t1a; then
