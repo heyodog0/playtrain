@@ -1,0 +1,18 @@
+# sacct -X -j 34845630 -o JobID,JobName,Submit,End,NodeList,SubmitLine -n
+34845630   eval_iddp   2026-07-24T12:58:08   2026-07-24T13:01:59   holygpu8a11204
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+SubmitLine (a --wrap, no sbatch file):
+  sbatch -J eval_iddp -p kempner_h100 -A kempner_gershman_lab -c 8 --gres=gpu:1 --mem=48G -t 0-02:00
+    -o logs/eval_iddp_%j.out -e logs/eval_iddp_%j.err
+    --wrap="cd $SLURM_SUBMIT_DIR && export PATH=$HOME/.local/bin:$PATH && .venv/bin/python
+            tools/eval_final_agents.py outputs/eval_iddp_suite.json --episodes 8 --max-steps 3000
+            outputs/impala_34819869 outputs/impala_34824266 ... outputs/impala_34824306"
+    (the 24 run dirs are the suite jobs listed in figures/results/suite_tb/README.md)
+
+what:  THE job that produced figures/results/eval_iddp_suite.json, i.e. tab:eval.
+       Script: reproduction/figures/tools/eval_final_agents.py (byte-identical to the
+       cluster copy, md5 f5438cc3e64008c46bde08e70d2df45a). Protocol, from the script:
+       greedy (argmax) policy from each run's final.pt on held-out seeds 9_000_000..9_000_007
+       (disjoint from training seeds by construction), 8 episodes, 3000-step cap, and a
+       uniform-random policy on the SAME seeds for the R column. Ran in 4 minutes.
+checkpoints: outputs/impala_<job>/final.pt on the cluster; not released.

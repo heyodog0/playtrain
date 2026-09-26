@@ -29,8 +29,9 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
   package that depends on this one, and it produced every training number in the paper.
   See [Training](#training).
 
-The catalog has 38 games. Some are clones of Atari and ProcGen games, some are original,
-and several ship as deliberate variants of a base game. The project page is at
+The catalog has 39 games. Some are clones of Atari and ProcGen games, some are original,
+and several ship as deliberate variants of a base game. `examples/games/multifile/` adds
+an exact port of Craftax-Classic and its first-person variant. The project page is at
 [playtrain.org](https://playtrain.org).
 
 ## Getting started
@@ -244,7 +245,7 @@ just variants                                            # list variants
   comparable, and `native/gate_qjs.sh` checks it.
 - **Validation.** A generated game enters the catalog only after passing five checks on
   shape, action space, determinism, throughput and episode bounds.
-  [GAME_TEMPLATE.md](GAME_TEMPLATE.md) is the contract it is written against.
+  [prompts/GAME_TEMPLATE.md](prompts/GAME_TEMPLATE.md) is the contract it is written against.
 
 ## Layout
 
@@ -254,14 +255,15 @@ just variants                                            # list variants
 | `examples/colab/` | The quickstart notebook. |
 | `src/playtrain/runtime/` | The environments: the Gymnasium classes and the vectorized backends. |
 | `src/playtrain/gen/` | Generation, variants, and refinement through an LLM. Includes the validation suite that gates what ships. |
-| `native/` | The QuickJS host, the build scripts, and the determinism gates. |
+| `native/` | The QuickJS host, the build scripts, the determinism gates, and `aotfork/`, the compiled engine tier. |
 | `crates/rasterizer/` | The Rust rasterizer that turns draw calls into observations. |
 | `runtime/` | The p5-compatible JavaScript shim the games are written against. |
 | `games/` | Not the catalog and not games. Inputs and workspace for the generation pipeline: `catalogs/` to write from, `procgen_src/` as C reference, and an empty `js/` where `playtrain-generate` writes. |
 | `benchmarks/` | Throughput measurement. One script per claim in the paper. Each states in its docstring what it measures and which access path. |
 | `reproduction/` | Figure code, paper data, and the sweeps that produced the published figures. |
 | `study/` | The browser harness that collected the human baseline, and the replay check that makes human and agent scores comparable. |
-| `tools/` | Development scripts: the playtest UI, validation, profiling. |
+| `prompts/` | The game template and the paper's generation, refinement and fork prompts. |
+| `tools/` | Development scripts: the playtest UI, validation, the static site builder. |
 | `tests/` | The test suite. |
 
 ## Reproducing the paper
@@ -270,9 +272,9 @@ just variants                                            # list variants
 $ bash reproduction/reproduce.sh
 ```
 
-This redraws every measured figure and table and prints the paper's number beside the
-one it computed. Add `--all` to include the learning curves, which download 277 MB of
-run data first. See [REPRODUCING.md](REPRODUCING.md).
+This redraws every measured figure and table and checks each against the paper. The
+curve figures need the run data first (`bash reproduction/fetch_data.sh`, 33 MB). See
+[reproduction/PROVENANCE.md](reproduction/PROVENANCE.md).
 
 ## Getting help
 

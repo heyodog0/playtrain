@@ -129,9 +129,41 @@ void endShape(int mode);  // CLOSE
 // experiment path — pre-rasterize-then-
 // rescale, which is NOT bit-exact to direct rendering on scaled-camera games.
 int  createGraphics(double w, double h);
+// A bitmap layer: exactly w x h DEVICE pixels, not scaled to the canvas like
+// createGraphics. Sprite atlases need exact texel dimensions, and image()
+// then scales on blit with integer nearest-neighbour.
+int  createBitmap(double w, double h);
+// Load RGBA straight-alpha bytes into a bitmap layer. Returns bytes copied.
+int  loadBitmap(int handle, const uint8_t* data, int len);
 void setTarget(int handle);
 void clearTarget();
 void image(int srcHandle, double x, double y, double w, double h);
+
+// First-person voxel raycast (FIRST_PERSON_PLAN.md §4.2). Renders a view of a
+// grid of unit blocks straight into the current target's pixels, and fills the
+// canvas's depth buffer for a later sprite pass. `grid` is gh rows of gw cells,
+// each (atlas_tile << 1) | solid; `atlas` is nTiles RGBA tiles of tilePx square,
+// tile-major; skyRgb is 0xRRGGBB. Coordinates are f32 on the rasterizer side —
+// the doubles here are the JS number surface, converted once at the boundary.
+void voxelView(const uint16_t* grid, int gw, int gh,
+               double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH);
+
+// One upright 1x1 billboard at (spriteX, spriteZ), depth-tested against the
+// ray depths voxelView left behind. Call after voxelView, before the dusk
+// pass — the order 80_render.js composes the classic frame in.
+void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+                 double spriteX, double spriteZ,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH);
+
+// Craftax's dusk blend, its night static, and its sleep tint, over a rect of
+// the current target. Call after voxelView and voxelSprite. `intensity` is
+// w*h float32s: the night-noise mask. See FIRST_PERSON_PLAN.md §4.4.
+void voxelDusk(int x, int y, int w, int h, double daylight,
+               unsigned int key0, unsigned int key1, int useStatic,
+               const float* intensity, int sleeping);
 
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is

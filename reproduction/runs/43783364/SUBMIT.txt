@@ -1,0 +1,2 @@
+# sacct -X -j 43783364 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43783364   qjsatari6adv   2026-09-01T22:47   holy8a32607   sbatch /n/home06/truong/sweep6_adv.sh

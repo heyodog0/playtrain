@@ -18,6 +18,10 @@
 pub mod three;
 pub use three::*;
 
+// First-person voxel raycast (rs_voxel_* ABI). See voxel.rs.
+pub mod voxel;
+pub use voxel::*;
+
 struct SubPath {
     pts: Vec<(f64, f64)>,
     closed: bool,
@@ -51,7 +55,7 @@ const TWO_PI: f64 = 6.283185307179586;
 const PI_R: f64 = 3.141592653589793;
 const PI_H: f64 = 1.5707963267948966;
 #[inline]
-fn psin(x: f64) -> f64 {
+pub(crate) fn psin(x: f64) -> f64 {
     let x = x - TWO_PI * ((x + PI_R) / TWO_PI).floor();
     let x2 = x * x;
     x * (1.0
@@ -60,7 +64,7 @@ fn psin(x: f64) -> f64 {
                 + x2 * (-0.0001984126984126984 + x2 * 0.0000027557319223985893))))
 }
 #[inline]
-fn pcos(x: f64) -> f64 {
+pub(crate) fn pcos(x: f64) -> f64 {
     psin(x + PI_H)
 }
 
@@ -102,6 +106,11 @@ pub(crate) struct Canvas {
     path: Vec<SubPath>,
     escratch: Vec<Edge>,   // reused per-fill flattened-edge buffer (fill_subpaths)
     xscratch: Vec<(f64, i32)>,   // reused per-scanline crossing buffer
+    // Per-pixel ray depth, written by rs_voxel_view and read by the sprite
+    // pass (FIRST_PERSON_PLAN.md §4.3). Empty until the first voxel call, so
+    // a 2D game's canvases cost exactly what they always did. APPENDED last,
+    // same codegen-hygiene reason as RState::ell_cache.
+    pub(crate) depth: Vec<f32>,
 }
 
 // ---- per-env rasterizer state ----
@@ -141,6 +150,9 @@ pub(crate) struct RState {
     // WEBGL-mode state (None for 2D games). APPENDED last, same codegen-
     // hygiene reason as ell_cache. Boxed so 2D RState layout barely moves.
     pub(crate) three: Option<Box<three::Three>>,
+    // Grid/atlas staging for the voxel primitive (voxel.rs). None until the
+    // first rs_voxel_*_ptr call. APPENDED last, same reason as `three`.
+    pub(crate) voxel: Option<Box<voxel::Voxel>>,
 }
 
 impl RState {
@@ -157,6 +169,7 @@ impl RState {
             forceskip: false,
             ell_cache: Vec::new(),
             three: None,
+            voxel: None,
         }
     }
 }
@@ -352,10 +365,38 @@ pub extern "C" fn rs_new_canvas(lw: f64, lh: f64, dw: f64, dh: f64) -> u32 {
         path: Vec::new(),
         escratch: Vec::new(),
         xscratch: Vec::new(),
+        depth: Vec::new(),
     };
     let s = rs();
     s.canvases.push(c);
     (s.canvases.len() - 1) as u32
+}
+
+/// Write raw RGBA straight-alpha bytes into a canvas's pixel buffer.
+///
+/// The one thing the rasterizer could not previously do: get a bitmap IN.
+/// Canvases have always been RGBA buffers and `rs_draw_image` has always
+/// blitted between them, so this closes the loop and makes sprite atlases
+/// possible (load once at setup, blit per tile).
+///
+/// Parity: this is a plain byte copy and `rs_draw_image` samples with integer
+/// nearest-neighbour, so a blit involves no floating point at all and is
+/// bit-identical across native, wasm and the pure-JS backend by construction.
+///
+/// A short buffer fills what it can and leaves the rest; a long one is
+/// truncated. Silently doing nothing on a size mismatch would make a
+/// mis-sized atlas look like a drawing bug.
+#[no_mangle]
+pub extern "C" fn rs_load_rgba(h: u32, ptr: *const u8, len: u32) -> i32 {
+    if ptr.is_null() {
+        return 0;
+    }
+    let c = cv(h);
+    let n = core::cmp::min(len as usize, c.px.len());
+    unsafe {
+        core::ptr::copy_nonoverlapping(ptr, c.px.as_mut_ptr(), n);
+    }
+    n as i32
 }
 
 #[no_mangle]

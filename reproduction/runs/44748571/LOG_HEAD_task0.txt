@@ -1,0 +1,16 @@
+=== ROW=impala_nature task=0 game=plunder node=holygpu8a13503.rc.fas.harvard.edu Sun Sep  6 01:20:54 EDT 2026 ===
+NODE_RECORD ROW=impala_nature game=plunder node=holygpu8a13503.rc.fas.harvard.edu
+fix2 lib /n/holylabs/gershman_lab/Users/rtruong/playtrain-wt-engine/native/aotfork/out/libqjs_vec.futIT2fix2_plunder.so md5=9c74c0ce0c3c6da7c784e93dc311112c
+MPS up
+MPS pre-warmed on 4 device(s)
+TIER3FIX PROVENANCE OK /tmp/pttree_44748571_0/native/build/libqjs_vec.so 9c74c0ce0c3c6da7c784e93dc311112c
+=== plunder ===
+  [plunder] window 1: 1,061,504 sps
+  [plunder] window 2: 1,078,047 sps
+  [plunder] window 3: 1,074,770 sps
+  [plunder] window 4: 1,087,878 sps
+{'game': 'plunder', 'sps': 1078047, 'windows': [1061504, 1078047, 1074770, 1087878], 'minutes': 4.4}
+
+MEAN 1,078,047  GEOMEAN 1,078,047  (1/1 games)
+wrote outputs/t1a_t3fix_impala_nature_44748571_plunder.json
+TASK_DONE ROW=impala_nature plunder rc=0 node=holygpu8a13503.rc.fas.harvard.edu Sun Sep  6 01:25:28 EDT 2026

@@ -1,0 +1,13 @@
+# sacct -X -j 47073317 -o JobID,State,Elapsed,NodeList,End -n
+47073317_0   COMPLETED   00:04:38   holygpu8a11403   2026-09-18T18:16:58
+47073317_1   COMPLETED   00:05:32   holygpu8a11504   2026-09-18T18:17:52
+47073317_2   COMPLETED   00:05:53   holygpu8a11504   2026-09-18T18:18:13
+SubmitLine: sbatch eval_p3_icnn.sbatch          (array 0-2 = seed)
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  tab:eval protocol on the 3-seed 100M PPO + IMPALA-CNN suite runs (p3_icnn_*),
+       the PPO twin of job 41853620. Script: reproduction/figures/tools/eval_final_agents_ppo.py
+       (md5 7d80a89af50fb037adbf66e0c6f45d71), same seeds 9_000_000..9_000_007, 8 episodes,
+       3000-step cap, random baseline on the same seeds. Model rebuilt from the checkpoint's
+       shapes plus the run config's net ("impala").
+outputs: reproduction/figures/results/eval_p3_icnn_s{0,1,2}.json (each with per_seed lists).

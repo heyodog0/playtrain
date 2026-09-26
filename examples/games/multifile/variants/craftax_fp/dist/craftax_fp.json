@@ -1,0 +1,127 @@
+{
+  "name": "craftax_fp",
+  "version": "0.1.0",
+  "title": "Craftax-Classic (first person)",
+  "action_space": "craftax17",
+  "actions": [
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "DO",
+      "held": [],
+      "press": 32
+    },
+    {
+      "name": "SLEEP",
+      "held": [],
+      "press": 9
+    },
+    {
+      "name": "PLACE_STONE",
+      "held": [],
+      "press": 49
+    },
+    {
+      "name": "PLACE_TABLE",
+      "held": [],
+      "press": 50
+    },
+    {
+      "name": "PLACE_FURNACE",
+      "held": [],
+      "press": 51
+    },
+    {
+      "name": "PLACE_PLANT",
+      "held": [],
+      "press": 52
+    },
+    {
+      "name": "MAKE_WOOD_PICK",
+      "held": [],
+      "press": 53
+    },
+    {
+      "name": "MAKE_STONE_PICK",
+      "held": [],
+      "press": 54
+    },
+    {
+      "name": "MAKE_IRON_PICK",
+      "held": [],
+      "press": 55
+    },
+    {
+      "name": "MAKE_WOOD_SWORD",
+      "held": [],
+      "press": 56
+    },
+    {
+      "name": "MAKE_STONE_SWORD",
+      "held": [],
+      "press": 57
+    },
+    {
+      "name": "MAKE_IRON_SWORD",
+      "held": [],
+      "press": 48
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "symbolic": 1345,
+    "rgb_size": 64,
+    "frame": "rows 0-48 are the first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide, byte-identical to craftax_classic), row 63 black padding",
+    "controls_note": "the arrow keymap is facing-relative for HUMAN play only, applied by the play page through the game's relativeArrow(); the 17-action space an agent sees is Craftax's own absolute one and currentAction() is unchanged"
+  },
+  "max_steps": 10000,
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Up forward, Left/Right turn, Down back &middot; Space interact &middot; Tab sleep<br>Place: 1 stone &middot; 2 table &middot; 3 furnace &middot; 4 sapling<br>Craft (next to a table): 5/6/7 wood/stone/iron pickaxe &middot; 8/9/0 wood/stone/iron sword",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "craftax_classic (this repo) + PufferLib craftax_classic 6ffa5b1 dynamics",
+    "repo": "https://github.com/PufferAI/PufferLib",
+    "commit": "6ffa5b10dbbbe4d1e8288367c7d9d3acd3bad4a2",
+    "file": "ocean/craftax_classic/craftax_classic.h",
+    "license": "MIT",
+    "parity": "dynamics are craftax_classic's, unchanged and reused by manifest path: the same source files produce the same 6880-byte canonical state every step, which is what tests/test_same_dynamics.py asserts over the whole corpus",
+    "not_matched": [
+      "observation is first-person; not Craftax-Classic-Pixels, and there is no first-person Craftax to be exact against. This is a VARIANT of Craftax-Classic - same task, different observation function - and must never be described as Craftax parity",
+      "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
+    ]
+  },
+  "source_sha256": "a34c471f8b4af9c7a4684186d55213dd700fc8af9134f874a1125bb95b5f207a"
+}

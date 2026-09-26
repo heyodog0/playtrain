@@ -1,0 +1,11 @@
+# sacct -X -j 39032276 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+39032276   bench_vec_scaling_ab   2026-08-13T16:46:44   2026-08-13T22:41:44   holygpu8a17402   /n/holylabs/gershman_lab/Users/rtruong/playtrain-trainers   sbatch --export=ALL,SUITE=ale --nodelist=holygpu8a17402 benchmarks/bench_vec_scaling_ab.sbatch
+
+what:  the same seven-point ladder for the 8 ALE games, both arms. Data at
+       reproduction/figures/scaling/ab_{pt,ep}_<game>_39032276.json.
+ladder: 5/10/20/30/40/60/80 env threads (WORKERS 1,2,4,6,8,12,16 x 5).
+engine: pre-adv. 80-thread ALE PlayTrain geomean 3,855,055 against panel A's
+       plotted 7,300,384.
+as-run: same file, committed the same day as this run (c1d81a9, 2026-08-13
+       15:46), so this is the as-run content.
+node:  deliberately the same node as 38145651 so the two suites are comparable.

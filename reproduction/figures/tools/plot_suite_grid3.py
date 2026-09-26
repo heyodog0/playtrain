@@ -3,7 +3,7 @@ IMPALA x {IMPALA-CNN, Nature-CNN} plus PPO + Nature-CNN.
 
 Successor to plot_suite_grid.py, which drew the single-seed 150M DDP2 run. This
 reads the 100M suite (24 games x {Nature-CNN, IMPALA-CNN} x 3 seeds) from the
-JSON dumped on the cluster, so it needs no TB tree here.
+JSON dumped on FASRC, so it needs no TB tree here.
 
 Bands are min/max over the three seeds, matching the main figure's convention;
 the line is the seed mean. Type sizes and panel geometry are inherited from
@@ -101,23 +101,26 @@ def main():
 
     grid = np.linspace(0, XMAX, 400)
     fig, axes = plt.subplots(NROW, NCOL, figsize=FIGSIZE)
+    # PPO cut=0.5M: before the first truncation wave (192 envs x 2,000
+    # frames = 0.38M steps) only wins have completed, so every window is
+    # wins-only regardless of size. Dropping the censored head is the fix;
+    # no window length can include episodes that have not ended. IMPALA's
+    # wave sits at 12.3M but its first log lands at 1.6M with returns
+    # accumulating from step one, so its head is not pinned the same way.
+    ALL = [("impala", C_ICNN, 0.0, "IMPALA + IMPALA-CNN"),
+           ("nature", C_NAT, 0.0, "IMPALA + Nature-CNN"),
+           ("ppo_impala", C_PPOI, 0.5, "PPO + IMPALA-CNN"),
+           ("ppo_nature", C_PPO, 0.5, "PPO + Nature-CNN")]
+    # Which arms each paper figure shows. fig:suite_trainers is "trainers",
+    # fig:suite_enc_impala is "impala", fig:suite_enc_ppo is "ppo"; the 4-arm
+    # default is not a labelled figure in main.tex.
+    PICK = {"all": [0, 1, 2, 3], "trainers": [0, 2],
+            "impala": [0, 1], "ppo": [2, 3],
+            "encoders": [0, 1, 2, 3]}[args.arms]
+    chosen = [ALL[i] for i in PICK]
     for i, game in enumerate(GAMES_ALL):
         ax = axes[i // NCOL][i % NCOL]
         flat = []
-        # PPO cut=0.5M: before the first truncation wave (192 envs x 2,000
-        # frames = 0.38M steps) only wins have completed, so every window is
-        # wins-only regardless of size. Dropping the censored head is the fix;
-        # no window length can include episodes that have not ended. IMPALA's
-        # wave sits at 12.3M but its first log lands at 1.6M with returns
-        # accumulating from step one, so its head is not pinned the same way.
-        ALL = [("impala", C_ICNN, 0.0, "IMPALA + IMPALA-CNN"),
-               ("nature", C_NAT, 0.0, "IMPALA + Nature-CNN"),
-               ("ppo_impala", C_PPOI, 0.5, "PPO + IMPALA-CNN"),
-               ("ppo_nature", C_PPO, 0.5, "PPO + Nature-CNN")]
-        PICK = {"all": [0, 1, 2, 3], "trainers": [0, 2],
-                "impala": [0, 1], "ppo": [2, 3],
-                "encoders": [0, 1, 2, 3]}[args.arms]
-        chosen = [ALL[i] for i in PICK]
         series = [(rec[game].get(k, {}), c, cut) for k, c, cut, _ in chosen]
         for seeds, colour, cut in series:
             got = seed_band(seeds, grid, cut=cut)
@@ -152,7 +155,9 @@ def main():
     for ext in ("png", "pdf"):
         fig.savefig(args.out / f"{args.name}.{ext}", dpi=200, facecolor="white")
     print(f"wrote {args.out}/{args.name}.png/.pdf  "
-          f"({len(GAMES_ALL)} games, 4 arms, band = min/max over 3 seeds)")
+          f"({len(GAMES_ALL)} games, {len(chosen)} arms: "
+          f"{', '.join(lab for _, _, _, lab in chosen)}; "
+          "band = min/max over 3 seeds)")
 
 
 if __name__ == "__main__":

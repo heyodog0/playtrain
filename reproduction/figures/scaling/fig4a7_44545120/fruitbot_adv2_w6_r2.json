@@ -1,0 +1,22 @@
+[
+  {
+    "game": "fruitbot",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 346614,
+    "frames_per_s": 346614,
+    "per_worker": [
+      58414,
+      57573,
+      57647,
+      58184,
+      57647,
+      57149
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.2,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

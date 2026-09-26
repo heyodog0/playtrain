@@ -49,6 +49,16 @@ def _resolve_games_dir(games_dir: str | os.PathLike | None) -> Path:
     return _GAMES_DIR
 
 
+def _resolve_game_path(game: str, games_dir) -> str:
+    """Game name (or a .js path) to a file, searching the catalog and then
+    every built multi-file dist/ — the same order PlayTrainEnv uses."""
+    if game.endswith(".js"):
+        return game
+    from .env import resolve_game_file
+
+    return str(resolve_game_file(game, games_dir))
+
+
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _asset("native/build/" + _LIBNAME)
 
@@ -63,6 +73,10 @@ def _load_lib(path: Path) -> ctypes.CDLL:
                                ctypes.c_int, ctypes.c_int, ctypes.c_int]
     lib.vec_obs_bytes.restype = ctypes.c_int
     lib.vec_obs_bytes.argtypes = [ctypes.c_void_p]
+    # PLAN 3.6, additive: opt into the game's own float32 observation.
+    if hasattr(lib, "vec_set_obs_symbolic"):
+        lib.vec_set_obs_symbolic.restype = ctypes.c_int
+        lib.vec_set_obs_symbolic.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.vec_num_threads.restype = ctypes.c_int
     lib.vec_num_threads.argtypes = [ctypes.c_void_p]
     P = ctypes.c_void_p
@@ -139,6 +153,37 @@ def _create_error(lib, what: str, game: str) -> str:
     msg = f"{what} failed for {game}"
     return f"{msg}: {detail}" if detail else msg
 
+def _install_obs_mode(lib, h, obs_mode, sidecar, game) -> int | None:
+    """Put host ``h`` into symbolic observation mode, or leave it on pixels.
+
+    Returns the vector length in symbolic mode, else None. The dimension
+    comes from the game's sidecar, so a game that does not declare one cannot
+    be stepped symbolically — better a clear error here than an obs buffer of
+    the wrong shape.
+    """
+    if obs_mode in (None, "rgb"):
+        return None
+    if obs_mode != "symbolic":
+        raise ValueError(f'obs_mode must be "rgb" or "symbolic", got {obs_mode!r}')
+    dim = ((sidecar or {}).get("obs") or {}).get("symbolic")
+    if not dim:
+        raise ValueError(
+            f'obs_mode="symbolic" needs the game to declare obs.symbolic in its '
+            f"sidecar; {game} does not"
+        )
+    if not hasattr(lib, "vec_set_obs_symbolic"):
+        raise RuntimeError(
+            "this build of libqjs_vec predates symbolic observations; "
+            "rebuild with native/build_qjs_vec.sh"
+        )
+    if not lib.vec_set_obs_symbolic(h, int(dim)):
+        raise RuntimeError(
+            f"the host refused symbolic mode for {game}: the game must export "
+            "getObservation() returning a Float32Array"
+        )
+    return int(dim)
+
+
 def _install_action_space(lib, h, action_space) -> dict:
     """Resolve ``action_space`` (name / .json path / action list / box dict /
     None) and install it on host ``h``. The host defaults to the frozen
@@ -180,6 +225,7 @@ class NativeVecEnv:
                  autoreset: bool = False, frame_skip: int = 1,
                  render_skip: bool = False,
                  action_space: str | list | None = None,
+                 obs_mode: str = "rgb",
                  games_dir: str | os.PathLike | None = None,
                  lib_path: str | os.PathLike | None = None):
         self.game = game
@@ -190,10 +236,21 @@ class NativeVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = _resolve_games_dir(games_dir)
-        game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
+        game_path = _resolve_game_path(game, games_dir)
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
+
+        # A bundled multi-file game ships a <game>.json sidecar declaring its
+        # own action space and step budget. Explicit arguments win; catalog
+        # games have no sidecar and behave exactly as before.
+        from .env import load_sidecar
+
+        sidecar = load_sidecar(game_path)
+        if sidecar is not None:
+            if action_space is None and sidecar.get("actions"):
+                action_space = sidecar["actions"]
+            if max_steps == 2000 and sidecar.get("max_steps"):
+                self.max_steps = int(sidecar["max_steps"])
 
         # No explicit lib: the engine-tier ladder (aot_cache: stock -> tier 1/2/3 by
         # what exists for this game; missing tiers build in the background).
@@ -203,6 +260,10 @@ class NativeVecEnv:
             self.max_steps, int(num_threads), 1 if autoreset else 0)
         if not self._h:
             raise RuntimeError(_create_error(self._lib, "vec_create", str(game_path)))
+        # PLAN 3.6. Done before the obs buffers are allocated, because it
+        # changes their dtype and shape.
+        self._symbolic_dim = _install_obs_mode(self._lib, self._h, obs_mode, sidecar, game)
+
         spec = _install_action_space(self._lib, self._h, action_space)
         if spec["type"] == "box":
             self.actions = None
@@ -230,7 +291,11 @@ class NativeVecEnv:
         self.num_threads = self._lib.vec_num_threads(self._h)
 
         # pre-allocated batch buffers (contiguous, C-order)
-        self._obs = np.empty((self.num_envs, self.obs_size, self.obs_size, 3), dtype=np.uint8)
+        self._obs = (
+            np.empty((self.num_envs, self._symbolic_dim), dtype=np.float32)
+            if self._symbolic_dim is not None
+            else np.empty((self.num_envs, self.obs_size, self.obs_size, 3), dtype=np.uint8)
+        )
         self._rew = np.empty(self.num_envs, dtype=np.float32)
         self._term = np.empty(self.num_envs, dtype=np.uint8)
         self._trunc = np.empty(self.num_envs, dtype=np.uint8)
@@ -388,10 +453,9 @@ class AsyncNativeVecEnv:
                  num_threads: int = 0, autoreset: bool = True, frame_skip: int = 1,
                  action_space: str | list | None = None,
                  games_dir: str | os.PathLike | None = None, lib_path: str | os.PathLike | None = None):
-        gdir = _resolve_games_dir(games_dir)
 
         def _resolve(g: str) -> str:
-            p = g if g.endswith(".js") else str(gdir / f"{g}.js")
+            p = _resolve_game_path(g, games_dir)
             if not Path(p).exists():
                 raise FileNotFoundError(f"game not found: {p}")
             return p
@@ -521,8 +585,7 @@ class PingPongVecEnv:
         self.frame_skip = max(1, int(frame_skip))
         self._closed = False
 
-        gdir = _resolve_games_dir(games_dir)
-        game_path = game if game.endswith(".js") else str(gdir / f"{game}.js")
+        game_path = _resolve_game_path(game, games_dir)
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
 

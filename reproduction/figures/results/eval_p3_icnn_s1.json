@@ -1,0 +1,434 @@
+{
+ "asteroids": {
+  "run": "outputs/p3_icnn_asteroids_s1/",
+  "greedy_return": 402.5,
+  "random_return": 513.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   460.0,
+   460.0,
+   370.0,
+   340.0,
+   720.0,
+   90.0,
+   180.0,
+   600.0
+  ]
+ },
+ "bigfish": {
+  "run": "outputs/p3_icnn_bigfish_s1/",
+  "greedy_return": 33.625,
+  "random_return": 0.625,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   40.0,
+   17.0,
+   40.0,
+   51.0,
+   11.0,
+   40.0,
+   19.0,
+   51.0
+  ]
+ },
+ "bossfight": {
+  "run": "outputs/p3_icnn_bossfight_s1/",
+  "greedy_return": 68.25,
+  "random_return": -13.25,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   62.0,
+   55.0,
+   56.0,
+   63.0,
+   90.0,
+   50.0,
+   80.0,
+   90.0
+  ]
+ },
+ "breakout": {
+  "run": "outputs/p3_icnn_breakout_s1/",
+  "greedy_return": 260.0,
+  "random_return": 80.0,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   260.0,
+   260.0,
+   270.0,
+   290.0,
+   270.0,
+   230.0,
+   240.0,
+   260.0
+  ]
+ },
+ "caveflyer": {
+  "run": "outputs/p3_icnn_caveflyer_s1/",
+  "greedy_return": 0.625,
+  "random_return": 1.625,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   5.0,
+   0.0,
+   0.0
+  ]
+ },
+ "chaser": {
+  "run": "outputs/p3_icnn_chaser_s1/",
+  "greedy_return": 21.375,
+  "random_return": 5.625,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   6.0,
+   32.0,
+   16.0,
+   38.0,
+   26.0,
+   16.0,
+   18.0,
+   19.0
+  ]
+ },
+ "climber": {
+  "run": "outputs/p3_icnn_climber_s1/",
+  "greedy_return": 0.0,
+  "random_return": 0.25,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "coinrun": {
+  "run": "outputs/p3_icnn_coinrun_s1/",
+  "greedy_return": 8.0,
+  "random_return": 4.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   11.0,
+   0.0,
+   5.0,
+   11.0,
+   12.0,
+   19.0,
+   2.0,
+   4.0
+  ]
+ },
+ "dodgeball": {
+  "run": "outputs/p3_icnn_dodgeball_s1/",
+  "greedy_return": 7.0,
+  "random_return": 0.25,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   0.0,
+   6.0,
+   6.0,
+   8.0,
+   10.0,
+   8.0,
+   8.0,
+   10.0
+  ]
+ },
+ "freeway": {
+  "run": "outputs/p3_icnn_freeway_s1/",
+  "greedy_return": 13.25,
+  "random_return": 0.0,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   13.0,
+   12.0,
+   13.0,
+   14.0,
+   13.0,
+   16.0,
+   12.0,
+   13.0
+  ]
+ },
+ "frostbite": {
+  "run": "outputs/p3_icnn_frostbite_s1/",
+  "greedy_return": 240.0,
+  "random_return": 32.5,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   250.0,
+   260.0,
+   250.0,
+   250.0,
+   160.0,
+   250.0,
+   250.0,
+   250.0
+  ]
+ },
+ "fruitbot": {
+  "run": "outputs/p3_icnn_fruitbot_s1/",
+  "greedy_return": 13.25,
+  "random_return": -2.0,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   22.0,
+   3.0,
+   14.0,
+   26.0,
+   9.0,
+   17.0,
+   -3.0,
+   18.0
+  ]
+ },
+ "heist": {
+  "run": "outputs/p3_icnn_heist_s1/",
+  "greedy_return": 3.125,
+  "random_return": 2.5,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   5.0,
+   0.0,
+   5.0,
+   5.0,
+   0.0,
+   0.0,
+   0.0,
+   10.0
+  ]
+ },
+ "jumper": {
+  "run": "outputs/p3_icnn_jumper_s1/",
+  "greedy_return": 0.5,
+  "random_return": 0.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   2.0,
+   0.0,
+   0.0,
+   2.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "leaper": {
+  "run": "outputs/p3_icnn_leaper_s1/",
+  "greedy_return": 26.875,
+  "random_return": 12.5,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   14.0,
+   28.0,
+   37.0,
+   42.0,
+   17.0,
+   35.0,
+   21.0,
+   21.0
+  ]
+ },
+ "maze": {
+  "run": "outputs/p3_icnn_maze_s1/",
+  "greedy_return": 3.75,
+  "random_return": 3.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   0.0,
+   0.0,
+   0.0,
+   10.0,
+   10.0,
+   0.0,
+   0.0,
+   10.0
+  ]
+ },
+ "miner": {
+  "run": "outputs/p3_icnn_miner_s1/",
+  "greedy_return": 19.0,
+  "random_return": 2.125,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   22.0,
+   22.0,
+   24.0,
+   22.0,
+   10.0,
+   6.0,
+   22.0,
+   24.0
+  ]
+ },
+ "ninja": {
+  "run": "outputs/p3_icnn_ninja_s1/",
+  "greedy_return": 11.75,
+  "random_return": 0.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   12.0,
+   12.0,
+   10.0,
+   12.0,
+   12.0,
+   12.0,
+   12.0,
+   12.0
+  ]
+ },
+ "plunder": {
+  "run": "outputs/p3_icnn_plunder_s1/",
+  "greedy_return": 9.625,
+  "random_return": 2.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   5.0,
+   7.0,
+   10.0,
+   20.0,
+   10.0,
+   3.0,
+   2.0,
+   20.0
+  ]
+ },
+ "pong": {
+  "run": "outputs/p3_icnn_pong_s1/",
+  "greedy_return": 105.0,
+  "random_return": -35.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   105.0,
+   105.0,
+   105.0,
+   105.0,
+   105.0,
+   105.0,
+   105.0,
+   105.0
+  ]
+ },
+ "qbert": {
+  "run": "outputs/p3_icnn_qbert_s1/",
+  "greedy_return": 320.0,
+  "random_return": 36.25,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   320.0,
+   320.0,
+   320.0,
+   320.0,
+   320.0,
+   320.0,
+   320.0,
+   320.0
+  ]
+ },
+ "seaquest": {
+  "run": "outputs/p3_icnn_seaquest_s1/",
+  "greedy_return": 858.75,
+  "random_return": 102.5,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   730.0,
+   920.0,
+   880.0,
+   870.0,
+   860.0,
+   970.0,
+   910.0,
+   730.0
+  ]
+ },
+ "space_invaders": {
+  "run": "outputs/p3_icnn_space_invaders_s1/",
+  "greedy_return": 375.0,
+  "random_return": 340.0,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   400.0,
+   200.0,
+   400.0,
+   400.0,
+   400.0,
+   400.0,
+   400.0,
+   400.0
+  ]
+ },
+ "starpilot": {
+  "run": "outputs/p3_icnn_starpilot_s1/",
+  "greedy_return": 40.875,
+  "random_return": 1.75,
+  "ckpt_step": -1,
+  "trainer": "ppo",
+  "net": "impala",
+  "per_seed": [
+   39.0,
+   52.0,
+   39.0,
+   39.0,
+   37.0,
+   41.0,
+   39.0,
+   41.0
+  ]
+ }
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Table 1(b), the environment swap: PlayTrain replicas against the originals.
 
-Reads the per-game verdicts in verdicts/ and prints the geometric mean per arm.
+Reads the per-game results in tab1b_runs/ and prints the geometric mean per arm.
 Jobs 44516162 (ProcGen, 16 games) and 44516167 (ALE, 8 games). Both arms are the
 same trainer at the same settings, so only the environment differs.
 
@@ -9,7 +9,7 @@ same trainer at the same settings, so only the environment differs.
 """
 import glob, math, os, re
 
-D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "verdicts")
+D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tab1b_runs")
 
 
 def geo(xs):

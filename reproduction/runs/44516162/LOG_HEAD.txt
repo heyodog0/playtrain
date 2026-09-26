@@ -1,0 +1,40 @@
+=== NODE holygpu8a15502.rc.fas.harvard.edu  job=44516162 cores=1
+4.18.0-553.155.1.el8_10.x86_64
+adv2 md5 OK 1c5149364c32fb58ce9b81cda49fa763
+MPS-up
+=== shadow-tree provenance gate ===
+playtrain: /tmp/pttree_44516162/src/playtrain/__init__.py 
+_LIB_PATH: /tmp/pttree_44516162/native/build/libqjs_vec.so 1c5149364c32fb58ce9b81cda49fa763
+SHADOW PROVENANCE OK
+=== preflight: envpool ProcGen envs ===
+  BigfishEasy-v0       obs=(2, 3, 64, 64) OK
+  BossfightEasy-v0     obs=(2, 3, 64, 64) OK
+  CaveflyerEasy-v0     obs=(2, 3, 64, 64) OK
+  ChaserEasy-v0        obs=(2, 3, 64, 64) OK
+  ClimberEasy-v0       obs=(2, 3, 64, 64) OK
+  CoinrunEasy-v0       obs=(2, 3, 64, 64) OK
+  DodgeballEasy-v0     obs=(2, 3, 64, 64) OK
+  FruitbotEasy-v0      obs=(2, 3, 64, 64) OK
+  HeistEasy-v0         obs=(2, 3, 64, 64) OK
+  JumperEasy-v0        obs=(2, 3, 64, 64) OK
+  LeaperEasy-v0        obs=(2, 3, 64, 64) OK
+  MazeEasy-v0          obs=(2, 3, 64, 64) OK
+  MinerEasy-v0         obs=(2, 3, 64, 64) OK
+  NinjaEasy-v0         obs=(2, 3, 64, 64) OK
+  PlunderEasy-v0       obs=(2, 3, 64, 64) OK
+  StarpilotEasy-v0     obs=(2, 3, 64, 64) OK
+=== derived configs (as-run pgab pairs, log_dir only change) ===
+configs written to outputs/cfg_pgt3_44516162
+--- arm=adv2 game=bigfish so_md5=1c5149364c32fb58ce9b81cda49fa763
+########## ARM bigfish_pt_adv2  (outputs/cfg_pgt3_44516162/bigfish_playtrain_adv2.json)  cap=6m
+  (capped at 6m — expected; median still valid)
+ARM bigfish_pt_adv2: PASS  windows=5  median_sps=1,097,708
+MEDIAN_SPS bigfish_pt_adv2 1097707.6 PASS
+
+--- arm=tier3 game=bigfish so_md5=f0458d7c706cf5cd98937d0a52416aa7
+########## ARM bigfish_pt_tier3  (outputs/cfg_pgt3_44516162/bigfish_playtrain_tier3.json)  cap=6m
+  (capped at 6m — expected; median still valid)
+ARM bigfish_pt_tier3: PASS  windows=5  median_sps=1,130,476
+MEDIAN_SPS bigfish_pt_tier3 1130476.4 PASS
+
+########## ARM bigfish_envpool  (outputs/cfg_pgt3_44516162/bigfish_envpool_adv2.json)  cap=11m

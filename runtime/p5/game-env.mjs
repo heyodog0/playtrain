@@ -44,7 +44,7 @@ const ORIGINAL_MATH_RANDOM = Math.random;
 // Discrete action spaces live in runtime/action_spaces.json — one declarative
 // spec shared with the native hosts (native/qjs/action_table.hpp) and the
 // human-study harness (study/study-templates.mjs). The default is default8
-// (GAME_TEMPLATE.md: 0=NOOP, 1=LEFT, 2=RIGHT, 3=UP, 4=DOWN, 5=D(SPACE),
+// (prompts/GAME_TEMPLATE.md: 0=NOOP, 1=LEFT, 2=RIGHT, 3=UP, 4=DOWN, 5=D(SPACE),
 // 6=LEFT+D, 7=RIGHT+D), whose indices are frozen — recorded trajectories and
 // the native gate's golden traces depend on the exact mapping.
 const ACTION_SPACES = JSON.parse(
@@ -178,9 +178,32 @@ function loadGame(gamePath, needsMatter) {
   gameLoaded = true;
 }
 
+// The <game>.json beside a bundled game, or null. Catalog games have none.
+function loadSidecar(gamePath) {
+  const path = String(gamePath).replace(/\.js$/, '.json');
+  if (path === String(gamePath)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 export class GameEnv {
-  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = 2000, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
+  constructor({ gamePath, obsWidth = 64, obsHeight = 64, obsMode = 'rgb', maxSteps = null, needsMatter = null, frameSkip = 1, actions = null, inputMap = null } = {}) {
     if (!gamePath) throw new Error('gamePath is required');
+    // A bundled multi-file game ships a <game>.json sidecar next to its .js
+    // declaring its own action space and step budget. Explicit options win;
+    // catalog games have no sidecar and behave exactly as before.
+    const sidecar = loadSidecar(gamePath);
+    if (sidecar) {
+      if (actions === null && Array.isArray(sidecar.actions)) actions = sidecar.actions;
+      if (maxSteps === null && sidecar.max_steps) maxSteps = sidecar.max_steps;
+    }
+    // maxSteps is null-defaulted rather than 2000 so "caller said nothing" is
+    // distinguishable from "caller asked for 2000"; the effective default is
+    // unchanged.
+    if (maxSteps === null || maxSteps === undefined) maxSteps = 2000;
     // Per-instance discrete action space (name / path / array; see
     // resolveActionSpace). Default: the frozen default8 mapping.
     this.actions = resolveActionSpace(actions);
@@ -241,6 +264,18 @@ export class GameEnv {
   }
 
   _getObservation() {
+    // PLAN 3.6. The game owns the vector; the host just hands the bytes on,
+    // so no rasterizer work happens at all in this mode. A game that does not
+    // define getObservation() cannot be run symbolically, and saying so here
+    // is clearer than returning a wrongly-shaped buffer.
+    if (this.obsMode === 'symbolic') {
+      const v = globalThis.getObservation && globalThis.getObservation();
+      if (!(v instanceof Float32Array)) {
+        throw new Error('obsMode "symbolic" needs the game to export ' +
+                        'getObservation() returning a Float32Array');
+      }
+      return new Uint8Array(v.buffer, v.byteOffset, v.length * 4);
+    }
     if (FAST_OBS && this.obsMode === 'rgb') {
       const buf = getObsBuffer(this.obsWidth, this.obsHeight);
       return bgraBufferToRGB(buf, this.obsWidth, this.obsHeight);

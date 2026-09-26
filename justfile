@@ -12,6 +12,20 @@ set shell := ["bash", "-cu"]
 default:
     @just --list --unsorted
 
+# === multifile games ===
+
+# Bundle one multi-file game (examples/games/multifile/**) into dist/.
+bundle name:
+    uv run python tools/bundle_multifile.py {{name}}
+
+# Bundle every multi-file game.
+bundle-all:
+    uv run python tools/bundle_multifile.py --all
+
+# Fail if any committed dist/ is not what a fresh bundle would produce.
+bundle-check:
+    uv run python tools/bundle_multifile.py --all --check
+
 # === setup ===
 
 # Install deps AND build the native QuickJS backend (the default runtime engine).
@@ -66,16 +80,6 @@ bench-one game:
 bench-vec n="8":
     uv run python benchmarks/bench_native_vec.py --n {{n}}
 
-# Per-phase step profile for one p5 game.
-profile game="flappy_bird":
-    uv run python tools/profile.py --game {{game}}
-
-profile-cpu game="flappy_bird":
-    uv run python tools/profile.py --game {{game}} --cpu-prof
-
-profile-view by="self":
-    uv run python tools/profile_view.py --by {{by}}
-
 # === generation (playtrain.gen) ===
 
 # Validate the generated p5 catalog (games/js) — the gen-side ProcGen suite.
@@ -103,11 +107,6 @@ gen-game catalog name model="pro" mechanic="yes":
 # Generate every game across every catalog.
 gen-all model="pro" mechanic="yes":
     uv run playtrain-generate --all --model {{model}} --ref {{ if mechanic == "no" { "--no-mechanic" } else { "" } }}
-
-# Closed-loop refine a generated clone against the REAL Atari ROM (needs ale-py + GEMINI_API_KEY).
-refine-vs-rom name iters="3" feedback="" model="pro":
-    uv run --extra rom AutoROM --accept-license
-    uv run --extra rom python tools/refine_vs_rom.py --game {{name}} --iters {{iters}} --model {{model}} --feedback "{{feedback}}"
 
 # === game variants (prototype forks) ===
 

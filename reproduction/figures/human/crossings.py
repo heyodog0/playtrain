@@ -74,6 +74,7 @@ def main() -> int:
     hmean, hn = human_means(data_dir)
 
     print(f"{'game':<13}{'human':>9}{'IMPALA':>14}{'PPO':>14}   final (I / P)")
+    res = {}
     for game in d["curves"]:
         thr = hmean.get(game)
         if thr is None:
@@ -92,7 +93,20 @@ def main() -> int:
         print(f"{game:<13}{thr:9.1f}{out['IMPALA']:>14}{out['PPO']:>14}"
               f"   {finals['IMPALA']:.0f} / {finals['PPO']:.0f}"
               f"   (n={hn.get(game, 0)})")
-    return 0
+        res[game] = out
+    # the paper's sentence: six of eight reached; flappy_bird PPO only at 1M; coinrun
+    # IMPALA only at 81M; neither on caveflyer or VVVVVV
+    reached = [g for g, o in res.items() if o["IMPALA"] != "never" or o["PPO"] != "never"]
+    checks = [
+        (f"human mean reached on {len(reached)} of {len(res)} games (paper: six of eight)", len(reached) == 6),
+        ("flappy_bird: PPO only, at 1M", res["flappy_bird"] == {"IMPALA": "never", "PPO": "1.0M"}),
+        ("coinrun: IMPALA only, after 81M", res["coinrun"]["PPO"] == "never" and res["coinrun"]["IMPALA"].startswith("81.")),
+        ("neither on caveflyer or VVVVVV", all(res[g] == {"IMPALA": "never", "PPO": "never"} for g in ("caveflyer", "vvvvvv"))),
+    ]
+    print()
+    for what, ok in checks:
+        print(f"    {what:66s} {'match' if ok else 'DIFFERS'}")
+    return 0 if all(ok for _, ok in checks) else 1
 
 
 if __name__ == "__main__":

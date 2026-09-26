@@ -1,0 +1,124 @@
+{
+  "task": "FIRST_PERSON_PLAN.md T7a (Mac half)",
+  "commit": "835d947a00ab146099e4bd2eee4501a430fd5254",
+  "host": {
+    "machine": "arm64 Apple Silicon Mac (darwin 25.3.0)",
+    "node": "v25.7.0",
+    "rustc": "1.97.1",
+    "note": "single core, no other load; numbers are per-core single-env"
+  },
+  "steps_per_measurement": 20000,
+  "quickjs": {
+    "harness": "native/build/qjs_host <game.js> bench 1 20000",
+    "note": "always renders; ignores PLAYTRAIN_QJS_OBS_MODE, so this is pixel-mode throughput only",
+    "craftax_fp": {
+      "sps": 5285,
+      "us_per_step": 189.2,
+      "note": "with face shading + sky gradient (fog was added then reverted at the user's request). 5935 before any look work; removing fog did NOT recover the difference, because the free-yaw basis refactor costs about as much as fog did."
+    },
+    "craftax_classic": {
+      "sps": 397,
+      "us_per_step": 2518.9
+    },
+    "speedup_fp_over_classic": 13.31
+  },
+  "v8": {
+    "harness": "examples/games/multifile/variants/craftax_fp/tests/envprof.mjs (node GameEnv, in-process)",
+    "results": {
+      "craftax_fp/rgb": {
+        "steps": 20000,
+        "secs": 1.814803542,
+        "sps": 11020.476617518085,
+        "us_per_step": 90.7401771
+      },
+      "craftax_fp/symbolic": {
+        "steps": 20000,
+        "secs": 1.53400425,
+        "sps": 13037.773526377128,
+        "us_per_step": 76.7002125
+      },
+      "craftax_fp/dynamics": {
+        "steps": 20000,
+        "secs": 0.0322175,
+        "sps": 620780.6316442926,
+        "us_per_step": 1.6108750000000003
+      },
+      "craftax_classic/rgb": {
+        "steps": 20000,
+        "secs": 1.824504542,
+        "sps": 10961.880082839498,
+        "us_per_step": 91.2252271
+      },
+      "craftax_classic/symbolic": {
+        "steps": 20000,
+        "secs": 1.546069958,
+        "sps": 12936.02524032745,
+        "us_per_step": 77.3034979
+      },
+      "craftax_classic/dynamics": {
+        "steps": 20000,
+        "secs": 0.031371375,
+        "sps": 637523.8573380988,
+        "us_per_step": 1.56856875
+      }
+    }
+  },
+  "quickjs_step_breakdown_us": {
+    "note": "measured by disabling one stage at a time in a scratch copy of the bundle, before the T7a optimisations",
+    "dynamics": 69.1,
+    "grid_repack_full_4096": 108.7,
+    "inventory_strip": 109.9,
+    "voxel_view": 60.6,
+    "dusk": 13.1,
+    "total_base": 345.9
+  },
+  "quickjs_after_optimisation_us": {
+    "total": 168.5,
+    "changed": [
+      "grid repack narrowed to a 21x21 window around the player (441 cells, not 4096)",
+      "inventory strip recomposed only when one of its 20 counts changes"
+    ]
+  },
+  "target": {
+    "plan_section_8": ">= 8000 SPS/core on the Mac under QuickJS",
+    "met": false,
+    "why": "the plan budgeted dynamics ~78us + render <=40us. Dynamics measure 69us and the native render measures 74us (voxel_view 61 + dusk 13), so the floor is ~143us = ~7.0k SPS before any JS. 5,935 SPS is 169us/step."
+  },
+  "cluster": {
+    "status": "blocked",
+    "reason": "no checkout of this branch exists on FASRC: the only tree is /n/home06/truong/node-gym-smoke/playtrain on main at 29e1e7f with 69 dirty files and no examples/games/multifile/variants/. The release branch is 75 commits unpushed. Same wall as craftax_classic PROGRESS tasks 9b and 12."
+  },
+  "vectorised_host": {
+    "harness": "NativeVecEnv, craftax_fp, 400 steps after 50 warm, obs 64",
+    "note": "worker threads = min(num_envs, performance-core count); this M4 has 4 P + 6 E cores",
+    "by_env_count": {
+      "1": {
+        "sps": 10573,
+        "cores_busy": 1.0
+      },
+      "2": {
+        "sps": 18605,
+        "cores_busy": 1.92
+      },
+      "4": {
+        "sps": 18493,
+        "cores_busy": 4.07
+      },
+      "8": {
+        "sps": 16372,
+        "cores_busy": 3.88
+      },
+      "16": {
+        "sps": 17193,
+        "cores_busy": 3.89
+      }
+    },
+    "plateau": {
+      "finding": "throughput saturates at ~18.5k from 2 envs upward even though 4 cores are busy: per-core throughput halves between 2 and 4 envs",
+      "discriminating_experiment": "4 SEPARATE processes with 1 env each total 33,522 SPS (9442+8736+7793+7551); one process with 4 envs gets 18,493",
+      "conclusion": "the cap is INTRA-PROCESS, not the machine. The vectorised host reaches ~55% of what the same cores deliver across processes. Likely the per-step spin barrier (it waits for the slowest shard, and Python dispatches every step) and/or shared-cache pressure from four ~64KB per-env working sets on the M4's single P-core cluster.",
+      "not_fixed": "fixing it means changing native/qjs/qjs_vec_host.cpp, which FIRST_PERSON_PLAN.md authorises only for the voxel bindings. Recorded, not changed.",
+      "same_family_as": "the glibc arena lock convoys in the async AOT host, fixed there by env pinning"
+    }
+  }
+}

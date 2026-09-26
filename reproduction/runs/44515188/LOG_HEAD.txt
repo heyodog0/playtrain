@@ -1,0 +1,40 @@
+node=holy8a28510.rc.fas.harvard.edu job=44515188 kernel=4.18.0-553.155.1.el8_10.x86_64
+CPU(s):              192
+NUMA node(s):        2
+Model name:          AMD EPYC 9654 96-Core Processor
+adv2 md5 OK 1c5149364c32fb58ce9b81cda49fa763
+tier3 .so present for all 24
+SHADOW PROVENANCE OK /tmp/pttree_44515188/native/build/libqjs_vec.so 1c5149364c32fb58ce9b81cda49fa763
+== w=16 (80 env threads), 24 games x 3 trials, interleaved ==
+=== bigfish w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8764764, 'frames_per_s': 8764764, 'per_worker': [558618, 558562, 554513, 543649, 550665, 556281, 549292, 546355, 549488, 545930, 530104, 557503, 557301, 529556, 545203, 531745], 'ms_infer': 0.01, 'ms_env': 0.23, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_adv2_w16_r1.json
+=== bigfish w16 tier3 md5=f0458d7c706cf5cd98937d0a52416aa7
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 10150186, 'frames_per_s': 10150186, 'per_worker': [646560, 609519, 634674, 634814, 649501, 643404, 631211, 649476, 633979, 619024, 645272, 639753, 634899, 632540, 634208, 611352], 'ms_infer': 0.01, 'ms_env': 0.19, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_tier3_w16_r1.json
+=== bigfish w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8745007, 'frames_per_s': 8745007, 'per_worker': [545082, 556944, 550017, 554798, 548915, 534205, 558368, 543092, 556661, 528173, 560203, 527808, 547165, 557331, 542963, 533284], 'ms_infer': 0.01, 'ms_env': 0.23, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_adv2_w16_r2.json
+=== bigfish w16 tier3 md5=f0458d7c706cf5cd98937d0a52416aa7
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 10201892, 'frames_per_s': 10201892, 'per_worker': [650793, 661528, 642701, 637514, 644263, 645050, 641145, 629069, 641675, 623514, 634355, 621720, 644340, 633370, 638671, 612183], 'ms_infer': 0.01, 'ms_env': 0.19, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_tier3_w16_r2.json
+=== bigfish w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 8687820, 'frames_per_s': 8687820, 'per_worker': [554034, 555173, 558922, 536249, 553585, 545335, 543338, 558678, 549490, 526638, 521192, 510471, 531726, 551178, 544383, 547427], 'ms_infer': 0.01, 'ms_env': 0.23, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_adv2_w16_r3.json
+=== bigfish w16 tier3 md5=f0458d7c706cf5cd98937d0a52416aa7
+{'game': 'bigfish', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 10220384, 'frames_per_s': 10220384, 'per_worker': [653661, 645906, 653380, 651061, 632272, 639807, 620805, 645634, 636077, 623843, 651453, 646110, 611829, 637791, 625831, 644926], 'ms_infer': 0.01, 'ms_env': 0.19, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bigfish_tier3_w16_r3.json
+=== bossfight w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bossfight', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 6910848, 'frames_per_s': 6910848, 'per_worker': [432289, 443645, 434371, 427869, 435201, 428652, 439923, 442712, 423689, 419336, 436546, 429254, 427412, 435966, 430835, 423147], 'ms_infer': 0.01, 'ms_env': 0.29, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bossfight_adv2_w16_r1.json
+=== bossfight w16 tier3 md5=b91876b0ed81790da61d246773454bf4
+{'game': 'bossfight', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 10072341, 'frames_per_s': 10072341, 'per_worker': [622651, 614729, 644689, 626891, 620758, 635233, 654054, 624978, 627994, 632727, 641596, 642990, 621254, 617989, 625431, 618379], 'ms_infer': 0.01, 'ms_env': 0.19, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bossfight_tier3_w16_r1.json
+=== bossfight w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bossfight', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 6919874, 'frames_per_s': 6919874, 'per_worker': [448275, 430331, 427233, 430282, 441073, 435805, 441305, 423589, 433631, 436437, 410913, 428576, 431590, 438098, 434590, 428146], 'ms_infer': 0.01, 'ms_env': 0.29, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bossfight_adv2_w16_r2.json
+=== bossfight w16 tier3 md5=b91876b0ed81790da61d246773454bf4
+{'game': 'bossfight', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 10218537, 'frames_per_s': 10218537, 'per_worker': [642100, 644424, 654581, 628806, 639641, 636134, 625129, 634411, 654128, 649831, 628778, 638306, 636669, 635876, 636218, 633505], 'ms_infer': 0.01, 'ms_env': 0.19, 'env_threads': 5, 'device': 'cpu'}
+wrote /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench/outputs/tier3_fig4a_44515188/bossfight_tier3_w16_r2.json
+=== bossfight w16 adv2 md5=1c5149364c32fb58ce9b81cda49fa763
+{'game': 'bossfight', 'workers': 16, 'envs_per_worker': 128, 'frame_skip': 1, 'decisions_per_s': 6951861, 'frames_per_s': 6951861, 'per_worker': [435462, 433836, 426320, 447162, 444549, 426765, 443350, 425503, 428468, 437992, 428925, 430592, 431408, 434923, 435606, 440999], 'ms_infer': 0.01, 'ms_env': 0.29, 'env_threads': 5, 'device': 'cpu'}

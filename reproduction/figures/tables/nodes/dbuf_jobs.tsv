@@ -1,0 +1,37 @@
+# tab:dbuf-ablation: array task -> game -> raw job id -> end time.
+#
+# The 24 data files are all named dbuf_t3_44861569_<game>.json, but the job_id
+# INSIDE each file differs. That inner value is SLURM_JOB_ID, which for an array
+# task is the per-task JobIDRaw, not the array job id -- so the files look like
+# 24 separate jobs and are not. All 24 are tasks of ONE array job, 44861569
+# (dbuf_t3_24.sbatch, --array=0-23%1, --nodelist=holygpu8a15203), submitted
+# 2026-09-06T15:00:50, finishing 2026-09-07T08:07:20. %1 means the tasks ran one
+# at a time, so no two games shared the node. Every data file maps to exactly one
+# task and every task produced one file.
+# Joined from sacct -j 44861569 -o JobID,JobIDRaw,End on 2026-09-17.
+#
+# array_task	game	job_id_raw	end
+44861569_0	plunder	44989151	2026-09-07T04:19:00
+44861569_1	bigfish	44995888	2026-09-07T04:29:06
+44861569_2	bossfight	44999329	2026-09-07T04:39:33
+44861569_3	ninja	45002116	2026-09-07T04:49:27
+44861569_4	starpilot	45005193	2026-09-07T04:59:20
+44861569_5	heist	45007871	2026-09-07T05:09:16
+44861569_6	leaper	45010187	2026-09-07T05:19:18
+44861569_7	maze	45011336	2026-09-07T05:29:14
+44861569_8	dodgeball	45012520	2026-09-07T05:39:09
+44861569_9	jumper	45013541	2026-09-07T05:49:01
+44861569_10	chaser	45014689	2026-09-07T05:58:53
+44861569_11	caveflyer	45015942	2026-09-07T06:08:47
+44861569_12	coinrun	45016905	2026-09-07T06:18:35
+44861569_13	fruitbot	45018819	2026-09-07T06:28:33
+44861569_14	climber	45019763	2026-09-07T06:38:21
+44861569_15	miner	45021834	2026-09-07T06:48:16
+44861569_16	pong	45023019	2026-09-07T06:58:03
+44861569_17	freeway	45024263	2026-09-07T07:07:58
+44861569_18	seaquest	45026043	2026-09-07T07:17:49
+44861569_19	space_invaders	45027640	2026-09-07T07:27:42
+44861569_20	asteroids	45029545	2026-09-07T07:37:35
+44861569_21	frostbite	45030779	2026-09-07T07:47:31
+44861569_22	breakout	45032367	2026-09-07T07:57:30
+44861569_23	qbert	44861569	2026-09-07T08:07:20

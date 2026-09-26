@@ -194,6 +194,93 @@ FN(js_keyIsDown) { return JS_NewBool(ctx, p5::keyIsDown((int)argd(ctx, argv[0]))
 FN(js_noop) { (void)ctx; (void)argc; (void)argv; return JS_UNDEFINED; }
 FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+FN(js_createBitmap) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
+  return JS_NewInt32(ctx, p5::createBitmap(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
+// loadBitmap(handle, Uint8Array) — texture upload. Flushes the command buffer
+// first: this writes canvas memory directly, so any recorded draws to that
+// canvas must land before the bytes do.
+FN(js_loadBitmap) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t off = 0, len = 0, per = 0;
+  JSValue ab = JS_GetTypedArrayBuffer(ctx, argv[1], &off, &len, &per);
+  if (JS_IsException(ab)) return JS_NewInt32(ctx, 0);
+  size_t sz = 0;
+  uint8_t* src = JS_GetArrayBuffer(ctx, &sz, ab);
+  int n = 0;
+  if (src && off + len <= sz) {
+    n = p5::loadBitmap((int)argd(ctx, argv[0]), src + off, (int)len);
+  }
+  JS_FreeValue(ctx, ab);
+  return JS_NewInt32(ctx, n);
+}
+// voxelView(gridU16, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist,
+//           atlasU8, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH)
+// Like loadBitmap, this writes canvas memory directly, so the command buffer
+// has to land first. The two typed arrays are read in place — no copy, no
+// staging: a native host already has real pointers.
+FN(js_voxelView) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t goff = 0, glen = 0, gper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue gab = JS_GetTypedArrayBuffer(ctx, argv[0], &goff, &glen, &gper);
+  if (JS_IsException(gab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[8], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, gab); return JS_UNDEFINED; }
+  size_t gsz = 0, asz = 0;
+  uint8_t* gsrc = JS_GetArrayBuffer(ctx, &gsz, gab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (gsrc && asrc && goff + glen <= gsz && aoff + alen <= asz) {
+    p5::voxelView((const uint16_t*)(gsrc + goff), (int)argd(ctx, argv[1]), (int)argd(ctx, argv[2]),
+                  argd(ctx, argv[3]), argd(ctx, argv[4]), argd(ctx, argv[5]),
+                  (int)argd(ctx, argv[6]), argd(ctx, argv[7]),
+                  asrc + aoff, (int)argd(ctx, argv[9]), (int)argd(ctx, argv[10]),
+                  (unsigned int)argd(ctx, argv[11]),
+                  (int)argd(ctx, argv[12]), (int)argd(ctx, argv[13]),
+                  (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, gab);
+  return JS_UNDEFINED;
+}
+// voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
+//             atlasU8, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH)
+FN(js_voxelSprite) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t aoff = 0, alen = 0, aper = 0;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[7], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) return JS_UNDEFINED;
+  size_t asz = 0;
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (asrc && aoff + alen <= asz) {
+    p5::voxelSprite(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]),
+                    (int)argd(ctx, argv[3]), argd(ctx, argv[4]),
+                    argd(ctx, argv[5]), argd(ctx, argv[6]),
+                    asrc + aoff, (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]),
+                    (int)argd(ctx, argv[10]),
+                    (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                    (int)argd(ctx, argv[13]), (int)argd(ctx, argv[14]));
+  }
+  JS_FreeValue(ctx, aab);
+  return JS_UNDEFINED;
+}
+// voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noiseF32, sleeping)
+FN(js_voxelDusk) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t noff = 0, nlen = 0, nper = 0;
+  JSValue nab = JS_GetTypedArrayBuffer(ctx, argv[8], &noff, &nlen, &nper);
+  if (JS_IsException(nab)) return JS_UNDEFINED;
+  size_t nsz = 0;
+  uint8_t* nsrc = JS_GetArrayBuffer(ctx, &nsz, nab);
+  if (nsrc && noff + nlen <= nsz) {
+    p5::voxelDusk((int)argd(ctx, argv[0]), (int)argd(ctx, argv[1]),
+                  (int)argd(ctx, argv[2]), (int)argd(ctx, argv[3]),
+                  argd(ctx, argv[4]),
+                  (unsigned int)argd(ctx, argv[5]), (unsigned int)argd(ctx, argv[6]),
+                  (int)argd(ctx, argv[7]),
+                  (const float*)(nsrc + noff), (int)argd(ctx, argv[9]));
+  }
+  JS_FreeValue(ctx, nab);
+  return JS_UNDEFINED;
+}
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
@@ -227,6 +314,10 @@ static const Binding BINDINGS[] = {
   {"cylinder", js_cylinder, 2}, {"cone", js_cone, 2},
   {"noLights", js_noop, 0}, {"normalMaterial", js_noop, 0}, {"emissiveMaterial", js_noop, 3},
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
+  {"createBitmap", js_createBitmap, 2}, {"loadBitmap", js_loadBitmap, 2},
+  {"voxelView", js_voxelView, 16},
+  {"voxelSprite", js_voxelSprite, 15},
+  {"voxelDusk", js_voxelDusk, 10},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},
@@ -301,6 +392,9 @@ struct Env {
   JSRuntime* rt = nullptr;
   JSContext* ctx = nullptr;
   JSValue g, jsReset, jsDraw, jsState, jsKeyPressed, jsMousePressed;
+  // PLAN 3.6 symbolic obs: the game's getObservation(), when it has one.
+  JSValue jsGetObs = JS_UNDEFINED;
+  bool hasGetObs = false;
   bool hasKeyPressed = false;
   bool hasMousePressed = false;
   uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
@@ -419,6 +513,9 @@ struct VecHost {
   std::vector<Env> envs;
   std::vector<std::string> srcs;   // game source per env (all equal for single-game)
   int num_envs = 0, obs_size = 0, obs_bytes = 0, max_steps = 2000, autoreset = 0;
+  // 0 = rgb pixels (obs_bytes = obs_size^2*3), >0 = symbolic: that many
+  // float32 from the game's getObservation(), rasterizer skipped entirely.
+  int obs_symbolic_dim = 0;
   // Action-repeat: run `frame_skip` game ticks per vec_step, holding the action
   // (semantics mirror runtime/p5/game-env.mjs: per-frame terminal/trunc check
   // with early break, `steps`/`max_steps` count FRAMES, reward = end-score -
@@ -566,6 +663,8 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.hasKeyPressed = JS_IsFunction(ctx, e.jsKeyPressed);
   e.jsMousePressed = JS_GetPropertyStr(ctx, g, "mousePressed");
   e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
+  e.jsGetObs = JS_GetPropertyStr(ctx, g, "getObservation");
+  e.hasGetObs = JS_IsFunction(ctx, e.jsGetObs);
   e.call0(jsSetup);
   e.flushCB();
   JS_FreeValue(ctx, jsSetup);
@@ -606,6 +705,8 @@ static void env_apply_frame(Env& e, const InputFrame& f) {
 }
 
 // ---- one env reset (mirrors qjs_host serve cmd 0) ----
+static void write_obs(VecHost* H, Env& e, int idx);   // defined below
+
 static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.select();
   g_nodraw = false;  // reset frames always render fully
@@ -635,7 +736,44 @@ static void env_reset(VecHost* H, Env& e, int idx, uint32_t seed) {
   e.readState(score, lives, gs);
   e.flushCB();
   e.steps = 0; e.lastScore = score;
-  p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
+  write_obs(H, e, idx);
+}
+
+// Write env idx's observation into the output slab.
+//
+// PLAN 3.6: in symbolic mode the game owns the vector and the rasterizer is
+// never called — getObservation() returns a Float32Array and its bytes go
+// straight into the slot. A short or missing vector is zero-filled rather
+// than left as whatever the slab held, so a misdeclared dimension shows up
+// as a dead observation instead of stale neighbouring data.
+static void write_obs(VecHost* H, Env& e, int idx) {
+  uint8_t* dst = H->out_obs + (size_t)idx * H->obs_bytes;
+  if (H->obs_symbolic_dim <= 0) {
+    p5::render_obs_rgb(dst);
+    return;
+  }
+  memset(dst, 0, (size_t)H->obs_bytes);
+  if (!e.hasGetObs) return;
+  JSValue v = JS_Call(e.ctx, e.jsGetObs, JS_UNDEFINED, 0, nullptr);
+  if (JS_IsException(v)) {
+    JSValue ex = JS_GetException(e.ctx);
+    const char* m = JS_ToCString(e.ctx, ex);
+    e.err = m ? m : "getObservation threw"; e.ok = false;
+    JS_FreeCString(e.ctx, m); JS_FreeValue(e.ctx, ex); JS_FreeValue(e.ctx, v);
+    return;
+  }
+  size_t byte_off = 0, byte_len = 0, bytes_per = 0;
+  JSValue ab = JS_GetTypedArrayBuffer(e.ctx, v, &byte_off, &byte_len, &bytes_per);
+  if (!JS_IsException(ab)) {
+    size_t sz = 0;
+    uint8_t* src = JS_GetArrayBuffer(e.ctx, &sz, ab);
+    if (src && byte_off + byte_len <= sz) {
+      size_t n = byte_len < (size_t)H->obs_bytes ? byte_len : (size_t)H->obs_bytes;
+      memcpy(dst, src + byte_off, n);
+    }
+    JS_FreeValue(e.ctx, ab);
+  }
+  JS_FreeValue(e.ctx, v);
 }
 
 // Next autoreset seed for env idx, per the host's seeding policy.
@@ -688,7 +826,7 @@ static void env_step_frame(VecHost* H, Env& e, int idx) {
   H->out_rew[idx]   = (float)reward;
   H->out_term[idx]  = term ? 1 : 0;
   H->out_trunc[idx] = trunc ? 1 : 0;
-  p5::render_obs_rgb(H->out_obs + (size_t)idx * H->obs_bytes);
+  write_obs(H, e, idx);
   if (H->autoreset && (term || trunc)) {
     // SAME_STEP autoreset: overwrite obs with the reset frame; done flag stays set.
     env_reset(H, e, idx, autoreset_seed(H, e, idx));
@@ -921,6 +1059,26 @@ void* vec_create(const char* game_path, int num_envs, int obs_size,
 }
 
 int vec_obs_bytes(void* h) { return h ? ((VecHost*)h)->obs_bytes : 0; }
+
+// PLAN 3.6. Additive on purpose: vec_create's signature is the trainers' ABI,
+// so symbolic mode is opted into afterwards instead of changing it. dim is the
+// game's declared obs.symbolic length; 0 restores pixels. Returns 0 if any env
+// lacks getObservation(), leaving the host in pixel mode.
+int vec_set_obs_symbolic(void* h, int dim) {
+  if (!h) return 0;
+  VecHost* H = (VecHost*)h;
+  if (dim <= 0) {
+    H->obs_symbolic_dim = 0;
+    H->obs_bytes = H->obs_size * H->obs_size * 3;
+    return 1;
+  }
+  for (int i = 0; i < H->num_envs; i++) {
+    if (!H->envs[i].hasGetObs) return 0;
+  }
+  H->obs_symbolic_dim = dim;
+  H->obs_bytes = dim * (int)sizeof(float);
+  return 1;
+}
 int vec_num_threads(void* h) { return h ? ((VecHost*)h)->nthreads : 0; }
 
 void vec_reset(void* h, const int32_t* seeds, uint8_t* obs) {

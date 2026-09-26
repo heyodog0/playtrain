@@ -1,0 +1,170 @@
+{
+  "name": "craftax_fp_free",
+  "version": "0.1.0",
+  "title": "Craftax-Classic (first person, free movement)",
+  "action_space": "craftax_fp_free23",
+  "actions": [
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        74
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        76
+      ],
+      "press": null
+    },
+    {
+      "name": "UP",
+      "held": [
+        73
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        75
+      ],
+      "press": null
+    },
+    {
+      "name": "DO",
+      "held": [],
+      "press": 32
+    },
+    {
+      "name": "SLEEP",
+      "held": [],
+      "press": 9
+    },
+    {
+      "name": "PLACE_STONE",
+      "held": [],
+      "press": 49
+    },
+    {
+      "name": "PLACE_TABLE",
+      "held": [],
+      "press": 50
+    },
+    {
+      "name": "PLACE_FURNACE",
+      "held": [],
+      "press": 51
+    },
+    {
+      "name": "PLACE_PLANT",
+      "held": [],
+      "press": 52
+    },
+    {
+      "name": "MAKE_WOOD_PICK",
+      "held": [],
+      "press": 53
+    },
+    {
+      "name": "MAKE_STONE_PICK",
+      "held": [],
+      "press": 54
+    },
+    {
+      "name": "MAKE_IRON_PICK",
+      "held": [],
+      "press": 55
+    },
+    {
+      "name": "MAKE_WOOD_SWORD",
+      "held": [],
+      "press": 56
+    },
+    {
+      "name": "MAKE_STONE_SWORD",
+      "held": [],
+      "press": 57
+    },
+    {
+      "name": "MAKE_IRON_SWORD",
+      "held": [],
+      "press": 48
+    },
+    {
+      "name": "MOVE_FORWARD",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "MOVE_BACK",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_LEFT",
+      "held": [
+        65
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_RIGHT",
+      "held": [
+        68
+      ],
+      "press": null
+    },
+    {
+      "name": "TURN_LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "TURN_RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "symbolic": 1345,
+    "rgb_size": 64,
+    "frame": "rows 0-48 first-person view (64 wide), rows 49-62 the Craftax inventory strip (63 wide), row 63 black padding"
+  },
+  "max_steps": 10000,
+  "human": {
+    "steps_per_second": 8,
+    "controls": "UP/DOWN walk forward and back without turning. LEFT/RIGHT turn in place. A/D strafe. SPACE interacts with the cell ahead. TAB sleeps. 1-4 place stone/table/furnace/sapling. 5-7 craft pickaxes, 8-9-0 craft swords (stand next to a table; iron needs a furnace too). I/J/K/L are Craftax's original absolute moves.",
+    "keymap_overlay": true
+  },
+  "reference": {
+    "name": "craftax_classic (this repo), with six movement actions added",
+    "repo": "https://github.com/PufferAI/PufferLib",
+    "commit": "6ffa5b10dbbbe4d1e8288367c7d9d3acd3bad4a2",
+    "file": "ocean/craftax_classic/craftax_classic.h",
+    "license": "MIT",
+    "parity": "NOT a parity port. Craftax's seventeen actions are unchanged and that is gated - over the whole committed corpus, whose actions are all in 0..16, this game produces the same 6880-byte canonical state as craftax_classic every step - but six actions are ADDED, so the action space and therefore the task are not Craftax's",
+    "not_matched": [
+      "the action space: six actions are added (move forward/back, strafe left/right, turn left/right in place) so that a human can play first-person. Craftax has no action that moves without also turning",
+      "observation is first-person; not Craftax-Classic-Pixels",
+      "an agent trained here is NOT comparable to one trained on craftax_classic. For the exact-dynamics first-person environment, use craftax_fp",
+      "everything craftax_classic does not match, inherited unchanged: auto-reset RNG continuation across episodes, and the one NOOP the host reset consumes before the first agent action"
+    ]
+  },
+  "source_sha256": "a61d4bc80777b3a20d85401ce7c27a29d7cb71e6905acedb8be868959d1725a1"
+}

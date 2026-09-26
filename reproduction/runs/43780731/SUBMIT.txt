@@ -1,0 +1,2 @@
+# sacct -X -j 43780731 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43780731   adv_anchor   2026-09-01T22:25:29   2026-09-01T23:06:08   holy8a24307   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch --dependency=afterok:43780730 -w holy8a24307 adv_anchor.sbatch

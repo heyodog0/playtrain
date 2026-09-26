@@ -1,0 +1,61 @@
+# fig:learning panel C and the suite figures: Slurm provenance per run directory.
+#
+# Run dirs carry no job id. Two independent sources pin them:
+#   1. the array manifests (runs/42009688/manifest.txt, runs/42149380/manifest.txt)
+#      map array task index -> run name, so the task is exact;
+#   2. each run's TensorBoard filename embeds its start time and hostname
+#      (events.out.tfevents.<unixtime>.<host>.<pid>.0), which confirms the match.
+#
+# The ppo3icnn manifest is shared by two arrays: 42149380 ran the first block,
+# 42382390 re-ran tasks 17-72. Where both could apply, the TB timestamp decides.
+# Recovered 2026-09-17.
+#
+# run_dir	trainer	game	array_task	tb_start	tb_node
+p3_icnn_bossfight_s0	ppo	bossfight	42149380_7	2026-08-26T23:08:00	holygpu8a11402
+p3_icnn_bossfight_s1	ppo	bossfight	42149380_8	2026-08-26T23:08:00	holygpu8a11402
+p3_icnn_bossfight_s2	ppo	bossfight	42149380_9	2026-08-27T01:14:23	holygpu8a11204
+p3_icnn_chaser_s0	ppo	chaser	42149380_16	2026-08-27T01:15:00	holygpu8a11304
+p3_icnn_chaser_s1	ppo	chaser	42382390_17	2026-08-27T19:59:47	holygpu8a13602
+p3_icnn_chaser_s2	ppo	chaser	42382390_18	2026-08-27T19:59:48	holygpu8a15501
+p3_icnn_leaper_s0	ppo	leaper	42382390_43	2026-08-28T02:03:37	holygpu8a13603
+p3_icnn_leaper_s1	ppo	leaper	42382390_44	2026-08-28T02:09:22	holygpu8a15104
+p3_icnn_leaper_s2	ppo	leaper	42382390_45	2026-08-28T02:34:54	holygpu8a11203
+p3_icnn_ninja_s0	ppo	ninja	42382390_52	2026-08-28T04:11:46	holygpu8a13601
+p3_icnn_ninja_s1	ppo	ninja	42382390_53	2026-08-28T04:35:33	holygpu8a11601
+p3_icnn_ninja_s2	ppo	ninja	42382390_54	2026-08-28T04:36:32	holygpu8a13304
+p3_icnn_starpilot_s0	ppo	starpilot	42382390_70	2026-08-28T08:36:31	holygpu8a11601
+p3_icnn_starpilot_s1	ppo	starpilot	42382390_71	2026-08-28T08:39:42	holygpu8a13304
+p3_icnn_starpilot_s2	ppo	starpilot	42382390_72	2026-08-28T08:44:39	holygpu8a13304
+ppo_impala_bigfish_s0	ppo	bigfish	34897691  (job name ppoi_bigfish_s0)	2026-07-24T15:46:55	holygpu8a11304
+ppo_impala_bigfish_s1	ppo	bigfish	34897693  (job name ppoi_bigfish_s1)	2026-07-24T15:53:02	holygpu8a11404
+ppo_impala_bigfish_s2	ppo	bigfish	34897695  (job name ppoi_bigfish_s2)	2026-07-24T15:54:29	holygpu8a11601
+ppo_impala_miner_s0	ppo	miner	34897710  (job name ppoi_miner_s0)	2026-07-24T16:13:21	holygpu8a11604
+ppo_impala_miner_s1	ppo	miner	34897711  (job name ppoi_miner_s1)	2026-07-24T18:43:02	holygpu8a11401
+ppo_impala_miner_s2	ppo	miner	34897712  (job name ppoi_miner_s2)	2026-07-24T18:46:34	holygpu8a11403
+ppo_impala_pong_s0	ppo	pong	34897706  (job name ppoi_pong_s0)	2026-07-24T16:12:41	holygpu8a11301
+ppo_impala_pong_s1	ppo	pong	34897707  (job name ppoi_pong_s1)	2026-07-24T16:12:24	holygpu8a11504
+ppo_impala_pong_s2	ppo	pong	34897708  (job name ppoi_pong_s2)	2026-07-24T16:13:18	holygpu8a11404
+s3_icnn_bigfish_s0	impala	bigfish	42009688_4	2026-08-26T10:09:16	holygpu8a17203
+s3_icnn_bigfish_s1	impala	bigfish	42009688_5	2026-08-26T10:16:59	holygpu8a17403
+s3_icnn_bigfish_s2	impala	bigfish	42009688_6	2026-08-26T10:17:50	holygpu8a11504
+s3_icnn_bossfight_s0	impala	bossfight	42009688_7	2026-08-26T10:18:48	holygpu8a13504
+s3_icnn_bossfight_s1	impala	bossfight	42009688_8	2026-08-26T10:20:05	holygpu8a17203
+s3_icnn_bossfight_s2	impala	bossfight	42009688_9	2026-08-26T10:23:34	holygpu8a17403
+s3_icnn_chaser_s0	impala	chaser	42009688_31	2026-08-26T11:10:35	holygpu8a11504
+s3_icnn_chaser_s1	impala	chaser	42009688_32	2026-08-26T11:12:37	holygpu8a13504
+s3_icnn_chaser_s2	impala	chaser	42009688_33	2026-08-26T11:14:27	holygpu8a17203
+s3_icnn_leaper_s0	impala	leaper	42009688_19	2026-08-26T10:44:23	holygpu8a11504
+s3_icnn_leaper_s1	impala	leaper	42009688_20	2026-08-26T10:47:45	holygpu8a17203
+s3_icnn_leaper_s2	impala	leaper	42009688_21	2026-08-26T10:48:00	holygpu8a15502
+s3_icnn_miner_s0	impala	miner	42009688_46	2026-08-26T11:53:39	holygpu8a13102
+s3_icnn_miner_s1	impala	miner	42009688_47	2026-08-26T11:54:08	holygpu8a17202
+s3_icnn_miner_s2	impala	miner	42009688_48	2026-08-26T11:54:39	holygpu8a17203
+s3_icnn_ninja_s0	impala	ninja	42009688_10	2026-08-26T10:27:22	holygpu8a11504
+s3_icnn_ninja_s1	impala	ninja	42009688_11	2026-08-26T10:27:21	holygpu8a13504
+s3_icnn_ninja_s2	impala	ninja	42009688_12	2026-08-26T10:32:43	holygpu8a17203
+s3_icnn_pong_s0	impala	pong	42009688_49	2026-08-26T12:00:41	holygpu8a13102
+s3_icnn_pong_s1	impala	pong	42009688_50	2026-08-26T12:02:45	holygpu8a13301
+s3_icnn_pong_s2	impala	pong	42009688_51	2026-08-26T12:04:03	holygpu8a17203
+s3_icnn_starpilot_s0	impala	starpilot	42009688_13	2026-08-26T10:32:42	holygpu8a17403
+s3_icnn_starpilot_s1	impala	starpilot	42009688_14	2026-08-26T10:33:53	holygpu8a13504
+s3_icnn_starpilot_s2	impala	starpilot	42009688_15	2026-08-26T10:36:51	holygpu8a11504

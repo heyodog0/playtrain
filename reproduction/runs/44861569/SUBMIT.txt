@@ -1,0 +1,18 @@
+# sacct -X -j 44861569 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+44861569_0   dbuf_t3_24   2026-09-06T15:00:50   2026-09-07T04:19:00   holygpu8a15203   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch dbuf_t3_24.sbatch
+
+what:  tab:dbuf-ablation. IMPALA + Nature-CNN, 15 workers, arms a4 (double
+       buffered) and a3 (single), one game per array task.
+array: --array=0-23%1, so tasks ran ONE AT A TIME -- no two games shared the
+       node. Whole array spanned 2026-09-06T15:00:50 to 2026-09-07T08:07:20.
+node:  --nodelist=holygpu8a15203 for all 24 tasks. This table is a statement
+       about that node; the same silicon class varies up to 1.56x in clock, and
+       15203 is the node the Table 1(a) re-runs excluded. Because both arms of
+       every game ran in the same task on the same node, the RATIOS are
+       unaffected -- only the absolute k/M columns are node-specific.
+stat:  median of 60 s sps windows, first discarded.
+tmpl:  configs/pt_throughput/pt_bigfish_nature_fullnode.json
+gotcha: the 24 data files are all named dbuf_t3_44861569_<game>.json but each
+       records a DIFFERENT job_id inside -- that is SLURM_JOB_ID, the per-task
+       JobIDRaw, not the array job id. The full join is committed at
+       reproduction/figures/tables/nodes/dbuf_jobs.tsv.

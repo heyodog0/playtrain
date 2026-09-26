@@ -1,0 +1,5 @@
+# sacct -X -j 44516167 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+44516167   tier3_ale_ab   2026-09-04T23:43:54   2026-09-05T02:59:31   holygpu8a17603   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch tier3_ale_ab.sbatch
+
+what: Table 1(b) ALE, 8 games, both arms (EnvPool and PlayTrain tier3).
+note: one job, all games, one node. Verdicts in figures/tables/verdicts/.

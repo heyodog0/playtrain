@@ -1,0 +1,35 @@
+You are patching selected chunks in a p5.js game.
+
+Game: downwell_fresh
+Player feedback: can you add explicit enemies that are flying horizontally sometimes, and the score should only increase when I kill enemies and get the green orbs, and can you make the character look more akin like a human with a simple walk, jump, and shoot animation cycle, and make sure to make the green orbs sparingly, can you make all of these changes. the avatar can stay blue
+
+Critical requirements:
+- Keep the file as plain JavaScript for p5.js. No imports, no modules.
+- Preserve these required functions: setup, draw, getGameState, resetGame, mulberry32.
+- Keep deterministic reset behavior via rng = mulberry32(seed) in resetGame.
+- Keep score, lives, and gameState consistent with getGameState().
+- Keep the runtime-compatible control pattern using keyIsDown(...) / keyPressed() as needed.
+- Do not change the file into TypeScript or add markdown fences/explanations.
+- Return valid JavaScript only when asked for code, and valid JSON only when asked for JSON.
+
+
+Only modify the chunks provided below. Return JSON only:
+{
+  "edits": [
+    {
+      "chunk_id": "function:draw",
+      "replacement": "complete replacement code for that chunk only"
+    }
+  ],
+  "notes": "brief summary"
+}
+
+Rules for replacements:
+- For function chunks, replacement must include the full function definition with the same function name.
+- For text chunks, replacement must be the full replacement text for that chunk.
+- Do not include untouched chunks.
+- Do not include markdown fences in the JSON values.
+
+Editable chunks:
+
+[the 306 lines of selected game source follow here, omitted]

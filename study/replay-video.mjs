@@ -249,6 +249,7 @@ const files = process.argv.slice(2).filter(a => a.endsWith('.json'));
 if (!files.length) {
   console.error('usage: node study/replay-video.mjs <session.json> [--game X] [--best]');
   console.error('       [--format gif|mp4] [--scale N] [--fps N] [--out DIR] [--render-width N]');
+  console.error('       [--include-discarded]  also render rounds the block timer cut off');
   process.exit(1);
 }
 
@@ -263,6 +264,12 @@ const MAX_FRAMES = parseInt(arg('--max-frames', FORMAT === 'gif' ? '720' : '4000
 const OUT_DIR = resolve(arg('--out', join(REPO_ROOT, 'dist', 'study-video')));
 const ONLY_GAME = arg('--game', null);
 const BEST_ONLY = has('--best');
+// A discarded episode is the round the block timer cut off mid-play. It is dropped by
+// default because it did not end on the game's terms, so its score understates the round
+// and it has no place in a comparison. It is still a faithfully recorded episode though --
+// verify-replay checks its score like any other -- so for a short playtest where the clock
+// fires before you die, it may be the only footage there is. Opt in explicitly.
+const KEEP_CUT = has('--include-discarded');
 // GIF delays are hundredths of a second, so only 100/n frame rates are exact. 20fps
 // (delay 5) plays back in real time from every third 60fps frame; 50fps (delay 2) is
 // smoother but bigger. mp4 keeps all 60.
@@ -310,7 +317,7 @@ for (const file of files) {
   for (const block of session.blocks || []) {
     if (block.practice) continue;
     if (block.obsRes) continue;                   // rasterizes different geometry by design
-    let eps = (block.episodes || []).filter(e => e.actions?.length && !e.discarded);
+    let eps = (block.episodes || []).filter(e => e.actions?.length && (KEEP_CUT || !e.discarded));
     if (ONLY_GAME && block.game !== ONLY_GAME) continue;
     if (BEST_ONLY && eps.length) eps = [eps.reduce((a, b) => (b.score > a.score ? b : a))];
     if (!eps.length) continue;

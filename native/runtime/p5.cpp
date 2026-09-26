@@ -195,6 +195,15 @@ int createGraphics(double w, double h) {
   double dw = w * _devSx, dh = h * _devSy;
   return (int)rs_new_canvas(w, h, std::floor(dw + 0.5), std::floor(dh + 0.5));
 }
+int createBitmap(double w, double h) {
+  // 1:1 logical->device on purpose. createGraphics matches the main canvas's
+  // device scale so a cached layer reproduces a direct draw; a texture is not
+  // a cached draw, it is source data, and it must keep its exact texel grid.
+  return (int)rs_new_canvas(w, h, w, h);
+}
+int loadBitmap(int handle, const uint8_t* data, int len) {
+  return rs_load_rgba((uint32_t)handle, data, (uint32_t)len);
+}
 void setTarget(int handle) {
   _targetStack.push_back(_h);
   _h = (uint32_t)handle;
@@ -204,6 +213,57 @@ void clearTarget() {
   if (!_targetStack.empty()) { _h = _targetStack.back(); _targetStack.pop_back(); }
   invalidateCache();
 }
+// Declared here rather than in raster_abi.h: FIRST_PERSON_PLAN.md §3 authorises
+// exactly nine files for the voxel primitive and that header is not one of them.
+// Keep this signature in step with crates/rasterizer/src/voxel.rs.
+extern "C" void rs_voxel_view(uint32_t canvas, const uint16_t* grid, uint32_t gw, uint32_t gh,
+                              float eyeX, float eyeY, float eyeZ, uint32_t yawQ, float viewDist,
+                              const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles,
+                              uint32_t skyRgb,
+                              uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+
+void voxelView(const uint16_t* grid, int gw, int gh,
+               double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH) {
+  // Writes the target canvas's pixels directly, exactly like loadBitmap, so the
+  // caller (qjs_host) drains the command buffer before getting here. The dst
+  // rect is in DEVICE pixels: the voxel view is authored at observation
+  // resolution, so there is no logical->device scale to apply.
+  rs_voxel_view(_h, grid, (uint32_t)gw, (uint32_t)gh,
+                (float)eyeX, (float)eyeY, (float)eyeZ, (uint32_t)yawQ, (float)viewDist,
+                atlas, (uint32_t)tilePx, (uint32_t)nTiles, skyRgb,
+                (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
+}
+
+extern "C" void rs_voxel_sprite(uint32_t canvas,
+                                float eyeX, float eyeY, float eyeZ, uint32_t yawQ, float viewDist,
+                                float spriteX, float spriteZ,
+                                const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles,
+                                uint32_t atlasTile,
+                                uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+
+void voxelSprite(double eyeX, double eyeY, double eyeZ, int yawQ, double viewDist,
+                 double spriteX, double spriteZ,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH) {
+  rs_voxel_sprite(_h, (float)eyeX, (float)eyeY, (float)eyeZ, (uint32_t)yawQ, (float)viewDist,
+                  (float)spriteX, (float)spriteZ,
+                  atlas, (uint32_t)tilePx, (uint32_t)nTiles, (uint32_t)atlasTile,
+                  (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
+}
+
+extern "C" void rs_dusk(uint32_t canvas, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                        float daylight, uint32_t key0, uint32_t key1, uint32_t useStatic,
+                        const float* intensity, uint32_t sleeping);
+
+void voxelDusk(int x, int y, int w, int h, double daylight,
+               unsigned int key0, unsigned int key1, int useStatic,
+               const float* intensity, int sleeping) {
+  rs_dusk(_h, (uint32_t)x, (uint32_t)y, (uint32_t)w, (uint32_t)h,
+          (float)daylight, key0, key1, (uint32_t)useStatic, intensity, (uint32_t)sleeping);
+}
+
 void image(int srcHandle, double x, double y, double w, double h) {
   // p5 image() honors the current transform; here we map logical->device via the
   // MAIN canvas base scale (image is only ever called at identity transform in

@@ -1,0 +1,3158 @@
+{
+  "state_bytes": 6880,
+  "max_steps": 10000,
+  "rng_offset": 1000,
+  "policies": {
+    "uniform": 100,
+    "sticky": 50,
+    "forager": 30,
+    "adversarial": 20,
+    "lava": 10
+  },
+  "totals": {
+    "episodes": 210,
+    "steps": 49061,
+    "achievements_reached": [
+      "collect_coal",
+      "collect_drink",
+      "collect_iron",
+      "collect_sapling",
+      "collect_stone",
+      "collect_wood",
+      "defeat_zombie",
+      "eat_cow",
+      "eat_plant",
+      "make_stone_pick",
+      "make_stone_sword",
+      "make_wood_pick",
+      "make_wood_sword",
+      "place_furnace",
+      "place_plant",
+      "place_stone",
+      "place_table",
+      "wake_up"
+    ],
+    "achievements_missed": [
+      "collect_diamond",
+      "defeat_skeleton",
+      "make_iron_pick",
+      "make_iron_sword"
+    ],
+    "terminals": {
+      "health": 210
+    }
+  },
+  "episodes": [
+    {
+      "file": "corpus/uniform_000.bin",
+      "policy": "uniform",
+      "seed": 0,
+      "rng_seed": 1000,
+      "steps": 201,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "531504c63e1fcded89cdc7282ec6217b353be659465b7bc9bb807269db4e28bc"
+    },
+    {
+      "file": "corpus/uniform_001.bin",
+      "policy": "uniform",
+      "seed": 1,
+      "rng_seed": 1001,
+      "steps": 218,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "07e5b9da5935c7bf4c876641ccf219a884a7a6aab41830744a95335ca5750dcc"
+    },
+    {
+      "file": "corpus/uniform_002.bin",
+      "policy": "uniform",
+      "seed": 2,
+      "rng_seed": 1002,
+      "steps": 225,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "5bb641253a7ae783c6546370e2646e2f97770dc0434d42b7a9d350fce12e11bf"
+    },
+    {
+      "file": "corpus/uniform_003.bin",
+      "policy": "uniform",
+      "seed": 3,
+      "rng_seed": 1003,
+      "steps": 162,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "83d3b190181052421ab3604416819f4914c7abc0094682463e8924472f8118e0"
+    },
+    {
+      "file": "corpus/uniform_004.bin",
+      "policy": "uniform",
+      "seed": 4,
+      "rng_seed": 1004,
+      "steps": 73,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "99da99a3bfb6d2adfb3c81554b0151cb9bcfa43546278e60b6583e9df462f1b1"
+    },
+    {
+      "file": "corpus/uniform_005.bin",
+      "policy": "uniform",
+      "seed": 5,
+      "rng_seed": 1005,
+      "steps": 46,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "ab1e6683b998bdc42e5de5a37c06065630ca60263c0d6e2c4fd28ec056209ecc"
+    },
+    {
+      "file": "corpus/uniform_006.bin",
+      "policy": "uniform",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 113,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "0fd5bb8dcc243c0cdd1bf8901fa66309cf4444adf6d04d5199ebf226ff0ba866"
+    },
+    {
+      "file": "corpus/uniform_007.bin",
+      "policy": "uniform",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 135,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "c20dc54d6318c67dbde33d40b91e3ec0eb7a27014ac5899631ae878c4ff57834"
+    },
+    {
+      "file": "corpus/uniform_008.bin",
+      "policy": "uniform",
+      "seed": 8,
+      "rng_seed": 1008,
+      "steps": 87,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "a415b2e061bb1ad7c95d1b6201fad547d8bdf7f57f5110171faa8e5240151a31"
+    },
+    {
+      "file": "corpus/uniform_009.bin",
+      "policy": "uniform",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 53,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "76e7cc3686b77829c63a57cb589e501f3d0f863c6a1471a3522cb93106167bd2"
+    },
+    {
+      "file": "corpus/uniform_010.bin",
+      "policy": "uniform",
+      "seed": 10,
+      "rng_seed": 1010,
+      "steps": 143,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "45a764e05bd5f84d429d842cc58dd7b29de3d1b4e8308b010830802149f1b821"
+    },
+    {
+      "file": "corpus/uniform_011.bin",
+      "policy": "uniform",
+      "seed": 11,
+      "rng_seed": 1011,
+      "steps": 293,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "aeea188aadf912669810365a6c48947187aa2d35ec3f51e75253a8c71d1e13d1"
+    },
+    {
+      "file": "corpus/uniform_012.bin",
+      "policy": "uniform",
+      "seed": 12,
+      "rng_seed": 1012,
+      "steps": 229,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "dff75d821a0005779a3f907d166f4cfdadc7c1e6c3ebdd749f131be793aed7d5"
+    },
+    {
+      "file": "corpus/uniform_013.bin",
+      "policy": "uniform",
+      "seed": 13,
+      "rng_seed": 1013,
+      "steps": 50,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant"
+      ],
+      "sha256": "c781080f88d290c173b32eec5a91b6dba26ca33d278d01ff296fd0bae32b97b4"
+    },
+    {
+      "file": "corpus/uniform_014.bin",
+      "policy": "uniform",
+      "seed": 14,
+      "rng_seed": 1014,
+      "steps": 225,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_sword",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "9643cc1d80a04a9e0926c0e18cd70a297cb1f731c32e6fd653bdf6bc6cb8ee8a"
+    },
+    {
+      "file": "corpus/uniform_015.bin",
+      "policy": "uniform",
+      "seed": 15,
+      "rng_seed": 1015,
+      "steps": 166,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "63d8303eaf614f5bea96c97329397d11e6c2396bf932b66c219c2186add2edf1"
+    },
+    {
+      "file": "corpus/uniform_016.bin",
+      "policy": "uniform",
+      "seed": 16,
+      "rng_seed": 1016,
+      "steps": 219,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "efb46bb5b9a056452a6df91d9c962eee1d7ed59697334056eabed2d74b90ef03"
+    },
+    {
+      "file": "corpus/uniform_017.bin",
+      "policy": "uniform",
+      "seed": 17,
+      "rng_seed": 1017,
+      "steps": 35,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "63cabfb2cffd75f4e0ded893ba856a195bd82b0f7541a7ef7b96633474f76806"
+    },
+    {
+      "file": "corpus/uniform_018.bin",
+      "policy": "uniform",
+      "seed": 18,
+      "rng_seed": 1018,
+      "steps": 60,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "623a12377bdb5534efc20c202e65018ef03801e128faf21972fe63bbfa8af79b"
+    },
+    {
+      "file": "corpus/uniform_019.bin",
+      "policy": "uniform",
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 148,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "ac8c9d72806a2faaa44e85bfde5490831e40d6d86884adb95e67ef845d5c3ed2"
+    },
+    {
+      "file": "corpus/uniform_020.bin",
+      "policy": "uniform",
+      "seed": 20,
+      "rng_seed": 1020,
+      "steps": 45,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "e6a11666375e7cbc2a2bfe954b80edb6e309b9865c36ee818c0b05695f19e97d"
+    },
+    {
+      "file": "corpus/uniform_021.bin",
+      "policy": "uniform",
+      "seed": 21,
+      "rng_seed": 1021,
+      "steps": 205,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "9950b88abcdbdf8217523d6a96aa763eaf7e3e1bcb83ccc9073f78830bdda74c"
+    },
+    {
+      "file": "corpus/uniform_022.bin",
+      "policy": "uniform",
+      "seed": 22,
+      "rng_seed": 1022,
+      "steps": 219,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "dd40b46f6f9f041168b082e7e48ae0b7493bd1eba4e45feb15e6055a9f3fac9d"
+    },
+    {
+      "file": "corpus/uniform_023.bin",
+      "policy": "uniform",
+      "seed": 23,
+      "rng_seed": 1023,
+      "steps": 202,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "9d0cf7bf67443605d7e5b68c50f15f0e3ac5b61613672ba83f62a5578671a28c"
+    },
+    {
+      "file": "corpus/uniform_024.bin",
+      "policy": "uniform",
+      "seed": 24,
+      "rng_seed": 1024,
+      "steps": 360,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "bbeca6dce1aa6da11ff0e00a86a3f63e81713ba5f4cfedf30a9324af023682c9"
+    },
+    {
+      "file": "corpus/uniform_025.bin",
+      "policy": "uniform",
+      "seed": 25,
+      "rng_seed": 1025,
+      "steps": 55,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table"
+      ],
+      "sha256": "341fce894521617e24007e8bdb67aa40110777a7c7c439887a42dac7dc3b6df1"
+    },
+    {
+      "file": "corpus/uniform_026.bin",
+      "policy": "uniform",
+      "seed": 26,
+      "rng_seed": 1026,
+      "steps": 206,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "8f1ef4046d5e87180dc7a030e6a9a086bc0cf1bff66367b6d8a48ce0b777a59c"
+    },
+    {
+      "file": "corpus/uniform_027.bin",
+      "policy": "uniform",
+      "seed": 27,
+      "rng_seed": 1027,
+      "steps": 91,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling"
+      ],
+      "sha256": "b8dcb7e3430dd734689199370823ce4fa64985314f9762df514dfd08f0248b76"
+    },
+    {
+      "file": "corpus/uniform_028.bin",
+      "policy": "uniform",
+      "seed": 28,
+      "rng_seed": 1028,
+      "steps": 83,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "f777d9708842ef6c391788bfd4a14eefa7e603ecda645d3a0342aa8f1736db8a"
+    },
+    {
+      "file": "corpus/uniform_029.bin",
+      "policy": "uniform",
+      "seed": 29,
+      "rng_seed": 1029,
+      "steps": 175,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "45a5f7deed40a975967f395037058600451e458cc269edae0ee77cf08d0d1ea7"
+    },
+    {
+      "file": "corpus/uniform_030.bin",
+      "policy": "uniform",
+      "seed": 30,
+      "rng_seed": 1030,
+      "steps": 81,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ],
+      "sha256": "19af5993a47edf546def9dd127f0f05508f1b27772e82e615eb8c52c5eefcca5"
+    },
+    {
+      "file": "corpus/uniform_031.bin",
+      "policy": "uniform",
+      "seed": 31,
+      "rng_seed": 1031,
+      "steps": 356,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f032a7972548362232fbb70d084deb1f9fdcc87168b3ec06b4561ab8a2805a1e"
+    },
+    {
+      "file": "corpus/uniform_032.bin",
+      "policy": "uniform",
+      "seed": 32,
+      "rng_seed": 1032,
+      "steps": 165,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "6ca22c3381da3a9c6eeecf2beb53bbacbc9ea7ecf6eee8dc5e36cb3622daf8b3"
+    },
+    {
+      "file": "corpus/uniform_033.bin",
+      "policy": "uniform",
+      "seed": 33,
+      "rng_seed": 1033,
+      "steps": 148,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "b8f66e19ad90949d1d6278c326157f9f3be3ad81328079f34c3ed3cd44c473b3"
+    },
+    {
+      "file": "corpus/uniform_034.bin",
+      "policy": "uniform",
+      "seed": 34,
+      "rng_seed": 1034,
+      "steps": 165,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "9d40cbf05551c4389c697c829047af19f3a49f7ed236182f9441cc5df1b03a21"
+    },
+    {
+      "file": "corpus/uniform_035.bin",
+      "policy": "uniform",
+      "seed": 35,
+      "rng_seed": 1035,
+      "steps": 186,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "b49713bb52db05c0fc597978eb9db3d0d7909954b879c79c17a48123f5038279"
+    },
+    {
+      "file": "corpus/uniform_036.bin",
+      "policy": "uniform",
+      "seed": 36,
+      "rng_seed": 1036,
+      "steps": 181,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "ccb8f1fba31b32d2b0876d02845fd96ca40b7486a48a687c083cc9ed2db3b546"
+    },
+    {
+      "file": "corpus/uniform_037.bin",
+      "policy": "uniform",
+      "seed": 37,
+      "rng_seed": 1037,
+      "steps": 214,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "aa33e8f6b2c8cdc8e022cdddf0b62c1aff6ead01da148a2d28b346ad9c3b516a"
+    },
+    {
+      "file": "corpus/uniform_038.bin",
+      "policy": "uniform",
+      "seed": 38,
+      "rng_seed": 1038,
+      "steps": 67,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "428c08730e5200567ea7ca2e55e83bb9237d380f12e2a38fa420984f998d5ff8"
+    },
+    {
+      "file": "corpus/uniform_039.bin",
+      "policy": "uniform",
+      "seed": 39,
+      "rng_seed": 1039,
+      "steps": 226,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "83c67f664021aa71cbf06ff5644dfe73ed49116d32159f2d02bbfae9bbac2715"
+    },
+    {
+      "file": "corpus/uniform_040.bin",
+      "policy": "uniform",
+      "seed": 40,
+      "rng_seed": 1040,
+      "steps": 178,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "7a98fb1d36e345c34028984175ffca9152bc28b1b17816b3d4debae2dfbab05a"
+    },
+    {
+      "file": "corpus/uniform_041.bin",
+      "policy": "uniform",
+      "seed": 41,
+      "rng_seed": 1041,
+      "steps": 240,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "dd782f4f7499849033d886de1f1f76da0a5dd37ad2be9ed355400f6be1cc5981"
+    },
+    {
+      "file": "corpus/uniform_042.bin",
+      "policy": "uniform",
+      "seed": 42,
+      "rng_seed": 1042,
+      "steps": 59,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "a58241f6245d9567798fc519bc4931f96a23d9c00e9e6acb4145ff42879cca1d"
+    },
+    {
+      "file": "corpus/uniform_043.bin",
+      "policy": "uniform",
+      "seed": 43,
+      "rng_seed": 1043,
+      "steps": 76,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "ca64770a5ad67462ff824c06ef38d08031689079cbec719c555755262790dcea"
+    },
+    {
+      "file": "corpus/uniform_044.bin",
+      "policy": "uniform",
+      "seed": 44,
+      "rng_seed": 1044,
+      "steps": 85,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "cf6eff63fe01d3e34f682149eb87e384c6ee272d9e18b0cd256b5f5c9860ed8d"
+    },
+    {
+      "file": "corpus/uniform_045.bin",
+      "policy": "uniform",
+      "seed": 45,
+      "rng_seed": 1045,
+      "steps": 141,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "21ee1d74f04c103be57f380650018b68d5eecbd291e662d6acd7e2e54739bc67"
+    },
+    {
+      "file": "corpus/uniform_046.bin",
+      "policy": "uniform",
+      "seed": 46,
+      "rng_seed": 1046,
+      "steps": 160,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "3b9b42e2964f9d156b77410dc7e7f2ae51ab683e75c46947c8d13f320f853b21"
+    },
+    {
+      "file": "corpus/uniform_047.bin",
+      "policy": "uniform",
+      "seed": 47,
+      "rng_seed": 1047,
+      "steps": 244,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "8b7d351f7c795fcb21ecfb0c0e098f7f45b390e1ce9eb5cbbe3496971ed7cf35"
+    },
+    {
+      "file": "corpus/uniform_048.bin",
+      "policy": "uniform",
+      "seed": 48,
+      "rng_seed": 1048,
+      "steps": 117,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "6b2fd4d9cad68ee842d5404f29d2795fed9c909ce6dea7388b034de3c6c30651"
+    },
+    {
+      "file": "corpus/uniform_049.bin",
+      "policy": "uniform",
+      "seed": 49,
+      "rng_seed": 1049,
+      "steps": 164,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "0cd1d625cdca6dac79cb1c38d23aeea8864e809963f56eccfe2bcb76ddfaee32"
+    },
+    {
+      "file": "corpus/uniform_050.bin",
+      "policy": "uniform",
+      "seed": 50,
+      "rng_seed": 1050,
+      "steps": 156,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "6b056ceb1cd52ace8dc5095a2bc96a64b63a8dd502a1e4c7efd14b139b2d4d6a"
+    },
+    {
+      "file": "corpus/uniform_051.bin",
+      "policy": "uniform",
+      "seed": 51,
+      "rng_seed": 1051,
+      "steps": 200,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "416502dded7665669aa17c8052df0a3b5a4d70cbd66fd0c64aefa6be61fce782"
+    },
+    {
+      "file": "corpus/uniform_052.bin",
+      "policy": "uniform",
+      "seed": 52,
+      "rng_seed": 1052,
+      "steps": 402,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "51c0419dd357b10a824794a6fbffdbb6f0e12648d9f109dba095d2529103dee7"
+    },
+    {
+      "file": "corpus/uniform_053.bin",
+      "policy": "uniform",
+      "seed": 53,
+      "rng_seed": 1053,
+      "steps": 215,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "311e31471809dd0ef9d575599b729aa57fd2b2d7c35dd16e330a6c7606747f9e"
+    },
+    {
+      "file": "corpus/uniform_054.bin",
+      "policy": "uniform",
+      "seed": 54,
+      "rng_seed": 1054,
+      "steps": 217,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "96246167be6aef876baad96861ec8ad0cb3131b881fedccb92d22ffaca4fa00b"
+    },
+    {
+      "file": "corpus/uniform_055.bin",
+      "policy": "uniform",
+      "seed": 55,
+      "rng_seed": 1055,
+      "steps": 167,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "f8140fd692912b26334fbf7bcdc9c9668fdbe8aeae24402e6413e6bfb43bff5c"
+    },
+    {
+      "file": "corpus/uniform_056.bin",
+      "policy": "uniform",
+      "seed": 56,
+      "rng_seed": 1056,
+      "steps": 221,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "92e8ef36be80ec9e1e10dab7b5b439b887cea654b2da3936c1dba4093c6adaa5"
+    },
+    {
+      "file": "corpus/uniform_057.bin",
+      "policy": "uniform",
+      "seed": 57,
+      "rng_seed": 1057,
+      "steps": 46,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "8389ea4e46533054e3c5947d5ece6cbe71ad38cf38ac282a3d619e50d9296ca7"
+    },
+    {
+      "file": "corpus/uniform_058.bin",
+      "policy": "uniform",
+      "seed": 58,
+      "rng_seed": 1058,
+      "steps": 168,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "7241c2b74e2f3fefd55cad46eb8a2de52e43fc9a8ee85db474ee9f025dfecc88"
+    },
+    {
+      "file": "corpus/uniform_059.bin",
+      "policy": "uniform",
+      "seed": 59,
+      "rng_seed": 1059,
+      "steps": 281,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "93045e22281be36d60b6d859e2d75905986186acbe6e105255f3247a8b837b6f"
+    },
+    {
+      "file": "corpus/uniform_060.bin",
+      "policy": "uniform",
+      "seed": 60,
+      "rng_seed": 1060,
+      "steps": 57,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "d5bb2cf726034315ca5288f2e47a46af1275df609442e819de00b3c42d6b2ece"
+    },
+    {
+      "file": "corpus/uniform_061.bin",
+      "policy": "uniform",
+      "seed": 61,
+      "rng_seed": 1061,
+      "steps": 160,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "93c693e89faff4eadc2363ad4ebf18e26b5a686dfa4fcf0ad37a7f7dfa5c3298"
+    },
+    {
+      "file": "corpus/uniform_062.bin",
+      "policy": "uniform",
+      "seed": 62,
+      "rng_seed": 1062,
+      "steps": 38,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "16bc711c1e9843aa91e20662b9599f65f91ce9f71299d212602ef6d94c1be2f0"
+    },
+    {
+      "file": "corpus/uniform_063.bin",
+      "policy": "uniform",
+      "seed": 63,
+      "rng_seed": 1063,
+      "steps": 207,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "3216e2147125282b2c7f1b8ac2da332cb21737bf3a940db8e9c728069f9004ab"
+    },
+    {
+      "file": "corpus/uniform_064.bin",
+      "policy": "uniform",
+      "seed": 64,
+      "rng_seed": 1064,
+      "steps": 134,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "cdb552a0571cb6c03d776d3c7a9c491544f916e348e59e49a50c871b75189a7a"
+    },
+    {
+      "file": "corpus/uniform_065.bin",
+      "policy": "uniform",
+      "seed": 65,
+      "rng_seed": 1065,
+      "steps": 104,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ],
+      "sha256": "cce412f5876e223c5a5d042750664314fb94dc153529dddb8a1fdc2868b5dfd7"
+    },
+    {
+      "file": "corpus/uniform_066.bin",
+      "policy": "uniform",
+      "seed": 66,
+      "rng_seed": 1066,
+      "steps": 191,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "757831dc21650f951f104e45fd260b2b19ae9adc835ea4a588064dea770b5242"
+    },
+    {
+      "file": "corpus/uniform_067.bin",
+      "policy": "uniform",
+      "seed": 67,
+      "rng_seed": 1067,
+      "steps": 144,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "852f829ca3411795610e5a800035bb41b15480ee9645d0f040f3695169300375"
+    },
+    {
+      "file": "corpus/uniform_068.bin",
+      "policy": "uniform",
+      "seed": 68,
+      "rng_seed": 1068,
+      "steps": 272,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "15ca6593b2ff5f45fbae3a06dd876ead552effb6a4865b7529dd596b62afd25e"
+    },
+    {
+      "file": "corpus/uniform_069.bin",
+      "policy": "uniform",
+      "seed": 69,
+      "rng_seed": 1069,
+      "steps": 256,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "816e9af63f9c1bcf53a3be8c6232bf6d9debb73192fbbe9a979b3c6a33f43e7e"
+    },
+    {
+      "file": "corpus/uniform_070.bin",
+      "policy": "uniform",
+      "seed": 70,
+      "rng_seed": 1070,
+      "steps": 64,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "57f7dafb8d88a6ec7b395f86665585d0cea6928a48b91310234fb65ae0859ba7"
+    },
+    {
+      "file": "corpus/uniform_071.bin",
+      "policy": "uniform",
+      "seed": 71,
+      "rng_seed": 1071,
+      "steps": 210,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "a6b0ed28108177d8fdcf0223ca2a239a3a296bc7cae07d14e1f94f4f36c626f9"
+    },
+    {
+      "file": "corpus/uniform_072.bin",
+      "policy": "uniform",
+      "seed": 72,
+      "rng_seed": 1072,
+      "steps": 120,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "c171d7a23eaa87f04bdd24ed1968c38d57a941e2baa631629e6b37afbd89feb5"
+    },
+    {
+      "file": "corpus/uniform_073.bin",
+      "policy": "uniform",
+      "seed": 73,
+      "rng_seed": 1073,
+      "steps": 199,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "86e9f4e49dd5b2779502559309c074746f54082482609652750787ac4db74b84"
+    },
+    {
+      "file": "corpus/uniform_074.bin",
+      "policy": "uniform",
+      "seed": 74,
+      "rng_seed": 1074,
+      "steps": 266,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "ff8ec1e0a6cd4aa90349c5ff355a7419b9ec4b4802b544d12e59f7eaafac1286"
+    },
+    {
+      "file": "corpus/uniform_075.bin",
+      "policy": "uniform",
+      "seed": 75,
+      "rng_seed": 1075,
+      "steps": 107,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "wake_up"
+      ],
+      "sha256": "ee5d5da175f99a21b3658be5fd898b5d8cbec88f9e44072d78516fff6e225625"
+    },
+    {
+      "file": "corpus/uniform_076.bin",
+      "policy": "uniform",
+      "seed": 76,
+      "rng_seed": 1076,
+      "steps": 238,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "488fdd8edf115eb025698733d42ebc9c2e3eb83d943eebb1f5ce4ed06478e3ba"
+    },
+    {
+      "file": "corpus/uniform_077.bin",
+      "policy": "uniform",
+      "seed": 77,
+      "rng_seed": 1077,
+      "steps": 241,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "77018d81d451c6ca76628b3eedaf80aff2674e42fca78baaf2e6e27995e53ca8"
+    },
+    {
+      "file": "corpus/uniform_078.bin",
+      "policy": "uniform",
+      "seed": 78,
+      "rng_seed": 1078,
+      "steps": 230,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "33270e6d21fccf494c77a9b113681e86a15a846578ea54f4a965cc09c0620ae9"
+    },
+    {
+      "file": "corpus/uniform_079.bin",
+      "policy": "uniform",
+      "seed": 79,
+      "rng_seed": 1079,
+      "steps": 208,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "90346d9268f147053fa29b9a38f3bf35c5fcd2a079c1c89dda1b7bd2ed67c855"
+    },
+    {
+      "file": "corpus/uniform_080.bin",
+      "policy": "uniform",
+      "seed": 80,
+      "rng_seed": 1080,
+      "steps": 108,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "e1fa68d4ec85228926b4ce4759d66dda67339407c3712a6a834871d116daab67"
+    },
+    {
+      "file": "corpus/uniform_081.bin",
+      "policy": "uniform",
+      "seed": 81,
+      "rng_seed": 1081,
+      "steps": 220,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "ce5fb66f98d8ba2809a9ed39f54c129e43615133ebb586501b2121488826c462"
+    },
+    {
+      "file": "corpus/uniform_082.bin",
+      "policy": "uniform",
+      "seed": 82,
+      "rng_seed": 1082,
+      "steps": 179,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "72b1bdeaa3e1872284e1a0fdecd11e69bbe2909b1bfd676cde8cf9e7f94e65e6"
+    },
+    {
+      "file": "corpus/uniform_083.bin",
+      "policy": "uniform",
+      "seed": 83,
+      "rng_seed": 1083,
+      "steps": 138,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "bf87ee470017712beeee6fc167625a0a60726bd9354401251e445aa54cdee367"
+    },
+    {
+      "file": "corpus/uniform_084.bin",
+      "policy": "uniform",
+      "seed": 84,
+      "rng_seed": 1084,
+      "steps": 222,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "ea113cbad2c90d47d36b144b148a1576eeea0d95b003bf46832b1645d2e7cc39"
+    },
+    {
+      "file": "corpus/uniform_085.bin",
+      "policy": "uniform",
+      "seed": 85,
+      "rng_seed": 1085,
+      "steps": 137,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "42daf13a34b60dea66c71f9e0562f0fdf41c86646ccca166fbccad1827e8ceba"
+    },
+    {
+      "file": "corpus/uniform_086.bin",
+      "policy": "uniform",
+      "seed": 86,
+      "rng_seed": 1086,
+      "steps": 76,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "736dbdad6636f71b72dc7486a4c62379d9eb38f9180a953f33dae6aace43ecee"
+    },
+    {
+      "file": "corpus/uniform_087.bin",
+      "policy": "uniform",
+      "seed": 87,
+      "rng_seed": 1087,
+      "steps": 89,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "cde266098cf548af829e1bdea850fdab9efbe4f2351249b609e45418ecc15632"
+    },
+    {
+      "file": "corpus/uniform_088.bin",
+      "policy": "uniform",
+      "seed": 88,
+      "rng_seed": 1088,
+      "steps": 247,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "c3f379c2870e295ca3e903bbe50fc57fcb416e595b72e40080909f2e29af635e"
+    },
+    {
+      "file": "corpus/uniform_089.bin",
+      "policy": "uniform",
+      "seed": 89,
+      "rng_seed": 1089,
+      "steps": 53,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "70e68d424c634d72e33b0812652cfab67b4203396413c176fcbaf93eef5ddfea"
+    },
+    {
+      "file": "corpus/uniform_090.bin",
+      "policy": "uniform",
+      "seed": 90,
+      "rng_seed": 1090,
+      "steps": 198,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "369b2f98aec8a8215fd26c786475e4fbf6e0b568ec23d23164e6d34dbe16ef57"
+    },
+    {
+      "file": "corpus/uniform_091.bin",
+      "policy": "uniform",
+      "seed": 91,
+      "rng_seed": 1091,
+      "steps": 271,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "58e4b98acd28b800e5193162d82727a85a7a86f618e1227e996726ec62ced80d"
+    },
+    {
+      "file": "corpus/uniform_092.bin",
+      "policy": "uniform",
+      "seed": 92,
+      "rng_seed": 1092,
+      "steps": 50,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "9e05f2993d8fb2ddd10af92b948a97f4adfffaaabb7afa867831ab734ac2a251"
+    },
+    {
+      "file": "corpus/uniform_093.bin",
+      "policy": "uniform",
+      "seed": 93,
+      "rng_seed": 1093,
+      "steps": 189,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "699adedc722baee087bd40f622d57a90e7fd4e30c16a7c7db0ac4f7b0d2162c0"
+    },
+    {
+      "file": "corpus/uniform_094.bin",
+      "policy": "uniform",
+      "seed": 94,
+      "rng_seed": 1094,
+      "steps": 297,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "cdedf8f7c2aad44f2bb8733fd2b3965ca4706f7ad63f082be3be6d43c0234b3e"
+    },
+    {
+      "file": "corpus/uniform_095.bin",
+      "policy": "uniform",
+      "seed": 95,
+      "rng_seed": 1095,
+      "steps": 203,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "0dcc5bc4754cf5cfbec32a501ab2d2e9484117f4be0af971f3160b027427e49c"
+    },
+    {
+      "file": "corpus/uniform_096.bin",
+      "policy": "uniform",
+      "seed": 96,
+      "rng_seed": 1096,
+      "steps": 101,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "aebc9647156646a8c194bfd2bb5f6b05b30dc5b337d027645809ba9341d572ab"
+    },
+    {
+      "file": "corpus/uniform_097.bin",
+      "policy": "uniform",
+      "seed": 97,
+      "rng_seed": 1097,
+      "steps": 221,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "7e817c2f88ddbca3ee3edc67740ee7097645e89c54eb97d1c3350b7230eca902"
+    },
+    {
+      "file": "corpus/uniform_098.bin",
+      "policy": "uniform",
+      "seed": 98,
+      "rng_seed": 1098,
+      "steps": 38,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant"
+      ],
+      "sha256": "519f78e006a5064a386b837bce0a35153d6f36d85f7d0fba4397152624106623"
+    },
+    {
+      "file": "corpus/uniform_099.bin",
+      "policy": "uniform",
+      "seed": 99,
+      "rng_seed": 1099,
+      "steps": 213,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "36852438a66b128a3b7fa9611518f75a87d219700399fc542512b0d1d1c743d0"
+    },
+    {
+      "file": "corpus/sticky_000.bin",
+      "policy": "sticky",
+      "seed": 0,
+      "rng_seed": 1000,
+      "steps": 236,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "7b7799d2f7582fdf413ea120e7a68198a26c4a4c94a46f56ea08a742ea30bdef"
+    },
+    {
+      "file": "corpus/sticky_001.bin",
+      "policy": "sticky",
+      "seed": 1,
+      "rng_seed": 1001,
+      "steps": 174,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "1d04884536b8188eceb514cd81f776d24cdd1a59afc319ce5d16fd57e6aba5ee"
+    },
+    {
+      "file": "corpus/sticky_002.bin",
+      "policy": "sticky",
+      "seed": 2,
+      "rng_seed": 1002,
+      "steps": 212,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "8068386180b350e84dc57af5730857e1572ce6e4f5ba983e9ff83d6a7d9801e5"
+    },
+    {
+      "file": "corpus/sticky_003.bin",
+      "policy": "sticky",
+      "seed": 3,
+      "rng_seed": 1003,
+      "steps": 137,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "7fc58c3633ebd612995942ecae459619b340d5795a48c15e3959526cd58a1967"
+    },
+    {
+      "file": "corpus/sticky_004.bin",
+      "policy": "sticky",
+      "seed": 4,
+      "rng_seed": 1004,
+      "steps": 189,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "c9a4a42115449114ad607ff8cae8ca4718fdd21f251c51fa043fa931c31696f0"
+    },
+    {
+      "file": "corpus/sticky_005.bin",
+      "policy": "sticky",
+      "seed": 5,
+      "rng_seed": 1005,
+      "steps": 65,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "9d006df41b03fa3faf18891b9248f1cf185db087339a876d0d1ab43383a1b990"
+    },
+    {
+      "file": "corpus/sticky_006.bin",
+      "policy": "sticky",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 73,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "5db911b250c26d4f6247ace3617237dba8db9d0ee25fa9a708933b6c5d066022"
+    },
+    {
+      "file": "corpus/sticky_007.bin",
+      "policy": "sticky",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 117,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "5ac6cf4946729cbb10c1c4ad083241705079a520a41ebd87ba38d3de1d0726e5"
+    },
+    {
+      "file": "corpus/sticky_008.bin",
+      "policy": "sticky",
+      "seed": 8,
+      "rng_seed": 1008,
+      "steps": 233,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "f419a0d4e7a9b8668dbdf85ec0dcf3bc24ae600d4258eb411c0ceeb571af9421"
+    },
+    {
+      "file": "corpus/sticky_009.bin",
+      "policy": "sticky",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 85,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "93c9bbd0e22309bb7af4bfa3b7c74721a36fab4dc4f33addf44bd96999da21b4"
+    },
+    {
+      "file": "corpus/sticky_010.bin",
+      "policy": "sticky",
+      "seed": 10,
+      "rng_seed": 1010,
+      "steps": 154,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "cd1c93be44c56a534db9f5489b6c86d87400e29cf7794d2c72ced3541a8c10a9"
+    },
+    {
+      "file": "corpus/sticky_011.bin",
+      "policy": "sticky",
+      "seed": 11,
+      "rng_seed": 1011,
+      "steps": 192,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "003def34697ec90c319c34b50695aeef3ee222a4a7307af5544b5b1b18e01216"
+    },
+    {
+      "file": "corpus/sticky_012.bin",
+      "policy": "sticky",
+      "seed": 12,
+      "rng_seed": 1012,
+      "steps": 197,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "7cb88f838774a90b9b05d9c2d32e7d077dbbb50c0c27776692b635cdfa0ea395"
+    },
+    {
+      "file": "corpus/sticky_013.bin",
+      "policy": "sticky",
+      "seed": 13,
+      "rng_seed": 1013,
+      "steps": 208,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "7a03e725aa7b49a7aa42c310a5fdaf7f7ff5862677039573dcc1b764497a10b8"
+    },
+    {
+      "file": "corpus/sticky_014.bin",
+      "policy": "sticky",
+      "seed": 14,
+      "rng_seed": 1014,
+      "steps": 399,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "1873f73a053c03eed8939760781408bc393acce51ebcc7cd2bd49c851eb5cf20"
+    },
+    {
+      "file": "corpus/sticky_015.bin",
+      "policy": "sticky",
+      "seed": 15,
+      "rng_seed": 1015,
+      "steps": 181,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "wake_up"
+      ],
+      "sha256": "0feef5695a6afaead6b7fd1123e5318a03dbad2a0064526736e1ba011b1342ad"
+    },
+    {
+      "file": "corpus/sticky_016.bin",
+      "policy": "sticky",
+      "seed": 16,
+      "rng_seed": 1016,
+      "steps": 201,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "wake_up"
+      ],
+      "sha256": "f2ebc00a9d1c5d288f2a09fc188ce616b968fd203d8dd1162a8d2addf84bdf7e"
+    },
+    {
+      "file": "corpus/sticky_017.bin",
+      "policy": "sticky",
+      "seed": 17,
+      "rng_seed": 1017,
+      "steps": 38,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "adb9ac9c584d3d31981f76cc44d2ac8fd1b90bb360ac916ac92fe24f50b17cf4"
+    },
+    {
+      "file": "corpus/sticky_018.bin",
+      "policy": "sticky",
+      "seed": 18,
+      "rng_seed": 1018,
+      "steps": 62,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "e3307328574777cb19242cff8e9bc88f6c7534bbf85f3520683dfb57d40ed7da"
+    },
+    {
+      "file": "corpus/sticky_019.bin",
+      "policy": "sticky",
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 180,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "e45fabb130b7f83217e7777e3dc591cfbc51d58c03053540c6793fdebac17cea"
+    },
+    {
+      "file": "corpus/sticky_020.bin",
+      "policy": "sticky",
+      "seed": 20,
+      "rng_seed": 1020,
+      "steps": 68,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "25e9dd9a833e64b75ffead561d7c924ffd4e22d9e5e2f3c032f58a6b0a1457c1"
+    },
+    {
+      "file": "corpus/sticky_021.bin",
+      "policy": "sticky",
+      "seed": 21,
+      "rng_seed": 1021,
+      "steps": 251,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "a1d688c2a1952746a149dfae0f4d3d497c1c12de56be04b69ce25555be5a6947"
+    },
+    {
+      "file": "corpus/sticky_022.bin",
+      "policy": "sticky",
+      "seed": 22,
+      "rng_seed": 1022,
+      "steps": 160,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f63de54586106368400e66d3d3597c943ded910de03f81482ffef6f5e67fcdad"
+    },
+    {
+      "file": "corpus/sticky_023.bin",
+      "policy": "sticky",
+      "seed": 23,
+      "rng_seed": 1023,
+      "steps": 53,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "76ab6e5e88b930328892f6a6a0615fecb5f5cf071e75a999795c5a3d10a175b5"
+    },
+    {
+      "file": "corpus/sticky_024.bin",
+      "policy": "sticky",
+      "seed": 24,
+      "rng_seed": 1024,
+      "steps": 145,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "7b2910e505c39e3c1501cfb2ab0c373e9f6058030cdbf43f7189214c792ca9f0"
+    },
+    {
+      "file": "corpus/sticky_025.bin",
+      "policy": "sticky",
+      "seed": 25,
+      "rng_seed": 1025,
+      "steps": 57,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "9d2a11216a117c6d5e37d23a2926a8a982b477a8c1a4c9ac6cd0dde5777c4353"
+    },
+    {
+      "file": "corpus/sticky_026.bin",
+      "policy": "sticky",
+      "seed": 26,
+      "rng_seed": 1026,
+      "steps": 205,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "9ee9373b12f63889742ec4dc6853948ded23299ec27cc94333de49b972ab1b08"
+    },
+    {
+      "file": "corpus/sticky_027.bin",
+      "policy": "sticky",
+      "seed": 27,
+      "rng_seed": 1027,
+      "steps": 168,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "78046d9981e779a0c8ad3c2cea1c2b7fa9a472dd0aa4936445e44874df3267bc"
+    },
+    {
+      "file": "corpus/sticky_028.bin",
+      "policy": "sticky",
+      "seed": 28,
+      "rng_seed": 1028,
+      "steps": 112,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "240a2a375151d41c0703f06f4c7eecb406e6ce3fe1462364379cf709f6913f2f"
+    },
+    {
+      "file": "corpus/sticky_029.bin",
+      "policy": "sticky",
+      "seed": 29,
+      "rng_seed": 1029,
+      "steps": 206,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "006f03fb070e06fb172843e331d2083392efd7ee82efd26c8e48275a1725c42a"
+    },
+    {
+      "file": "corpus/sticky_030.bin",
+      "policy": "sticky",
+      "seed": 30,
+      "rng_seed": 1030,
+      "steps": 173,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant"
+      ],
+      "sha256": "cb8e22975d688fa26e8f137de5d4b4275635673f20626d8506c942ceca2f4c63"
+    },
+    {
+      "file": "corpus/sticky_031.bin",
+      "policy": "sticky",
+      "seed": 31,
+      "rng_seed": 1031,
+      "steps": 215,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "bea2fc44cff2e3c696df529fb2e56b6702aa66511b5f54d8f88e9a4e441d3218"
+    },
+    {
+      "file": "corpus/sticky_032.bin",
+      "policy": "sticky",
+      "seed": 32,
+      "rng_seed": 1032,
+      "steps": 249,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "1fdaa5bfca08c23ebadc27cdb86235d1bf5f854e9ffebb779b2cba680548d7d9"
+    },
+    {
+      "file": "corpus/sticky_033.bin",
+      "policy": "sticky",
+      "seed": 33,
+      "rng_seed": 1033,
+      "steps": 222,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "e28f7695e53f1756cefffecf5de0c13d0917fe807e21ac115bc4c992fff914bc"
+    },
+    {
+      "file": "corpus/sticky_034.bin",
+      "policy": "sticky",
+      "seed": 34,
+      "rng_seed": 1034,
+      "steps": 238,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "0e7374369c0b0f7006c9c781e24a764b20f5eb8232a94f80b26f8e425e5b09d2"
+    },
+    {
+      "file": "corpus/sticky_035.bin",
+      "policy": "sticky",
+      "seed": 35,
+      "rng_seed": 1035,
+      "steps": 266,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood"
+      ],
+      "sha256": "1519946f586e1487e9e9af0d36dbb29b10389a7eb3f91d5cf016156e70ca9efb"
+    },
+    {
+      "file": "corpus/sticky_036.bin",
+      "policy": "sticky",
+      "seed": 36,
+      "rng_seed": 1036,
+      "steps": 85,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "bedfc6aa8b5164e17bd20779dfd488b89dedbd2f46c9598f00960234a4915fb6"
+    },
+    {
+      "file": "corpus/sticky_037.bin",
+      "policy": "sticky",
+      "seed": 37,
+      "rng_seed": 1037,
+      "steps": 190,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "8e47c3e887fceb7b3ef354dbe975ad1cdceaa80a483f2340494ceb1f5ff0577e"
+    },
+    {
+      "file": "corpus/sticky_038.bin",
+      "policy": "sticky",
+      "seed": 38,
+      "rng_seed": 1038,
+      "steps": 94,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "879d2c9b2311eadeda55a2a69dbc5b2b3e113fbe519598b99bd86dfdad9f6031"
+    },
+    {
+      "file": "corpus/sticky_039.bin",
+      "policy": "sticky",
+      "seed": 39,
+      "rng_seed": 1039,
+      "steps": 60,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "fa91c7cd655effeaf46cc81ac67d533078f8ab9b1d5c0bca72824e90b1fa8e00"
+    },
+    {
+      "file": "corpus/sticky_040.bin",
+      "policy": "sticky",
+      "seed": 40,
+      "rng_seed": 1040,
+      "steps": 133,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood"
+      ],
+      "sha256": "94d084bdcdaec3be59240b4a66430a2b9e3e3ef01c42495ff7a53720044a8cdb"
+    },
+    {
+      "file": "corpus/sticky_041.bin",
+      "policy": "sticky",
+      "seed": 41,
+      "rng_seed": 1041,
+      "steps": 129,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "a95821ea96ddad0eb585b404e4de32dee991c64b5a24099a418ab2789021f449"
+    },
+    {
+      "file": "corpus/sticky_042.bin",
+      "policy": "sticky",
+      "seed": 42,
+      "rng_seed": 1042,
+      "steps": 223,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "ff70aa9c382907b3c632c8ec735f39c1e65000c1edc954414c73a8ce6cd12780"
+    },
+    {
+      "file": "corpus/sticky_043.bin",
+      "policy": "sticky",
+      "seed": 43,
+      "rng_seed": 1043,
+      "steps": 227,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "wake_up"
+      ],
+      "sha256": "6af591478f7bec115581044a324271b955ec58e7c9be4e13d9520018df0f73da"
+    },
+    {
+      "file": "corpus/sticky_044.bin",
+      "policy": "sticky",
+      "seed": 44,
+      "rng_seed": 1044,
+      "steps": 125,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "wake_up"
+      ],
+      "sha256": "355af65ace0e704ae4f02b71cb87ac0fc26105c6a7888a1b549dc2246c6ecff5"
+    },
+    {
+      "file": "corpus/sticky_045.bin",
+      "policy": "sticky",
+      "seed": 45,
+      "rng_seed": 1045,
+      "steps": 113,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "f181b5e6a837d704333efef9c8f83a4000455942c63ae8193b5106561babca3c"
+    },
+    {
+      "file": "corpus/sticky_046.bin",
+      "policy": "sticky",
+      "seed": 46,
+      "rng_seed": 1046,
+      "steps": 61,
+      "terminal": "health",
+      "achievements": [
+        "collect_wood"
+      ],
+      "sha256": "202a86561b7688836d1b8df9ef73f682e0aaaa63d21198bc948db2e6f508740a"
+    },
+    {
+      "file": "corpus/sticky_047.bin",
+      "policy": "sticky",
+      "seed": 47,
+      "rng_seed": 1047,
+      "steps": 343,
+      "terminal": "health",
+      "achievements": [
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "wake_up"
+      ],
+      "sha256": "b1f9510a578c1d9922e833cb0a801d648cce806819f95abdebc3518b0728c9bc"
+    },
+    {
+      "file": "corpus/sticky_048.bin",
+      "policy": "sticky",
+      "seed": 48,
+      "rng_seed": 1048,
+      "steps": 179,
+      "terminal": "health",
+      "achievements": [
+        "wake_up"
+      ],
+      "sha256": "94ed1422cc22a43ee6ce23a0fa6660993ecdae0590da6949c0bfc66015d06d88"
+    },
+    {
+      "file": "corpus/sticky_049.bin",
+      "policy": "sticky",
+      "seed": 49,
+      "rng_seed": 1049,
+      "steps": 98,
+      "terminal": "health",
+      "achievements": [],
+      "sha256": "f6c45b9064f5172378940090e34ca10d123d514f02fc6143173931be35fa1641"
+    },
+    {
+      "file": "corpus/forager_000.bin",
+      "policy": "forager",
+      "seed": 0,
+      "rng_seed": 1000,
+      "steps": 548,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "deb575abadab50aff3c5886947604221adae4a381d3e20cc6f7f85e8fc565f29"
+    },
+    {
+      "file": "corpus/forager_001.bin",
+      "policy": "forager",
+      "seed": 1,
+      "rng_seed": 1001,
+      "steps": 198,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "777d81392ec3d86badb6eb5983809e678a5fc45a301ab1a78b5e50a3be86855d"
+    },
+    {
+      "file": "corpus/forager_002.bin",
+      "policy": "forager",
+      "seed": 2,
+      "rng_seed": 1002,
+      "steps": 257,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "ca5d972a753f872a1c7c3c47eb8194009264a5e805f841ea2a0b1e9ff46649e5"
+    },
+    {
+      "file": "corpus/forager_003.bin",
+      "policy": "forager",
+      "seed": 3,
+      "rng_seed": 1003,
+      "steps": 275,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "9548c9048cae15c92557fc982af6b70018710517e74d8dc20c48e927b33e7151"
+    },
+    {
+      "file": "corpus/forager_004.bin",
+      "policy": "forager",
+      "seed": 4,
+      "rng_seed": 1004,
+      "steps": 519,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "d44ccf0be6cedb6220f75cbf67701ffd2a07a00939f66b5341a1dbb1aeed99d7"
+    },
+    {
+      "file": "corpus/forager_005.bin",
+      "policy": "forager",
+      "seed": 5,
+      "rng_seed": 1005,
+      "steps": 230,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "28c6419cb8cdfc0792efbf392a4835fcfba32bfd941de65bed5e0362cea88d25"
+    },
+    {
+      "file": "corpus/forager_006.bin",
+      "policy": "forager",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 371,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "16b1929ef449f6a50047d8f13a68ef6c32a4c588f18ea04d5c7f3e49cc171fcf"
+    },
+    {
+      "file": "corpus/forager_007.bin",
+      "policy": "forager",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 201,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "9221246e74f1bf7f6efb1725378503decce66e128fd954792087176235e29722"
+    },
+    {
+      "file": "corpus/forager_008.bin",
+      "policy": "forager",
+      "seed": 8,
+      "rng_seed": 1008,
+      "steps": 199,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "82529dd6ae7f663a5e610828dee9148180341b0c69c2ab6e1ef78141d62167c8"
+    },
+    {
+      "file": "corpus/forager_009.bin",
+      "policy": "forager",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 300,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "29afaf43ee6273235c8f0fc4f678ed8c32f19e268ae0e3113b1751356e3fb34b"
+    },
+    {
+      "file": "corpus/forager_010.bin",
+      "policy": "forager",
+      "seed": 10,
+      "rng_seed": 1010,
+      "steps": 202,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "2dde368d0a470f10d8289cd8b714e9933d31ea27d9c11f6c20aa22e7aa0936a0"
+    },
+    {
+      "file": "corpus/forager_011.bin",
+      "policy": "forager",
+      "seed": 11,
+      "rng_seed": 1011,
+      "steps": 1149,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "eat_plant",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "13032dc1c654f30861a5ed2c88945688d17ec1e3a28fb1b785781b89e39a1974"
+    },
+    {
+      "file": "corpus/forager_012.bin",
+      "policy": "forager",
+      "seed": 12,
+      "rng_seed": 1012,
+      "steps": 659,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "1bf761e1b2fe06302684a523423027cda462fd24194daeb347c019f6fab062b5"
+    },
+    {
+      "file": "corpus/forager_013.bin",
+      "policy": "forager",
+      "seed": 13,
+      "rng_seed": 1013,
+      "steps": 455,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "ad806aa58ea7b974238e0d95f5a91aef1a1a8311f8f1ce182b15fb65ffb992b3"
+    },
+    {
+      "file": "corpus/forager_014.bin",
+      "policy": "forager",
+      "seed": 14,
+      "rng_seed": 1014,
+      "steps": 540,
+      "terminal": "health",
+      "achievements": [
+        "collect_coal",
+        "collect_drink",
+        "collect_iron",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f11655da1cb84e2bbc6d91ab5b5a6c018a9e10514cb2f255a753a88a8873de06"
+    },
+    {
+      "file": "corpus/forager_015.bin",
+      "policy": "forager",
+      "seed": 15,
+      "rng_seed": 1015,
+      "steps": 305,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "1a90da08d4a1dc9cf9099c13b5a7baf160ab51ff9a6ff65396dc58b1fcc71108"
+    },
+    {
+      "file": "corpus/forager_016.bin",
+      "policy": "forager",
+      "seed": 16,
+      "rng_seed": 1016,
+      "steps": 846,
+      "terminal": "health",
+      "achievements": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "45d428d04530ba76bd73ed7dddd739199142604ffce57cd06879e4523488744f"
+    },
+    {
+      "file": "corpus/forager_017.bin",
+      "policy": "forager",
+      "seed": 17,
+      "rng_seed": 1017,
+      "steps": 266,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "818bf53b22c053aa08839c4233d34c7ecd2c7781ab97c37e262a8698fe18deb0"
+    },
+    {
+      "file": "corpus/forager_018.bin",
+      "policy": "forager",
+      "seed": 18,
+      "rng_seed": 1018,
+      "steps": 210,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "0237935c3b40f162f53a878d2d87bc330450d005a69b28e6a630f6b30c66ed7a"
+    },
+    {
+      "file": "corpus/forager_019.bin",
+      "policy": "forager",
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 900,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "72e4e8c8a7ab0b2e1826155723829595f7325e83493e76f9ddc8125653b359b0"
+    },
+    {
+      "file": "corpus/forager_020.bin",
+      "policy": "forager",
+      "seed": 20,
+      "rng_seed": 1020,
+      "steps": 253,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "2e1dd9bc7a6a71ac92c2c0bed3a74571cb7cfff6e88b2955b474499535df2ec2"
+    },
+    {
+      "file": "corpus/forager_021.bin",
+      "policy": "forager",
+      "seed": 21,
+      "rng_seed": 1021,
+      "steps": 551,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "2c194959f2f3d8ab582d78a2b7327c3bbbe09acf2a032483880278af9977b8f3"
+    },
+    {
+      "file": "corpus/forager_022.bin",
+      "policy": "forager",
+      "seed": 22,
+      "rng_seed": 1022,
+      "steps": 225,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "c866abc618cc083379a8b7de8f6acf7e7b0af60b051496d4696a97eb068ae0d5"
+    },
+    {
+      "file": "corpus/forager_023.bin",
+      "policy": "forager",
+      "seed": 23,
+      "rng_seed": 1023,
+      "steps": 572,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "4c4dd5f9b1c70a0544c24f3b554b6e0fb0ff78bdc4ca07cfbc48feefee02020c"
+    },
+    {
+      "file": "corpus/forager_024.bin",
+      "policy": "forager",
+      "seed": 24,
+      "rng_seed": 1024,
+      "steps": 192,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "4945c1e4a85c8549a06400e588168defbc5cee56d6a659d0f43a42ec416b02a3"
+    },
+    {
+      "file": "corpus/forager_025.bin",
+      "policy": "forager",
+      "seed": 25,
+      "rng_seed": 1025,
+      "steps": 926,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "f3141c331a6198da430ca226ee31edfb1b3b1a50b83349af58bec06a55014ef8"
+    },
+    {
+      "file": "corpus/forager_026.bin",
+      "policy": "forager",
+      "seed": 26,
+      "rng_seed": 1026,
+      "steps": 208,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pick",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "64c579e21a816787663bd1c46df2c2b0d0f667651127b9d7a7c8622f74a5ee49"
+    },
+    {
+      "file": "corpus/forager_027.bin",
+      "policy": "forager",
+      "seed": 27,
+      "rng_seed": 1027,
+      "steps": 531,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_sword",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "23e1f2aa2c2d0235ff52b5ce6fd2dff8f1ad03aefb462fd687f0ff16c9fdf7f8"
+    },
+    {
+      "file": "corpus/forager_028.bin",
+      "policy": "forager",
+      "seed": 28,
+      "rng_seed": 1028,
+      "steps": 399,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ],
+      "sha256": "75bb6210d71a775d8d0d0c44163281fa70e9c48835a81749715771a38f1ec4c6"
+    },
+    {
+      "file": "corpus/forager_029.bin",
+      "policy": "forager",
+      "seed": 29,
+      "rng_seed": 1029,
+      "steps": 1188,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "make_wood_sword",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "69f8f18c1950e25c1c32ef97ef3ca27fb8e6645d6db20cc0de5291008d328efd"
+    },
+    {
+      "file": "corpus/adversarial_000.bin",
+      "policy": "adversarial",
+      "seed": 0,
+      "rng_seed": 1000,
+      "steps": 179,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "82d83261df87d88d173ce7d9523ed517f61e6e6f184947592ce9f28dcbf1f44e"
+    },
+    {
+      "file": "corpus/adversarial_001.bin",
+      "policy": "adversarial",
+      "seed": 1,
+      "rng_seed": 1001,
+      "steps": 249,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "709708f47568da9008d305d61f2d8627f84cc150a8b1c559ed03f7c1a3ec60f9"
+    },
+    {
+      "file": "corpus/adversarial_002.bin",
+      "policy": "adversarial",
+      "seed": 2,
+      "rng_seed": 1002,
+      "steps": 196,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "b96b40a3cbc2095522ba3996c2b7b461f9dc7fbfa69bece8cf79fc88a28a36c9"
+    },
+    {
+      "file": "corpus/adversarial_003.bin",
+      "policy": "adversarial",
+      "seed": 3,
+      "rng_seed": 1003,
+      "steps": 171,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "4e52953ec68b95902e0f5a53a64655cbcf31f15c45044edf8e4fdcffaf66a22e"
+    },
+    {
+      "file": "corpus/adversarial_004.bin",
+      "policy": "adversarial",
+      "seed": 4,
+      "rng_seed": 1004,
+      "steps": 240,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "072db5343a233761e216f87cc52f45935f3f6860adc4987feabe779dd28726f4"
+    },
+    {
+      "file": "corpus/adversarial_005.bin",
+      "policy": "adversarial",
+      "seed": 5,
+      "rng_seed": 1005,
+      "steps": 903,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "614806ec3bf1daa24a77faace38317a0dd509ad40436271bf6fcad49c038926a"
+    },
+    {
+      "file": "corpus/adversarial_006.bin",
+      "policy": "adversarial",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 542,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "ac1cbe612bf6104f8286f03b99e43e0e5738701df16c904696878141b43e0dcc"
+    },
+    {
+      "file": "corpus/adversarial_007.bin",
+      "policy": "adversarial",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 272,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "f9607389c482a67d72d82c3a9e0729c68157f2b8f2d6b15dd9e828fac3b74006"
+    },
+    {
+      "file": "corpus/adversarial_008.bin",
+      "policy": "adversarial",
+      "seed": 8,
+      "rng_seed": 1008,
+      "steps": 837,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "6e1960ad51c8d21fb4d5e6ebe0e77839c0cb8977e19b27d646818fdae736b409"
+    },
+    {
+      "file": "corpus/adversarial_009.bin",
+      "policy": "adversarial",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 248,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "f18b2b93fe91f98df386a3c894f9555eaaf34c2438248b9022296dc74603f89e"
+    },
+    {
+      "file": "corpus/adversarial_010.bin",
+      "policy": "adversarial",
+      "seed": 10,
+      "rng_seed": 1010,
+      "steps": 193,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "599175cb2f3596f7c5b3403fcb027e0ead58b68278fc643fbde9758aeaf90c68"
+    },
+    {
+      "file": "corpus/adversarial_011.bin",
+      "policy": "adversarial",
+      "seed": 11,
+      "rng_seed": 1011,
+      "steps": 720,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "dfbf41a18038b2d0bad26aa321eea52016cc1197f656ff084dbc28d3e0284ef1"
+    },
+    {
+      "file": "corpus/adversarial_012.bin",
+      "policy": "adversarial",
+      "seed": 12,
+      "rng_seed": 1012,
+      "steps": 228,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "690c398635cdc2232e79f8c753e93ea535dec9729815075ad8e5d4873dd05616"
+    },
+    {
+      "file": "corpus/adversarial_013.bin",
+      "policy": "adversarial",
+      "seed": 13,
+      "rng_seed": 1013,
+      "steps": 426,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "aeef9808f3aad95784bb268e6d3a8349efaab5682a15e5ae608c1c1644e8c61c"
+    },
+    {
+      "file": "corpus/adversarial_014.bin",
+      "policy": "adversarial",
+      "seed": 14,
+      "rng_seed": 1014,
+      "steps": 508,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "d6ee73e22784e4cb27edf1c85122addf99747b36e7a5a84436354e9bdadb8f13"
+    },
+    {
+      "file": "corpus/adversarial_015.bin",
+      "policy": "adversarial",
+      "seed": 15,
+      "rng_seed": 1015,
+      "steps": 206,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "402d807f2fe2d4444ece57a692a81fa87c83256882f27130cbaebac17890ba44"
+    },
+    {
+      "file": "corpus/adversarial_016.bin",
+      "policy": "adversarial",
+      "seed": 16,
+      "rng_seed": 1016,
+      "steps": 191,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table"
+      ],
+      "sha256": "75415d7e52c376f782c3127358d70a45ccb2759790051119e52e8ed7db7346c7"
+    },
+    {
+      "file": "corpus/adversarial_017.bin",
+      "policy": "adversarial",
+      "seed": 17,
+      "rng_seed": 1017,
+      "steps": 352,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "d5f0b4a76ddddec886395f9c9290eaee2cbfc33bf627cc6c275309c5733fc8be"
+    },
+    {
+      "file": "corpus/adversarial_018.bin",
+      "policy": "adversarial",
+      "seed": 18,
+      "rng_seed": 1018,
+      "steps": 593,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "3e2875630db5fd0eb8057b14bbae086e27cc4cfc21067c7d5ce8d5ddb20598a6"
+    },
+    {
+      "file": "corpus/adversarial_019.bin",
+      "policy": "adversarial",
+      "seed": 19,
+      "rng_seed": 1019,
+      "steps": 251,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pick",
+        "place_table",
+        "wake_up"
+      ],
+      "sha256": "83490d0f4a128dae4a5e3dff8f8c950e095c332e4e8d02f6b1a2b1bf8b1bbce5"
+    },
+    {
+      "file": "corpus/lava_000.bin",
+      "policy": "lava",
+      "seed": 0,
+      "rng_seed": 1000,
+      "steps": 302,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "f2cc02f19d2fc753c98aa9ea7a2622052d129e000b57e634835dd0a48f2ebcb1"
+    },
+    {
+      "file": "corpus/lava_001.bin",
+      "policy": "lava",
+      "seed": 1,
+      "rng_seed": 1001,
+      "steps": 171,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "6fbfeed367fcd9bcdf517a89f29a40b19fb69d59b3aa1ded29b40b4566c829c9"
+    },
+    {
+      "file": "corpus/lava_002.bin",
+      "policy": "lava",
+      "seed": 2,
+      "rng_seed": 1002,
+      "steps": 232,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "eat_cow"
+      ],
+      "sha256": "f64fe4c708c35924be28aede9ae511388fa2b4e4573f59b62138193910403e45"
+    },
+    {
+      "file": "corpus/lava_003.bin",
+      "policy": "lava",
+      "seed": 3,
+      "rng_seed": 1003,
+      "steps": 312,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "d1ea6d6f4043ff1990f4c489f81bbb044c7b7fd32aa35c40d67fa13dff91ce72"
+    },
+    {
+      "file": "corpus/lava_004.bin",
+      "policy": "lava",
+      "seed": 4,
+      "rng_seed": 1004,
+      "steps": 405,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "98c279b4f28c883234c8ba33ec59a6da4d363ae95ea873cd68bc85f4d2e31096"
+    },
+    {
+      "file": "corpus/lava_005.bin",
+      "policy": "lava",
+      "seed": 5,
+      "rng_seed": 1005,
+      "steps": 298,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "355d7c0d00e6a427b1549a8ab28cefc5d1430dbcfb746c0acc75aca948cb03ed"
+    },
+    {
+      "file": "corpus/lava_006.bin",
+      "policy": "lava",
+      "seed": 6,
+      "rng_seed": 1006,
+      "steps": 376,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "c4568c7fdeb99b6e09e91cff44f11190b4d95557be898632d95bdce3b8fba329"
+    },
+    {
+      "file": "corpus/lava_007.bin",
+      "policy": "lava",
+      "seed": 7,
+      "rng_seed": 1007,
+      "steps": 328,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "e4c2c0cf5539f7da5390f01fc5fa090d4a03bad8688cd8676c9f9c250a841ec4"
+    },
+    {
+      "file": "corpus/lava_008.bin",
+      "policy": "lava",
+      "seed": 8,
+      "rng_seed": 1008,
+      "steps": 292,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "eat_cow"
+      ],
+      "sha256": "3f05af91afe7e2ef39a578615d34d4f86211fff7f6f610b8d0bb7e93a88a4f4c"
+    },
+    {
+      "file": "corpus/lava_009.bin",
+      "policy": "lava",
+      "seed": 9,
+      "rng_seed": 1009,
+      "steps": 440,
+      "terminal": "health",
+      "achievements": [
+        "collect_drink",
+        "defeat_zombie",
+        "eat_cow"
+      ],
+      "sha256": "6c0adaa4afb5c55773676f5c7668f7319b2eb9e133f283a04251ee0e0fa19f26"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "game": "ninja",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3851864,
+    "frames_per_s": 3851864,
+    "per_worker": [
+      644309,
+      629978,
+      646284,
+      647234,
+      642073,
+      641986
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.19,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

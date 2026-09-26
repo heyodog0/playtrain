@@ -18,6 +18,7 @@ from gymnasium import spaces
 
 
 # Bundled example games that ship with the repo.
+from playtrain import _paths
 from playtrain._paths import asset as _asset, games_dir as _games_dir
 from playtrain.runtime.action_space import (
     is_default, load_space_spec, quantize_box_actions)
@@ -25,6 +26,10 @@ DEFAULT_GAMES_DIR = _games_dir()
 
 # Bundled JS runtime (game-worker.mjs + p5/ shim).
 DEFAULT_RUNTIME_DIR = _asset("runtime")
+
+
+# The step budget a game gets when neither the caller nor a sidecar says.
+DEFAULT_MAX_STEPS = 2000
 
 
 def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
@@ -37,12 +42,59 @@ def _resolve_runtime_dir(explicit: str | Path | None) -> Path:
 
 
 def _resolve_games_dir(explicit: str | Path | None) -> Path:
+    """The primary games directory. Unchanged; see game_search_roots() for
+    the full list a game name is resolved against."""
     if explicit is not None:
         return Path(explicit).resolve()
     env_var = os.environ.get("PLAYTRAIN_GAMES_DIR")
     if env_var:
         return Path(env_var).resolve()
     return DEFAULT_GAMES_DIR
+
+
+def game_search_roots(explicit: str | Path | None = None) -> list[Path]:
+    """Where a bare game name is looked up, in priority order.
+
+    Explicit argument, then ``$PLAYTRAIN_GAMES_DIR``, then the catalog, then
+    every built multi-file game's ``dist/``. The catalog stays first, so no
+    existing name can be shadowed by a multi-file game.
+    """
+    roots: list[Path] = [_resolve_games_dir(explicit)]
+    if explicit is None and not os.environ.get("PLAYTRAIN_GAMES_DIR"):
+        roots.extend(_paths.multifile_dist_dirs())
+    out: list[Path] = []
+    for root in roots:
+        if root not in out:
+            out.append(root)
+    return out
+
+
+def resolve_game_file(game: str, games_dir: str | Path | None = None) -> Path:
+    """Resolve a game name (or a path ending in .js) to its file."""
+    if str(game).endswith(".js"):
+        return Path(game).resolve()
+    roots = game_search_roots(games_dir)
+    for root in roots:
+        candidate = root / f"{game}.js"
+        if candidate.exists():
+            return candidate
+    # Report against the primary root, the way callers expect.
+    return roots[0] / f"{game}.js"
+
+
+def load_sidecar(game_path: str | Path) -> dict[str, Any] | None:
+    """The ``<game>.json`` sidecar beside a bundled game, if there is one.
+
+    Catalog games have no sidecar and get None, which is what keeps their
+    behaviour identical. A sidecar declares the game's own action space,
+    step budget, observation modes and human controls; tools read it rather
+    than branching on where the file lives.
+    """
+    path = Path(game_path).with_suffix(".json")
+    if not path.is_file():
+        return None
+    with open(path) as fh:
+        return json.load(fh)
 
 
 class PlayTrainEnv(gym.Env[np.ndarray, int]):
@@ -97,7 +149,7 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         obs_mode: str = "rgb",
         frame_stack: int = 1,
         frame_skip: int = 1,
-        max_steps: int = 2000,
+        max_steps: int | None = None,
         node_bin: str = "node",
         require_matter: bool | None = None,
         action_space: str | list | None = None,
@@ -108,13 +160,27 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         self.obs_mode = obs_mode
         self.frame_stack = frame_stack
         self.frame_skip = max(1, int(frame_skip))
-        self.max_steps = max_steps
         self._closed = False
 
         self._games_dir = _resolve_games_dir(games_dir)
         self._runtime_dir = _resolve_runtime_dir(runtime_dir)
         self._worker_path = self._runtime_dir / "p5" / "game-worker.mjs"
-        self._game_path = self._games_dir / f"{game}.js"
+        # Searches the catalog first, then any built multi-file dist/.
+        self._game_path = resolve_game_file(game, games_dir)
+
+        # A bundled game ships a sidecar declaring its own action space and
+        # step budget. Explicit arguments always win; catalog games have no
+        # sidecar and are unaffected.
+        self._sidecar = load_sidecar(self._game_path)
+        if self._sidecar is not None:
+            if action_space is None and self._sidecar.get("actions"):
+                action_space = self._sidecar["actions"]
+            if max_steps is None and self._sidecar.get("max_steps"):
+                max_steps = int(self._sidecar["max_steps"])
+        # max_steps defaults to None rather than 2000 so "caller said
+        # nothing" is distinguishable from "caller asked for 2000"; the
+        # effective default is unchanged.
+        self.max_steps = DEFAULT_MAX_STEPS if max_steps is None else int(max_steps)
 
         if not self._game_path.exists():
             raise FileNotFoundError(f"Game not found: {self._game_path}")
@@ -129,7 +195,20 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         else:
             needs_matter = require_matter
 
-        if obs_mode == "rgb":
+        # PLAN 3.6: "symbolic" bypasses the rasterizer — the game returns a
+        # flat float32 vector whose length the sidecar declares. Frame
+        # stacking is a pixel idea and is not applied to it.
+        self._symbolic_dim = None
+        if obs_mode == "symbolic":
+            dim = (self._sidecar or {}).get("obs", {}).get("symbolic")
+            if not dim:
+                raise ValueError(
+                    f'obs_mode="symbolic" needs the game to declare obs.symbolic '
+                    f"in its sidecar; {game} does not"
+                )
+            self._symbolic_dim = int(dim)
+            self._channels = 0
+        elif obs_mode == "rgb":
             self._channels = 3 * frame_stack
         else:
             self._channels = frame_stack
@@ -149,12 +228,17 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             self._actions = spec["actions"]
             self._box_channels = None
             self.action_space = spaces.Discrete(len(self._actions))
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(obs_size, obs_size, self._channels),
-            dtype=np.uint8,
-        )
+        if self._symbolic_dim is not None:
+            self.observation_space = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(self._symbolic_dim,), dtype=np.float32,
+            )
+        else:
+            self.observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(obs_size, obs_size, self._channels),
+                dtype=np.uint8,
+            )
 
         self._frames: deque[np.ndarray] = deque(maxlen=frame_stack)
         self._last_seed: int | None = None
@@ -296,12 +380,24 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
     # -- Observation handling --
 
     def _decode_obs(self, raw: bytes) -> np.ndarray:
+        if self._symbolic_dim is not None:
+            vec = np.frombuffer(raw, dtype=np.float32)
+            if vec.size != self._symbolic_dim:
+                raise ValueError(
+                    f"symbolic observation is {vec.size} floats, "
+                    f"the sidecar declares {self._symbolic_dim}"
+                )
+            return vec
         obs = np.frombuffer(raw, dtype=np.uint8)
         if self.obs_mode == "rgb":
             return obs.reshape(self.obs_size, self.obs_size, 3)
         return obs.reshape(self.obs_size, self.obs_size)
 
     def _stacked_obs(self) -> np.ndarray:
+        # A symbolic vector is not a frame; stacking it would be a different
+        # observation, so the newest one is returned as-is.
+        if self._symbolic_dim is not None:
+            return list(self._frames)[-1]
         if self.obs_mode == "rgb" and self.frame_stack == 1:
             return list(self._frames)[0]
         if self.obs_mode == "rgb":
@@ -424,5 +520,13 @@ class SeedRangeWrapper(gym.Wrapper):
 
 
 def list_available_games(games_dir: str | Path | None = None) -> list[str]:
-    """Return sorted game names in ``games_dir`` (defaults to bundled examples)."""
-    return sorted(p.stem for p in _resolve_games_dir(games_dir).glob("*.js"))
+    """Sorted game names across every search root.
+
+    The catalog plus every built multi-file ``dist/``. A name appearing in
+    both resolves to the catalog copy (see game_search_roots), and is listed
+    once.
+    """
+    names: set[str] = set()
+    for root in game_search_roots(games_dir):
+        names.update(p.stem for p in root.glob("*.js"))
+    return sorted(names)

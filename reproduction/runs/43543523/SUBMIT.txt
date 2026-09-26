@@ -1,0 +1,16 @@
+# sacct -X -j 43543523 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43543523   final_any   2026-09-01T08:18:13   2026-09-01T09:51:15   holy8a24307   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch final_any.sbatch
+
+what:  "the ANY-NODE superset: every paper-pass number measured on ONE node in
+       ONE job, so all ratios and curves are same-silicon by construction."
+       Supplies panel A's EnvPool as-shipped (sync1) curve.
+arms:  PT live / rv2 / dv at the published topology (16w x 128e x 5t), 24 games,
+       3 interleaved trials; EP sync1, sync16, sync16n, async+NUMA.
+sweeps: per its own header -- EP thread sweeps 10/20/40/80 on ProcGen16 ONLY,
+       for sync1 / sync16n / async+NUMA. ALE was measured at 80 threads only.
+       PT dv+live swept 10/20/40/80 as well.
+result: GEOMEAN t80 procgen sync1 468,997   t80 ale sync1 238,829
+       t10/t20/t40 procgen sync1 178,217 / 278,042 / 417,106
+       All five reproduce panel A's as-shipped points EXACTLY.
+consequence: no arm was ever measured at 5, 30 or 60 threads. See
+       reproduction/figures/scaling/panelA_measured.tsv and PROVENANCE.md.

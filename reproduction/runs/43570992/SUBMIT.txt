@@ -1,0 +1,14 @@
+# sacct -X -j 43570992 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+43570992   ep_affinity   2026-09-01T10:25:44   2026-09-01T10:40:17   holy8a24307   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch -w holy8a24307 ep_affinity.sbatch
+
+what:  the 80-thread EnvPool points of fig:env_efficiency panel A and
+       tab:bench-scaling -- the denominators of the paper's 2.58x and 20.80x.
+arms:  sync1_aff  2048 envs, 80 threads, thread_affinity_offset=0  (as shipped)
+       async_aff  one NUMA-domain shard per pool, per-shard affinity offset,
+                  batch size max(16, 3 x threads per pool)        (documented best)
+result: GEOMEAN procgen async_aff 1,413,748   ale async_aff 350,601
+       plotted in panel A as 1,412,903 and 350,959 -- 0.06% and 0.10% apart.
+       The plotted values are constants in the plot script, so the residual is
+       not explained by anything committed; it is within run-to-run scatter.
+node:  holy8a24307, deliberately the same node as the matrix 43543523 so the
+       ratios are same-silicon.

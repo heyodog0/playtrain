@@ -1,0 +1,34 @@
+#
+#
+#
+# Each job id is embedded in the run directory name recorded in
+# NOTE: 23 of the 24 use configs/pt_throughput/pt_b256_<game>_icnn_ddp2.json;
+# bigfish alone uses pt_bigfish_icnn_ddp2v2.json.
+# game	job	jobname	submit	end	node	config
+# results/eval_iddp_suite.json ("outputs/impala_<jobid>"). Recovered with
+# sacct -X on 2026-09-17. All 24 ran on 2026-07-24 within half an hour.
+# tab:eval: the 24 IMPALA suite jobs whose final checkpoints the table evaluates.
+asteroids	34824303	iddp_asteroids	2026-07-24T11:53:34	2026-07-24T12:46:03	holygpu8a11503	configs/pt_throughput/pt_b256_asteroids_icnn_ddp2.json
+bigfish	34819869	iddp_bigfish	2026-07-24T11:24:18	2026-07-24T11:33:01	holygpu8a17404	configs/pt_throughput/pt_bigfish_icnn_ddp2v2.json
+bossfight	34824266	iddp_bossfight	2026-07-24T11:53:31	2026-07-24T12:02:09	holygpu8a13402	configs/pt_throughput/pt_b256_bossfight_icnn_ddp2.json
+breakout	34824305	iddp_breakout	2026-07-24T11:53:34	2026-07-24T12:55:45	holygpu8a13402	configs/pt_throughput/pt_b256_breakout_icnn_ddp2.json
+caveflyer	34824267	iddp_caveflyer	2026-07-24T11:53:31	2026-07-24T12:07:58	holygpu8a11503	configs/pt_throughput/pt_b256_caveflyer_icnn_ddp2.json
+chaser	34824268	iddp_chaser	2026-07-24T11:53:31	2026-07-24T12:02:19	holygpu8a17102	configs/pt_throughput/pt_b256_chaser_icnn_ddp2.json
+climber	34824269	iddp_climber	2026-07-24T11:53:31	2026-07-24T12:04:11	holygpu8a17502	configs/pt_throughput/pt_b256_climber_icnn_ddp2.json
+coinrun	34824270	iddp_coinrun	2026-07-24T11:53:31	2026-07-24T12:14:46	holygpu8a13402	configs/pt_throughput/pt_b256_coinrun_icnn_ddp2.json
+dodgeball	34824271	iddp_dodgeball	2026-07-24T11:53:31	2026-07-24T12:10:51	holygpu8a17102	configs/pt_throughput/pt_b256_dodgeball_icnn_ddp2.json
+freeway	34824300	iddp_freeway	2026-07-24T11:53:33	2026-07-24T12:38:29	holygpu8a17102	configs/pt_throughput/pt_b256_freeway_icnn_ddp2.json
+frostbite	34824304	iddp_frostbite	2026-07-24T11:53:34	2026-07-24T12:47:27	holygpu8a17102	configs/pt_throughput/pt_b256_frostbite_icnn_ddp2.json
+fruitbot	34824272	iddp_fruitbot	2026-07-24T11:53:31	2026-07-24T12:14:45	holygpu8a17502	configs/pt_throughput/pt_b256_fruitbot_icnn_ddp2.json
+heist	34824273	iddp_heist	2026-07-24T11:53:32	2026-07-24T12:16:38	holygpu8a11503	configs/pt_throughput/pt_b256_heist_icnn_ddp2.json
+jumper	34824292	iddp_jumper	2026-07-24T11:53:33	2026-07-24T12:19:26	holygpu8a17102	configs/pt_throughput/pt_b256_jumper_icnn_ddp2.json
+leaper	34824293	iddp_leaper	2026-07-24T11:53:33	2026-07-24T12:23:18	holygpu8a13402	configs/pt_throughput/pt_b256_leaper_icnn_ddp2.json
+maze	34824294	iddp_maze	2026-07-24T11:53:33	2026-07-24T12:25:12	holygpu8a17502	configs/pt_throughput/pt_b256_maze_icnn_ddp2.json
+miner	34824295	iddp_miner	2026-07-24T11:53:33	2026-07-24T12:26:57	holygpu8a11503	configs/pt_throughput/pt_b256_miner_icnn_ddp2.json
+ninja	34824296	iddp_ninja	2026-07-24T11:53:33	2026-07-24T12:27:57	holygpu8a17102	configs/pt_throughput/pt_b256_ninja_icnn_ddp2.json
+plunder	34824297	iddp_plunder	2026-07-24T11:53:33	2026-07-24T12:32:30	holygpu8a13402	configs/pt_throughput/pt_b256_plunder_icnn_ddp2.json
+pong	34824299	iddp_pong	2026-07-24T11:53:33	2026-07-24T12:37:05	holygpu8a11503	configs/pt_throughput/pt_b256_pong_icnn_ddp2.json
+qbert	34824306	iddp_qbert	2026-07-24T11:53:34	2026-07-24T12:55:38	holygpu8a17502	configs/pt_throughput/pt_b256_qbert_icnn_ddp2.json
+seaquest	34824301	iddp_seaquest	2026-07-24T11:53:33	2026-07-24T12:42:56	holygpu8a13402	configs/pt_throughput/pt_b256_seaquest_icnn_ddp2.json
+space_invaders	34824302	iddp_space_invaders	2026-07-24T11:53:34	2026-07-24T12:44:41	holygpu8a17502	configs/pt_throughput/pt_b256_space_invaders_icnn_ddp2.json
+starpilot	34824298	iddp_starpilot	2026-07-24T11:53:33	2026-07-24T12:35:41	holygpu8a17502	configs/pt_throughput/pt_b256_starpilot_icnn_ddp2.json

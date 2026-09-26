@@ -1,0 +1,35 @@
+# fig:env_efficiency panel A and tab:bench-scaling: which job measured each plotted point.
+# Rewritten 2026-09-18 after locating jobs 44545120 / 44601287 / 44614598, which the
+# first version of this file had missed. All three ran on holy8a28510 on 2026-09-05.
+# Verified to the unit by tools/check_panel_a.py (reproduce.sh panel_a).
+#
+# series	threads	plotted	source_job	how
+pg_pt	5	227433	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w1_r*.json
+pg_pt	10	455799	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w2_r*.json
+pg_pt	20	910956	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w4_r*.json
+pg_pt	30	1368468	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w6_r*.json
+pg_pt	40	1819564	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w8_r*.json
+pg_pt	60	2741906	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w12_r*.json
+pg_pt	80	3650005	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w16_r*.json
+pg_epb	5	177338	44614598	printed geomean, one 5-thread pool (runs/44614598/LOG.txt)
+pg_epb	10	354686	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+pg_epb	20	584458	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+pg_epb	30	777384	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+pg_epb	40	931467	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+pg_epb	60	1197708	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+pg_epb	80	1412903	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_pt	5	460983	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w1_r*.json
+al_pt	10	920486	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w2_r*.json
+al_pt	20	1846763	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w4_r*.json
+al_pt	30	2760813	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w6_r*.json
+al_pt	40	3692641	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w8_r*.json
+al_pt	60	5517172	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w12_r*.json
+al_pt	80	7300384	44545120	geomean of best trial over games, tier3 arm, fig4a7_44545120/*_tier3_w16_r*.json
+al_epb	5	22806	44614598	printed geomean, one 5-thread pool (runs/44614598/LOG.txt)
+al_epb	10	45600	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_epb	20	89270	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_epb	30	134145	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_epb	40	177666	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_epb	60	265505	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+al_epb	80	350959	44601287	printed geomean, documented-best config (runs/44601287/LOG.txt)
+# as-shipped series (pg_eps, al_eps): not drawn; 10/20/40/80 from 43543523 / 43574839, 5/30/60 placeholders. Do not quote.

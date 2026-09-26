@@ -1,0 +1,5 @@
+node=holy8a28510.rc.fas.harvard.edu job=44614598
+T=5 single pool envs=128 threads=5 bs=16
+t5 procgen  single-pool      177,338  (n=16)
+t5 ale      single-pool       22,806  (n=8)
+EP_T5FIX_DONE Sat Sep  5 11:09:09 EDT 2026

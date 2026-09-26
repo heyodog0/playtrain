@@ -15,7 +15,7 @@ from google.genai import types
 from playtrain._paths import repo_root as _repo_root
 ROOT = _repo_root() or Path.cwd()
 from playtrain._paths import asset as _asset_path
-TEMPLATE_PATH = _asset_path("GAME_TEMPLATE.md")
+TEMPLATE_PATH = _asset_path("prompts/GAME_TEMPLATE.md")
 GAMES_DIR = ROOT / "games"
 CATALOGS_DIR = GAMES_DIR / "catalogs"
 JS_DIR = GAMES_DIR / "js"

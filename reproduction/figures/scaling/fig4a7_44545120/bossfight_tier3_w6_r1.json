@@ -1,0 +1,22 @@
+[
+  {
+    "game": "bossfight",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3731610,
+    "frames_per_s": 3731610,
+    "per_worker": [
+      637581,
+      632203,
+      626859,
+      610201,
+      615811,
+      608955
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.2,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

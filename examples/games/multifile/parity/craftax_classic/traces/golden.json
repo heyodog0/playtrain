@@ -1,0 +1,1266 @@
+{
+  "record_bytes": 13,
+  "note": "per step: u64 FNV-1a of canonical state, u32 reward bits, u8 done",
+  "chains": {
+    "uniform_000.fnv": {
+      "episode": "corpus/uniform_000.bin",
+      "seed": 0,
+      "steps": 201,
+      "sha256": "10046c25fd34e51d3437c10313d9c83fddf557364a9a7d916e2821ad51f38d1a"
+    },
+    "uniform_001.fnv": {
+      "episode": "corpus/uniform_001.bin",
+      "seed": 1,
+      "steps": 218,
+      "sha256": "ea57487c967bef14a44ad03fe54d6b195da47f82b034fa841fb048c65e15a176"
+    },
+    "uniform_002.fnv": {
+      "episode": "corpus/uniform_002.bin",
+      "seed": 2,
+      "steps": 225,
+      "sha256": "2e7ff026758c39370af598ee071f57ac8e8f7f2ef03387e67965d3e576277c97"
+    },
+    "uniform_003.fnv": {
+      "episode": "corpus/uniform_003.bin",
+      "seed": 3,
+      "steps": 162,
+      "sha256": "9d85c03660b4b819de979675aad1a0bc8bffc299a3189243535f4ec09df82d30"
+    },
+    "uniform_004.fnv": {
+      "episode": "corpus/uniform_004.bin",
+      "seed": 4,
+      "steps": 73,
+      "sha256": "5fcd2a73f48a6e35c1de0103a47d590075d4263a86db6660609c0a6defe28c8b"
+    },
+    "uniform_005.fnv": {
+      "episode": "corpus/uniform_005.bin",
+      "seed": 5,
+      "steps": 46,
+      "sha256": "1cddf132b1f56cbfc9cb49fa96389433479ab4663d1dee1b77019ccb884ffb22"
+    },
+    "uniform_006.fnv": {
+      "episode": "corpus/uniform_006.bin",
+      "seed": 6,
+      "steps": 113,
+      "sha256": "5c3fe6e1e0d47500676da8552c569c35c1fcb2df9c4a33fd282b7e1e5d3c0489"
+    },
+    "uniform_007.fnv": {
+      "episode": "corpus/uniform_007.bin",
+      "seed": 7,
+      "steps": 135,
+      "sha256": "0e45730ccd5ebba0f3aaba1ee210acdeedf4b765b24abb47af498a7bda38086c"
+    },
+    "uniform_008.fnv": {
+      "episode": "corpus/uniform_008.bin",
+      "seed": 8,
+      "steps": 87,
+      "sha256": "fd911a2926bc193cc6ae5f1932dc1fab4a4103e181caffd13dbbbd0f685ebc77"
+    },
+    "uniform_009.fnv": {
+      "episode": "corpus/uniform_009.bin",
+      "seed": 9,
+      "steps": 53,
+      "sha256": "bed46a734c8e414cc1691818830fb6cb3008c2b3c2ac8a3f01b62c353146d8c4"
+    },
+    "uniform_010.fnv": {
+      "episode": "corpus/uniform_010.bin",
+      "seed": 10,
+      "steps": 143,
+      "sha256": "4db45b89446d6c51645a78c4e478fb591d62cf5adadb9b88dc1ee0d96fe719aa"
+    },
+    "uniform_011.fnv": {
+      "episode": "corpus/uniform_011.bin",
+      "seed": 11,
+      "steps": 293,
+      "sha256": "728a5d7debbaa9475c008e19d783a6ac727b58dcd9597c563a163cb8c661d3f0"
+    },
+    "uniform_012.fnv": {
+      "episode": "corpus/uniform_012.bin",
+      "seed": 12,
+      "steps": 229,
+      "sha256": "4db4300c8f9fea3578147ec7c5a9e13cffbc476a45fa7317f9b905752de2a624"
+    },
+    "uniform_013.fnv": {
+      "episode": "corpus/uniform_013.bin",
+      "seed": 13,
+      "steps": 50,
+      "sha256": "9436c46d1f27165e68f55121b0cd495d6f1aa227b285b525b46cddf33bde85b4"
+    },
+    "uniform_014.fnv": {
+      "episode": "corpus/uniform_014.bin",
+      "seed": 14,
+      "steps": 225,
+      "sha256": "44102b84f42303acec54674f31cfd3d461690b0af87f10e8933d1aff117b7051"
+    },
+    "uniform_015.fnv": {
+      "episode": "corpus/uniform_015.bin",
+      "seed": 15,
+      "steps": 166,
+      "sha256": "3738b3fec4349bd53f0388ed78ac70bc8f26fbbaa0db370dd6d98852c88fa16c"
+    },
+    "uniform_016.fnv": {
+      "episode": "corpus/uniform_016.bin",
+      "seed": 16,
+      "steps": 219,
+      "sha256": "2d2de0b98c14c996abd4e10c643a3234c14fcd33d312aaa4cf6710bade65e8a3"
+    },
+    "uniform_017.fnv": {
+      "episode": "corpus/uniform_017.bin",
+      "seed": 17,
+      "steps": 35,
+      "sha256": "9f76a4c2acfd6903075ab3014ff9db6649aafb5279c756d91de896b6755fce3d"
+    },
+    "uniform_018.fnv": {
+      "episode": "corpus/uniform_018.bin",
+      "seed": 18,
+      "steps": 60,
+      "sha256": "74b52725c8b10f730e9950fb2140db4b268c5686297bb24124debbd3f7f645bf"
+    },
+    "uniform_019.fnv": {
+      "episode": "corpus/uniform_019.bin",
+      "seed": 19,
+      "steps": 148,
+      "sha256": "dcc837de34f787ed39650d11cf74a3ef519c3bcfa32b29c6078f4d098b9a86d6"
+    },
+    "uniform_020.fnv": {
+      "episode": "corpus/uniform_020.bin",
+      "seed": 20,
+      "steps": 45,
+      "sha256": "8b035b002651dfcddf2b2c8f68c03b85bd3f248ace09407dccfd6897d4d811d1"
+    },
+    "uniform_021.fnv": {
+      "episode": "corpus/uniform_021.bin",
+      "seed": 21,
+      "steps": 205,
+      "sha256": "3c0318c7eb86eae5e8e79c0ca3c45d911be5b1bfc1bde1772b8abe3b275c3b8b"
+    },
+    "uniform_022.fnv": {
+      "episode": "corpus/uniform_022.bin",
+      "seed": 22,
+      "steps": 219,
+      "sha256": "0afe96608029422ca34e50899a7d42e0473cb9db71b6ede8e5ddb5b973e66400"
+    },
+    "uniform_023.fnv": {
+      "episode": "corpus/uniform_023.bin",
+      "seed": 23,
+      "steps": 202,
+      "sha256": "c57309fed643d74f1ebcc5c6fa986d486e63a31f572f940019159b609778b04a"
+    },
+    "uniform_024.fnv": {
+      "episode": "corpus/uniform_024.bin",
+      "seed": 24,
+      "steps": 360,
+      "sha256": "6538b095ae58d8ccb5a444d58c9b00e0f05e9c31542b3ea8a9873662c631dd2b"
+    },
+    "uniform_025.fnv": {
+      "episode": "corpus/uniform_025.bin",
+      "seed": 25,
+      "steps": 55,
+      "sha256": "fcc35ff2b3dc86c5ba64b4814f4d09d5f64c6d50e77fb73a155a831c378a40cc"
+    },
+    "uniform_026.fnv": {
+      "episode": "corpus/uniform_026.bin",
+      "seed": 26,
+      "steps": 206,
+      "sha256": "38e5dcfe99f9990f93c7aa0bb35efa07c7232b119792e6d5116612be1d11a3a2"
+    },
+    "uniform_027.fnv": {
+      "episode": "corpus/uniform_027.bin",
+      "seed": 27,
+      "steps": 91,
+      "sha256": "a7dea9168cb2376d6fa4f1c34eb51c4fcc15f10597d4085fcde5ea5e98aaa6b6"
+    },
+    "uniform_028.fnv": {
+      "episode": "corpus/uniform_028.bin",
+      "seed": 28,
+      "steps": 83,
+      "sha256": "c073238cdb83809c63da4204d8b6c0726c1411eb96d516acd738e436d399c31a"
+    },
+    "uniform_029.fnv": {
+      "episode": "corpus/uniform_029.bin",
+      "seed": 29,
+      "steps": 175,
+      "sha256": "e9ff8225c63ff9269c73e617d49124f15ffd15464c896f58457aee199f8c21e8"
+    },
+    "uniform_030.fnv": {
+      "episode": "corpus/uniform_030.bin",
+      "seed": 30,
+      "steps": 81,
+      "sha256": "56ef21501d15929e6eb2043f9af788750a57017501266b607664f76a960f25e9"
+    },
+    "uniform_031.fnv": {
+      "episode": "corpus/uniform_031.bin",
+      "seed": 31,
+      "steps": 356,
+      "sha256": "f8e97392add74cdf30f1866f28079b5a82a124874a6f928ae1c73fc15017fd83"
+    },
+    "uniform_032.fnv": {
+      "episode": "corpus/uniform_032.bin",
+      "seed": 32,
+      "steps": 165,
+      "sha256": "0263a915126f4b6c2ef4d64a56c79bba5d5790fe5198d2bc3c66bea4e8c99a67"
+    },
+    "uniform_033.fnv": {
+      "episode": "corpus/uniform_033.bin",
+      "seed": 33,
+      "steps": 148,
+      "sha256": "58d5b4ad0dfee3dfd480ac514058847d2de998566a253e2fea2b7fec97136e02"
+    },
+    "uniform_034.fnv": {
+      "episode": "corpus/uniform_034.bin",
+      "seed": 34,
+      "steps": 165,
+      "sha256": "6557ad500a5992d7689100778b0c1164a3b9664965213aa2d96dbec28f8bb56d"
+    },
+    "uniform_035.fnv": {
+      "episode": "corpus/uniform_035.bin",
+      "seed": 35,
+      "steps": 186,
+      "sha256": "d6f62e4dc2c649358083ddd40b7c08caeb69b0aaff0555ea81b276c5c6a13221"
+    },
+    "uniform_036.fnv": {
+      "episode": "corpus/uniform_036.bin",
+      "seed": 36,
+      "steps": 181,
+      "sha256": "e0e6b3c9dfa217ccca651bc3760988ee1ff1cdc0b44480937b4f20b36c2e3cfb"
+    },
+    "uniform_037.fnv": {
+      "episode": "corpus/uniform_037.bin",
+      "seed": 37,
+      "steps": 214,
+      "sha256": "934ba59e188cd00156d1585387e5ab93cd75da8d2ab8af3772a10314df64358f"
+    },
+    "uniform_038.fnv": {
+      "episode": "corpus/uniform_038.bin",
+      "seed": 38,
+      "steps": 67,
+      "sha256": "825617f83e5acdfeecdcf294f75dc830af8b22059e00048605ba040f60ae8b54"
+    },
+    "uniform_039.fnv": {
+      "episode": "corpus/uniform_039.bin",
+      "seed": 39,
+      "steps": 226,
+      "sha256": "e08bdf913ca23290ae928915009dd693ebcfba605c76fbaef0e76553a0dcf490"
+    },
+    "uniform_040.fnv": {
+      "episode": "corpus/uniform_040.bin",
+      "seed": 40,
+      "steps": 178,
+      "sha256": "259818ca73762114214926e474c3abf8e3d9078c41b4e9104c776799b0189f8e"
+    },
+    "uniform_041.fnv": {
+      "episode": "corpus/uniform_041.bin",
+      "seed": 41,
+      "steps": 240,
+      "sha256": "a64fabd407774090a13d527c3976823417658a73df83cb45e6e537ad3f3bba85"
+    },
+    "uniform_042.fnv": {
+      "episode": "corpus/uniform_042.bin",
+      "seed": 42,
+      "steps": 59,
+      "sha256": "3b3a925b4dd130ec673d110724f5287699856dcc7367a8d46641c4dba0928eb2"
+    },
+    "uniform_043.fnv": {
+      "episode": "corpus/uniform_043.bin",
+      "seed": 43,
+      "steps": 76,
+      "sha256": "cf1890085a892a2586efd9b152202e00a810343ecd313140c7af0a44cdca06ac"
+    },
+    "uniform_044.fnv": {
+      "episode": "corpus/uniform_044.bin",
+      "seed": 44,
+      "steps": 85,
+      "sha256": "75a76fb49427f417d8fd09723b5552eb44b7526bd9e500ffd0de943a79be66e7"
+    },
+    "uniform_045.fnv": {
+      "episode": "corpus/uniform_045.bin",
+      "seed": 45,
+      "steps": 141,
+      "sha256": "2dab251cca24024d535c0a15c29350370b5311e7a3f127bc58efcdec8c989894"
+    },
+    "uniform_046.fnv": {
+      "episode": "corpus/uniform_046.bin",
+      "seed": 46,
+      "steps": 160,
+      "sha256": "c8b43490b43f1ff0c1f72400afe7c62297f1e65fa60543d7af688481923daffb"
+    },
+    "uniform_047.fnv": {
+      "episode": "corpus/uniform_047.bin",
+      "seed": 47,
+      "steps": 244,
+      "sha256": "4439927dd61eb771dfac174c5b57a89e8b1872e3c5afe6d9b6928192dfa32ea4"
+    },
+    "uniform_048.fnv": {
+      "episode": "corpus/uniform_048.bin",
+      "seed": 48,
+      "steps": 117,
+      "sha256": "554afecf93ebb539dab72fdd9956e87b50e811d5e6bf247c7146596ca5fc62ec"
+    },
+    "uniform_049.fnv": {
+      "episode": "corpus/uniform_049.bin",
+      "seed": 49,
+      "steps": 164,
+      "sha256": "2c83c417450444f9ad5cfe6a147e3ff0e7bbfa4892bf4d19f187af5d781fd7ea"
+    },
+    "uniform_050.fnv": {
+      "episode": "corpus/uniform_050.bin",
+      "seed": 50,
+      "steps": 156,
+      "sha256": "99f721d1b09ab54abceba9040c4189c3743b25e7d60e16166fb0e07e429d6d95"
+    },
+    "uniform_051.fnv": {
+      "episode": "corpus/uniform_051.bin",
+      "seed": 51,
+      "steps": 200,
+      "sha256": "e23eb2045d637e1e7668fa4208e540663cb079e8d1977481974f269fbfc4283a"
+    },
+    "uniform_052.fnv": {
+      "episode": "corpus/uniform_052.bin",
+      "seed": 52,
+      "steps": 402,
+      "sha256": "0a83ed1427ebd039734395a9f5a81eb085a32391e6416cfbdc27793b72625952"
+    },
+    "uniform_053.fnv": {
+      "episode": "corpus/uniform_053.bin",
+      "seed": 53,
+      "steps": 215,
+      "sha256": "3876f74f1db39deb5d83161f907dd635e3315b02b1cc1ad63dd65bda34f16fab"
+    },
+    "uniform_054.fnv": {
+      "episode": "corpus/uniform_054.bin",
+      "seed": 54,
+      "steps": 217,
+      "sha256": "94ba9878e8b2606486b28782a00f992bd292cf0b8e190c385e3389b3cbe7f104"
+    },
+    "uniform_055.fnv": {
+      "episode": "corpus/uniform_055.bin",
+      "seed": 55,
+      "steps": 167,
+      "sha256": "da5c9e24fc800e949911d2b0708e134ab5806b44e6e7d3422c79f64df2a10bbc"
+    },
+    "uniform_056.fnv": {
+      "episode": "corpus/uniform_056.bin",
+      "seed": 56,
+      "steps": 221,
+      "sha256": "3e085a0866219cac1fb45fae94db2963efdd6743340e0709834252759d7d0c06"
+    },
+    "uniform_057.fnv": {
+      "episode": "corpus/uniform_057.bin",
+      "seed": 57,
+      "steps": 46,
+      "sha256": "7b69dea00941449e33bf6f0fd665d46953abc7cfb4a58c4e5e3519152084fb2c"
+    },
+    "uniform_058.fnv": {
+      "episode": "corpus/uniform_058.bin",
+      "seed": 58,
+      "steps": 168,
+      "sha256": "72bb0e783c0e51a8190cb8ea7f5ddc909ed7b373539e7ec8d9208d3d5ce32778"
+    },
+    "uniform_059.fnv": {
+      "episode": "corpus/uniform_059.bin",
+      "seed": 59,
+      "steps": 281,
+      "sha256": "c6bfa0d8a130e344984c7b2e99dfe73a6d072dea99b64817c889c50f100983a7"
+    },
+    "uniform_060.fnv": {
+      "episode": "corpus/uniform_060.bin",
+      "seed": 60,
+      "steps": 57,
+      "sha256": "5202c88c7cb33151a2abd1a5a2ae78b1681bfcca43afd9f25b8b68615a4e42fa"
+    },
+    "uniform_061.fnv": {
+      "episode": "corpus/uniform_061.bin",
+      "seed": 61,
+      "steps": 160,
+      "sha256": "c0aa7a96bdd529844fdf2000316908ba16d4590e24de817417bbf87497d2b379"
+    },
+    "uniform_062.fnv": {
+      "episode": "corpus/uniform_062.bin",
+      "seed": 62,
+      "steps": 38,
+      "sha256": "fda71f1df70f53f154d62f9ff64a9453285177c0113b85fe168ace33f5d2d719"
+    },
+    "uniform_063.fnv": {
+      "episode": "corpus/uniform_063.bin",
+      "seed": 63,
+      "steps": 207,
+      "sha256": "32a3ca58812de26d5f7b9c8e2bea7acb20b3e084acd8ed2b3b4d54a7fb5d798a"
+    },
+    "uniform_064.fnv": {
+      "episode": "corpus/uniform_064.bin",
+      "seed": 64,
+      "steps": 134,
+      "sha256": "0fa8aec5e0b2b096c6192696d989f4841455bbdf81ec2caf50eed5e94ff6bd75"
+    },
+    "uniform_065.fnv": {
+      "episode": "corpus/uniform_065.bin",
+      "seed": 65,
+      "steps": 104,
+      "sha256": "fa3a33b82f63a3391d59bfb7e1197c7bcea3c1e05ffc48f8012240edb7dd6906"
+    },
+    "uniform_066.fnv": {
+      "episode": "corpus/uniform_066.bin",
+      "seed": 66,
+      "steps": 191,
+      "sha256": "e4bd4356b69437449ccf94f25b9b24b958ed49c6ad8c2736521a9cbf9a373e55"
+    },
+    "uniform_067.fnv": {
+      "episode": "corpus/uniform_067.bin",
+      "seed": 67,
+      "steps": 144,
+      "sha256": "c6fc61524a0329e9639b38f6a4da04acff556470d812955a6677ca75710c33fa"
+    },
+    "uniform_068.fnv": {
+      "episode": "corpus/uniform_068.bin",
+      "seed": 68,
+      "steps": 272,
+      "sha256": "3fe2f854c6cc97b6ab4d273d6daf7f454b7338e4ab056350680117d90fa8a387"
+    },
+    "uniform_069.fnv": {
+      "episode": "corpus/uniform_069.bin",
+      "seed": 69,
+      "steps": 256,
+      "sha256": "be7ec8bea5a77770f035f1e53be36ece76eb648cd2e163afa4af507f75783878"
+    },
+    "uniform_070.fnv": {
+      "episode": "corpus/uniform_070.bin",
+      "seed": 70,
+      "steps": 64,
+      "sha256": "040ea24e5aaa489fba2f6d2a555ddd5e1a4edd6d3d04b00661b8a6f5b1ee76c4"
+    },
+    "uniform_071.fnv": {
+      "episode": "corpus/uniform_071.bin",
+      "seed": 71,
+      "steps": 210,
+      "sha256": "d28510873e82f9cc3afe2a836023163e36a02cbbd38fbaeb13100e367816ee73"
+    },
+    "uniform_072.fnv": {
+      "episode": "corpus/uniform_072.bin",
+      "seed": 72,
+      "steps": 120,
+      "sha256": "15b9910dc858f35cf894a5783982ef0c9a0b9b55cab002683bd2424e088a09ea"
+    },
+    "uniform_073.fnv": {
+      "episode": "corpus/uniform_073.bin",
+      "seed": 73,
+      "steps": 199,
+      "sha256": "5336b4c876e472122bbab6ff419871649d1a8bd84682b9f594b44cdb6be28741"
+    },
+    "uniform_074.fnv": {
+      "episode": "corpus/uniform_074.bin",
+      "seed": 74,
+      "steps": 266,
+      "sha256": "859b6a73486203b721cb68aa24e7b1c1049f0e19fce2ea97423abf5c3e500e71"
+    },
+    "uniform_075.fnv": {
+      "episode": "corpus/uniform_075.bin",
+      "seed": 75,
+      "steps": 107,
+      "sha256": "b11a0cd3d685863c23af15dc820f41d7f1fc944765fd7b099fbdce0ae4552b8d"
+    },
+    "uniform_076.fnv": {
+      "episode": "corpus/uniform_076.bin",
+      "seed": 76,
+      "steps": 238,
+      "sha256": "dd047b4f346378f875777fdcf1e0a15da7b938384de7c59f4089ce4595b1e2ff"
+    },
+    "uniform_077.fnv": {
+      "episode": "corpus/uniform_077.bin",
+      "seed": 77,
+      "steps": 241,
+      "sha256": "927cc1d87b0a8b6fbbc3b68f22ee10a785200f8ff3f3cf8bc5b35b500f7ad12b"
+    },
+    "uniform_078.fnv": {
+      "episode": "corpus/uniform_078.bin",
+      "seed": 78,
+      "steps": 230,
+      "sha256": "eadca996c364b196ff82c848c24029ab382d0131c963fb11788af4479a72fbab"
+    },
+    "uniform_079.fnv": {
+      "episode": "corpus/uniform_079.bin",
+      "seed": 79,
+      "steps": 208,
+      "sha256": "c4b090a9dba1fc2f657e5d1fb179daa490fb558b85edaa59e137e6f94f54c93a"
+    },
+    "uniform_080.fnv": {
+      "episode": "corpus/uniform_080.bin",
+      "seed": 80,
+      "steps": 108,
+      "sha256": "1f18ac92b57307cc1a92abd55fd66be4b036fc6732deafa1d237d322bcd2d212"
+    },
+    "uniform_081.fnv": {
+      "episode": "corpus/uniform_081.bin",
+      "seed": 81,
+      "steps": 220,
+      "sha256": "bec7322f1718156892ff822864c4c792aab43f469fa48a40de0441b35ee0f163"
+    },
+    "uniform_082.fnv": {
+      "episode": "corpus/uniform_082.bin",
+      "seed": 82,
+      "steps": 179,
+      "sha256": "0461da375b8926e279c48c10274028acc3d872bd3b5401806754b176f8ccb4f3"
+    },
+    "uniform_083.fnv": {
+      "episode": "corpus/uniform_083.bin",
+      "seed": 83,
+      "steps": 138,
+      "sha256": "b0385be6b75c7226f19d62b2930a53c366044bf36cd4c79ca7042e8d9afb22bb"
+    },
+    "uniform_084.fnv": {
+      "episode": "corpus/uniform_084.bin",
+      "seed": 84,
+      "steps": 222,
+      "sha256": "94c1f28e5fe83c03d06da2b72b31cec4a0c825b13dd0954509d9631b215b64e9"
+    },
+    "uniform_085.fnv": {
+      "episode": "corpus/uniform_085.bin",
+      "seed": 85,
+      "steps": 137,
+      "sha256": "c662aedd0ad027e9c649e8e72ff9fd3ea3901e1ad51e25f053d3dfe3feaf5b2e"
+    },
+    "uniform_086.fnv": {
+      "episode": "corpus/uniform_086.bin",
+      "seed": 86,
+      "steps": 76,
+      "sha256": "549ec83321a0b8ecc4e47d26d14f054043963074cca88f706fa64bbf75f33f0c"
+    },
+    "uniform_087.fnv": {
+      "episode": "corpus/uniform_087.bin",
+      "seed": 87,
+      "steps": 89,
+      "sha256": "78c3124ce45f7f5c38de38894f48ced16e1f3c859995feb30c71a728f84d7223"
+    },
+    "uniform_088.fnv": {
+      "episode": "corpus/uniform_088.bin",
+      "seed": 88,
+      "steps": 247,
+      "sha256": "13123ece545eefe090c83a16cf54eb26e54a5110c9090d470d1964615f318f92"
+    },
+    "uniform_089.fnv": {
+      "episode": "corpus/uniform_089.bin",
+      "seed": 89,
+      "steps": 53,
+      "sha256": "c2417bd0a2e43af37423beb75044aacad4f0ef4ed5e1892c569e653459f4b636"
+    },
+    "uniform_090.fnv": {
+      "episode": "corpus/uniform_090.bin",
+      "seed": 90,
+      "steps": 198,
+      "sha256": "0ef2ac269b4e69c43b754b8d65295964fc689e692a0a053f17d6721be78f8ae7"
+    },
+    "uniform_091.fnv": {
+      "episode": "corpus/uniform_091.bin",
+      "seed": 91,
+      "steps": 271,
+      "sha256": "4e65c0a052dc18e8308214dcf78c1ddd3fdcec8d8002f5d843ebf9b3f7d8af37"
+    },
+    "uniform_092.fnv": {
+      "episode": "corpus/uniform_092.bin",
+      "seed": 92,
+      "steps": 50,
+      "sha256": "180cad6ee8a7234dfee37adf7c8ef22b29faa24747752078d0214d39baa8dd9e"
+    },
+    "uniform_093.fnv": {
+      "episode": "corpus/uniform_093.bin",
+      "seed": 93,
+      "steps": 189,
+      "sha256": "bce5cf32ed0641b86259d6f70d9457d0578ae6e5efe73e75ea25465f0e236e8e"
+    },
+    "uniform_094.fnv": {
+      "episode": "corpus/uniform_094.bin",
+      "seed": 94,
+      "steps": 297,
+      "sha256": "ef2d99b9406caee78ff9e6e9cb5aef01443b1d7a5ee10f2a4620a8f185bc4f04"
+    },
+    "uniform_095.fnv": {
+      "episode": "corpus/uniform_095.bin",
+      "seed": 95,
+      "steps": 203,
+      "sha256": "6e4adf99c179b1cdfe99557a8cdc9b7bb658308fef5d3dc48b5280b443871019"
+    },
+    "uniform_096.fnv": {
+      "episode": "corpus/uniform_096.bin",
+      "seed": 96,
+      "steps": 101,
+      "sha256": "4525cf86d66069f46921081e246c1a2956f5ceb01801ef652f745654185e6c96"
+    },
+    "uniform_097.fnv": {
+      "episode": "corpus/uniform_097.bin",
+      "seed": 97,
+      "steps": 221,
+      "sha256": "4eae2f042815fdcea011e2b5057588a33ce1e32ea6bff7c3293a2778d7aacadb"
+    },
+    "uniform_098.fnv": {
+      "episode": "corpus/uniform_098.bin",
+      "seed": 98,
+      "steps": 38,
+      "sha256": "d0b6077e15424fa5e0ffc934d2742a8b61d5ceef085ada3e85172fab2341a43c"
+    },
+    "uniform_099.fnv": {
+      "episode": "corpus/uniform_099.bin",
+      "seed": 99,
+      "steps": 213,
+      "sha256": "d8a3a2b66d4c4f01305c280439f8bff0400841366ecc71ec8343096138c19c57"
+    },
+    "sticky_000.fnv": {
+      "episode": "corpus/sticky_000.bin",
+      "seed": 0,
+      "steps": 236,
+      "sha256": "21913e216ef4be441684319a06340810f30e396c900ef7286289bea6e71b7305"
+    },
+    "sticky_001.fnv": {
+      "episode": "corpus/sticky_001.bin",
+      "seed": 1,
+      "steps": 174,
+      "sha256": "16629d776f6407e6b982dce5b2b9e7fde90f5045efd1828e1220938195affef4"
+    },
+    "sticky_002.fnv": {
+      "episode": "corpus/sticky_002.bin",
+      "seed": 2,
+      "steps": 212,
+      "sha256": "3a83a8785f0b2ea665310dbd06292dc7279d1a3391dedd4edfcb6fcc38d2bcd0"
+    },
+    "sticky_003.fnv": {
+      "episode": "corpus/sticky_003.bin",
+      "seed": 3,
+      "steps": 137,
+      "sha256": "a69b3f68fe905b20d615b730c51a19f23abd2c044b287b38038929443af05f7f"
+    },
+    "sticky_004.fnv": {
+      "episode": "corpus/sticky_004.bin",
+      "seed": 4,
+      "steps": 189,
+      "sha256": "3169f64a57ab2f984039aac12f2ed1d9b2bc0df0eff3c392ec3f56895d13b8ea"
+    },
+    "sticky_005.fnv": {
+      "episode": "corpus/sticky_005.bin",
+      "seed": 5,
+      "steps": 65,
+      "sha256": "ba83727f7deae3488b639b784ac3d2a3b92dfa9ce49f1021ee3a3fc051c7dace"
+    },
+    "sticky_006.fnv": {
+      "episode": "corpus/sticky_006.bin",
+      "seed": 6,
+      "steps": 73,
+      "sha256": "efd19c927865bd77fd478b5089d35a418d1230668d2392b60477d02fb80d072c"
+    },
+    "sticky_007.fnv": {
+      "episode": "corpus/sticky_007.bin",
+      "seed": 7,
+      "steps": 117,
+      "sha256": "ce6decc0d2bdab0f93ee789310496e4764cdca206e9b29c32ab33bcd998ed8af"
+    },
+    "sticky_008.fnv": {
+      "episode": "corpus/sticky_008.bin",
+      "seed": 8,
+      "steps": 233,
+      "sha256": "1c3c5f933bbad6db93298b4254e754ed49a64c5d2bc90eda5815cf8cec151303"
+    },
+    "sticky_009.fnv": {
+      "episode": "corpus/sticky_009.bin",
+      "seed": 9,
+      "steps": 85,
+      "sha256": "654db735bccb18d88f9e24edc27e4b5d01d543260f2b3b179282d88a251fcc38"
+    },
+    "sticky_010.fnv": {
+      "episode": "corpus/sticky_010.bin",
+      "seed": 10,
+      "steps": 154,
+      "sha256": "b19f6b7c39e113fa2f391d23f2a8ddeb886251d1505bf06e60d54c829d1c3433"
+    },
+    "sticky_011.fnv": {
+      "episode": "corpus/sticky_011.bin",
+      "seed": 11,
+      "steps": 192,
+      "sha256": "4aa9205babf25fa26f7fca6601f4e0c8c821cb89589adaf9f678bbaa04c6a80f"
+    },
+    "sticky_012.fnv": {
+      "episode": "corpus/sticky_012.bin",
+      "seed": 12,
+      "steps": 197,
+      "sha256": "9652d8ce2701775b689e4b69a7f9d99c265ea4a62935fdc30fd356d96cff1585"
+    },
+    "sticky_013.fnv": {
+      "episode": "corpus/sticky_013.bin",
+      "seed": 13,
+      "steps": 208,
+      "sha256": "2af18538b81fe5195ce3f67a7381b33d1178629413625a652936c59487e4815f"
+    },
+    "sticky_014.fnv": {
+      "episode": "corpus/sticky_014.bin",
+      "seed": 14,
+      "steps": 399,
+      "sha256": "9d42ea0397e4bcfdab69edca4520ce1466a7ce253badfaf649618bbba29aeb63"
+    },
+    "sticky_015.fnv": {
+      "episode": "corpus/sticky_015.bin",
+      "seed": 15,
+      "steps": 181,
+      "sha256": "3893ea3fef60300fcc60bf42dbd0c8c78e4a3a043af8c984191732dc8841dd41"
+    },
+    "sticky_016.fnv": {
+      "episode": "corpus/sticky_016.bin",
+      "seed": 16,
+      "steps": 201,
+      "sha256": "d0c6986ed5d0c059a5dadaa4b1636917a9831867e04e11e6dc26c133150d3154"
+    },
+    "sticky_017.fnv": {
+      "episode": "corpus/sticky_017.bin",
+      "seed": 17,
+      "steps": 38,
+      "sha256": "ababab51bd58c5da0152e37967eb59a1fd583fad2e80863ca97ed533ab36b28f"
+    },
+    "sticky_018.fnv": {
+      "episode": "corpus/sticky_018.bin",
+      "seed": 18,
+      "steps": 62,
+      "sha256": "c865cbc9dbb01a67acfe3183b53d7bcbc8efbd630879dd46466e7781bbe1a0ad"
+    },
+    "sticky_019.fnv": {
+      "episode": "corpus/sticky_019.bin",
+      "seed": 19,
+      "steps": 180,
+      "sha256": "9f6315ee7f49f3c6a7ddf25eefd85b1df6a975e0d519a5ee61209c60f2ecf6c9"
+    },
+    "sticky_020.fnv": {
+      "episode": "corpus/sticky_020.bin",
+      "seed": 20,
+      "steps": 68,
+      "sha256": "e593029c2b1905b70826d7926c05ab07a8deae45b05e1f18751a7c1a588b2193"
+    },
+    "sticky_021.fnv": {
+      "episode": "corpus/sticky_021.bin",
+      "seed": 21,
+      "steps": 251,
+      "sha256": "9f8924db9eacf7e135bc4a3be3b22f7fccecd2be7e34478e9a178482e55c58f7"
+    },
+    "sticky_022.fnv": {
+      "episode": "corpus/sticky_022.bin",
+      "seed": 22,
+      "steps": 160,
+      "sha256": "acbe839a4eb17acf4455af5e58cab8756f017635f6608db3dbf02a51c58ddc7c"
+    },
+    "sticky_023.fnv": {
+      "episode": "corpus/sticky_023.bin",
+      "seed": 23,
+      "steps": 53,
+      "sha256": "17047e94646bb67b0e24a1b1dbfff14c69b3c865febbdb5c3c742f4342602bec"
+    },
+    "sticky_024.fnv": {
+      "episode": "corpus/sticky_024.bin",
+      "seed": 24,
+      "steps": 145,
+      "sha256": "5191667a67fc8947f1a3735310146ae2bc2b7f60987216d61885e7ed0345459c"
+    },
+    "sticky_025.fnv": {
+      "episode": "corpus/sticky_025.bin",
+      "seed": 25,
+      "steps": 57,
+      "sha256": "daf4a46e6d3de61f40d3bb7b16f869272df4224088b3aa4d74bdaae1fe98d86b"
+    },
+    "sticky_026.fnv": {
+      "episode": "corpus/sticky_026.bin",
+      "seed": 26,
+      "steps": 205,
+      "sha256": "b2a52890a1d5d3e4693f85e70f2be1ce6f90feb80210fd19ad79b2e531dd5c1f"
+    },
+    "sticky_027.fnv": {
+      "episode": "corpus/sticky_027.bin",
+      "seed": 27,
+      "steps": 168,
+      "sha256": "4b17a0b9096b1c06bb9be52ac5e39cc451173025ca48c86968d718f729044b84"
+    },
+    "sticky_028.fnv": {
+      "episode": "corpus/sticky_028.bin",
+      "seed": 28,
+      "steps": 112,
+      "sha256": "1a52528dc9f74cca4270109eeb8b7b2f10deae7a452ce31cc05e5188ffd95aac"
+    },
+    "sticky_029.fnv": {
+      "episode": "corpus/sticky_029.bin",
+      "seed": 29,
+      "steps": 206,
+      "sha256": "d59cb3d1632b5036e3774d853eac6e6a64695303ab69b26ce797eb676fdc79bf"
+    },
+    "sticky_030.fnv": {
+      "episode": "corpus/sticky_030.bin",
+      "seed": 30,
+      "steps": 173,
+      "sha256": "dd94839d0de0d615d8384462dc6058bbb9f35dcf854e89480636e06144135696"
+    },
+    "sticky_031.fnv": {
+      "episode": "corpus/sticky_031.bin",
+      "seed": 31,
+      "steps": 215,
+      "sha256": "7af357c4baefa1bfc9168e152fe3fdc34aa49debd957968c7eaf2e4ab5e30d88"
+    },
+    "sticky_032.fnv": {
+      "episode": "corpus/sticky_032.bin",
+      "seed": 32,
+      "steps": 249,
+      "sha256": "62f97fc942662a79c917fa9ad03855e7c0648c5aef1e966814f71d0b8070a370"
+    },
+    "sticky_033.fnv": {
+      "episode": "corpus/sticky_033.bin",
+      "seed": 33,
+      "steps": 222,
+      "sha256": "55666c2556f1056768e90ba3f7107145f6775acb60c22bdf85880db60aab9523"
+    },
+    "sticky_034.fnv": {
+      "episode": "corpus/sticky_034.bin",
+      "seed": 34,
+      "steps": 238,
+      "sha256": "119e2d7d9bc118eff63df343f638b9420cdcc4b1b7a2baf8f29446933d586b4d"
+    },
+    "sticky_035.fnv": {
+      "episode": "corpus/sticky_035.bin",
+      "seed": 35,
+      "steps": 266,
+      "sha256": "4a562de49fbbf1d9887ce5cbcc22c1406f9d728847a35318ffedf5b7a785c300"
+    },
+    "sticky_036.fnv": {
+      "episode": "corpus/sticky_036.bin",
+      "seed": 36,
+      "steps": 85,
+      "sha256": "a0d8c0371750dfd36d8419d010cfd08d00f3789d95cca14ec6062e879a63deb6"
+    },
+    "sticky_037.fnv": {
+      "episode": "corpus/sticky_037.bin",
+      "seed": 37,
+      "steps": 190,
+      "sha256": "3f0a480a0025931cb3e03e2448f4af6b207631f36785c45cbaf9bb7825fa173c"
+    },
+    "sticky_038.fnv": {
+      "episode": "corpus/sticky_038.bin",
+      "seed": 38,
+      "steps": 94,
+      "sha256": "081f315da566945e5d64795d8fee2dd77f947ab18ebcaec2d213093e2e71b7ec"
+    },
+    "sticky_039.fnv": {
+      "episode": "corpus/sticky_039.bin",
+      "seed": 39,
+      "steps": 60,
+      "sha256": "3637edd0698a81b2a09caebe1b3efa01988bcf6c09fb73eeb6ebddcd31fe4fda"
+    },
+    "sticky_040.fnv": {
+      "episode": "corpus/sticky_040.bin",
+      "seed": 40,
+      "steps": 133,
+      "sha256": "dc393e6060352fcb1f2b478e0d8d24414fc960eaad6ba1eb942a667eb86fcf20"
+    },
+    "sticky_041.fnv": {
+      "episode": "corpus/sticky_041.bin",
+      "seed": 41,
+      "steps": 129,
+      "sha256": "03f6dc59237575481b708e330f89dcb3e44281d3a5b7dd9baab2ffd6d9b07339"
+    },
+    "sticky_042.fnv": {
+      "episode": "corpus/sticky_042.bin",
+      "seed": 42,
+      "steps": 223,
+      "sha256": "1d482d5303e6d6dc21b39b65cac3c8ad3462235f78e0b003d8b82595614b266d"
+    },
+    "sticky_043.fnv": {
+      "episode": "corpus/sticky_043.bin",
+      "seed": 43,
+      "steps": 227,
+      "sha256": "2e35696c8572c8f9d918dc3d49b8812166f2d2ccefef6f45fc25942686b4bd54"
+    },
+    "sticky_044.fnv": {
+      "episode": "corpus/sticky_044.bin",
+      "seed": 44,
+      "steps": 125,
+      "sha256": "f417916558307063f797ef2e63a13747a3c2a3db6eeaf46fd436db286fe8fb64"
+    },
+    "sticky_045.fnv": {
+      "episode": "corpus/sticky_045.bin",
+      "seed": 45,
+      "steps": 113,
+      "sha256": "a0a1c752b80d14a4d821bd85eaaa50086264117e37d495164384ece9a933ee20"
+    },
+    "sticky_046.fnv": {
+      "episode": "corpus/sticky_046.bin",
+      "seed": 46,
+      "steps": 61,
+      "sha256": "9a68f3994fcf4d0d5aa3407c784945185be3a0ebdade010b3bb3e5342f742332"
+    },
+    "sticky_047.fnv": {
+      "episode": "corpus/sticky_047.bin",
+      "seed": 47,
+      "steps": 343,
+      "sha256": "18c019941a325af972e1ca967d1f290e06fddad2320415b377ef68964fcc6de0"
+    },
+    "sticky_048.fnv": {
+      "episode": "corpus/sticky_048.bin",
+      "seed": 48,
+      "steps": 179,
+      "sha256": "d6385cec620967db483f93a7e5dc214db3fe229e057b542d77e10864a43a3f8e"
+    },
+    "sticky_049.fnv": {
+      "episode": "corpus/sticky_049.bin",
+      "seed": 49,
+      "steps": 98,
+      "sha256": "e3d2a934ccf8f8c0affe2a5a43ab4f5cf24ef27ce94b79e15f1b2fd47712ad87"
+    },
+    "forager_000.fnv": {
+      "episode": "corpus/forager_000.bin",
+      "seed": 0,
+      "steps": 548,
+      "sha256": "6a1b411c19e08b305f447aad47adb894708ab161f9a0b03cd69a0a4ad685c3a7"
+    },
+    "forager_001.fnv": {
+      "episode": "corpus/forager_001.bin",
+      "seed": 1,
+      "steps": 198,
+      "sha256": "bab80d900b2f24f0e2cb07abfd6b67ddacaab9ab914a420a398ffb4a45128e58"
+    },
+    "forager_002.fnv": {
+      "episode": "corpus/forager_002.bin",
+      "seed": 2,
+      "steps": 257,
+      "sha256": "6d38b2a08bee167287fe962d2fb441e0fbea55ba370843deefd3748b0f739855"
+    },
+    "forager_003.fnv": {
+      "episode": "corpus/forager_003.bin",
+      "seed": 3,
+      "steps": 275,
+      "sha256": "8e0d21343e60c655fd23069dd0e0e94aa946bf9b6460d9b9a0ba5e6522f09807"
+    },
+    "forager_004.fnv": {
+      "episode": "corpus/forager_004.bin",
+      "seed": 4,
+      "steps": 519,
+      "sha256": "736c2240eb863160924508816a1100e2dcdea6099a5c1e41af244cc07285e248"
+    },
+    "forager_005.fnv": {
+      "episode": "corpus/forager_005.bin",
+      "seed": 5,
+      "steps": 230,
+      "sha256": "392a0268a25f15a3caf2a0206db927b429660c7fac576062d7b908bca435eb45"
+    },
+    "forager_006.fnv": {
+      "episode": "corpus/forager_006.bin",
+      "seed": 6,
+      "steps": 371,
+      "sha256": "6616508162287480915a9e6bb11f0c039c0929239f6ef0dae6cf4f604f53e228"
+    },
+    "forager_007.fnv": {
+      "episode": "corpus/forager_007.bin",
+      "seed": 7,
+      "steps": 201,
+      "sha256": "61946d837c5b15f80b32aee98e03304bcc5f4c67b288d027976d6ebbcbe6ec50"
+    },
+    "forager_008.fnv": {
+      "episode": "corpus/forager_008.bin",
+      "seed": 8,
+      "steps": 199,
+      "sha256": "6f8276db878e62a37e4083b6e09968ff46cf78e9e9f473e59c9fce8d89ef9eb6"
+    },
+    "forager_009.fnv": {
+      "episode": "corpus/forager_009.bin",
+      "seed": 9,
+      "steps": 300,
+      "sha256": "02a0782f608af47d973db7fb0531758da198731b89a7cba416fa38451be0cbc7"
+    },
+    "forager_010.fnv": {
+      "episode": "corpus/forager_010.bin",
+      "seed": 10,
+      "steps": 202,
+      "sha256": "a60e510050311bf1bee98ce74fab6779a9fe0faa33aff4fe9fdc5463e1f63d8a"
+    },
+    "forager_011.fnv": {
+      "episode": "corpus/forager_011.bin",
+      "seed": 11,
+      "steps": 1149,
+      "sha256": "5ab1b49ae425eed278bbc34c7ce8bbc0aae6d9fd003ca12902a1c5337ee62047"
+    },
+    "forager_012.fnv": {
+      "episode": "corpus/forager_012.bin",
+      "seed": 12,
+      "steps": 659,
+      "sha256": "b650032f8e0200451fd28c7b05ef58460ec41dbd648110507f46549546a031b8"
+    },
+    "forager_013.fnv": {
+      "episode": "corpus/forager_013.bin",
+      "seed": 13,
+      "steps": 455,
+      "sha256": "61a3ee010fe02d4fd657f977aa0bf02537909b66661ba7b32b548749f2c7dcfe"
+    },
+    "forager_014.fnv": {
+      "episode": "corpus/forager_014.bin",
+      "seed": 14,
+      "steps": 540,
+      "sha256": "2035f7c6795e86f37646d3372c78fb6aef9977e06ff14de4313bd7cc947fd3ea"
+    },
+    "forager_015.fnv": {
+      "episode": "corpus/forager_015.bin",
+      "seed": 15,
+      "steps": 305,
+      "sha256": "d32e25a2be27e252f22f41ffee0ea730310ef1479e076f26c09392f76bc59c5f"
+    },
+    "forager_016.fnv": {
+      "episode": "corpus/forager_016.bin",
+      "seed": 16,
+      "steps": 846,
+      "sha256": "ed679b5cd0cf6ac32c8769d94ce0391bca825ff24824e24a51c272eae639af99"
+    },
+    "forager_017.fnv": {
+      "episode": "corpus/forager_017.bin",
+      "seed": 17,
+      "steps": 266,
+      "sha256": "e0e6fa1a1f3f1f1534341a480ff5ea1d06573e5a6578c123af8b8f8983784062"
+    },
+    "forager_018.fnv": {
+      "episode": "corpus/forager_018.bin",
+      "seed": 18,
+      "steps": 210,
+      "sha256": "92520faae56982f09e0eb490fc79f1cc940f701e65435ffa149043e4cbe0770f"
+    },
+    "forager_019.fnv": {
+      "episode": "corpus/forager_019.bin",
+      "seed": 19,
+      "steps": 900,
+      "sha256": "07c75d9feb098650868f218bb41ad53d60e654a63a7def80be091a84cb5305d0"
+    },
+    "forager_020.fnv": {
+      "episode": "corpus/forager_020.bin",
+      "seed": 20,
+      "steps": 253,
+      "sha256": "f30fc0352584215f0360a2ef8d64b3263f83aeb8de8a8b0d163d30ed78643599"
+    },
+    "forager_021.fnv": {
+      "episode": "corpus/forager_021.bin",
+      "seed": 21,
+      "steps": 551,
+      "sha256": "20ac2c527a8adb4d91a3aa11df9698afbce4a1d6d1378e7b9241f83995414048"
+    },
+    "forager_022.fnv": {
+      "episode": "corpus/forager_022.bin",
+      "seed": 22,
+      "steps": 225,
+      "sha256": "bc09b323c0f7190f14e69274a3c412a2b7c798d6972e6c84f41100e792031c5c"
+    },
+    "forager_023.fnv": {
+      "episode": "corpus/forager_023.bin",
+      "seed": 23,
+      "steps": 572,
+      "sha256": "90c2862137c3daa518ce201778bde651c9a2bbc72bc8785c1cc06e33a499fb17"
+    },
+    "forager_024.fnv": {
+      "episode": "corpus/forager_024.bin",
+      "seed": 24,
+      "steps": 192,
+      "sha256": "44171695085bc9c445216d55ef3514f22bafc9d59527a2f00cb73258fd48cd72"
+    },
+    "forager_025.fnv": {
+      "episode": "corpus/forager_025.bin",
+      "seed": 25,
+      "steps": 926,
+      "sha256": "7b7803e6ae3cc01d9a52271d965ea76d9a77a5965d69f5d35aeff9d2ecf4c27d"
+    },
+    "forager_026.fnv": {
+      "episode": "corpus/forager_026.bin",
+      "seed": 26,
+      "steps": 208,
+      "sha256": "0e4419f2de52d80a886814d7dcbd69f1b16d759d3433bb8e14b897f6d2dd4532"
+    },
+    "forager_027.fnv": {
+      "episode": "corpus/forager_027.bin",
+      "seed": 27,
+      "steps": 531,
+      "sha256": "3a90934300013f1c162945f7b35e0e55c9f89341a1a12c039e3881e6a9196504"
+    },
+    "forager_028.fnv": {
+      "episode": "corpus/forager_028.bin",
+      "seed": 28,
+      "steps": 399,
+      "sha256": "ee85a567e269353a1da60f02ae4a29361b5daa6958cefd187087df981777b963"
+    },
+    "forager_029.fnv": {
+      "episode": "corpus/forager_029.bin",
+      "seed": 29,
+      "steps": 1188,
+      "sha256": "23d61ade36ee171290ae951d6e314814aa9d65c3329fbb9c6eb1c13ef484f324"
+    },
+    "adversarial_000.fnv": {
+      "episode": "corpus/adversarial_000.bin",
+      "seed": 0,
+      "steps": 179,
+      "sha256": "98cf43dfd2efd7c2e0c33ac4f768c1c542d0cfbc2e9cd7457a2e17449decda0f"
+    },
+    "adversarial_001.fnv": {
+      "episode": "corpus/adversarial_001.bin",
+      "seed": 1,
+      "steps": 249,
+      "sha256": "8bc83689ddcab970e7dce24bfe181e332488fcd1cf933be341d36b2ce0382d38"
+    },
+    "adversarial_002.fnv": {
+      "episode": "corpus/adversarial_002.bin",
+      "seed": 2,
+      "steps": 196,
+      "sha256": "4f73d8d9b9a2f4410607e7ea8dda7ee397949737864bda5983d821ff9ca36383"
+    },
+    "adversarial_003.fnv": {
+      "episode": "corpus/adversarial_003.bin",
+      "seed": 3,
+      "steps": 171,
+      "sha256": "23cf316d255cb5361353d669040dbe89af8e43322a3169d33d48e927b313c8aa"
+    },
+    "adversarial_004.fnv": {
+      "episode": "corpus/adversarial_004.bin",
+      "seed": 4,
+      "steps": 240,
+      "sha256": "e1c12bc2f4e69d03173191e25d22d92074373302d376f9f34c56f4697c4eaa43"
+    },
+    "adversarial_005.fnv": {
+      "episode": "corpus/adversarial_005.bin",
+      "seed": 5,
+      "steps": 903,
+      "sha256": "7abc2478b4f5447c8550eb505e18fb9a6cd520f2595e62f6cd79dea26a823cb8"
+    },
+    "adversarial_006.fnv": {
+      "episode": "corpus/adversarial_006.bin",
+      "seed": 6,
+      "steps": 542,
+      "sha256": "5b9ee2f148514ceabbac49c379e485113149bbf8523f53e45697de6a78edb91c"
+    },
+    "adversarial_007.fnv": {
+      "episode": "corpus/adversarial_007.bin",
+      "seed": 7,
+      "steps": 272,
+      "sha256": "f022979226fa8850da5286b85f2d314bede2128286e0c91f1f07f3b0e6b24e53"
+    },
+    "adversarial_008.fnv": {
+      "episode": "corpus/adversarial_008.bin",
+      "seed": 8,
+      "steps": 837,
+      "sha256": "403dfe4180d45eac2a2558c82c0acab63c102a757667eced4f79ea94dacbcb43"
+    },
+    "adversarial_009.fnv": {
+      "episode": "corpus/adversarial_009.bin",
+      "seed": 9,
+      "steps": 248,
+      "sha256": "82fabbba4e0712f8e70f41cc192f014461d7ebe4c60b9609606072a0bb45b248"
+    },
+    "adversarial_010.fnv": {
+      "episode": "corpus/adversarial_010.bin",
+      "seed": 10,
+      "steps": 193,
+      "sha256": "3fd8b549639e8f13e9aaca604b467443ad8a15450700156ca01b0484cb3638d5"
+    },
+    "adversarial_011.fnv": {
+      "episode": "corpus/adversarial_011.bin",
+      "seed": 11,
+      "steps": 720,
+      "sha256": "3eef4d6b9010ff9293e4619befb266967e212fe3d16239dadde56720b0e07177"
+    },
+    "adversarial_012.fnv": {
+      "episode": "corpus/adversarial_012.bin",
+      "seed": 12,
+      "steps": 228,
+      "sha256": "047c34547a5b34cad031f01087a36f070fceb7e3445caeda010ceb957ca70ac2"
+    },
+    "adversarial_013.fnv": {
+      "episode": "corpus/adversarial_013.bin",
+      "seed": 13,
+      "steps": 426,
+      "sha256": "4d8c0fdaab56a089af93529f3d62482cac8f164006a84c6cda8fb9dba543d2c2"
+    },
+    "adversarial_014.fnv": {
+      "episode": "corpus/adversarial_014.bin",
+      "seed": 14,
+      "steps": 508,
+      "sha256": "d44192281b8135df75c989dd2b777d9ba56ba30a4663dfa201806a3e638ea8f5"
+    },
+    "adversarial_015.fnv": {
+      "episode": "corpus/adversarial_015.bin",
+      "seed": 15,
+      "steps": 206,
+      "sha256": "e31a0d8047eb9b902d8751bb487e12ed0801ab6bac77bf7f313b61e4dfa360f3"
+    },
+    "adversarial_016.fnv": {
+      "episode": "corpus/adversarial_016.bin",
+      "seed": 16,
+      "steps": 191,
+      "sha256": "eb1092190d7b6a8b766495849a3092eea4efbde09ae4ca099bc71b099c0d1c2a"
+    },
+    "adversarial_017.fnv": {
+      "episode": "corpus/adversarial_017.bin",
+      "seed": 17,
+      "steps": 352,
+      "sha256": "92cc85d95000a302d527c3cebf4a78f313a5847cad4b8063991a7ae16231d657"
+    },
+    "adversarial_018.fnv": {
+      "episode": "corpus/adversarial_018.bin",
+      "seed": 18,
+      "steps": 593,
+      "sha256": "8bb38eeb5d12fd10f1d19bbc0f5ca5c4b922f86d8d4a43ee6a0cbc05792efc91"
+    },
+    "adversarial_019.fnv": {
+      "episode": "corpus/adversarial_019.bin",
+      "seed": 19,
+      "steps": 251,
+      "sha256": "d7ed78085aeffdc1b1bd781f2d2afe0e34f4211c9feb5f182a39f7d928acb05d"
+    },
+    "lava_000.fnv": {
+      "episode": "corpus/lava_000.bin",
+      "seed": 0,
+      "steps": 302,
+      "sha256": "1bb21618dc3acd83cf91c967445fe9fdb240fbd37d493b1c2282c34ae15d8f47"
+    },
+    "lava_001.fnv": {
+      "episode": "corpus/lava_001.bin",
+      "seed": 1,
+      "steps": 171,
+      "sha256": "5681c5ed940a0d4ab2cd8cc32f54589a14bba3a7072d27aa8e4a2c513a35e728"
+    },
+    "lava_002.fnv": {
+      "episode": "corpus/lava_002.bin",
+      "seed": 2,
+      "steps": 232,
+      "sha256": "8ed1a1a249038d80a05fd3a1df94579f0904bf35a97811a231b8f4f58b2b013d"
+    },
+    "lava_003.fnv": {
+      "episode": "corpus/lava_003.bin",
+      "seed": 3,
+      "steps": 312,
+      "sha256": "135fc966ad121c173b9284975b52494b9e4020cb2c26ce8d22cc606249b80aa8"
+    },
+    "lava_004.fnv": {
+      "episode": "corpus/lava_004.bin",
+      "seed": 4,
+      "steps": 405,
+      "sha256": "b9689808400b9895d11d01410defda9076f3c1db49f3de244a72bd9b48fe34ff"
+    },
+    "lava_005.fnv": {
+      "episode": "corpus/lava_005.bin",
+      "seed": 5,
+      "steps": 298,
+      "sha256": "4b4c6f039112e68c27a5e7aeef7a6984db8eb9a6e92366ec37329492999fb7f0"
+    },
+    "lava_006.fnv": {
+      "episode": "corpus/lava_006.bin",
+      "seed": 6,
+      "steps": 376,
+      "sha256": "d75abee7f4f922665360340c232e5454723de811def7f3f54fd0e8dd4f7a8a8b"
+    },
+    "lava_007.fnv": {
+      "episode": "corpus/lava_007.bin",
+      "seed": 7,
+      "steps": 328,
+      "sha256": "3b6cc3edb6e33a82c17a791535387505786b284a7036362cfdf0bf348148ad58"
+    },
+    "lava_008.fnv": {
+      "episode": "corpus/lava_008.bin",
+      "seed": 8,
+      "steps": 292,
+      "sha256": "f897def778455347ac8757af78e2b402294f4bb63266f0c5dd52880c403b375d"
+    },
+    "lava_009.fnv": {
+      "episode": "corpus/lava_009.bin",
+      "seed": 9,
+      "steps": 440,
+      "sha256": "5eb2201d915b684129d14825b8b30e5521efbbf643aa129e576fe088c06e7955"
+    }
+  }
+}

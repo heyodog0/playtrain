@@ -20,7 +20,15 @@ export const baseStyle = `
   button:hover { border-color: #888; color: #fff; }
 `;
 
-const playStyle = `${baseStyle}
+const playStyle = `
+#parity-label { margin: 8px auto 0; max-width: 900px; font-size: 13px; opacity: .75; }
+#parity-label code { opacity: .9; }
+#parity-label details { display: inline-block; vertical-align: top; text-align: left; }
+#parity-label summary { cursor: pointer; display: inline; }
+#parity-label ul { margin: 6px 0 0; padding-left: 18px; }
+#parity-label li { margin: 4px 0; }
+#controls-overlay { margin: 8px auto 0; max-width: 900px; font-size: 13px; line-height: 1.5; opacity: .85; }
+${baseStyle}
   body { display: flex; flex-direction: column; align-items: center; padding: 16px; overflow: hidden; }
   #topbar { width: 100%; max-width: 480px; margin-bottom: 16px;
             display: grid; grid-template-columns: 1fr auto 1fr;
@@ -126,7 +134,40 @@ ${autoOpenScript}
 
 // All games render live by PlayTrain's own rasterizer (the agent's renderer). Matter.js games
 // also get matter.min.js inlined so the `Matter` global is available before the game runs.
-function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = {}) {
+function rasterizerPage(name, source, { homeHref = '/', needsMatter = false, sidecar = null } = {}) {
+  // A multi-file game ships <name>.json beside its bundle. Three things come
+  // from it: the human tick rate (Craftax is turn-based; 60fps is unplayable),
+  // the controls overlay, and the parity label. Catalog games have no sidecar
+  // and every one of these falls back to what the page always did.
+  const human = (sidecar && sidecar.human) || {};
+  // Every key the game's actions use (sidecar.actions held/press), so games with
+  // their own keys -- Craftax's digits and Tab -- receive them. Catalog games
+  // have no sidecar and keep the default set below.
+  const sidecarKeys = [];
+  for (const act of (sidecar && sidecar.actions) || []) {
+    for (const k of act.held || []) sidecarKeys.push(k);
+    if (act.press != null) sidecarKeys.push(act.press);
+  }
+  const stepsPerSecond = human.steps_per_second || 60;
+  const controlsHtml = human.keymap_overlay && human.controls
+    ? `<div id="controls-overlay">${human.controls}</div>` : '';
+  const ref = sidecar && sidecar.reference;
+  // PLAN 8: label parity games from manifest.reference, nothing extra for others.
+  const parityLabel = ref
+    ? `<div id="parity-label">exact dynamics vs ${ref.name || 'the reference'}` +
+      (ref.commit ? ` <code>${String(ref.commit).slice(0, 7)}</code>` : '') +
+      // manifest.not_matched holds the full prose caveats. They belong on the page
+      // -- the claim without the caveats is the dishonest half -- but they are
+      // paragraphs, not a label, so they sit collapsed behind a disclosure. No
+      // nested <div>: the parity-label gate matches up to the first </div>.
+      (Array.isArray(ref.not_matched) && ref.not_matched.length
+        ? ` &middot; <details><summary>${ref.not_matched.length} documented caveat`
+          + (ref.not_matched.length === 1 ? '' : 's')
+          + `</summary><ul>`
+          + ref.not_matched.map((c) => `<li>${c}</li>`).join('')
+          + `</ul></details>` : '') +
+      `</div>`
+    : '';
   // Classic <script> executes before the deferred type="module" boot, so window.Matter is
   // set by the time the game source is eval'd — the browser analogue of game-env.mjs.
   const matterScript = needsMatter ? `<script>${matterBundle()}</script>\n` : '';
@@ -144,7 +185,9 @@ function rasterizerPage(name, source, { homeHref = '/', needsMatter = false } = 
 <div id="reset-row"><button id="reset">Reset</button>
   <label id="agentres-row"><input type="checkbox" id="agentres"> render at agent resolution (64&times;64)</label>
 </div>
-<div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (60fps)</div>
+<div id="help">click the page, then play &middot; rendered by PlayTrain's rasterizer (${stepsPerSecond}fps)</div>
+${parityLabel}
+${controlsHtml}
 
 <!-- game source kept inert; the module boot evals it AFTER installing the shim globals -->
 <script type="text/plain" id="game-src">${source}</script>
@@ -176,7 +219,7 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
   var octx = obsC.getContext('2d'); octx.imageSmoothingEnabled = false;
 
   var held = new Set(), pressed = new Set();
-  var KEYS = [32, 37, 38, 39, 40, 65, 66, 68, 83, 87];
+  var KEYS = [32, 37, 38, 39, 40, 65, 66, 68, 83, 87].concat(${JSON.stringify(sidecarKeys)});
   addEventListener('keydown', function (e) {
     if (KEYS.indexOf(e.keyCode) >= 0) { e.preventDefault(); if (!held.has(e.keyCode)) pressed.add(e.keyCode); held.add(e.keyCode); }
   }, { passive: false });
@@ -214,20 +257,53 @@ ${browserShimBundle({ wasm: /\bWEBGL\b/.test(source) })}
       'agent obs (64×64, exactly what the policy sees)';
   }
 
-  var FRAME_MS = 1000 / 60, last = 0;          // fixed-timestep games: pin to 60fps
+  var FRAME_MS = 1000 / ${stepsPerSecond}, last = 0;   // fixed-timestep games; sidecar may slow this
+
+  // Smooth-camera hook, opt-in and per-game. A turn-based game stepping at a
+  // few Hz has a 60fps render loop going spare between steps; if the game
+  // exposes renderInterpolated(alpha) it gets called on those spare frames
+  // with alpha running 0->1 across the gap, so the camera can glide instead of
+  // teleporting. draw() and the step rate are untouched, so the agent's
+  // observation is exactly what it was — this only changes what a HUMAN sees.
+  // Games without the hook (every catalog game) take the early return above
+  // and behave identically to before.
+  function drawToCanvas() {
+    var p = getPixelData();
+    vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
+    octx.drawImage(view, 0, 0, obsC.width, obsC.height);
+  }
+  var smooth = null;
   function renderLoop(now) {
     requestAnimationFrame(renderLoop);
-    if (now - last < FRAME_MS - 0.5) return;
+    if (now - last < FRAME_MS - 0.5) {
+      if (smooth === null) {
+        smooth = typeof window.renderInterpolated === 'function' ? window.renderInterpolated : false;
+      }
+      if (smooth && last > 0) {
+        try { smooth((now - last) / FRAME_MS); drawToCanvas(); } catch (e) { smooth = false; }
+      }
+      return;
+    }
     last = now;
-    setKeysDown(Array.from(held));
-    pressed.forEach(function (c) { simulateKeyPress(c); });   // one-shot keyPressed() events
+    // Opt-in per game: if the game exposes relativeArrow(code), arrow keys are
+    // translated through it before being sent. A first-person game uses this to
+    // make UP mean "forward" rather than "north". It deliberately lives here
+    // and not inside the game's own key reader, because GameEnv.step() drives
+    // the game by synthesising the sidecar's keys — a game that reinterpreted
+    // them itself would silently redefine what every action index means for a
+    // TRAINING run too. Catalog games do not define it and are unaffected.
+    var remap = typeof window.relativeArrow === 'function' ? window.relativeArrow : null;
+    var mapKey = function (c) {
+      if (!remap) return c;
+      try { return remap(c); } catch (e) { return c; }
+    };
+    setKeysDown(Array.from(held).map(mapKey));
+    pressed.forEach(function (c) { simulateKeyPress(mapKey(c)); });   // one-shot keyPressed() events
     pressed.clear();
     setPointerPos(mq.x, mq.y);
     setButtons(mq.down ? 1 : 0);
     tick();
-    var p = getPixelData();
-    vctx.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.width, p.height), 0, 0);
-    octx.drawImage(view, 0, 0, obsC.width, obsC.height);       // obs preview from OUR render
+    drawToCanvas();                                            // obs preview from OUR render
     if (typeof window.getGameState === 'function') {
       try {
         var s = window.getGameState(); var parts = [];

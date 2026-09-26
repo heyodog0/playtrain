@@ -1,0 +1,18 @@
+[
+  {
+    "game": "frostbite",
+    "workers": 2,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 712196,
+    "frames_per_s": 712196,
+    "per_worker": [
+      354378,
+      357817
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.35,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

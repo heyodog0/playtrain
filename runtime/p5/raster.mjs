@@ -229,6 +229,17 @@ class Context2D {
   fillText() {}
 
   // ---- image / readback ----
+  // Load raw RGBA straight-alpha bytes into this canvas. The JS mirror of
+  // rs_load_rgba; see crates/rasterizer/src/lib.rs. A blit of the result goes
+  // through drawImage below, which is integer nearest-neighbour, so native,
+  // wasm and this backend stay bit-identical.
+  loadRGBA(bytes) {
+    const px = this.px;
+    const n = Math.min(bytes.length, px.length);
+    for (let i = 0; i < n; i++) px[i] = bytes[i];
+    return n;
+  }
+
   drawImage(src, dx, dy, dw, dh) {
     // nearest-neighbor blit/downsample of another raster Canvas into this one
     const sw = src.width, sh = src.height, spx = src._px, W = this.w, px = this.px;
@@ -244,6 +255,354 @@ class Context2D {
   getImageData(x, y, w, h) {
     // assumes full-surface reads (the only use in the shim)
     return { data: this.px, width: this.w, height: this.h };
+  }
+
+  // ---- first-person voxel raycast ----------------------------------------
+  // A LINE-FOR-LINE port of rs_voxel_view (crates/rasterizer/src/voxel.rs),
+  // which is the spec. This is the browser fallback for a machine without the
+  // wasm backend, and the only per-pixel JS loop FIRST_PERSON_PLAN.md allows —
+  // it exists to be bit-identical, not to be fast.
+  //
+  // Every float op is wrapped in Math.fround, in the SAME association order as
+  // the Rust, because that is what makes f64 JS arithmetic reproduce f32. A
+  // missing fround here is not a rounding difference, it is a different image,
+  // and tests/test_voxel.py compares the two hash for hash.
+  voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+    if (!grid || !atlas) return;
+    if (gw === 0 || gh === 0 || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+
+    // f32 images of every scalar that crosses the boundary: the Rust takes
+    // these as f32 parameters, so the conversion happens before any arithmetic.
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const BIG = F(1.0e30);
+    const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
+    // Look constants, mirroring voxel.rs. See the long comment there for why
+    // each exists; the values must stay in step with the Rust literals.
+    const SHADE_X = F(0.62), SHADE_Z = F(0.80), SHADE_TOP = F(1.0);
+    const SKY_ZENITH_SCALE = F(0.66);
+    // Camera basis. yawQ is a quarter turn when it is an integer 0..3; a
+    // fractional value is a FREE yaw in quarter-turn units, used only by the
+    // smooth-camera display path (see rs_voxel_view_free). Trig is _rsin/_rcos,
+    // which mirror the Rust psin/pcos exactly.
+    let fwdX, fwdZ, rgtX, rgtZ;
+    if (Number.isInteger(yawQ)) {
+      switch (yawQ & 3) {
+        case 0: fwdX = 0; fwdZ = -1; rgtX = 1; rgtZ = 0; break;
+        case 1: fwdX = 1; fwdZ = 0; rgtX = 0; rgtZ = 1; break;
+        case 2: fwdX = 0; fwdZ = 1; rgtX = -1; rgtZ = 0; break;
+        default: fwdX = -1; fwdZ = 0; rgtX = 0; rgtZ = -1; break;
+      }
+    } else {
+      const a = yawQ * (Math.PI / 2);
+      const sn = F(_rsin(a)), cs = F(_rcos(a));
+      fwdX = sn; fwdZ = F(-cs); rgtX = cs; rgtZ = sn;
+    }
+    const tpx = F(tilePx), tmax = tilePx - 1;
+    const tstride = tilePx * tilePx * 4;
+    const fw = F(dstW), fh = F(dstH);
+
+    // floor() as the Rust does it: truncate, then correct the negative case.
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+
+        const rdx = F(F(sx * rgtX) + fwdX);
+        const rdz = F(F(sx * rgtZ) + fwdZ);
+        const rdy = sy;
+
+        const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
+        const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
+
+        let mx = ffloor(ex), mz = ffloor(ez);
+        const adx = dx < 0 ? F(-dx) : dx;
+        const adz = dz < 0 ? F(-dz) : dz;
+        const ddx = adx > 0 ? F(1 / adx) : BIG;
+        const ddz = adz > 0 ? F(1 / adz) : BIG;
+        const stepx = dx > 0 ? 1 : -1;
+        const stepz = dz > 0 ? 1 : -1;
+        let sidex = adx > 0
+          ? (dx > 0 ? F(F(F(mx + 1) - ex) * ddx) : F(F(ex - F(mx)) * ddx))
+          : BIG;
+        let sidez = adz > 0
+          ? (dz > 0 ? F(F(F(mz + 1) - ez) * ddz) : F(F(ez - F(mz)) * ddz))
+          : BIG;
+
+        let tIn = 0, tOut = BIG, tFloor = BIG, tTop = BIG;
+        if (dy < 0) {
+          const t0 = F(F(0 - ey) / dy);
+          const t1 = F(F(1 - ey) / dy);
+          if (t1 > 0) { tIn = t1; tTop = t1; }
+          if (t0 > 0) { tOut = t0; tFloor = t0; } else { tOut = 0; }
+        } else if (dy > 0) {
+          const t0 = F(F(0 - ey) / dy);
+          const t1 = F(F(1 - ey) / dy);
+          if (t0 > 0) tIn = t0;
+          if (t1 > 0) tOut = t1; else tOut = 0;
+        } else if (ey < 0 || ey >= 1) {
+          tOut = 0;
+        }
+
+        let hit = 0, tHit = 0, tile = 0, tEnter = 0, axisX = true, first = true;
+        for (;;) {
+          if (mx < 0 || mz < 0 || mx >= gw || mz >= gh) break;
+          if (tEnter > vd) break;
+          const cell = grid[mz * gw + mx];
+          const solid = (cell & 1) !== 0;
+          const ctile = cell >>> 1;
+          const tExit = sidex < sidez ? sidex : sidez;
+
+          if (!first && solid && tEnter >= tIn && tEnter < tOut) {
+            hit = axisX ? 1 : 2; tHit = tEnter; tile = ctile; break;
+          }
+          if (solid && tTop >= tEnter && tTop < tExit) { hit = 3; tHit = tTop; tile = ctile; break; }
+          if (tFloor >= tEnter && tFloor < tExit) { hit = 4; tHit = tFloor; tile = ctile; break; }
+
+          if (sidex < sidez) { tEnter = sidex; sidex = F(sidex + ddx); mx += stepx; axisX = true; }
+          else { tEnter = sidez; sidez = F(sidez + ddz); mz += stepz; axisX = false; }
+          first = false;
+        }
+        if (hit !== 0 && tHit > vd) hit = 0;
+
+        let r, g, b, depth;
+        if (hit === 0) {
+          const half = F(fh * 0.5);
+          let k = F(F(half - py) / half);
+          if (k < 0) k = 0;
+          if (k > 1) k = 1;
+          const m = F(1 - F(k * F(1 - SKY_ZENITH_SCALE)));
+          r = F(skyR * m) | 0;
+          g = F(skyG * m) | 0;
+          b = F(skyB * m) | 0;
+          depth = Infinity;
+        } else {
+          const xh = F(ex + F(dx * tHit));
+          const yh = F(ey + F(dy * tHit));
+          const zh = F(ez + F(dz * tHit));
+          let u, v;
+          if (hit === 1) {
+            const f = F(zh - F(ffloor(zh)));
+            u = stepx > 0 ? f : F(1 - f);
+            v = F(1 - F(yh - F(ffloor(yh))));
+          } else if (hit === 2) {
+            const f = F(xh - F(ffloor(xh)));
+            u = stepz > 0 ? F(1 - f) : f;
+            v = F(1 - F(yh - F(ffloor(yh))));
+          } else {
+            u = F(xh - F(ffloor(xh)));
+            v = F(zh - F(ffloor(zh)));
+          }
+          const t = tile < nTiles ? tile : 0;
+          let tx = F(u * tpx) | 0;
+          let ty = F(v * tpx) | 0;
+          if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+          if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+          const o = t * tstride + (ty * tilePx + tx) * 4;
+          const shade = hit === 1 ? SHADE_X : hit === 2 ? SHADE_Z : SHADE_TOP;
+          r = F(atlas[o] * shade) | 0;
+          g = F(atlas[o + 1] * shade) | 0;
+          b = F(atlas[o + 2] * shade) | 0;
+          // Forward distance, not Euclidean — see rs_voxel_view's doc comment.
+          depth = F(tHit / len);
+        }
+
+        const i = cyp * cw + cxp;
+        const o = i * 4;
+        px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+        this.depth[i] = depth;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_voxel_sprite. Same rule as voxelView above:
+  // Math.fround after every float op, in the Rust's association order.
+  voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+    if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const sxw = F(spriteX), szw = F(spriteZ);
+
+    let fx, fz, rx, rz;
+    if (Number.isInteger(yawQ)) {
+      switch (yawQ & 3) {
+        case 0: fx = 0; fz = -1; rx = 1; rz = 0; break;
+        case 1: fx = 1; fz = 0; rx = 0; rz = 1; break;
+        case 2: fx = 0; fz = 1; rx = -1; rz = 0; break;
+        default: fx = -1; fz = 0; rx = 0; rz = -1; break;
+      }
+    } else {
+      const a = yawQ * (Math.PI / 2);
+      const sn = F(_rsin(a)), cs = F(_rcos(a));
+      fx = sn; fz = F(-cs); rx = cs; rz = sn;
+    }
+    const dx = F(sxw - ex);
+    const dz = F(szw - ez);
+    const depth = F(F(dx * fx) + F(dz * fz));
+    const lat = F(F(dx * rx) + F(dz * rz));
+    if (!(depth > 0) || depth > vd) return;
+
+    const fw = F(dstW), fh = F(dstH);
+    const hw = F(fw * 0.5), hh = F(fh * 0.5);
+    const x0f = F(F(F(F(lat - 0.5) / depth) + 1) * hw - 0.5);
+    const x1f = F(F(F(F(lat + 0.5) / depth) + 1) * hw - 0.5);
+    const y0f = F(F(F(1 - F(F(1 - ey) / depth)) * hh) - 0.5);
+    const y1f = F(F(F(1 - F(F(0 - ey) / depth)) * hh) - 0.5);
+    const wf = F(x1f - x0f), hf = F(y1f - y0f);
+    if (!(wf > 0) || !(hf > 0)) return;
+
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    let ix0 = -ffloor(F(-x0f));
+    let ix1 = ffloor(x1f);
+    let iy0 = -ffloor(F(-y0f));
+    let iy1 = ffloor(y1f);
+    if (ix0 < 0) ix0 = 0;
+    if (iy0 < 0) iy0 = 0;
+    if (ix1 > dstW - 1) ix1 = dstW - 1;
+    if (iy1 > dstH - 1) iy1 = dstH - 1;
+
+    const t = atlasTile < nTiles ? atlasTile : 0;
+    const tpx = F(tilePx), tmax = tilePx - 1;
+    const tstride = tilePx * tilePx * 4;
+
+    for (let py = iy0; py <= iy1; py++) {
+      const cyp = dstY + py;
+      if (cyp < 0 || cyp >= ch) continue;
+      const v = F(F(py - y0f) / hf);
+      let ty = F(v * tpx) | 0;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+
+      for (let pxi = ix0; pxi <= ix1; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp < 0 || cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        if (depth >= this.depth[i]) continue;
+        const u = F(F(pxi - x0f) / wf);
+        let tx = F(u * tpx) | 0;
+        if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+
+        const o = t * tstride + (ty * tilePx + tx) * 4;
+        const sr = atlas[o], sg = atlas[o + 1], sb = atlas[o + 2], sa = atlas[o + 3];
+        if (sa === 0) continue;
+        const d = i * 4;
+        if (sa === 255) {
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
+          this.depth[i] = depth;
+        } else {
+          const a = F(sa / 255);
+          const ia = F(1 - a);
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
+          px[d + 3] = 255;
+        }
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_dusk, including JAX's threefry-2x32. Same rule
+  // again: Math.fround after every float op, in the Rust's association order.
+  // The uint32 half needs no fround but does need `>>> 0` after every add, or
+  // the values leave the uint32 range and stop matching.
+  voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+    if (w === 0 || h === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+
+    const dl = F(daylight);
+    const withStatic = dl < 0.5 && useStatic !== 0 && !!noise;
+    const doDusk = dl < 1.0;
+    if (!doDusk && sleeping === 0) return;
+    const inv = F(1 - dl);
+    const si = F(2 * F(0.5 - dl));
+
+    const ENHANCE = F(0.4), ENHANCE_INV = F(0.6);
+    const LUM_R = F(0.299), LUM_G = F(0.587), LUM_B = F(0.114);
+    const NIGHT_TINT = [0, 16, 64];
+    const SLEEP_TINT = [0, 0, 16];
+    const C240 = 0x1BD11BDA;
+    const ROT = [[13, 15, 26, 6], [17, 29, 16, 24]];
+    const fbuf = new ArrayBuffer(4);
+    const fu32 = new Uint32Array(fbuf);
+    const ff32 = new Float32Array(fbuf);
+
+    const uniformAt = (k0, k1, i) => {
+      const ks0 = k0 >>> 0, ks1 = k1 >>> 0;
+      const ks2 = (ks0 ^ ks1 ^ C240) >>> 0;
+      const ks = [ks0, ks1, ks2];
+      let v0 = (i * 0 + 0 + ks0) >>> 0;       // counter high word is always 0
+      let v1 = (i + ks1) >>> 0;
+      for (let g = 0; g < 5; g++) {
+        const rots = ROT[g & 1];
+        for (let r = 0; r < 4; r++) {
+          v0 = (v0 + v1) >>> 0;
+          v1 = ((v1 << rots[r]) | (v1 >>> (32 - rots[r]))) >>> 0;
+          v1 = (v0 ^ v1) >>> 0;
+        }
+        v0 = (v0 + ks[(g + 1) % 3]) >>> 0;
+        v1 = (v1 + ks[(g + 2) % 3] + g + 1) >>> 0;
+      }
+      fu32[0] = (((v0 ^ v1) >>> 9) | 0x3f800000) >>> 0;
+      return F(ff32[0] - 1);
+    };
+
+    for (let py = 0; py < h; py++) {
+      const cyp = y + py;
+      if (cyp >= ch) continue;
+      for (let pxi = 0; pxi < w; pxi++) {
+        const cxp = x + pxi;
+        if (cxp >= cw) continue;
+        const i = py * w + pxi;
+        const o = (cyp * cw + cxp) * 4;
+
+        if (doDusk) {
+          const r0 = px[o], g0 = px[o + 1], b0 = px[o + 2];
+          let r1 = r0, g1 = g0, b1 = b0;
+          if (withStatic) {
+            const u = uniformAt(key0, key1, i);
+            const sv = F(F(u * 95) + 32);
+            const m = F(si * noise[i]);
+            const im = F(1 - m);
+            r1 = F(F(im * r0) + F(m * sv));
+            g1 = F(F(im * g0) + F(m * sv));
+            b1 = F(F(im * b0) + F(m * sv));
+          }
+          const lum = F(F(F(LUM_R * r1) + F(LUM_G * g1)) + F(LUM_B * b1));
+          let nr = F(F(r1 * ENHANCE) + F(ENHANCE_INV * lum));
+          let ng = F(F(g1 * ENHANCE) + F(ENHANCE_INV * lum));
+          let nb = F(F(b1 * ENHANCE) + F(ENHANCE_INV * lum));
+          nr = F(F(0.5 * nr) + F(0.5 * NIGHT_TINT[0]));
+          ng = F(F(0.5 * ng) + F(0.5 * NIGHT_TINT[1]));
+          nb = F(F(0.5 * nb) + F(0.5 * NIGHT_TINT[2]));
+          px[o] = F(F(dl * r0) + F(inv * nr)) | 0;
+          px[o + 1] = F(F(dl * g0) + F(inv * ng)) | 0;
+          px[o + 2] = F(F(dl * b0) + F(inv * nb)) | 0;
+        }
+
+        if (sleeping !== 0) {
+          const r = px[o], g = px[o + 1], b = px[o + 2];
+          const lum = F(F(F(LUM_R * r) + F(LUM_G * g)) + F(LUM_B * b));
+          px[o] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[0])) | 0;
+          px[o + 1] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[1])) | 0;
+          px[o + 2] = F(F(0.5 * lum) + F(0.5 * SLEEP_TINT[2])) | 0;
+        }
+      }
+    }
   }
 }
 

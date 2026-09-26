@@ -1,0 +1,24 @@
+# Paper name -> repo name. games/ uses the paper names; framework/ keeps the repo names.
+#
+# The paper (main.tex L618 caption, L640/645/648 prose, the tab:llm-cost rows at
+# L1783-1786, and the discussion at L778) uses presentation names. The shipped
+# game files, the llm_cost.json rows and the generation logs use the original
+# names. The token counts are identical either way, so this is naming only --
+# but a reader looking up breakout.multiball in examples/games/js/ will not
+# find it.
+#
+# paper_name	repo_name	game_file
+breakout.multiball	breakout.multi	examples/games/js/breakout.multi.js
+qbert.bigmap	qbert.v2	examples/games/js/qbert.v2.js
+flappy_bird.hoop	flappy_bird.dunk2	examples/games/js/flappy_bird.dunk2.js
+frostbite.jungle	frostbite.jungle	examples/games/js/frostbite.jungle.js
+downwell	downwell_fresh	examples/games/js/downwell_fresh.js
+downwell.refined	downwell_fresh.refined	examples/games/js/downwell_fresh.refined.js
+craftax_classic.first_person	craftax_fp	examples/games/multifile/variants/craftax_fp/dist/craftax_fp.js
+#
+# games/ also renames these, which the paper's tables do not print (so they are
+# comments here, and the checkers keep matching the paper's table rows):
+#   VVVVVV                 vvvvvv                              examples/games/js/vvvvvv.js
+#   VVVVVV.refined         vvvvvv.v2                           examples/games/js/vvvvvv.v2.js
+#   jetpack_joyride.space  jetpack_joyride.spaceship-viz-v2    examples/games/js/jetpack_joyride.spaceship-viz-v2.js
+#   seaquest.3D            seaquest.v3                         examples/games/js/seaquest.v3.js

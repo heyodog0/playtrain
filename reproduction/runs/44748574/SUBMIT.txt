@@ -1,0 +1,9 @@
+# sacct -X -j 44748574_0 -o JobID,JobName%30,Submit,End,NodeList,WorkDir%90,SubmitLine%200 -n
+44748574_0   t1a_t3fix   2026-09-06T00:11:42   2026-09-06T01:25:49   (per-task node, see below)   /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench   sbatch --export=ALL,ROW=ppo_nature t1a_t3fix.sbatch
+
+what:  Table 1(a) ppo_nature, t3fix arm
+array: 24 tasks, one game per task, --array=0-23%1 (serial), no --nodelist
+sbatch --exclude (in the file): holygpu8a13401,holygpu8a13402,holygpu8a13403,holygpu8a13404,holygpu8a17601
+nodes: this job's tasks landed on several nodes; the full task -> game -> node
+       map is committed at reproduction/figures/tables/nodes/t1a_nodes.tsv.
+       Run 'bash reproduction/reproduce.sh t1a_nodes' for the per-node means.

@@ -1,0 +1,886 @@
+[
+ {
+  "seed": 11,
+  "frame": 0,
+  "light": 0.8056125640869141,
+  "timestep": 1,
+  "driver_seed": 7,
+  "state_rng": [
+   1863648641,
+   872055318
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 12,
+  "light": 0.8944774270057678,
+  "timestep": 13,
+  "driver_seed": 7,
+  "state_rng": [
+   4044711396,
+   3386749138
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 24,
+  "light": 0.9539756774902344,
+  "timestep": 25,
+  "driver_seed": 7,
+  "state_rng": [
+   536323978,
+   1706731351
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 36,
+  "light": 0.986427903175354,
+  "timestep": 37,
+  "driver_seed": 7,
+  "state_rng": [
+   181019615,
+   3878642373
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 48,
+  "light": 0.9984816312789917,
+  "timestep": 49,
+  "driver_seed": 7,
+  "state_rng": [
+   3431092415,
+   1717139988
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 60,
+  "light": 0.9999988675117493,
+  "timestep": 61,
+  "driver_seed": 7,
+  "state_rng": [
+   2175182322,
+   2669338127
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 72,
+  "light": 0.9975003004074097,
+  "timestep": 73,
+  "driver_seed": 7,
+  "state_rng": [
+   1737596658,
+   3789632442
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 84,
+  "light": 0.9826623797416687,
+  "timestep": 85,
+  "driver_seed": 7,
+  "state_rng": [
+   476244342,
+   1596060485
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 96,
+  "light": 0.9460580348968506,
+  "timestep": 97,
+  "driver_seed": 7,
+  "state_rng": [
+   447762783,
+   3430091159
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 108,
+  "light": 0.8816986680030823,
+  "timestep": 109,
+  "driver_seed": 7,
+  "state_rng": [
+   3693010747,
+   2723462382
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 120,
+  "light": 0.7880513072013855,
+  "timestep": 121,
+  "driver_seed": 7,
+  "state_rng": [
+   3235908122,
+   2773720384
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 132,
+  "light": 0.6684203147888184,
+  "timestep": 133,
+  "driver_seed": 7,
+  "state_rng": [
+   3769203111,
+   4275908665
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 144,
+  "light": 0.5306383371353149,
+  "timestep": 145,
+  "driver_seed": 7,
+  "state_rng": [
+   3530651556,
+   540711904
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 147,
+  "light": 0.4946335554122925,
+  "timestep": 148,
+  "driver_seed": 7,
+  "state_rng": [
+   1151312342,
+   2504442344
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 153,
+  "light": 0.42215418815612793,
+  "timestep": 154,
+  "driver_seed": 7,
+  "state_rng": [
+   2191308885,
+   3631265194
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 159,
+  "light": 0.35048073530197144,
+  "timestep": 160,
+  "driver_seed": 7,
+  "state_rng": [
+   2595113217,
+   3786918249
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 165,
+  "light": 0.28137069940567017,
+  "timestep": 166,
+  "driver_seed": 7,
+  "state_rng": [
+   2304303971,
+   2361826321
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 171,
+  "light": 0.21657150983810425,
+  "timestep": 172,
+  "driver_seed": 7,
+  "state_rng": [
+   1328530824,
+   1148093609
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 177,
+  "light": 0.15776091814041138,
+  "timestep": 178,
+  "driver_seed": 7,
+  "state_rng": [
+   2651840710,
+   619719558
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 182,
+  "light": 0.11445152759552002,
+  "timestep": 183,
+  "driver_seed": 7,
+  "state_rng": [
+   3484086768,
+   3274732541
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 183,
+  "light": 0.10649120807647705,
+  "timestep": 184,
+  "driver_seed": 7,
+  "state_rng": [
+   125126011,
+   3265035242
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 184,
+  "light": 0.09877878427505493,
+  "timestep": 185,
+  "driver_seed": 7,
+  "state_rng": [
+   4145176246,
+   1081921187
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 185,
+  "light": 0.09132033586502075,
+  "timestep": 186,
+  "driver_seed": 7,
+  "state_rng": [
+   688774133,
+   2864252126
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 186,
+  "light": 0.0841214656829834,
+  "timestep": 187,
+  "driver_seed": 7,
+  "state_rng": [
+   3000846961,
+   994378231
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 187,
+  "light": 0.0771874189376831,
+  "timestep": 188,
+  "driver_seed": 7,
+  "state_rng": [
+   2759610600,
+   1109100689
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 188,
+  "light": 0.07052373886108398,
+  "timestep": 189,
+  "driver_seed": 7,
+  "state_rng": [
+   1391988406,
+   3540281603
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 189,
+  "light": 0.06413495540618896,
+  "timestep": 190,
+  "driver_seed": 7,
+  "state_rng": [
+   3089869331,
+   463100416
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 190,
+  "light": 0.05802637338638306,
+  "timestep": 191,
+  "driver_seed": 7,
+  "state_rng": [
+   1167260420,
+   2374666642
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 191,
+  "light": 0.05220264196395874,
+  "timestep": 192,
+  "driver_seed": 7,
+  "state_rng": [
+   1941300171,
+   569167572
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 192,
+  "light": 0.046667635440826416,
+  "timestep": 193,
+  "driver_seed": 7,
+  "state_rng": [
+   627086154,
+   2450231978
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 193,
+  "light": 0.04142642021179199,
+  "timestep": 194,
+  "driver_seed": 7,
+  "state_rng": [
+   3929690997,
+   3293932989
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 194,
+  "light": 0.036482036113739014,
+  "timestep": 195,
+  "driver_seed": 7,
+  "state_rng": [
+   4073730962,
+   1089766661
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 195,
+  "light": 0.03183889389038086,
+  "timestep": 196,
+  "driver_seed": 7,
+  "state_rng": [
+   1032589145,
+   639290373
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 196,
+  "light": 0.027500391006469727,
+  "timestep": 197,
+  "driver_seed": 7,
+  "state_rng": [
+   1173362752,
+   1462503699
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 197,
+  "light": 0.02346980571746826,
+  "timestep": 198,
+  "driver_seed": 7,
+  "state_rng": [
+   3434004085,
+   523319432
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 198,
+  "light": 0.019750118255615234,
+  "timestep": 199,
+  "driver_seed": 7,
+  "state_rng": [
+   3705067297,
+   2657229060
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 199,
+  "light": 0.016344428062438965,
+  "timestep": 200,
+  "driver_seed": 7,
+  "state_rng": [
+   2244308142,
+   2696376910
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 200,
+  "light": 0.013255000114440918,
+  "timestep": 201,
+  "driver_seed": 7,
+  "state_rng": [
+   3986144238,
+   1811811799
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 201,
+  "light": 0.010484576225280762,
+  "timestep": 202,
+  "driver_seed": 7,
+  "state_rng": [
+   3869478513,
+   1699898046
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 202,
+  "light": 0.008034825325012207,
+  "timestep": 203,
+  "driver_seed": 7,
+  "state_rng": [
+   3425509919,
+   2347250095
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 203,
+  "light": 0.0059081315994262695,
+  "timestep": 204,
+  "driver_seed": 7,
+  "state_rng": [
+   1557216402,
+   1925893945
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 204,
+  "light": 0.004105627536773682,
+  "timestep": 205,
+  "driver_seed": 7,
+  "state_rng": [
+   2310207535,
+   4094009093
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 205,
+  "light": 0.002629101276397705,
+  "timestep": 206,
+  "driver_seed": 7,
+  "state_rng": [
+   3653179745,
+   4114302428
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 206,
+  "light": 0.0014796853065490723,
+  "timestep": 207,
+  "driver_seed": 7,
+  "state_rng": [
+   3945032312,
+   1827910307
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 207,
+  "light": 0.0006576776504516602,
+  "timestep": 208,
+  "driver_seed": 7,
+  "state_rng": [
+   4259582512,
+   2264388955
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 213,
+  "light": 0.002629101276397705,
+  "timestep": 214,
+  "driver_seed": 7,
+  "state_rng": [
+   331669212,
+   3667761802
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 11,
+  "frame": 219,
+  "light": 0.016344428062438965,
+  "timestep": 220,
+  "driver_seed": 7,
+  "state_rng": [
+   1728685456,
+   236927872
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 0,
+  "light": 0.8056125640869141,
+  "timestep": 1,
+  "driver_seed": 2024,
+  "state_rng": [
+   2732839263,
+   2682364232
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 6,
+  "light": 0.8536737561225891,
+  "timestep": 7,
+  "driver_seed": 2024,
+  "state_rng": [
+   954950290,
+   3200842409
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 12,
+  "light": 0.8944774270057678,
+  "timestep": 13,
+  "driver_seed": 2024,
+  "state_rng": [
+   1524719294,
+   3104131659
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 18,
+  "light": 0.9278628826141357,
+  "timestep": 19,
+  "driver_seed": 2024,
+  "state_rng": [
+   4162436012,
+   374279045
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 24,
+  "light": 0.9539756774902344,
+  "timestep": 25,
+  "driver_seed": 2024,
+  "state_rng": [
+   593145387,
+   3955628117
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 30,
+  "light": 0.9732581377029419,
+  "timestep": 31,
+  "driver_seed": 2024,
+  "state_rng": [
+   1249935611,
+   2285618350
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 36,
+  "light": 0.986427903175354,
+  "timestep": 37,
+  "driver_seed": 2024,
+  "state_rng": [
+   3639885186,
+   934128382
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 42,
+  "light": 0.9944468140602112,
+  "timestep": 43,
+  "driver_seed": 2024,
+  "state_rng": [
+   3840672372,
+   2742452496
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 48,
+  "light": 0.9984816312789917,
+  "timestep": 49,
+  "driver_seed": 2024,
+  "state_rng": [
+   3581682703,
+   2207073166
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 54,
+  "light": 0.9998566508293152,
+  "timestep": 55,
+  "driver_seed": 2024,
+  "state_rng": [
+   1975068774,
+   3460894994
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 60,
+  "light": 0.9999988675117493,
+  "timestep": 61,
+  "driver_seed": 2024,
+  "state_rng": [
+   3056307046,
+   3113262328
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 66,
+  "light": 0.9996071457862854,
+  "timestep": 67,
+  "driver_seed": 2024,
+  "state_rng": [
+   3681028164,
+   363976807
+  ],
+  "sleeping": true,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 72,
+  "light": 0.9975003004074097,
+  "timestep": 73,
+  "driver_seed": 2024,
+  "state_rng": [
+   3398647961,
+   766879547
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 78,
+  "light": 0.9922778010368347,
+  "timestep": 79,
+  "driver_seed": 2024,
+  "state_rng": [
+   984567205,
+   1987156303
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 84,
+  "light": 0.9826623797416687,
+  "timestep": 85,
+  "driver_seed": 2024,
+  "state_rng": [
+   3705788464,
+   2779381705
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 90,
+  "light": 0.9675506353378296,
+  "timestep": 91,
+  "driver_seed": 2024,
+  "state_rng": [
+   35396212,
+   2904192700
+  ],
+  "sleeping": false,
+  "health": 9
+ },
+ {
+  "seed": 3,
+  "frame": 96,
+  "light": 0.9460580348968506,
+  "timestep": 97,
+  "driver_seed": 2024,
+  "state_rng": [
+   280163747,
+   2557431491
+  ],
+  "sleeping": false,
+  "health": 7
+ },
+ {
+  "seed": 3,
+  "frame": 102,
+  "light": 0.9175558686256409,
+  "timestep": 103,
+  "driver_seed": 2024,
+  "state_rng": [
+   1470253994,
+   4037609914
+  ],
+  "sleeping": false,
+  "health": 7
+ },
+ {
+  "seed": 3,
+  "frame": 108,
+  "light": 0.8816986680030823,
+  "timestep": 109,
+  "driver_seed": 2024,
+  "state_rng": [
+   300482752,
+   3076515596
+  ],
+  "sleeping": false,
+  "health": 6
+ },
+ {
+  "seed": 3,
+  "frame": 114,
+  "light": 0.8384428024291992,
+  "timestep": 115,
+  "driver_seed": 2024,
+  "state_rng": [
+   3016128013,
+   1056525988
+  ],
+  "sleeping": true,
+  "health": 2
+ },
+ {
+  "seed": 3,
+  "frame": 119,
+  "light": 0.7969250082969666,
+  "timestep": 120,
+  "driver_seed": 2024,
+  "state_rng": [
+   3698040217,
+   2132283184
+  ],
+  "sleeping": false,
+  "health": -5
+ }
+]

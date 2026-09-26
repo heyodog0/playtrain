@@ -1,0 +1,22 @@
+[
+  {
+    "game": "miner",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 306362,
+    "frames_per_s": 306362,
+    "per_worker": [
+      51389,
+      51347,
+      49862,
+      51637,
+      51069,
+      51057
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 2.49,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

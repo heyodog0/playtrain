@@ -13,7 +13,7 @@
 // Uses the same HTML templates as tools/play.mjs, so local `just play` and the
 // deployed site render identically.
 
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync, existsSync, statSync } from 'fs';
 import { dirname, resolve, join, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { pickerPage, playPage } from './play-templates.mjs';
@@ -45,12 +45,29 @@ if (!existsSync(GAMES_DIR)) {
   process.exit(1);
 }
 
+// Default build: the catalog plus the multi-file games' bundles
+// (examples/games/multifile/*/*/dist/<name>.js, e.g. Craftax). --games builds one dir only.
+const DIR_OF = {};
+if (!process.argv.includes('--games')) {
+  const mf = join(REPO_ROOT, 'examples', 'games', 'multifile');
+  for (const kind of existsSync(mf) ? readdirSync(mf) : []) {
+    const kd = join(mf, kind);
+    if (!statSync(kd).isDirectory()) continue;
+    for (const g of readdirSync(kd)) {
+      const dist = join(kd, g, 'dist');
+      if (existsSync(join(dist, `${g}.js`))) DIR_OF[g] = dist;
+    }
+  }
+}
+const dirOf = name => DIR_OF[name] || GAMES_DIR;
+
 function listGames() {
   return readdirSync(GAMES_DIR)
     .filter(f => f.endsWith('.js') && !f.endsWith('_dbg.js'))
     .map(f => f.replace(/\.js$/, ''))
+    .concat(Object.keys(DIR_OF))
     .filter(name => !EXCLUDE.has(name))
-    .sort();
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
 function writeFile(path, content) {
@@ -69,9 +86,28 @@ const gameHref = g => `/game/${g}/`;
 writeFile(join(OUT_DIR, 'index.html'), pickerPage(games, null, { gameHref, title: TITLE }));
 writeFile(join(OUT_DIR, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
 
-for (const name of games) {
-  const source = readFileSync(join(GAMES_DIR, `${name}.js`), 'utf8');
-  writeFile(join(OUT_DIR, 'game', name, 'index.html'), playPage(name, source, { homeHref: '/' }));
+// A multi-file game's <name>.json sits beside its bundle and carries the human
+// tick rate, the controls overlay and the reference block the parity label is
+// built from. Catalog games have none and render exactly as before.
+function sidecarFor(name) {
+  const p = join(dirOf(name), `${name}.json`);
+  if (!existsSync(p)) return null;
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error(`  warning: ${name}.json is not valid JSON (${e.message}); ignoring`);
+    return null;
+  }
 }
+
+let withSidecar = 0;
+for (const name of games) {
+  const source = readFileSync(join(dirOf(name), `${name}.js`), 'utf8');
+  const sidecar = sidecarFor(name);
+  if (sidecar) withSidecar++;
+  writeFile(join(OUT_DIR, 'game', name, 'index.html'),
+            playPage(name, source, { homeHref: '/', sidecar }));
+}
+if (withSidecar) console.log(`  ${withSidecar} with a sidecar (own pacing, controls, parity label)`);
 
 console.log(`built ${games.length} games → ${OUT_DIR}`);

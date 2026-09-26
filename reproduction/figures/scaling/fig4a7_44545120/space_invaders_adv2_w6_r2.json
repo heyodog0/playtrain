@@ -1,0 +1,22 @@
+[
+  {
+    "game": "space_invaders",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1503067,
+    "frames_per_s": 1503067,
+    "per_worker": [
+      249885,
+      249169,
+      250662,
+      250430,
+      251469,
+      251452
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.5,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

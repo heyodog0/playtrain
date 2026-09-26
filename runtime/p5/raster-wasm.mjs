@@ -36,6 +36,9 @@ export function makeWasmBackend(ex) {
       this._h = h;
       this._fill = null;
       this._stroke = null;
+      // Last arrays staged into wasm memory, by identity; see _stage.
+      this._atlasStaged = null;
+      this._noiseStaged = null;
     }
     // style setters (shim assigns rgba strings; cache-gated upstream so reparse is rare)
     set fillStyle(v) { const c = parseColor(v); ex.rs_set_fill(this._h, c[0], c[1], c[2], c[3]); }
@@ -67,9 +70,86 @@ export function makeWasmBackend(ex) {
     fillText() {}
 
     drawImage(src, dx, dy, dw, dh) { ex.rs_draw_image(this._h, src._h, dx, dy, dw, dh); }
+    // Writes through the canvas's pixel pointer rather than calling a wasm
+    // import: rs_pixels_ptr + mem() already exposes the buffer (see
+    // getImageData), so no data has to be marshalled twice. Re-read mem()
+    // each time — the view detaches if wasm memory grows.
+    loadRGBA(bytes) {
+      const ptr = ex.rs_pixels_ptr(this._h), len = ex.rs_buf_len(this._h);
+      const dst = new Uint8ClampedArray(mem(), ptr, len);
+      const n = Math.min(bytes.length, len);
+      for (let i = 0; i < n; i++) dst[i] = bytes[i];
+      return n;
+    }
     getImageData() {
       const ptr = ex.rs_pixels_ptr(this._h), len = ex.rs_buf_len(this._h);
       return { data: new Uint8ClampedArray(mem(), ptr, len).slice(), width: this.canvasW, height: this.canvasH };
+    }
+
+    // ---- first-person voxel raycast (crates/rasterizer/src/voxel.rs) ----
+    // The grid, atlas and noise texture have to be IN linear memory before the
+    // call: JS cannot make a pointer into it, so the rasterizer hands out
+    // staging buffers and we write through them, exactly as loadRGBA writes
+    // through rs_pixels_ptr. Re-fetch mem() after anything that can grow the
+    // heap, and take the pointer last, once nothing more will resize.
+    //
+    // The ATLAS and the NOISE texture are uploaded once, not every call. A
+    // game builds each at setup and then passes the same array for the rest of
+    // the run, so re-copying them per call is pure waste — and it is a lot of
+    // waste: the first-person game's atlas is 24 KB and it issues one view
+    // call plus up to eleven sprite calls a frame, so the naive version moved
+    // ~300 KB per frame and made the wasm backend no faster than doing the
+    // whole render in JS. Identity is the right test here: these are long-lived
+    // arrays, and a game that mutates one in place would have to hand over a
+    // new array for any backend to see it (the native hosts read the caller's
+    // memory directly, so they never copy at all).
+    //
+    // The GRID is copied every call, because its contents genuinely change
+    // every frame. It is 8 KB.
+    _stage(which, arr, ViewType) {
+      const bytes = arr.length * ViewType.BYTES_PER_ELEMENT;
+      const fn = which === 'atlas' ? ex.rs_voxel_atlas_ptr : ex.rs_voxel_noise_ptr;
+      const cache = which === 'atlas' ? '_atlasStaged' : '_noiseStaged';
+      fn(which === 'atlas' ? bytes : arr.length);
+      const p = fn(which === 'atlas' ? bytes : arr.length);
+      if (this[cache] !== arr) {
+        new ViewType(mem(), p, arr.length).set(arr);
+        this[cache] = arr;
+      }
+      return p;
+    }
+
+    voxelView(grid, gw, gh, ex_, ey, ez, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_voxel_grid_ptr(grid.length);
+      const gp = ex.rs_voxel_grid_ptr(grid.length);
+      new Uint16Array(mem(), gp, grid.length).set(grid);
+      // An integer yawQ is a quarter turn and goes to the exact entry point
+      // whose goldens are pinned; a fractional one is a free yaw in
+      // quarter-turn units, used only by the smooth-camera display path.
+      if (Number.isInteger(yawQ)) {
+        ex.rs_voxel_view(this._h, gp, gw, gh, ex_, ey, ez, yawQ, viewDist,
+          ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+      } else {
+        ex.rs_voxel_view_free(this._h, gp, gw, gh, ex_, ey, ez, yawQ * (Math.PI / 2), viewDist,
+          ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+      }
+    }
+
+    voxelSprite(ex_, ey, ez, yawQ, viewDist, sx, sz, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      if (Number.isInteger(yawQ)) {
+        ex.rs_voxel_sprite(this._h, ex_, ey, ez, yawQ, viewDist, sx, sz,
+          ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+      } else {
+        ex.rs_voxel_sprite_free(this._h, ex_, ey, ez, yawQ * (Math.PI / 2), viewDist, sx, sz,
+          ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+      }
+    }
+
+    voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+      const np = this._stage('noise', noise, Float32Array);
+      ex.rs_dusk(this._h, x, y, w, h, daylight, key0, key1, useStatic, np, sleeping);
     }
 
     // ---- 3D (p5 WEBGL mode). Mirrors native/runtime/p5.cpp call for call. ----

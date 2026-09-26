@@ -1,0 +1,28 @@
+[
+  {
+    "game": "plunder",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 10451505,
+    "frames_per_s": 10451505,
+    "per_worker": [
+      887397,
+      867417,
+      861630,
+      872206,
+      878145,
+      875475,
+      882417,
+      859017,
+      871271,
+      867163,
+      858869,
+      870497
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.14,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

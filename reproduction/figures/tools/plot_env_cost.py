@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import sys
 
+from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -77,7 +78,14 @@ def bill(r):
 
 
 order = sorted(range(len(rows)), key=lambda i: rows[i]["us_per_step"])
-names = [rows[i]["game"] for i in order]
+# Label bars with the paper's names (manifests/variant_names.tsv: paper <TAB> repo).
+_PAPER = {}
+for _l in (Path(__file__).resolve().parents[2] / "manifests" / "variant_names.tsv").read_text().splitlines():
+    _f = _l.split("\t")
+    if not _l.startswith("#") and len(_f) >= 2:
+        _PAPER[_f[1].replace("_", ".", 1) if "." not in _f[1] else _f[1]] = _f[0]
+        _PAPER[_f[1]] = _f[0]
+names = [_PAPER.get(rows[i]["game"], rows[i]["game"]) for i in order]
 tot = np.array([rows[i]["us_per_step"] for i in order])
 yb = np.arange(len(order))
 left = 100 * t0 / tot

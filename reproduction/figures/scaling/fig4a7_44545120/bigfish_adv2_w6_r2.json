@@ -1,0 +1,22 @@
+[
+  {
+    "game": "bigfish",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 3306431,
+    "frames_per_s": 3306431,
+    "per_worker": [
+      552073,
+      556788,
+      549453,
+      546564,
+      554799,
+      546754
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.22,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

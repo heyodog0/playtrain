@@ -199,6 +199,32 @@ function createGraphics(w, h) {
   return id;   // opaque handle, matching the native host's int handle
 }
 
+// A bitmap layer: exactly w x h device pixels, NOT scaled to the main canvas
+// the way createGraphics is. A texture is source data, not a cached draw, so
+// it has to keep its own texel grid; image() then scales on blit with integer
+// nearest-neighbour. Mirrors p5::createBitmap in native/runtime/p5.cpp.
+function createBitmap(w, h) {
+  const canvas = createNodeCanvas(w, h, w, h);
+  const id = _nextLayerId++;
+  _layers.set(id, { canvas, ctx: canvas.getContext('2d'), w, h });
+  return id;
+}
+
+// Load raw RGBA straight-alpha bytes into a bitmap layer. Returns bytes
+// copied. Mirrors p5::loadBitmap.
+function loadBitmap(handle, bytes) {
+  const L = _layers.get(handle);
+  if (!L) return 0;
+  const target = L.ctx.loadRGBA ? L.ctx : L.canvas;
+  if (typeof target.loadRGBA === 'function') return target.loadRGBA(bytes);
+  // node-canvas/cairo fallback: no direct buffer, go through ImageData.
+  const img = L.ctx.createImageData(L.canvas.width, L.canvas.height);
+  const n = Math.min(bytes.length, img.data.length);
+  for (let i = 0; i < n; i++) img.data[i] = bytes[i];
+  L.ctx.putImageData(img, 0, 0);
+  return n;
+}
+
 function setTarget(handle) {
   const L = _layers.get(handle);
   if (!L) return;
@@ -224,6 +250,37 @@ function image(handle, x, y, w, h) {
     w === undefined ? L.canvas.width : Math.round(w * _devSx),
     h === undefined ? L.canvas.height : Math.round(h * _devSy),
   );
+}
+
+// First-person voxel raycast (FIRST_PERSON_PLAN.md §4.2). Mirrors p5::voxelView
+// in native/runtime/p5.cpp. The dst rect is in DEVICE pixels — the view is
+// authored at observation resolution, so unlike image() there is no logical
+// scale to apply — and the call goes straight at the current target's pixels.
+function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.voxelView !== 'function') {
+    throw new Error('voxelView: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist,
+    atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH);
+}
+
+// One upright billboard, depth-tested against the voxel view's ray depths.
+// Mirrors p5::voxelSprite in native/runtime/p5.cpp.
+function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.voxelSprite !== 'function') {
+    throw new Error('voxelSprite: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ,
+    atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH);
+}
+
+// Craftax's dusk blend, night static and sleep tint over a rect.
+// Mirrors p5::voxelDusk in native/runtime/p5.cpp.
+function voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
+  if (typeof _ctx.voxelDusk !== 'function') {
+    throw new Error('voxelDusk: this rasterizer backend has no voxel primitive');
+  }
+  _ctx.voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping);
 }
 
 // ---- Drawing primitives ----
@@ -638,7 +695,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, setTarget, clearTarget, image,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite, voxelDusk,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

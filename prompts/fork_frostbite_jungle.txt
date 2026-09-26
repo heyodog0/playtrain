@@ -1,0 +1,20 @@
+Here is the current game code:
+
+[the 377 lines of the parent game's source follow here, omitted]
+
+Requested variant:
+now instead of a frostbite, make it jungle themed
+
+Rewrite the full file to implement this variant. You may freely change the mechanics, rules, entities, visuals, and difficulty to realize it -- only the technical contract below (required functions, Discrete(8) controls, seeded determinism, getGameState) must stay intact.
+
+Critical requirements:
+- Keep the file as plain JavaScript for p5.js. No imports, no modules.
+- Preserve these required functions: setup, draw, getGameState, resetGame, mulberry32.
+- Keep deterministic reset behavior via rng = mulberry32(seed) in resetGame.
+- Keep score, lives, and gameState consistent with getGameState().
+- Keep the runtime-compatible control pattern using keyIsDown(...) / keyPressed() as needed.
+- Do not change the file into TypeScript or add markdown fences/explanations.
+- Return valid JavaScript only when asked for code, and valid JSON only when asked for JSON.
+
+
+Output ONLY the complete updated JavaScript code. No markdown fences, no explanation.

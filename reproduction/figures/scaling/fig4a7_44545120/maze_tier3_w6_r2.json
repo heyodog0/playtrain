@@ -1,0 +1,22 @@
+[
+  {
+    "game": "maze",
+    "workers": 6,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1145216,
+    "frames_per_s": 1145216,
+    "per_worker": [
+      191915,
+      195800,
+      188381,
+      194205,
+      189628,
+      185288
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.66,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

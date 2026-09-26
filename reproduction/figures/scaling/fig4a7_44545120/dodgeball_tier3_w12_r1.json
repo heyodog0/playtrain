@@ -1,0 +1,28 @@
+[
+  {
+    "game": "dodgeball",
+    "workers": 12,
+    "envs_per_worker": 128,
+    "frame_skip": 1,
+    "decisions_per_s": 1833959,
+    "frames_per_s": 1833959,
+    "per_worker": [
+      153803,
+      154222,
+      155743,
+      156005,
+      153947,
+      153123,
+      152868,
+      152342,
+      151566,
+      150416,
+      149784,
+      150140
+    ],
+    "ms_infer": 0.01,
+    "ms_env": 0.83,
+    "env_threads": 5,
+    "device": "cpu"
+  }
+]

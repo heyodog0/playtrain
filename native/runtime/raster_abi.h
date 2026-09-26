@@ -24,6 +24,10 @@ uint32_t rs_new_canvas(double lw, double lh, double dw, double dh);
 
 // Pixel buffers (straight-alpha RGBA and premultiplied BGRA scratch).
 const uint8_t* rs_pixels_ptr(uint32_t h);
+// Write raw RGBA straight-alpha bytes into a canvas. The missing half of the
+// bitmap path: canvases were always RGBA buffers and rs_draw_image always
+// blitted between them, but nothing could get pixels IN. Returns bytes copied.
+int rs_load_rgba(uint32_t h, const uint8_t* ptr, uint32_t len);
 const uint8_t* rs_bgra_ptr(uint32_t h);
 uint32_t       rs_buf_len(uint32_t h);
 

@@ -1,0 +1,14 @@
+# sacct -X -j 41853620_1 -o JobID,JobName,Submit,End,NodeList,SubmitLine -n
+41853620_1   eval_s3b   2026-08-25T18:45:43   2026-08-25T18:49:24   holygpu8a11404   sbatch --array=1-6%6 eval_s3_split.sbatch
+WorkDir: /n/holylabs/gershman_lab/Users/rtruong/analogen-jaxbench
+
+what:  the same eval protocol as 34845630 (tools/eval_final_agents.py, 8 held-out seeds,
+       3000-step cap) applied to the 3-seed 100M IMPALA suite runs behind
+       fig:suite_trainers / fig:suite_enc_impala: one array task per (encoder, seed).
+       Outputs committed: figures/results/eval_s3_icnn_s{0,1,2}.json (IMPALA-CNN, the
+       encoder the appendix figures use). The Nature-CNN tasks' outputs
+       (eval_s3_nat_s*.json) are on the cluster and not committed.
+       These are NOT tab:eval's numbers (that table is the 150M single-seed DDP2 runs);
+       they are the like-for-like eval of the runs the curves show. The R column is
+       identical across all three seeds and to tab:eval's, as it must be (same seeds,
+       same random policy), except maze, whose game file changed between July and August.

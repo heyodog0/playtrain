@@ -1,0 +1,40 @@
+node=holy8a28510.rc.fas.harvard.edu job=44545120
+CPU(s):              192
+NUMA node(s):        2
+Model name:          AMD EPYC 9654 96-Core Processor
+adv2 md5 OK 1c5149364c32fb58ce9b81cda49fa763
+SHADOW PROVENANCE OK /tmp/pttree_44545120/native/build/libqjs_vec.so 1c5149364c32fb58ce9b81cda49fa763
+== PlayTrain: 24 games x 7 points x 2 arms, 2 trials (3 at w16) ==
+  done threads=5 02:11:15
+  done threads=10 02:15:46
+  done threads=20 02:20:19
+  done threads=30 02:24:54
+  done threads=40 02:29:30
+  done threads=60 02:34:10
+  done threads=80 02:41:21
+PT_DONE Sat Sep  5 02:41:21 EDT 2026
+== EnvPool: tuned (async+NUMA) and as-shipped (sync1), 7 points, 24 games ==
+{'suite': 'procgen', 'env_id': 'BigfishEasy-v0', 'threads': 5, 'sync1': 170041, 'async_numa': 190141}
+{'suite': 'procgen', 'env_id': 'BossfightEasy-v0', 'threads': 5, 'sync1': 13807, 'async_numa': 33162}
+{'suite': 'procgen', 'env_id': 'CaveflyerEasy-v0', 'threads': 5, 'sync1': 118232, 'async_numa': 115537}
+{'suite': 'procgen', 'env_id': 'ChaserEasy-v0', 'threads': 5, 'sync1': 147195, 'async_numa': 144707}
+{'suite': 'procgen', 'env_id': 'ClimberEasy-v0', 'threads': 5, 'sync1': 129606, 'async_numa': 131155}
+{'suite': 'procgen', 'env_id': 'CoinrunEasy-v0', 'threads': 5, 'sync1': 95502, 'async_numa': 104354}
+{'suite': 'procgen', 'env_id': 'DodgeballEasy-v0', 'threads': 5, 'sync1': 121471, 'async_numa': 127381}
+{'suite': 'procgen', 'env_id': 'FruitbotEasy-v0', 'threads': 5, 'sync1': 99584, 'async_numa': 104781}
+{'suite': 'procgen', 'env_id': 'HeistEasy-v0', 'threads': 5, 'sync1': 139545, 'async_numa': 154838}
+{'suite': 'procgen', 'env_id': 'JumperEasy-v0', 'threads': 5, 'sync1': 77346, 'async_numa': 83181}
+{'suite': 'procgen', 'env_id': 'LeaperEasy-v0', 'threads': 5, 'sync1': 118668, 'async_numa': 140593}
+{'suite': 'procgen', 'env_id': 'MazeEasy-v0', 'threads': 5, 'sync1': 123298, 'async_numa': 117481}
+{'suite': 'procgen', 'env_id': 'MinerEasy-v0', 'threads': 5, 'sync1': 119220, 'async_numa': 140789}
+{'suite': 'procgen', 'env_id': 'NinjaEasy-v0', 'threads': 5, 'sync1': 124317, 'async_numa': 130456}
+{'suite': 'procgen', 'env_id': 'PlunderEasy-v0', 'threads': 5, 'sync1': 151960, 'async_numa': 176308}
+{'suite': 'procgen', 'env_id': 'StarpilotEasy-v0', 'threads': 5, 'sync1': 114720, 'async_numa': 142595}
+{'suite': 'ale', 'env_id': 'Asteroids-v5', 'threads': 5, 'sync1': 21464, 'async_numa': 18822}
+{'suite': 'ale', 'env_id': 'Breakout-v5', 'threads': 5, 'sync1': 18623, 'async_numa': 16696}
+{'suite': 'ale', 'env_id': 'Freeway-v5', 'threads': 5, 'sync1': 17192, 'async_numa': 15086}
+{'suite': 'ale', 'env_id': 'Frostbite-v5', 'threads': 5, 'sync1': 18911, 'async_numa': 16879}
+{'suite': 'ale', 'env_id': 'Pong-v5', 'threads': 5, 'sync1': 21081, 'async_numa': 18743}
+{'suite': 'ale', 'env_id': 'Qbert-v5', 'threads': 5, 'sync1': 19509, 'async_numa': 17581}
+{'suite': 'ale', 'env_id': 'Seaquest-v5', 'threads': 5, 'sync1': 20686, 'async_numa': 18203}
+{'suite': 'ale', 'env_id': 'SpaceInvaders-v5', 'threads': 5, 'sync1': 20649, 'async_numa': 18105}
