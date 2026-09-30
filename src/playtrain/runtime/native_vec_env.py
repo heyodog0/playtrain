@@ -59,6 +59,20 @@ def _resolve_game_path(game: str, games_dir) -> str:
     return str(resolve_game_file(game, games_dir))
 
 
+def _sidecar_defaults(game_path, action_space, max_steps):
+    """Fill action_space / max_steps from a bundled game's sidecar, the way
+    NativeVecEnv does. Explicit arguments win; catalog games have no sidecar."""
+    from .env import load_sidecar
+
+    sidecar = load_sidecar(game_path)
+    if sidecar is not None:
+        if action_space is None and sidecar.get("actions"):
+            action_space = sidecar["actions"]
+        if max_steps == 2000 and sidecar.get("max_steps"):
+            max_steps = int(sidecar["max_steps"])
+    return action_space, max_steps
+
+
 _LIBNAME = "libqjs_vec.dylib" if sys.platform == "darwin" else "libqjs_vec.so"
 _LIB_PATH = _asset("native/build/" + _LIBNAME)
 
@@ -478,6 +492,8 @@ class AsyncNativeVecEnv:
         self._closed = False
 
         paths = [_resolve(g) for g in self.games]
+        if games is None:
+            action_space, max_steps = _sidecar_defaults(paths[0], action_space, max_steps)
         # a mixed pool has no single game unit: resolve_lib(None) -> tier 1
         self._lib = _load_lib(Path(lib_path) if lib_path else resolve_lib(None if games is not None else paths[0]))
         if games is not None:
@@ -588,6 +604,7 @@ class PingPongVecEnv:
         game_path = _resolve_game_path(game, games_dir)
         if not Path(game_path).exists():
             raise FileNotFoundError(f"game not found: {game_path}")
+        action_space, max_steps = _sidecar_defaults(game_path, action_space, max_steps)
 
         self._lib = _load_lib(Path(lib_path) if lib_path else resolve_lib(game_path))
         self._h = self._lib.vec_create_async(

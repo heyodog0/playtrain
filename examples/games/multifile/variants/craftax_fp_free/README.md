@@ -1,125 +1,116 @@
-# Craftax-Classic, first person, free movement (variant)
+# Craftax-Classic, first person, free movement
 
-The playable sibling of `craftax_fp`. Same world, same first-person raycast,
-same inventory strip — but you can **turn in place, walk backwards, and
-strafe**.
+`craftax_fp` with six extra actions, so you can turn in place, walk backwards
+and strafe. The world and the renderer are the same as in `craftax_fp`.
 
-**This is not a parity port.** It adds six actions to Craftax's seventeen, so
-the action space, and therefore the task, is not Craftax's. An agent trained
-here is not comparable to one trained on `craftax_classic`. If you want the
-first-person observation *with* exact Craftax dynamics, that is `craftax_fp`
-next door, and it stays that way.
+This is not Craftax's task. The action space has 23 actions instead of 17, so
+an agent trained here is not comparable to one trained on `craftax_classic` or
+`craftax_fp`. Use `craftax_fp` if you need exact Craftax dynamics.
 
-## Why it exists
+## Why
 
-Craftax's `movePlayer` does this, before it moves anything:
+In Craftax every move also turns you to face that way. There is no way to
+turn without moving or move without turning. From above that does not matter.
+In first person it means you cannot back away from a zombie while watching it.
 
-```js
-st.playerDir[0] = action;
+## Train an agent
+
+Install [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers),
+then use the same config as `craftax_fp` with the game and action count
+changed:
+
+```json
+{
+  "game": "craftax_fp_free",
+  "env_backend": "playtrain",
+  "inference_mode": "vec",
+  "num_actions": 23,
+  "obs_shape": [3, 64, 64],
+  "net": "impala",
+  "total_steps": 10000000,
+  "batch_size": 32,
+  "unroll_length": 64,
+  "vec_workers": 4,
+  "vec_env_threads": 2,
+  "vec_double_buffer": true,
+  "learning_rate": 0.0005,
+  "device": "auto",
+  "log_dir": "outputs/craftax_fp_free"
+}
 ```
 
-unconditionally. Every direction action is a **turn and a move together**.
-There is no action that changes facing without stepping, and none that steps
-without changing facing. Turning in place only happens incidentally, when
-something blocks you.
+```console
+$ python -m playtrain_trainers.train_impala --config craftax_fp_free.json
+$ tensorboard --logdir outputs/craftax_fp_free/tb
+```
 
-For an agent looking at a top-down tile view that is irrelevant. In a
-first-person view it is the whole feel of the game: you cannot back away from
-a zombie while watching it, and pressing left spins you a quarter *and* walks
-you sideways. `craftax_fp` lives with that because its claim is exactness.
-This variant does not.
+PlayTrain reads the 23 actions and the 10,000-step episode limit from
+`dist/craftax_fp_free.json`. PPO works too, via
+`playtrain_trainers.train_ppo_clean` with the same `game`.
 
-## The six added actions
+From your own code:
+
+```python
+import numpy as np
+from playtrain.runtime import NativeVecEnv
+
+env = NativeVecEnv(game="craftax_fp_free", num_envs=64, num_threads=8, autoreset=True)
+obs = env.reset(np.arange(64, dtype=np.int32))    # (64, 64, 64, 3) uint8
+```
+
+## Actions
+
+Actions 0-16 are Craftax's, unchanged (see `craftax_fp`). The new ones:
 
 | # | action | facing | position |
 |---|---|---|---|
-| 17 | `MOVE_FORWARD` | unchanged | one cell the way you face |
-| 18 | `MOVE_BACK` | unchanged | one cell behind you |
-| 19 | `STRAFE_LEFT` | unchanged | one cell to your left |
-| 20 | `STRAFE_RIGHT` | unchanged | one cell to your right |
-| 21 | `TURN_LEFT` | a quarter left | unchanged |
-| 22 | `TURN_RIGHT` | a quarter right | unchanged |
+| 17 | MOVE_FORWARD | same | one cell ahead |
+| 18 | MOVE_BACK | same | one cell behind |
+| 19 | STRAFE_LEFT | same | one cell left |
+| 20 | STRAFE_RIGHT | same | one cell right |
+| 21 | TURN_LEFT | quarter turn left | same |
+| 22 | TURN_RIGHT | quarter turn right | same |
 
-Every move goes through Craftax's **own** guards, in Craftax's order — in
-bounds, not solid, not occupied — so a step is always exactly one cell and
-nothing walks through a wall.
-
-## Controls
-
-> **UP/DOWN** walk forward and back without turning. **LEFT/RIGHT** turn in
-> place. **A/D** strafe. **SPACE** interacts with the cell ahead. **TAB**
-> sleeps. **1-4** place stone/table/furnace/sapling. **5-7** craft pickaxes,
-> **8-9-0** craft swords. **I/J/K/L** are Craftax's original absolute moves.
-
-Unlike `craftax_fp`, this game does **not** define `relativeArrow()`. It does
-not need to: its actions are already relative, so the page sends arrows
-straight through. Remapping them would turn a turn into a turn-and-step.
-
-I/J/K/L exist because a host drives an action index by pressing that action's
-keys and letting the game read them — an action with no binding would silently
-become a NOOP, and the corpus gate below would then be passing for the wrong
-reason.
+New moves use Craftax's own collision checks, so you still cannot walk
+through walls, water or mobs.
 
 ## What is still exact
 
-**Craftax's seventeen actions are untouched, and that is gated.** Stepped over
-the whole committed corpus — 210 episodes, 49,061 steps, every action in
-0..16 — this game produces `craftax_classic`'s 6,880-byte canonical state
-**byte for byte, every step**, and the same 1,345-float symbolic observation.
-The six new actions are strictly additional.
+Actions 0-16 behave exactly as in `craftax_classic`. Over the committed corpus
+(210 episodes, 49,061 steps) the game state and symbolic observation match
+byte for byte. That shows the new actions did not disturb the old ones. It
+does not make this the same task.
 
-That is worth stating precisely, because it is a narrower claim than
-`craftax_fp`'s. It says: *adding actions did not perturb the existing ones, and
-the step order — which is the RNG specification — is intact.* It does **not**
-say this is the same task. It is not.
+QuickJS and V8 produce identical frames, as in `craftax_fp`.
 
-The renderer is shared with `craftax_fp` by manifest path, so the frame is the
-same and the cross-engine guarantee carries over: `gate_qjs.sh craftax_fp_free
-3000` passes on seeds 1, 42 and 777, QuickJS against V8, observation hash
-compared every step.
+## How it is built
 
-## How the fork is built
+`src/72_move_free.js` is the only new code. It redefines `stepGame` to accept
+23 actions and route the new ones to `movePlayerFree`. Actions 1-4 still call
+Craftax's own `movePlayer`. The bundle is a plain concatenation, so the later
+definition wins. That is why `manifest.json` must list `72_move_free.js` after
+`70_step.js`. Everything else comes from `craftax_classic` and `craftax_fp`.
 
-`src/72_move_free.js` is the only new logic, and it reuses rather than copies:
+## Play it
 
-- `movePlayerFree` delegates actions 1-4 straight to Craftax's own
-  `movePlayer`, so their behaviour is upstream's by construction, not by a copy
-  that could drift.
-- `stepGame` is **overridden** by redeclaration — the bundle is a plain
-  concatenation and these are function declarations, so the later one wins and
-  is what the hosts call. Two lines differ from `70_step.js`: the clamp bound
-  (`NUM_ACTIONS_FREE`, or every new action would be pinned to 16) and the
-  mover. The call order is untouched.
-
-This is why the manifest must list `72_move_free.js` **after** `70_step.js`.
-Everything else — worldgen, mobs, crafting, intrinsics, the renderer, the
-inventory — is reused from `craftax_classic` and `craftax_fp` by path.
-
-## Gates
-
-```sh
-uv run pytest examples/games/multifile/variants/craftax_fp_free/tests -q
+```console
+$ node tools/build-pages.mjs --games examples/games/multifile/variants/craftax_fp_free/dist \
+    --out dist/craftax-fp-free-play --title "Craftax first-person (free movement)"
+$ uv run python -m http.server -d dist/craftax-fp-free-play 8001
 ```
 
-| gate | what it holds |
-|---|---|
-| `test_craftax_s_own_actions_are_untouched` | 49,061 corpus steps byte-identical to craftax_classic |
-| `test_turning_does_not_move_you` | the thing Craftax cannot do |
-| `test_walking_does_not_turn_you` | the other thing Craftax cannot do |
-| `test_forward_and_back_are_opposites` | walk out and back, same cell, same facing |
-| `test_four_turns_return_you_to_the_start` | and visit all four facings |
-| `test_every_action_has_its_own_key` | no action silently becomes a NOOP |
-| `test_every_engine_agrees` | QuickJS vs V8, 3000 steps × 3 seeds |
-| `test_it_does_not_claim_parity` | the sidecar says what this is |
+Then open <http://localhost:8001/game/craftax_fp_free/>.
 
-## Playing it
+UP/DOWN walk forward and back, LEFT/RIGHT turn in place, A/D strafe. SPACE
+interacts, TAB sleeps, 1-4 place, 5-7 craft pickaxes, 8-0 craft swords.
+I/J/K/L are Craftax's original absolute moves.
 
-```sh
-node tools/build-pages.mjs --games examples/games/multifile/variants/craftax_fp_free/dist \
-     --out dist/craftax-fp-free-play --title "Craftax first-person (free movement)"
-uv run python -m http.server 8001 -d dist/craftax-fp-free-play
-# http://localhost:8001/game/craftax_fp_free/
+## Tests
+
+```console
+$ uv run pytest examples/games/multifile/variants/craftax_fp_free/tests -q
 ```
 
-The smooth camera from `craftax_fp` comes along with the renderer, so turns
-glide and half-turns snap.
+These check that actions 0-16 match `craftax_classic`, that turning does not
+move you and moving does not turn you, that every action has a key, and that
+QuickJS and V8 agree.
