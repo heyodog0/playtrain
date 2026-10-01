@@ -1,0 +1,29 @@
+BasicGame
+    SpriteSet
+    	floor > Immovable img=colors/LIGHTGRAY
+    	thing > RandomNPC img=colors/PURPLE speed=0.1
+    	thingtwo > Immovable img=colors/LIGHTBLUE 
+    	thingthree > Immovable img=colors/BROWN
+        apple > Immovable img=colors/RED
+        bullet > Flicker img=colors/WHITE limit=5 singleton=True
+        avatar > ShootAvatar stype=bullet img=colors/DARKBLUE speed=1
+        wall > Immovable img=colors/DARKGRAY
+    LevelMapping
+        . > floor
+        a > floor apple
+        t > floor thing
+        c > floor thingtwo
+        p > floor thingthree
+        w > floor wall
+        A > floor avatar
+    InteractionSet
+        thing bullet > transformTo stype=thingtwo
+        apple avatar > killSprite
+	avatar thingthree > killSprite
+        avatar wall > stepBack
+        thing wall > stepBack
+    TerminationSet
+        SpriteCounter stype=avatar  limit=0 win=False
+        SpriteCounter stype=thing  limit=0 win=False
+        SpriteCounter stype=apple limit=0 win=True
+        Timeout limit=3000 win=False

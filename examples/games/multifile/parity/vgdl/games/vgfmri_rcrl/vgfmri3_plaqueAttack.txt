@@ -1,0 +1,72 @@
+BasicGame square_size=25
+  SpriteSet
+    fullMolarInf > Immovable color=YELLOW
+    fullMolarSup > Immovable color=RED
+    deadMolarInf > Immovable color=GREEN
+    deadMolarSup > Immovable color=BLUE
+
+    avatar  > ShootAvatar stype=fluor color=DARKBLUE frameRate=8
+    hotdog > Chaser speed=1 cooldown=8 stype=fullMolarInf color=ORANGE
+    burger > Chaser speed=1 cooldown=8 stype=fullMolarSup color=BROWN
+
+    hotdoghole > SpawnPoint color=LIGHTGRAY  stype=hotdog  prob=0.15 cooldown=8 total=3 color=PURPLE
+    burgerhole > SpawnPoint color=LIGHTBLUE stype=burger  prob=0.15 cooldown=8 total=3 color=PINK
+
+    fluor > Missile color=LIGHTRED
+    wall > Immovable color=DARKGRAY
+
+
+  LevelMapping
+    h > hotdog
+    d > hotdoghole
+    b > burger
+    v > burgerhole
+    n > fullMolarSup
+    m > fullMolarInf
+    A > avatar
+
+  InteractionSet
+    avatar wall > stepBack
+    hotdog wall > stepBack
+    burger wall > stepBack
+
+    fluor hotdog > changeScore value=1
+    fluor hotdog > killSprite
+
+    hotdog fluor  > changeScore value=1
+    hotdog fluor   > killSprite 
+    
+    fluor burger > changeScore value=1
+    fluor burger > killSprite
+    
+    burger fluor  > changeScore value=1
+    burger fluor   > killSprite
+    
+    fluor wall   > killSprite
+
+    fullMolarInf hotdog > changeScore value=-3 
+    hotdog fullMolarInf > killSprite
+    fullMolarInf hotdog > transformTo stype=deadMolarInf
+    
+    fullMolarInf burger > changeScore value=-3
+    burger fullMolarInf > killSprite
+    fullMolarInf burger > transformTo stype=deadMolarInf
+    
+    deadMolarInf avatar > changeScore value=1
+    deadMolarInf avatar > transformTo stype=fullMolarInf
+    
+    fullMolarSup hotdog > changeScore value=-3
+    hotdog fullMolarSup > killSprite
+    fullMolarSup hotdog > transformTo stype=deadMolarSup
+    
+    fullMolarSup burger > changeScore value=-3
+    burger fullMolarSup > killSprite
+    fullMolarSup burger > transformTo stype=deadMolarSup
+    
+    deadMolarSup avatar > changeScore value=1
+    deadMolarSup avatar > transformTo stype=fullMolarSup
+    
+
+  TerminationSet
+    MultiSpriteCounter stype1=fullMolarInf stype2=fullMolarSup limit=0 win=False
+    MultiSpriteCounter stype1=hotdoghole stype2=hotdog stype3=burger stype4=burgerhole limit=0 win=True bonus=10

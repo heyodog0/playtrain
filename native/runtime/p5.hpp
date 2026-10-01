@@ -150,6 +150,15 @@ void voxelView(const uint16_t* grid, int gw, int gh,
                const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
                int dstX, int dstY, int dstW, int dstH);
 
+// Tile-grid blit (crates/rasterizer/src/tiles.rs): one call draws gw x gh
+// tiles into a device-pixel rect. kinds[gy*gw+gx] picks a tile from `atlas`
+// (nTiles RGBA tiles of tilePx square; tilePx == 1 is a palette); a kind
+// >= nTiles leaves the cell untouched. Integer nearest-neighbour, so every
+// backend produces the same bytes. Grid games' whole frame in one host call.
+void drawTiles(const uint16_t* kinds, int gw, int gh,
+               const uint8_t* atlas, int tilePx, int nTiles,
+               int dstX, int dstY, int dstW, int dstH);
+
 // One upright 1x1 billboard at (spriteX, spriteZ), depth-tested against the
 // ray depths voxelView left behind. Call after voxelView, before the dusk
 // pass — the order 80_render.js composes the classic frame in.

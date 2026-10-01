@@ -1,0 +1,39 @@
+{
+  "game": "missile",
+  "env_id": "missile",
+  "module": "octax/environments/missile.py",
+  "title": "Missile Command",
+  "authors": [
+    "David Winter"
+  ],
+  "release": "1996",
+  "rom": "Missile [David Winter].ch8",
+  "sha1": "0d0cc129dad3c45ba672f85fec71a668232212cc",
+  "action_set": [
+    8
+  ],
+  "startup_instructions": 50,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 7
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 6
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "8": "fire"
+    },
+    "controls": "S (key 8) fires."
+  }
+}

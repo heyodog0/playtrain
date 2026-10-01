@@ -1,0 +1,43 @@
+{
+  "game": "ufo",
+  "env_id": "ufo",
+  "module": "octax/environments/ufo.py",
+  "title": "UFO",
+  "authors": [
+    "Lutz V"
+  ],
+  "release": "1992",
+  "rom": "UFO [Lutz V, 1992].ch8",
+  "sha1": "bdb92475acfe11bc7814a2f5eade13fcd09b756a",
+  "action_set": [
+    4,
+    5,
+    6
+  ],
+  "startup_instructions": 50,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 7
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 8
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "4": "left",
+      "5": "up",
+      "6": "right"
+    },
+    "controls": "Q (key 4) left, W (key 5) up, E (key 6) right."
+  }
+}

@@ -47,7 +47,11 @@ BANNER = """\
 
 
 def find_manifests() -> list[Path]:
-    return sorted(MULTIFILE.glob("*/*/manifest.json"))
+    # Only manifests this bundler builds. The chip8, vgdl and puzzlescript families
+    # build many games from one engine with their own tools/bundle_all.mjs, so their
+    # family manifests list no `sources`.
+    return sorted(p for p in MULTIFILE.glob("*/*/manifest.json")
+                  if "sources" in json.loads(p.read_text()))
 
 
 def resolve_manifest(arg: str) -> Path:

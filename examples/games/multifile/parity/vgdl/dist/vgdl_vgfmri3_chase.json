@@ -1,0 +1,104 @@
+{
+  "name": "vgdl_vgfmri3_chase",
+  "version": "0.1.0",
+  "title": "VGDL vgfmri3_chase",
+  "family": "vgdl",
+  "corpus": "vgfmri_rcrl",
+  "game": "vgfmri3_chase",
+  "block_size": 30,
+  "profile": "rcrl",
+  "compiled": true,
+  "levels": 9,
+  "level_mode": "seed",
+  "render": "tiles",
+  "action_space": "vgdl6",
+  "actions": [
+    {
+      "name": "UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    },
+    {
+      "name": "LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "NOOP",
+      "held": [],
+      "press": null
+    },
+    {
+      "name": "SPACE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "parity": true,
+  "reference": {
+    "name": "py-vgdl, Tsividis lineage, as used for the theory-based RL fMRI study (Tomov et al. 2023): tomov/RC_RL branch fmri, vgdl/ + fmri_all_games/",
+    "repo": "https://github.com/tomov/RC_RL",
+    "branch": "fmri",
+    "commit": "3388f9caa9c611e5cd1dbd262c38df24087c9963",
+    "path": "vgdl",
+    "games_path": "fmri_all_games",
+    "python": "2.7 (image rcrl-oracle: pygame 1.9.6, numpy 1.16.4, scipy 1.2.3, pybrain 0.3)",
+    "block_size": 30,
+    "block_size_note": "BasicGame.buildLevel sets block_size = 30 unconditionally; the square_size header is ignored.",
+    "step_semantics": "RLEnvironmentNonStatic.step as driven by VGDLEnv (the DDQN wrapper): visualize=True so kills flush at the start of each action; softReset() performs one action-less step before the first agent action; actions are single keys [NOOP, RIGHT, LEFT, UP, DOWN, SPACE]; on NOOP the avatar is not updated at all.",
+    "parity": "full state every step: time, score, ended, won, and every live (non-kill-list) sprite's (type, x, y, resources incl. defaultdict zero entries); same seed (module random seeded before softReset) and action sequence; tests/gate_oracle_rcrl.mjs vs tests/oracle_rcrl.py",
+    "group_order": "abstract sprite groups are assembled in Python 2 dict order; <game>.groups.json captures it from the oracle and the bundle embeds it",
+    "not_matched": [
+      "pixels (RC_RL draws 30px squares with pygame; PlayTrain draws fitted cells into a 64x64 frame) — colours are RC_RL's palette",
+      "reward: VGDLEnv returns +1/-1 on termination and the score delta otherwise; PlayTrain reports the score delta every step",
+      "the real-time human loop (core.tick, frame_rate 20, terminations checked before the update) is not the reference; the RL step is",
+      "the RNG: RC_RL's module-level random is unseeded, so the reference is only reproducible once seeded, which the oracle does",
+      "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+    ]
+  },
+  "status": null,
+  "source_sha256": {
+    "spec": "33e99c9aa9d4d897e467d6f687eb4145f4f3946553e1c879b34368e59fd47bf4",
+    "levels": [
+      "f0642ab2cf79c610032836c71c87d8483a003d0bc64afc5278fdaa6c2f5e8c38",
+      "3b2a645d500a38864cc93444b7704132362e8497cc0acd168a1a198932223edc",
+      "d552a7763f3bb9dc6a301f5dea6f93f3aa1610a805d1edad6e0da0b935a1714a",
+      "7bae130b6b2308ebc32f9f3973009ec05a776dbcdd4dd33b4c1ff547dc66697d",
+      "9920468aae1c40771997415c43361a70c5374e782ad02b5945ec6dd2ad4f32ea",
+      "0915f10d96b037f58d9dd513f4a09ae4d7bc4b19bc7aed6e363399ef4a231a4f",
+      "6dcad872c252af7354bc688da10f57519398e1ea261bedba61830b61e98f06ef",
+      "3a2ccfb83579bcd9d5a0266d5014026352416c067dbb93883e727c58e711f5f3",
+      "f9a5835f137a2292506004d148a42314074ffaae809ec7720ae45c55f78d497d"
+    ]
+  }
+}

@@ -264,6 +264,48 @@ function voxelView(grid, gw, gh, eyeX, eyeY, eyeZ, yawQ, viewDist, atlas, tilePx
     atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH);
 }
 
+// Tile-grid blit: one call for a whole grid of tiles (crates/rasterizer/src/tiles.rs).
+// dst rect is in LOGICAL pixels here (this is the p5 surface); mapped to device
+// pixels the way image() is. On the pure-JS canvas (browser display) the same
+// grid is drawn with fillRect, which is what a human sees; observations always
+// come from the wasm or native rasterizer.
+//
+// Every texel is drawn, in horizontal runs of one colour. This used to paint
+// each cell in its tile's TOP-LEFT texel, which is exact for VGDL (tilePx 1) and
+// wrong for anything with real sprites: PuzzleScript's 5x5 player has a
+// transparent corner, so the player drew as bare background and the game looked
+// frozen while it was moving. Texels with alpha 0 are skipped.
+function drawTiles(kinds, gw, gh, atlas, tilePx, nTiles, x, y, w, h) {
+  const dx = Math.round(x * _devSx), dy = Math.round(y * _devSy), dw = Math.round(w * _devSx), dh = Math.round(h * _devSy);
+  if (typeof _ctx.drawTiles === 'function') { _ctx.drawTiles(kinds, gw, gh, atlas, tilePx, nTiles, dx, dy, dw, dh); return; }
+  const cw = w / gw, ch = h / gh, stride = tilePx * tilePx * 4;
+  const tw = cw / tilePx, th = ch / tilePx;
+  const prev = _ctx.fillStyle;
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    const k = kinds[gy * gw + gx]; if (k >= nTiles) continue;
+    const base = k * stride, cx = x + gx * cw, cy = y + gy * ch;
+    for (let ty = 0; ty < tilePx; ty++) {
+      let tx = 0;
+      while (tx < tilePx) {
+        const o = base + (ty * tilePx + tx) * 4;
+        const r = atlas[o], g = atlas[o + 1], b = atlas[o + 2], a = atlas[o + 3];
+        let run = 1;
+        while (tx + run < tilePx) {
+          const q = o + run * 4;
+          if (atlas[q] !== r || atlas[q + 1] !== g || atlas[q + 2] !== b || atlas[q + 3] !== a) break;
+          run++;
+        }
+        if (a) {
+          _ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+          _ctx.fillRect(cx + tx * tw, cy + ty * th, run * tw, th);
+        }
+        tx += run;
+      }
+    }
+  }
+  _ctx.fillStyle = prev;
+}
+
 // One upright billboard, depth-tested against the voxel view's ray depths.
 // Mirrors p5::voxelSprite in native/runtime/p5.cpp.
 function voxelSprite(eyeX, eyeY, eyeZ, yawQ, viewDist, spriteX, spriteZ, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
@@ -695,7 +737,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, voxelView, voxelSprite, voxelDusk,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

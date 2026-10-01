@@ -1,0 +1,60 @@
+{
+  "game": "blockfaker",
+  "title": "Block Faker",
+  "author": "Droqen",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/blockfaker.txt",
+  "sha256": "a86083d40cc0e5f6b3d7fa1efe048d317fdaf456bd44bc2531786d94266b3408",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    2,
+    4,
+    6,
+    8
+  ],
+  "levels": 10,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage",
+    "require_player_movement",
+    "key_repeat_interval",
+    "background_color",
+    "text_color",
+    "color_palette"
+  ],
+  "human": {
+    "controls": "Arrows move, SPACE acts. Block Faker by Droqen: level = seed % 5 of the 5 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 11,
+  "level_sizes": [
+    [
+      16,
+      12
+    ],
+    [
+      10,
+      8
+    ],
+    [
+      16,
+      11
+    ],
+    [
+      14,
+      14
+    ],
+    [
+      14,
+      14
+    ]
+  ],
+  "symbolic": {
+    "objects": 11,
+    "max_width": 16,
+    "max_height": 14,
+    "dim": 2464,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
+  }
+}

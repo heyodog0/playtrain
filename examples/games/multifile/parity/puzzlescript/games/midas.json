@@ -1,0 +1,105 @@
+{
+  "game": "midas",
+  "title": "Midas",
+  "author": "wanderlands",
+  "dropdown_group": "Advanced",
+  "source": "src/demo/midas.txt",
+  "sha256": "34bb5a593dd0879ba533fb57449acf452dea0b9507ca3eb5c1a0439de7405b06",
+  "level_mode": "seed",
+  "playable_levels": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    11,
+    13,
+    15,
+    17,
+    19,
+    21,
+    23,
+    25,
+    27,
+    29
+  ],
+  "levels": 31,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, SPACE acts. Midas by wanderlands: level = seed % 15 of the 15 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 13,
+  "level_sizes": [
+    [
+      14,
+      6
+    ],
+    [
+      15,
+      7
+    ],
+    [
+      15,
+      8
+    ],
+    [
+      14,
+      6
+    ],
+    [
+      17,
+      9
+    ],
+    [
+      21,
+      15
+    ],
+    [
+      21,
+      11
+    ],
+    [
+      21,
+      10
+    ],
+    [
+      21,
+      12
+    ],
+    [
+      21,
+      13
+    ],
+    [
+      21,
+      17
+    ],
+    [
+      21,
+      12
+    ],
+    [
+      21,
+      13
+    ],
+    [
+      21,
+      16
+    ],
+    [
+      21,
+      14
+    ]
+  ],
+  "symbolic": {
+    "objects": 13,
+    "max_width": 21,
+    "max_height": 17,
+    "dim": 4641,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
+  }
+}

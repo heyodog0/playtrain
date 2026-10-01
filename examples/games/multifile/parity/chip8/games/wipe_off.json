@@ -1,0 +1,41 @@
+{
+  "game": "wipe_off",
+  "env_id": "wipe_off",
+  "module": "octax/environments/wipe_off.py",
+  "title": "Wipe Off",
+  "authors": [
+    "Joseph Weisbecker"
+  ],
+  "release": "19xx",
+  "rom": "Wipe Off [Joseph Weisbecker].ch8",
+  "sha1": "d666688a8fce468a7d88b536bc1ef5f35ba12031",
+  "action_set": [
+    4,
+    6
+  ],
+  "startup_instructions": 500,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 6
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 7
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "4": "left",
+      "6": "right"
+    },
+    "controls": "Q (key 4) left, E (key 6) right."
+  }
+}

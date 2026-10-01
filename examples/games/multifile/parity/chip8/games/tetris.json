@@ -1,0 +1,16 @@
+{
+  "game": "tetris",
+  "module": "octax/environments/tetris.py",
+  "title": "Tetris",
+  "authors": ["Fran Dachille"],
+  "release": "1991",
+  "rom": "Tetris [Fran Dachille, 1991].ch8",
+  "sha1": "5f518084744bf3cb8733f6e5454dfd1634320563",
+  "action_set": [4, 5, 6, 7],
+  "startup_instructions": 300,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {"op": "V", "i": 10},
+  "terminated": {"op": "eq", "a": {"op": "V", "i": 1}, "b": {"op": "const", "v": 2}},
+  "human": {"keys": {"4": "rotate", "5": "move left", "6": "move right", "7": "drop"}, "controls": "Q (key 4) rotates, W (key 5) moves left, E (key 6) moves right, A (key 7) drops."}
+}

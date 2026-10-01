@@ -1,0 +1,45 @@
+{
+  "game": "spacejam",
+  "env_id": "spacejam",
+  "module": "octax/environments/spacejam.py",
+  "title": "Spacejam!",
+  "authors": [
+    "WilliamDonnelly"
+  ],
+  "release": "2015-10-30",
+  "rom": "spacejam.ch8",
+  "sha1": "8d7fd91cefb8dcbd9faa270e6f39fbab73713f5b",
+  "action_set": [
+    5,
+    8,
+    7,
+    9
+  ],
+  "startup_instructions": 300,
+  "custom_startup": null,
+  "disable_delay": true,
+  "score": {
+    "op": "V",
+    "i": 9
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 10
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "5": "up",
+      "8": "down",
+      "7": "left",
+      "9": "right"
+    },
+    "controls": "W (key 5) up, S (key 8) down, A (key 7) left, D (key 9) right."
+  }
+}

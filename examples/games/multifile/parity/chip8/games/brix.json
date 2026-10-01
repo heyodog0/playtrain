@@ -1,0 +1,16 @@
+{
+  "game": "brix",
+  "module": "octax/environments/brix.py",
+  "title": "Brix",
+  "authors": ["Andreas Gustafsson"],
+  "release": "1990",
+  "rom": "Brix [Andreas Gustafsson, 1990].ch8",
+  "sha1": "f13766c14aeb02ad8d4d103cb5eadd282d20cddc",
+  "action_set": [4, 6],
+  "startup_instructions": 500,
+  "custom_startup": null,
+  "disable_delay": true,
+  "score": {"op": "V", "i": 5},
+  "terminated": {"op": "eq", "a": {"op": "V", "i": 14}, "b": {"op": "const", "v": 4}},
+  "human": {"keys": {"4": "paddle left", "6": "paddle right"}, "controls": "Q (key 4) moves the paddle left, E (key 6) right."}
+}

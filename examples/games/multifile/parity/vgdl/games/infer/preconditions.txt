@@ -1,0 +1,38 @@
+BasicGame
+  SpriteSet
+    floor > Immovable img=colors/LIGHTGRAY
+    avatar > MovingAvatar img=colors/DARKBLUE speed=1
+    box > Immovable img=colors/RED
+    goal > Immovable img=colors/GOLD
+    medicine > ResourcePack limit=4 img=colors/WHITE
+    poison > Immovable img=colors/GREEN
+    wall > Immovable img=colors/DARKGRAY
+
+  LevelMapping
+    . > floor
+    b > floor  box
+    g > floor  goal
+    m > floor  medicine
+    p > floor  poison
+    w > floor  wall
+    A > floor avatar
+    
+  InteractionSet
+    medicine avatar > addResource resource=medicine
+    avatar poison > killIfHasLess resource=medicine limit=0
+    poison avatar > removeResource resource=medicine
+    avatar wall > stepBack
+    box avatar > killSprite
+    goal avatar > killSprite scoreChange=1
+    
+    avatar EOS > killSprite
+    box EOS > killSprite
+    goal EOS > killSprite
+    medicine EOS > killSprite
+    poison EOS > killSprite
+    wall EOS > killSprite
+
+  TerminationSet
+    SpriteCounter stype=avatar  limit=0 win=False
+    SpriteCounter stype=goal limit=0 win=True
+    Timeout limit=3000 win=False

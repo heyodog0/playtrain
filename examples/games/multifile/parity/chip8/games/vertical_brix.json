@@ -1,0 +1,41 @@
+{
+  "game": "vertical_brix",
+  "env_id": "vertical_brix",
+  "module": "octax/environments/vertical_brix.py",
+  "title": "Vertical Brix",
+  "authors": [
+    "Paul Robson"
+  ],
+  "release": "1996",
+  "rom": "Vertical Brix [Paul Robson, 1996].ch8",
+  "sha1": "da710f631f8e35534d0b9170bcf892a60f49c43d",
+  "action_set": [
+    1,
+    4
+  ],
+  "startup_instructions": 0,
+  "custom_startup": "vertical_brix",
+  "disable_delay": true,
+  "score": {
+    "op": "V",
+    "i": 8
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 7
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "1": "up",
+      "4": "down"
+    },
+    "controls": "1 (key 1) paddle up, Q (key 4) paddle down."
+  }
+}

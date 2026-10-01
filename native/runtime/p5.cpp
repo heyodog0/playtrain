@@ -2,6 +2,7 @@
 // runtime/p5/p5-shim.mjs call-for-call against the rasterizer C ABI.
 #include "p5.hpp"
 #include "raster_abi.h"
+#include <cmath>
 
 #include <vector>
 #if defined(__x86_64__) || defined(_M_X64)
@@ -234,6 +235,20 @@ void voxelView(const uint16_t* grid, int gw, int gh,
                 (float)eyeX, (float)eyeY, (float)eyeZ, (uint32_t)yawQ, (float)viewDist,
                 atlas, (uint32_t)tilePx, (uint32_t)nTiles, skyRgb,
                 (uint32_t)dstX, (uint32_t)dstY, (uint32_t)dstW, (uint32_t)dstH);
+}
+
+extern "C" void rs_draw_tiles(uint32_t canvas, const uint16_t* kinds, uint32_t gw, uint32_t gh,
+                              const uint8_t* atlas, uint32_t tile_px, uint32_t n_tiles,
+                              uint32_t dst_x, uint32_t dst_y, uint32_t dst_w, uint32_t dst_h);
+void drawTiles(const uint16_t* kinds, int gw, int gh,
+               const uint8_t* atlas, int tilePx, int nTiles,
+               int dstX, int dstY, int dstW, int dstH) {
+  // LOGICAL dst rect (the p5 surface), mapped to device pixels the way the
+  // browser shim does (Math.round(x * devScale)). Participates in dirty-frame
+  // recording inside the rasterizer (the op is recorded with its data).
+  rs_draw_tiles(_h, kinds, (uint32_t)gw, (uint32_t)gh, atlas, (uint32_t)tilePx, (uint32_t)nTiles,
+                (uint32_t)llround(dstX * _devSx), (uint32_t)llround(dstY * _devSy),
+                (uint32_t)llround(dstW * _devSx), (uint32_t)llround(dstH * _devSy));
 }
 
 extern "C" void rs_voxel_sprite(uint32_t canvas,

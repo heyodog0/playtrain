@@ -206,6 +206,31 @@ FN(js_createGraphics) { if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw); 
   return JS_NewInt32(ctx, p5::createGraphics(argd(ctx, argv[0]), argd(ctx, argv[1]))); }
 FN(js_setTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec1(b, p5cb::SETTARGET, argd(ctx, argv[0])); } else p5::setTarget((int)argd(ctx, argv[0])); return JS_UNDEFINED; }
 FN(js_clearTarget) { if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec0(b, p5cb::CLEARTARGET); } else p5::clearTarget(); return JS_UNDEFINED; }
+// drawTiles(kindsU16, gw, gh, atlasU8, tilePx, nTiles, dstX, dstY, dstW, dstH)
+// Writes canvas memory directly (through the rasterizer, which records it in
+// dirty mode), so the command buffer has to land first. Arrays read in place.
+FN(js_drawTiles) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  if (g_nodraw) return JS_UNDEFINED;
+  size_t koff = 0, klen = 0, kper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue kab = JS_GetTypedArrayBuffer(ctx, argv[0], &koff, &klen, &kper);
+  if (JS_IsException(kab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[3], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, kab); return JS_UNDEFINED; }
+  size_t ksz = 0, asz = 0;
+  uint8_t* ksrc = JS_GetArrayBuffer(ctx, &ksz, kab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  int gw = (int)argd(ctx, argv[1]), gh = (int)argd(ctx, argv[2]);
+  int tilePx = (int)argd(ctx, argv[4]), nTiles = (int)argd(ctx, argv[5]);
+  if (ksrc && asrc && koff + klen <= ksz && aoff + alen <= asz &&
+      klen >= (size_t)gw * gh * 2 && alen >= (size_t)tilePx * tilePx * 4 * nTiles) {
+    p5::drawTiles((const uint16_t*)(ksrc + koff), gw, gh, asrc + aoff, tilePx, nTiles,
+                  (int)argd(ctx, argv[6]), (int)argd(ctx, argv[7]), (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, kab);
+  return JS_UNDEFINED;
+}
 FN(js_image) { NODRAW if (p5cb::Buf* b = cbuf(ctx)) { REC(b) p5cb::rec5(b, p5cb::IMAGE, argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); }
   else p5::image((int)argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4])); return JS_UNDEFINED; }
 
@@ -236,7 +261,7 @@ static const Binding BINDINGS[] = {
   {"cylinder", js_cylinder, 2}, {"cone", js_cone, 2},
   {"noLights", js_noop, 0}, {"normalMaterial", js_noop, 0}, {"emissiveMaterial", js_noop, 3},
   {"createGraphics", js_createGraphics, 2}, {"setTarget", js_setTarget, 1},
-  {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
+  {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5}, {"drawTiles", js_drawTiles, 10},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},
   {"noLoop", js_noop, 0}, {"loop", js_noop, 0}, {"noCursor", js_noop, 0}, {"cursor", js_noop, 0},

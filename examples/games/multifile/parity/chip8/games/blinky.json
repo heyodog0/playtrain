@@ -1,0 +1,45 @@
+{
+  "game": "blinky",
+  "env_id": "blinky",
+  "module": "octax/environments/blinky.py",
+  "title": "Blinky",
+  "authors": [
+    "Hans Christian Egeberg"
+  ],
+  "release": "1991",
+  "rom": "Blinky [Hans Christian Egeberg, 1991].ch8",
+  "sha1": "d40abc54374e4343639f993e897e00904ddf85d9",
+  "action_set": [
+    3,
+    6,
+    7,
+    8
+  ],
+  "startup_instructions": 13800,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 6
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 3
+    },
+    "b": {
+      "op": "const",
+      "v": 255
+    }
+  },
+  "human": {
+    "keys": {
+      "3": "up",
+      "6": "down",
+      "7": "left",
+      "8": "right"
+    },
+    "controls": "3 up, E (key 6) down, A (key 7) left, S (key 8) right."
+  }
+}

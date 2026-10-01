@@ -1,0 +1,57 @@
+BasicGame
+    SpriteSet
+        floor > Immovable img=colors/LIGHTGRAY
+        avatar > MovingAvatar img=colors/DARKBLUE
+        box1 > Passive img=colors/GREEN
+        box2 > Immovable img=colors/LIGHTBLUE
+        goal > Immovable img=colors/GOLD
+        poison1 > Immovable img=colors/ORANGE
+        poison2 > Passive img=colors/PINK
+        wall > Immovable img=colors/DARKGRAY
+    LevelMapping
+        . > floor
+        1 > floor  box1
+        2 > floor  box2
+        g > floor  goal
+        p > floor  poison1
+        q > floor  poison2
+        w > floor  wall
+        A > floor avatar
+    InteractionSet
+        avatar poison1 > killSprite
+        avatar poison2 > killSprite
+        avatar wall > stepBack
+        box1 avatar > bounceForward
+        box1 box1 > stepBack
+        box1 wall    > stepBack
+        box2 avatar  > killSprite
+        box2 box1 > killSprite
+        box2 goal > stepBack
+        box2 wall    > stepBack
+        goal avatar > killSprite scoreChange=1
+        goal box1 > killSprite scoreChange=1
+        goal poison1 > stepBack
+        goal poison2 > stepBack
+        goal wall > stepBack
+        poison1 wall > stepBack
+        poison2 wall > stepBack
+        poison1 box1 > killSprite
+        poison1 box2 > stepBack
+        poison2 box1 > bounceForward
+        poison2 box1 > stepBack
+        poison2 box2 > stepBack
+        poison2 poison2 > stepBack
+
+        avatar EOS > killSprite
+        box1 EOS > killSprite
+        box2 EOS > killSprite
+        goal EOS > killSprite
+        poison1 EOS > killSprite
+        poison2 EOS > killSprite
+        wall EOS > killSprite
+    TerminationSet
+        Timeout limit=3000 win=False
+        SpriteCounter stype=goal    limit=0 win=True
+        SpriteCounter stype=avatar  limit=0 win=False
+        
+        

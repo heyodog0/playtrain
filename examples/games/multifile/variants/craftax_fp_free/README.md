@@ -1,66 +1,37 @@
 # Craftax-Classic, first person, free movement
 
-`craftax_fp` with six extra actions, so you can turn in place, walk backwards
-and strafe. The world and the renderer are the same as in `craftax_fp`.
+[`craftax_fp`](../craftax_fp) with six extra actions, so you can turn in place,
+walk backwards and strafe. In Craftax every move also turns you, which makes
+first person awkward to play by hand. This variant fixes that.
 
-This is not Craftax's task. The action space has 23 actions instead of 17, so
-an agent trained here is not comparable to one trained on `craftax_classic` or
-`craftax_fp`. Use `craftax_fp` if you need exact Craftax dynamics.
+It is not Craftax's task. With 23 actions instead of 17, an agent trained here
+is not comparable to one trained on `craftax_classic` or `craftax_fp`.
 
-## Why
+## Play it
 
-In Craftax every move also turns you to face that way. There is no way to
-turn without moving or move without turning. From above that does not matter.
-In first person it means you cannot back away from a zombie while watching it.
+```console
+$ node tools/build-pages.mjs --games examples/games/multifile/variants/craftax_fp_free/dist \
+    --out dist/craftax-fp-free-play --title "Craftax first-person (free movement)"
+$ uv run python -m http.server -d dist/craftax-fp-free-play 8001
+```
+
+Open <http://localhost:8001/game/craftax_fp_free/>. UP and DOWN walk forward and
+back, LEFT and RIGHT turn in place, and A and D strafe. The other keys are
+`craftax_classic`'s. I, J, K and L are Craftax's original absolute moves.
 
 ## Train an agent
 
-Install [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers),
-then use the same config as `craftax_fp` with the game and action count
-changed:
-
-```json
-{
-  "game": "craftax_fp_free",
-  "env_backend": "playtrain",
-  "inference_mode": "vec",
-  "num_actions": 23,
-  "obs_shape": [3, 64, 64],
-  "net": "impala",
-  "total_steps": 10000000,
-  "batch_size": 32,
-  "unroll_length": 64,
-  "vec_workers": 4,
-  "vec_env_threads": 2,
-  "vec_double_buffer": true,
-  "learning_rate": 0.0005,
-  "device": "auto",
-  "log_dir": "outputs/craftax_fp_free"
-}
-```
+Use the `craftax_classic` config with `"game": "craftax_fp_free"` and
+`"num_actions": 23`:
 
 ```console
 $ python -m playtrain_trainers.train_impala --config craftax_fp_free.json
-$ tensorboard --logdir outputs/craftax_fp_free/tb
-```
-
-PlayTrain reads the 23 actions and the 10,000-step episode limit from
-`dist/craftax_fp_free.json`. PPO works too, via
-`playtrain_trainers.train_ppo_clean` with the same `game`.
-
-From your own code:
-
-```python
-import numpy as np
-from playtrain.runtime import NativeVecEnv
-
-env = NativeVecEnv(game="craftax_fp_free", num_envs=64, num_threads=8, autoreset=True)
-obs = env.reset(np.arange(64, dtype=np.int32))    # (64, 64, 64, 3) uint8
 ```
 
 ## Actions
 
-Actions 0-16 are Craftax's, unchanged (see `craftax_fp`). The new ones:
+Actions 0 to 16 are Craftax's, unchanged. The new ones use Craftax's own
+collision checks, so walls, water and mobs still block you.
 
 | # | action | facing | position |
 |---|---|---|---|
@@ -71,46 +42,17 @@ Actions 0-16 are Craftax's, unchanged (see `craftax_fp`). The new ones:
 | 21 | TURN_LEFT | quarter turn left | same |
 | 22 | TURN_RIGHT | quarter turn right | same |
 
-New moves use Craftax's own collision checks, so you still cannot walk
-through walls, water or mobs.
+## What is exact
 
-## What is still exact
+Actions 0 to 16 still match `craftax_classic` byte for byte over the 210-episode
+corpus, so the new actions did not disturb the old ones. QuickJS and V8 draw
+identical frames.
 
-Actions 0-16 behave exactly as in `craftax_classic`. Over the committed corpus
-(210 episodes, 49,061 steps) the game state and symbolic observation match
-byte for byte. That shows the new actions did not disturb the old ones. It
-does not make this the same task.
-
-QuickJS and V8 produce identical frames, as in `craftax_fp`.
-
-## How it is built
-
-`src/72_move_free.js` is the only new code. It redefines `stepGame` to accept
-23 actions and route the new ones to `movePlayerFree`. Actions 1-4 still call
-Craftax's own `movePlayer`. The bundle is a plain concatenation, so the later
-definition wins. That is why `manifest.json` must list `72_move_free.js` after
-`70_step.js`. Everything else comes from `craftax_classic` and `craftax_fp`.
-
-## Play it
-
-```console
-$ node tools/build-pages.mjs --games examples/games/multifile/variants/craftax_fp_free/dist \
-    --out dist/craftax-fp-free-play --title "Craftax first-person (free movement)"
-$ uv run python -m http.server -d dist/craftax-fp-free-play 8001
-```
-
-Then open <http://localhost:8001/game/craftax_fp_free/>.
-
-UP/DOWN walk forward and back, LEFT/RIGHT turn in place, A/D strafe. SPACE
-interacts, TAB sleeps, 1-4 place, 5-7 craft pickaxes, 8-0 craft swords.
-I/J/K/L are Craftax's original absolute moves.
+The only new code is `src/72_move_free.js`. It redefines `stepGame`, so
+`manifest.json` must list it after `70_step.js`.
 
 ## Tests
 
 ```console
 $ uv run pytest examples/games/multifile/variants/craftax_fp_free/tests -q
 ```
-
-These check that actions 0-16 match `craftax_classic`, that turning does not
-move you and moving does not turn you, that every action has a key, and that
-QuickJS and V8 agree.

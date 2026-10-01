@@ -1,0 +1,39 @@
+{
+  "game": "rocket",
+  "env_id": "rocket",
+  "module": "octax/environments/rocket.py",
+  "title": "Rocket",
+  "authors": [
+    "Joseph Weisbecker"
+  ],
+  "release": "1978-12",
+  "rom": "Rocket [Joseph Weisbecker, 1978].ch8",
+  "sha1": "3d1d029d6e31206d245c0ba881c0d1f003953bad",
+  "action_set": [
+    15
+  ],
+  "startup_instructions": 0,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 1
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 2
+    },
+    "b": {
+      "op": "const",
+      "v": 9
+    }
+  },
+  "human": {
+    "keys": {
+      "15": "launch"
+    },
+    "controls": "V (key F) launches."
+  }
+}

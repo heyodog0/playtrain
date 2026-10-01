@@ -96,6 +96,32 @@ static int dc_register(const char* name) {
 static inline p5cb::Buf* cbuf(JSContext* ctx) { return (p5cb::Buf*)JS_GetContextOpaque(ctx); }
 #define REC(b) if ((b)->n > p5cb::CAP - 16) p5cb::flush((b), g_nodraw);
 
+// drawTiles(kindsU16, gw, gh, atlasU8, tilePx, nTiles, dstX, dstY, dstW, dstH)
+// Writes canvas memory directly (through the rasterizer, which records it in
+// dirty mode), so the command buffer has to land first. Arrays read in place.
+FN(js_drawTiles) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  if (g_nodraw) return JS_UNDEFINED;
+  size_t koff = 0, klen = 0, kper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue kab = JS_GetTypedArrayBuffer(ctx, argv[0], &koff, &klen, &kper);
+  if (JS_IsException(kab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[3], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, kab); return JS_UNDEFINED; }
+  size_t ksz = 0, asz = 0;
+  uint8_t* ksrc = JS_GetArrayBuffer(ctx, &ksz, kab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  int gw = (int)argd(ctx, argv[1]), gh = (int)argd(ctx, argv[2]);
+  int tilePx = (int)argd(ctx, argv[4]), nTiles = (int)argd(ctx, argv[5]);
+  if (ksrc && asrc && koff + klen <= ksz && aoff + alen <= asz &&
+      klen >= (size_t)gw * gh * 2 && alen >= (size_t)tilePx * tilePx * 4 * nTiles) {
+    p5::drawTiles((const uint16_t*)(ksrc + koff), gw, gh, asrc + aoff, tilePx, nTiles,
+                  (int)argd(ctx, argv[6]), (int)argd(ctx, argv[7]), (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, kab);
+  return JS_UNDEFINED;
+}
+
 FN(js_createCanvas) {
   if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);  // canvas registry changes: drain first
   if (argc >= 3) p5::createCanvas(argd(ctx, argv[0]), argd(ctx, argv[1]), (int)argd(ctx, argv[2]));  // WEBGL
@@ -318,7 +344,7 @@ static const Binding BINDINGS[] = {
   {"voxelView", js_voxelView, 16},
   {"voxelSprite", js_voxelSprite, 15},
   {"voxelDusk", js_voxelDusk, 10},
-  {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5},
+  {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5}, {"drawTiles", js_drawTiles, 10},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},
   {"noLoop", js_noop, 0}, {"loop", js_noop, 0}, {"noCursor", js_noop, 0}, {"cursor", js_noop, 0},

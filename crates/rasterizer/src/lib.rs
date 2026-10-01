@@ -21,6 +21,9 @@ pub use three::*;
 // First-person voxel raycast (rs_voxel_* ABI). See voxel.rs.
 pub mod voxel;
 pub use voxel::*;
+// Tile-grid blit (rs_draw_tiles). See tiles.rs.
+pub mod tiles;
+pub use tiles::*;
 
 struct SubPath {
     pts: Vec<(f64, f64)>,
@@ -153,6 +156,8 @@ pub(crate) struct RState {
     // Grid/atlas staging for the voxel primitive (voxel.rs). None until the
     // first rs_voxel_*_ptr call. APPENDED last, same reason as `three`.
     pub(crate) voxel: Option<Box<voxel::Voxel>>,
+    // Tile blit ops recorded for dirty-frame replay + wasm staging (tiles.rs). APPENDED last.
+    pub(crate) tiles: Option<Box<tiles::Tiles>>,
 }
 
 impl RState {
@@ -170,6 +175,7 @@ impl RState {
             ell_cache: Vec::new(),
             three: None,
             voxel: None,
+            tiles: None,
         }
     }
 }
@@ -224,7 +230,7 @@ pub(crate) fn cv(h: u32) -> &'static mut Canvas {
 // record guard placed at the top of every draw op: returns true (op should return early) iff
 // we're capturing this frame's commands.
 #[inline]
-fn rec(tag: u8, a: [f64; 6]) -> bool {
+pub(crate) fn rec(tag: u8, a: [f64; 6]) -> bool {
     let s = rs();
     if s.recording {
         // A semi-transparent fill/stroke makes re-rendering non-idempotent (double-blend),
@@ -256,6 +262,7 @@ pub extern "C" fn rs_frame_begin(h: u32) {
     s.rec.clear();
     s.cur_h = h;
     s.frame_opaque = true;
+    tiles::tiles_frame_begin();
 }
 
 // returns 1 if the frame was identical to the previous (skipped), 0 if replayed/rendered.
@@ -338,6 +345,7 @@ fn replay_one(h: u32, t: u8, a: &[f64; 6]) {
         17 => rs_fill(h),
         18 => rs_fill_rect(h, a[0], a[1], a[2], a[3]),
         19 => rs_stroke(h),
+        20 => tiles::replay_tiles(a[0] as usize),
         _ => {}
     }
 }

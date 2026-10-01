@@ -1,0 +1,80 @@
+{
+  "game": "nekopuzzle",
+  "title": "neko puzzle",
+  "author": "lexaloffle",
+  "dropdown_group": "Elementary",
+  "source": "src/demo/nekopuzzle.txt",
+  "sha256": "fb60ce89274c0330b4748b9404830370622bc61461800344570a5e258c34f7f2",
+  "level_mode": "seed",
+  "playable_levels": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    17,
+    19
+  ],
+  "levels": 21,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, SPACE acts. neko puzzle by lexaloffle: level = seed % 10 of the 10 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 3,
+  "level_sizes": [
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      8
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 3,
+    "max_width": 8,
+    "max_height": 8,
+    "dim": 192,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
+  }
+}

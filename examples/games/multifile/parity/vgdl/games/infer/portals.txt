@@ -1,0 +1,72 @@
+BasicGame
+    SpriteSet
+    	floor > Immovable img=colors/LIGHTGRAY
+    	sitting  > Immovable img=colors/DARKGREEN
+        vertical   > Missile orientation=UP speed=0.15 img=colors/PINK
+        horizontal > Missile orientation=LEFT speed=0.2 img=colors/LIGHTRED
+    	goal  > Immovable img=colors/LIGHTGREEN
+	random   > RandomNPC speed=0.1 cons=1 img=colors/BROWN
+	entry1 > Portal stype=exit1 img=colors/LIGHTBLUE
+	entry2 > Portal stype=exit2 img=colors/BLUE
+
+        exit1  > Immovable img=colors/GOLD
+        exit2  > Immovable img=colors/LIGHTORANGE
+        wall > Immovable img=colors/DARKGRAY autotiling=True
+        avatar > MovingAvatar img=colors/DARKBLUE speed=1
+        
+    LevelMapping
+        . > floor
+        2 > floor  entry2
+        3 > floor  exit2
+        g > floor  goal
+        h > floor  horizontal
+        i > floor  entry1
+        o > floor  exit1
+        r > floor  random
+        v > floor  vertical
+        w > floor  wall
+        x > floor  sitting
+	A > floor avatar
+    InteractionSet
+        random entry1 > stepBack
+        random entry2 > stepBack
+        random exit1 > stepBack
+        random exit2 > stepBack
+        random goal > stepBack
+        random wall > stepBack
+
+        horizontal goal > stepBack
+        vertical goal > stepBack
+
+        sitting  goal > stepBack
+        sitting entry1 > stepBack
+        sitting entry2 > stepBack
+        sitting exit1 > stepBack
+        sitting exit2 > stepBack
+        sitting wall > stepBack
+        avatar entry1 > teleportToExit
+        avatar entry2 > teleportToExit
+        avatar wall      > stepBack
+        goal   avatar    > killSprite scoreChange=1
+        avatar sitting    > killSprite
+        avatar vertical    > killSprite
+        avatar horizontal    > killSprite
+        vertical wall    > reverseDirection
+        horizontal wall    > reverseDirection
+
+        avatar EOS > killSprite
+        entry1 EOS > killSprite
+        entry2 EOS > killSprite
+        exit1 EOS > killSprite
+        exit2 EOS > killSprite
+        goal EOS > killSprite
+        horizontal EOS > killSprite
+        random EOS > killSprite
+        sitting EOS > killSprite
+        vertical EOS > killSprite
+        wall EOS > killSprite
+
+    TerminationSet
+        SpriteCounter stype=goal   limit=0 win=True
+        SpriteCounter stype=avatar limit=0 win=False
+        Timeout limit=3000 win=False

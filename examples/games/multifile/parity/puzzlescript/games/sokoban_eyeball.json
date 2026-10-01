@@ -1,0 +1,35 @@
+{
+  "game": "sokoban_eyeball",
+  "title": "EYE EYE EYE",
+  "author": "increpare",
+  "dropdown_group": "Tutorial",
+  "source": "src/demo/sokoban_eyeball.txt",
+  "sha256": "811e22e97ae3cfc1d0349cf52f7181b14c04cb19a82e7f00d5404196a5aa0dd8",
+  "level_mode": "seed",
+  "playable_levels": [
+    0
+  ],
+  "levels": 1,
+  "metadata_keys": [
+    "title",
+    "author",
+    "homepage"
+  ],
+  "human": {
+    "controls": "Arrows move, SPACE acts. EYE EYE EYE by increpare: level = seed % 1 of the 1 playable levels; the episode ends when the level is solved."
+  },
+  "objects": 5,
+  "level_sizes": [
+    [
+      9,
+      7
+    ]
+  ],
+  "symbolic": {
+    "objects": 5,
+    "max_width": 9,
+    "max_height": 7,
+    "dim": 315,
+    "layout": "float32[objects][max_height][max_width]: 1 where the object is present in the cell (level.objects bit), cells outside the current level 0; the level is placed at the top-left"
+  }
+}

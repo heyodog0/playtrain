@@ -1,0 +1,112 @@
+{
+  "name": "vgdl",
+  "version": "0.1.0",
+  "title": "VGDL (py-vgdl parity family)",
+  "kind": "family",
+  "note": "One engine, many games. tools/bundle_vgdl.mjs bundles src/*.js with one spec and its levels into dist/vgdl_<game>.js plus a dist/vgdl_<game>.json sidecar; tools/bundle_all.mjs does every game in the corpus. Edit src/ and games/, never dist/.",
+  "action_space": "vgdl6",
+  "max_steps": 2000,
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64
+  },
+  "human": {
+    "steps_per_second": 8,
+    "controls": "Arrows move. SPACE shoots or acts (games with a ShootAvatar or FlakAvatar).",
+    "keymap_overlay": true
+  },
+  "corpora": {
+    "infer": {
+      "block_size": 50,
+      "parity": true,
+      "games": [
+        "aliens",
+        "avoidGeorge",
+        "beesAndBirds",
+        "jaws",
+        "missile_command",
+        "picoparkish",
+        "plaqueAttack",
+        "portals",
+        "preconditions",
+        "pushBoulders",
+        "relational",
+        "tutorial"
+      ],
+      "reference": {
+        "name": "py-vgdl, Colas lineage, as ported to gymnasium by Tomov (language_and_experience @ dbp); infer-vgdl vendors the same engine plus GravityAvatar, DestroyAllBreakwalls and BothPlayersOnExit for picoparkish and tutorial",
+        "repo": "https://github.com/tomov/language_and_experience",
+        "commit": "97fb71d1fd8aa3d81eeba4fefe6d9ec36596adb0",
+        "path": "src/vgdl",
+        "license": "see upstream",
+        "block_size": 50,
+        "block_size_note": "play_human.py and src/utils.py run at block_size=50; 1 is the planning-only fast mode in which every fractional-speed sprite is frozen. The vgdl-metagen gate ran at 1. fmri-gym's vgdl backend wraps this same fork, so the DBP study's VGDL games are this corpus.",
+        "parity": "full state every step: time, score, ended, won, and every live sprite's (type, x, y, resources); same seed and action sequence; tests/gate_oracle.mjs vs tests/oracle.py",
+        "not_matched": [
+          "pixels (py-vgdl draws sprites at block_size with pygame; PlayTrain draws 8px cells scaled into a 64x64 frame)",
+          "reward: PlayTrain reward is the score delta per step; infer-vgdl's gym wrapper is not the reference here",
+          "multi-key actions: the vgdl6 space holds one key per action, so py-vgdl's largest-combination tie-break (SPACE beats arrows when both are held) is never exercised; default8's LEFT_D/RIGHT_D would be, and are reproduced",
+          "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+        ],
+        "branch": "dbp",
+        "superset": {
+          "repo": "https://github.com/heyodog0/infer-vgdl",
+          "commit": "ac1237d8fb5b36479ba1981c4217585c03e6b932",
+          "path": "src/vgdl",
+          "adds": [
+            "GravityAvatar",
+            "DestroyAllBreakwalls",
+            "BothPlayersOnExit"
+          ],
+          "games_only_here": [
+            "picoparkish",
+            "tutorial"
+          ]
+        },
+        "specs_identical_across_forks": true
+      }
+    },
+    "vgfmri_rcrl": {
+      "block_size": 30,
+      "profile": "rcrl",
+      "parity": true,
+      "games": [
+        "vgfmri3_bait",
+        "vgfmri3_chase",
+        "vgfmri3_helper",
+        "vgfmri3_lemmings",
+        "vgfmri3_plaqueAttack",
+        "vgfmri3_sokoban",
+        "vgfmri3_zelda",
+        "vgfmri4_avoidgeorge",
+        "vgfmri4_bait",
+        "vgfmri4_chase",
+        "vgfmri4_helper",
+        "vgfmri4_lemmings",
+        "vgfmri4_sokoban",
+        "vgfmri4_zelda"
+      ],
+      "reference": {
+        "name": "py-vgdl, Tsividis lineage, as used for the theory-based RL fMRI study (Tomov et al. 2023): tomov/RC_RL branch fmri, vgdl/ + fmri_all_games/",
+        "repo": "https://github.com/tomov/RC_RL",
+        "branch": "fmri",
+        "commit": "3388f9caa9c611e5cd1dbd262c38df24087c9963",
+        "path": "vgdl",
+        "games_path": "fmri_all_games",
+        "python": "2.7 (image rcrl-oracle: pygame 1.9.6, numpy 1.16.4, scipy 1.2.3, pybrain 0.3)",
+        "block_size": 30,
+        "block_size_note": "BasicGame.buildLevel sets block_size = 30 unconditionally; the square_size header is ignored.",
+        "step_semantics": "RLEnvironmentNonStatic.step as driven by VGDLEnv (the DDQN wrapper): visualize=True so kills flush at the start of each action; softReset() performs one action-less step before the first agent action; actions are single keys [NOOP, RIGHT, LEFT, UP, DOWN, SPACE]; on NOOP the avatar is not updated at all.",
+        "parity": "full state every step: time, score, ended, won, and every live (non-kill-list) sprite's (type, x, y, resources incl. defaultdict zero entries); same seed (module random seeded before softReset) and action sequence; tests/gate_oracle_rcrl.mjs vs tests/oracle_rcrl.py",
+        "group_order": "abstract sprite groups are assembled in Python 2 dict order; <game>.groups.json captures it from the oracle and the bundle embeds it",
+        "not_matched": [
+          "pixels (RC_RL draws 30px squares with pygame; PlayTrain draws fitted cells into a 64x64 frame) \u2014 colours are RC_RL's palette",
+          "reward: VGDLEnv returns +1/-1 on termination and the score delta otherwise; PlayTrain reports the score delta every step",
+          "the real-time human loop (core.tick, frame_rate 20, terminations checked before the update) is not the reference; the RL step is",
+          "the RNG: RC_RL's module-level random is unseeded, so the reference is only reproducible once seeded, which the oracle does",
+          "the host reset consumes one NOOP frame before the first agent action (PlayTrain draws and steps in the same frame)"
+        ]
+      }
+    }
+  }
+}

@@ -42,6 +42,14 @@
     { "name": "FIRE_S",  "held": [], "press": null, "pointer": [0.5,  0.83], "buttons": ["mouse"] },
     { "name": "FIRE_SE", "held": [], "press": null, "pointer": [0.83, 0.83], "buttons": ["mouse"] }
   ],
+  "vgdl6": [
+    { "name": "UP",    "held": [38], "press": null },
+    { "name": "DOWN",  "held": [40], "press": null },
+    { "name": "LEFT",  "held": [37], "press": null },
+    { "name": "RIGHT", "held": [39], "press": null },
+    { "name": "NOOP",  "held": [],   "press": null },
+    { "name": "SPACE", "held": [32], "press": null }
+  ],
   "mouse2d": {
     "type": "box",
     "channels": ["pointer_x", "pointer_y", "button:mouse"]

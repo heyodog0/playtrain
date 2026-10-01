@@ -23,12 +23,15 @@
 //     wasm32 must hash identically.
 //
 // Conventions (p5 WEBGL): origin at canvas centre, +x right, +y DOWN on
-// screen, +z toward the viewer. Default camera = p5's: fov PI/3, aspect w/h,
-// eye at (0,0,(h/2)/tan(PI/6)) looking at the origin, near 0.1*eyeZ, far
-// 10*eyeZ (p5.RendererGL._computeCameraDefaultSettings / perspective()).
-// cylinder() runs along the y axis. cone() has its base at +h/2 (screen-down)
-// and apex at -h/2 (screen-up) — the orientation seaquest.v3 evidently
-// expects (dorsal fin, sub tail cone); recorded as the template convention.
+// screen, +z toward the viewer. Default camera = p5's since 1.7 (and so in the
+// 1.9.0 tools/tester.py loads): eye at (0,0,800) looking at the origin,
+// fov = 2*atan((h/2)/800), aspect w/h, near 0.1*eyeZ, far 10*eyeZ
+// (p5.Camera._computeCameraDefaultSettings). This used to be p5's pre-1.7
+// default (fov PI/3, eyeZ = (h/2)/tan(PI/6) ~ 346 at h=400), which maps z=0
+// identically but puts ~2.3x more perspective on anything in front of or behind
+// it: seaquest.v3's floor and surface boxes came out visibly taller than in p5.
+// cylinder() runs along the y axis. cone() has its base at -h/2 (screen-up)
+// and apex at +h/2 (screen-down), as p5 draws it.
 
 use crate::{clamp_u8, rs, Canvas};
 
@@ -252,9 +255,14 @@ fn mesh_sphere(dx: usize, dy: usize) -> Mesh {
             let b = a + 1;
             let c = a + row;
             let d = c + 1;
-            // phi increases with +y (down on screen); outward CCW winding:
-            m.tri(a, c, d);
-            m.tri(a, d, b);
+            // Front-facing = positive screen area (y down), as the box faces are.
+            // At the front (theta ~ 0) b is right of a and c below it, so the
+            // outward order is a, d, c / a, b, d. This was a, c, d / a, d, b,
+            // which culled the whole NEAR hemisphere: every sphere showed the
+            // inside of its far side, normals pointing away -- an unlit centre
+            // and specular highlights on the wrong side (seaquest.v3's subs).
+            m.tri(a, d, c);
+            m.tri(a, b, d);
         }
     }
     m
@@ -276,8 +284,11 @@ fn mesh_cylinder(dx: usize) -> Mesh {
         let b = a + 1;      // top    (y=+0.5)
         let c = a + 2;
         let d = a + 3;
-        m.tri(a, c, d);
-        m.tri(a, d, b);
+        // Same fix as the sphere: at the front (theta ~ PI/2) the next ring
+        // vertex is to the LEFT, so a, c, d had negative area and the near
+        // half of every cylinder was culled.
+        m.tri(a, d, c);
+        m.tri(a, b, d);
     }
     // caps: fan around a centre vertex
     for &(y, ny) in [(0.5f64, 1.0f64), (-0.5, -1.0)].iter() {
@@ -297,37 +308,40 @@ fn mesh_cylinder(dx: usize) -> Mesh {
     m
 }
 
-// Unit cone along y: base radius 1 at y=+0.5 (screen-down), apex at y=-0.5.
+// Unit cone along y, as p5 builds it: base radius 1 at y=-0.5 (screen-UP),
+// apex at y=+0.5 (screen-down). This was the other way up, a convention
+// inferred from what seaquest.v3 "evidently expects" rather than from p5;
+// side by side with p5 1.9.0 every cone was upside down.
 fn mesh_cone(dx: usize) -> Mesh {
     let mut m = Mesh::new();
     let rg = ring(dx);
-    // slanted side normals for r=1, h=1: (c, -1, s)/sqrt(2) — per-call scale
+    // slanted side normals for r=1, h=1: (c, +1, s)/sqrt(2) — per-call scale
     // corrects them (normals are divided by the scale before renormalising).
     let k = 0.7071067811865476;
     for j in 0..=dx {
         let (c, s) = rg[j % dx];
-        let n = [c * k, -k, s * k];
-        m.push([c, 0.5, s], n);       // base ring
-        m.push([0.0, -0.5, 0.0], n);  // apex (duplicated per segment for its normal)
+        let n = [c * k, k, s * k];
+        m.push([c, -0.5, s], n);      // base ring
+        m.push([0.0, 0.5, 0.0], n);   // apex (duplicated per segment for its normal)
     }
     for j in 0..dx as u32 {
         let a = 2 * j;
         let apex = a + 1;
         let c = a + 2;
-        m.tri(a, c, apex);
+        m.tri(a, apex, c);   // mirrored in y, so the winding is reversed too
     }
-    // base cap (normal +y)
-    let n = [0.0, 1.0, 0.0];
-    let centre = m.push([0.0, 0.5, 0.0], n);
+    // base cap (normal -y)
+    let n = [0.0, -1.0, 0.0];
+    let centre = m.push([0.0, -0.5, 0.0], n);
     let first = m.pos.len() as u32;
     for j in 0..dx {
         let (c, s) = rg[j];
-        m.push([c, 0.5, s], n);
+        m.push([c, -0.5, s], n);
     }
     for j in 0..dx as u32 {
         let a = first + j;
         let b = first + (j + 1) % dx as u32;
-        m.tri(centre, b, a);
+        m.tri(centre, a, b);
     }
     m
 }
@@ -454,9 +468,9 @@ const NO_LIGHTS: Lights = Lights {
 
 impl Three {
     fn new(h: u32, lw: f64, lh: f64, dw: usize, dh: usize) -> Three {
-        // p5 defaults: fov = PI/3 => f = 1/tan(PI/6) = sqrt(3); eyeZ = (h/2)/tan(PI/6).
-        let f = 1.7320508075688772_f64;
-        let eye_z = (lh / 2.0) * f;
+        // p5 defaults: eyeZ = 800, fov = 2*atan((h/2)/eyeZ) => f = 1/tan(fov/2) = eyeZ/(h/2).
+        let eye_z = 800.0_f64;
+        let f = eye_z / (lh / 2.0);
         let aspect = lw / lh;
         let near = 0.1 * eye_z;
         let far = 10.0 * eye_z;
@@ -546,9 +560,14 @@ fn shade(m: &Material, l: &Lights, eye_z: f64, pv: [f64; 3], n: [f64; 3]) -> [f6
             let lp = [p[0], p[1], p[2] - eye_z];
             apply(l.pt[i].0, normalize3([pv[0] - lp[0], pv[1] - lp[1], pv[2] - lp[2]]));
         }
+        // p5's lighting.glsl scales the light sums before combining:
+        // totalDiffuse *= diffuseFactor (0.73), totalSpecular *= specularFactor (2.0).
+        const DIFFUSE_FACTOR: f64 = 0.73;
+        const SPECULAR_FACTOR: f64 = 2.0;
         let mut out = [0.0f64; 3];
         for c in 0..3 {
-            let v = m.fill[c] * diff[c] + l.ambient[c] * amb_mat[c] + m.specular[c] * spec[c];
+            let v = m.fill[c] * diff[c] * DIFFUSE_FACTOR + l.ambient[c] * amb_mat[c]
+                + m.specular[c] * spec[c] * SPECULAR_FACTOR;
             out[c] = (if v > 1.0 { 1.0 } else { v }) * 255.0;
         }
         out
@@ -1363,8 +1382,9 @@ mod tests {
     }
 
     // One lit box, light travelling away from the viewer (hits +z faces).
-    // Pins: front face is the fill colour at full diffuse (so the winding /
-    // culling is right — a back face would be black), corners are background.
+    // Pins: front face is the fill colour at full diffuse times p5's
+    // diffuseFactor 0.73 (200,100,50 -> 146,73,36; so the winding / culling is
+    // right — a back face would be black), corners are background.
     #[test]
     fn lit_box_front_face() {
         let ops = [
@@ -1377,9 +1397,9 @@ mod tests {
         run(h, &ops);
         let px = &crate::cv(h).px;
         let c = (32 * 64 + 32) * 4;
-        assert_eq!(&px[c..c + 3], &[200, 100, 50], "front face should be fully lit fill");
+        assert_eq!(&px[c..c + 3], &[146, 73, 36], "front face should be fill x 0.73 (p5 diffuseFactor)");
         assert_eq!(&px[0..3], &[0, 0, 0]);
-        // 100 logical units at eyeZ=346 project to ~ 100/400*64*(346/(346-50)) ≈ 18.7 px
+        // 100 logical units at eyeZ=800 project to ~ 100/400*64*(800/(800-50)) ≈ 17.1 px
         let mut lit = 0;
         for i in 0..64 * 64 {
             if px[i * 4] > 0 { lit += 1; }
@@ -1389,6 +1409,9 @@ mod tests {
 
     // The three canonical hashes. Recorded 2026-09-07 on aarch64-apple-darwin
     // (rustc 1.98 native) and matched by the wasm32 build the same day.
+    // Re-recorded 2026-09-30 after the p5-parity fixes (default camera eyeZ 800,
+    // sphere/cylinder winding, p5's cone orientation, diffuse 0.73 / specular
+    // 2.0 factors), checked against p5.js 1.9.0 in a browser.
     #[test]
     fn golden_one_tri_like_box() {
         let ops = [
@@ -1555,7 +1578,7 @@ mod tests {
         }
     }
 
-    const GOLD_BOX: u64 = 15669850146622006379;
-    const GOLD_ROT: u64 = 6833457957690475568;
-    const GOLD_SEA: u64 = 13978479596181124416;
+    const GOLD_BOX: u64 = 7853601327978845779;
+    const GOLD_ROT: u64 = 16627897497252967489;
+    const GOLD_SEA: u64 = 14586709719154658741;
 }

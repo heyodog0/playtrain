@@ -1,0 +1,41 @@
+{
+  "game": "squash",
+  "env_id": "squash",
+  "module": "octax/environments/squash.py",
+  "title": "Squash",
+  "authors": [
+    "David Winter"
+  ],
+  "release": "1997",
+  "rom": "Squash [David Winter].ch8",
+  "sha1": "a58ec7cc63707f9e7274026de27c15ec1d9945bd",
+  "action_set": [
+    1,
+    4
+  ],
+  "startup_instructions": 100,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 11
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 11
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "1": "up",
+      "4": "down"
+    },
+    "controls": "1 (key 1) up, Q (key 4) down."
+  }
+}

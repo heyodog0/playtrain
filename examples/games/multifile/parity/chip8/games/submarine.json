@@ -1,0 +1,39 @@
+{
+  "game": "submarine",
+  "env_id": "submarine",
+  "module": "octax/environments/submarine.py",
+  "title": "Submarine",
+  "authors": [
+    "Carmelo Cortez"
+  ],
+  "release": null,
+  "rom": "Submarine [Carmelo Cortez, 1978].ch8",
+  "sha1": "89aadf7c28bcd1c11e71ad9bd6eeaf0e7be474f3",
+  "action_set": [
+    5
+  ],
+  "startup_instructions": 100,
+  "custom_startup": null,
+  "disable_delay": false,
+  "score": {
+    "op": "V",
+    "i": 7
+  },
+  "terminated": {
+    "op": "eq",
+    "a": {
+      "op": "V",
+      "i": 8
+    },
+    "b": {
+      "op": "const",
+      "v": 0
+    }
+  },
+  "human": {
+    "keys": {
+      "5": "fire"
+    },
+    "controls": "W (key 5) fires."
+  }
+}
