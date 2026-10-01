@@ -29,10 +29,10 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
   package that depends on this one, and it produced every training number in the paper.
   See [Training](#training).
 
-The catalog has 39 games. Some are clones of Atari and ProcGen games, some are original,
-and several ship as deliberate variants of a base game. `examples/games/multifile/` adds
-an exact port of Craftax-Classic and its first-person variant. The project page is at
-[playtrain.org](https://playtrain.org).
+The catalog has 51 games: clones of Atari and ProcGen games, original games, and
+variants of a base game. `examples/games/multifile/` adds exact ports of Craftax-Classic,
+the Octax CHIP-8 games, VGDL and PuzzleScript. All of them are playable at
+[playtrain.org/play](https://playtrain.org/play/).
 
 ## Getting started
 
@@ -41,9 +41,7 @@ environment, edits a game's source, measures throughput, and trains an agent. No
 set up.
 
 To run locally, `examples/quickstart.py` takes one command and installs nothing
-system-wide. It needs [uv](https://docs.astral.sh/uv/), which reads the dependency
-header in the script, and it builds the native backend, so clang and cargo need to be
-on PATH.
+system-wide. It needs [uv](https://docs.astral.sh/uv/), clang and cargo.
 
 ```console
 $ uv run https://raw.githubusercontent.com/heyodog0/playtrain/main/examples/quickstart.py
@@ -68,9 +66,8 @@ $ git clone https://github.com/heyodog0/playtrain && cd playtrain
 $ python3 -m venv .venv && .venv/bin/pip install -e .
 ```
 
-Either way this builds the native backend as part of the install, which takes about a
-minute the first time. The backend is the default runtime engine, not an optional
-add-on, which is why clang and cargo are needed.
+Either way the install builds the native backend, which takes about a minute the first
+time.
 
 The LLM generation pipeline is the `gen` extra, `pip install -e ".[gen]"`. Training is a
 separate package, [playtrain-trainers](https://github.com/heyodog0/playtrain-trainers),
@@ -156,9 +153,7 @@ Describe the game in a catalog, which is a JSON list with one object per game:
 ]
 ```
 
-Only `name` is required. `actions_used` are the `default8` keys the game should use,
-`mechanic` is a one-line description, and `ref` is a URL that gets fetched and pasted
-into the prompt as plain text when you pass `--ref`.
+Only `name` is required. With `--ref`, the `ref` page is fetched into the prompt.
 
 ```console
 $ playtrain-generate --catalog my_games.json --name breakout --ref
@@ -189,16 +184,8 @@ refinement prompts.
 Authoring is cheap. The six artifacts reported in the paper averaged under twenty cents
 and under six minutes of model time each.
 
-[`just`](https://just.systems) installs into the same venv with `pip install rust-just`,
-or from brew, cargo or apt. Every recipe is a one-line wrapper, so it stays optional. The
-same three steps without it:
-
-```console
-$ playtrain-variant --parent breakout --name breakout.multi \
-    --prompt "three balls at once, losing one costs a life"
-$ python tools/tester.py
-$ playtrain-variant --promote breakout.multi
-```
+[`just`](https://just.systems) is optional (`pip install rust-just`). Each recipe is a
+one-line wrapper around a `playtrain-*` command.
 
 ## Common tasks
 
@@ -220,24 +207,13 @@ just variants                                            # list variants
 
 ## Design
 
-- **Action space.** Action spaces are data, not code. They live in
-  `runtime/action_spaces.json` and are chosen per environment, so adding one means
-  editing a JSON file rather than touching the runtime:
+- **Action space.** Action spaces are data in `runtime/action_spaces.json`, chosen per
+  environment. Most catalog games use `default8`, so one policy head trains across the
+  catalog. Others add rotate-and-thrust, aiming, pointer or gamepad input:
 
   ```python
   GameEnv(game="caveflyer", action_space="thrust10")
   ```
-
-  Five ship today. **`default8`** is the abstract directional and button set every game
-  in the catalog is authored against, which is what lets one policy head train across
-  the whole catalog. **`thrust10`** adds rotate-and-thrust, which `default8` cannot
-  express. **`aimgrid18`** is a coarse aiming grid. **`mouse2d`** and **`gamepad2s`**
-  are continuous box spaces over pointer and axis channels.
-
-  A discrete action is a set of held key codes for the frame, optionally with a press
-  key that also fires a `keyPressed()` event, and optionally with analog pointer or axis
-  values. Analog values are quantized to uint16 at the wire, so replay and the
-  cross-engine determinism gate stay bit-exact even under continuous control.
 - **Observations.** 64x64x3 RGB, matching ProcGen conventions. One step is one rendered
   frame, with no frame skip and no frame stacking.
 - **Determinism.** The same seed and the same actions produce the same trajectory,
