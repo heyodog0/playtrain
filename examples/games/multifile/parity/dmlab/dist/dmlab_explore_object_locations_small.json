@@ -78,8 +78,8 @@
   "max_steps": 1350,
   "max_steps_source": "episodeLengthSeconds 90 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "unused_actions": [
       "FIRE",
       "FORWARD_LOOK_LEFT",
@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/explore_object_locations_small",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "3c52339f15ad6987c2f706f287b03c21f4c44debbf37472495f90758241c3200"
+  "source_sha256": "d7db6ddc90cf2a5983befe9104a8e07527c7cc5f95b1cba0e812918f179309bc"
 }

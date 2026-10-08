@@ -78,8 +78,8 @@
   "max_steps": 1800,
   "max_steps_source": "episodeLengthSeconds 120 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "hint": "Click the view to look around with the mouse (Esc gives it back). Walk into the object the instruction names, in the room it names.",
     "unused_actions": [
       "FIRE",
@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/language_select_located_object",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "a0c3bc8759673a67d15e6cef96af09a6675ca16e83bb57e6e3d48c74fccdf518"
+  "source_sha256": "eb91c07f336da1e29cd85a7a89a34508e6975b2ce876c6bb158aa55fe314c8ad"
 }

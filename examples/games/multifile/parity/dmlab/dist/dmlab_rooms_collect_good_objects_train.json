@@ -78,8 +78,8 @@
   "max_steps": 900,
   "max_steps_source": "episodeLengthSeconds 60 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "unused_actions": [
       "FIRE",
       "FORWARD_LOOK_LEFT",
@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_collect_good_objects_train",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "cb72a32ba28427ca2b59920d3d6305e4b1c5710f47ac428b975a35f4efabd7b0"
+  "source_sha256": "160e349a9b1d8c13386df23abcfeee6b2709ab0ae553e847f215d7e91afc0983"
 }

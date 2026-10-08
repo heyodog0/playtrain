@@ -152,6 +152,8 @@ function createCanvas(w, h, mode) {
         + 'or the inlined wasm in the browser bundle); the pure-JS/cairo backends have no 3D pipeline');
     }
     factory = createWebglCanvas;
+  } else if (!_IS_NODE && globalThis.__PT_WASM_2D && createWebglCanvas) {
+    factory = createWebglCanvas;   // a page asks for the wasm backend for speed (the same pixels)
   }
   _canvas = _RASTER_RES
     ? factory(w, h, _RASTER_RES, _RASTER_RES)

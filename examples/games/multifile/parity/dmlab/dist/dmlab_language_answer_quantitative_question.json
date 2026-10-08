@@ -78,8 +78,8 @@
   "max_steps": 900,
   "max_steps_source": "episodeLengthSeconds 60 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "hint": "Click the view to look around with the mouse (Esc gives it back). Look at the objects, then answer: walk into the white ball for yes or the black ball for no.",
     "unused_actions": [
       "FIRE",
@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/language_answer_quantitative_question",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "e7af27f78a739574217ca53acca510a8a338a966799170f5eda6606df2aa09b5"
+  "source_sha256": "44dbc07407aa9307b63371e5fda15cb88ad59a30fdbb0a675fc1309e0db1be12"
 }

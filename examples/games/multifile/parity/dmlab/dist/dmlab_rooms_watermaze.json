@@ -78,8 +78,8 @@
   "max_steps": 1800,
   "max_steps_source": "episodeLengthSeconds 120 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "unused_actions": [
       "FIRE",
       "FORWARD_LOOK_LEFT",
@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_watermaze",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "a3cd49ff3d523679619f27b0c29d2a556823dda72e8936bd606410806db2160b"
+  "source_sha256": "7f715db8eb08a391bd4fe4c6664d3d57232a114bec0cb7d2be3729a7a3e3c7da"
 }

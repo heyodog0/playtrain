@@ -79,8 +79,8 @@
   "max_steps": 1350,
   "max_steps_source": "explore factory episodeLengthSeconds default 90 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
-    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
     "unused_actions": [
       "FIRE",
       "FORWARD_LOOK_LEFT",
@@ -1172,5 +1172,5 @@
       "human-recognisable objects: the two-colour patterns are this port's own drawings (DMLab's pattern images are under game_scripts/, GPL-2)"
     ]
   },
-  "source_sha256": "22e30a8e290d3217046d549d70d248a2e35678fe23e367f5d6a342de3a3cefb6"
+  "source_sha256": "dd98ff483cd490f989ecf437cef73b7c763c10000cb6a31e9d2c35a8dcfbdf85"
 }

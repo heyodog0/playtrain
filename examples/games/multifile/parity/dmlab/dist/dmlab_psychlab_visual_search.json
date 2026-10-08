@@ -92,7 +92,7 @@
   "max_steps": 2250,
   "max_steps_source": "episodeLengthSeconds 150 s x 60 fps / action repeat 4",
   "human": {
-    "steps_per_second": 15,
+    "steps_per_second": 60,
     "controls": "Click the view to look with the mouse (Esc gives it back), or use the arrow keys. The player cannot walk; you answer by where you look.",
     "hint": "Click the view to look around with the mouse (Esc gives it back). Look at the red cross to start a trial. Is there a pink T among the shapes? Look at the right button for yes or the left one for no, then look away to answer.",
     "unused_actions": [
@@ -120,5 +120,5 @@
     "level": "contributed/dmlab30/psychlab_visual_search",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "47822631ab8103d758a11158605b66a12598a08feb75b1206414b790b70dfbf6"
+  "source_sha256": "239f729e3f1bb313424574247a914b51933e32a61c09849419edc60339240ee8"
 }
