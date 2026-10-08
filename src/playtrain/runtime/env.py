@@ -425,7 +425,22 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
         self._frames.clear()
         for _ in range(self.frame_stack):
             self._frames.append(first_frame.copy())
-        return self._stacked_obs(), response["info"]
+        info = response["info"]
+        # A text observation (getInstruction, e.g. DMLab's language levels):
+        # asked at each reset, and per step only for a game that has one.
+        self._has_instruction = True
+        return self._stacked_obs(), self._with_instruction(info)
+
+    def _with_instruction(self, info: dict[str, Any]) -> dict[str, Any]:
+        if getattr(self, "_has_instruction", False):
+            message, _ = self._request({"cmd": "instruction"})
+            text = message.get("instruction")
+            if text is None:
+                self._has_instruction = False
+            else:
+                info = dict(info)
+                info["instruction"] = text
+        return info
 
     def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self._box_channels is not None:
@@ -435,7 +450,7 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             self._frames.append(frame)
             return (self._stacked_obs(), float(response["reward"]),
                     bool(response["terminated"]), bool(response["truncated"]),
-                    response["info"])
+                    self._with_instruction(response["info"]))
         action = int(action)
         if not 0 <= action < self.action_space.n:
             raise ValueError(f"action {action} out of range [0, {self.action_space.n})")
@@ -447,7 +462,7 @@ class PlayTrainEnv(gym.Env[np.ndarray, int]):
             float(response["reward"]),
             bool(response["terminated"]),
             bool(response["truncated"]),
-            response["info"],
+            self._with_instruction(response["info"]),
         )
 
     def close(self) -> None:

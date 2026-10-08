@@ -122,7 +122,10 @@ class NativeVectorEnv(VectorEnv):
                               for s in seed], dtype=np.int32)
         obs = self._env.reset(seeds=seeds)
         self._needs_reset.fill(False)
-        return obs.copy(), {}
+        info: dict[str, Any] = {}
+        if getattr(self._env, "has_instruction", False):
+            info["instruction"] = self._env.instructions()
+        return obs.copy(), info
 
     def step(self, actions) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         if self.autoreset_mode is AutoresetMode.NEXT_STEP:
@@ -149,6 +152,9 @@ class NativeVectorEnv(VectorEnv):
         elif self.autoreset_mode is AutoresetMode.NEXT_STEP:
             self._needs_reset = term | trunc
 
+        # The instruction each env shows now (after any same-step autoreset).
+        if getattr(self._env, "has_instruction", False):
+            info["instruction"] = self._env.instructions()
         return obs, rew.copy(), term.copy(), trunc.copy(), info
 
     def close(self, **_kwargs) -> None:

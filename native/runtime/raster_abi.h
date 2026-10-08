@@ -99,6 +99,37 @@ void rs_3d_cylinder(double r, double h);
 void rs_3d_cone(double r, double h);
 int  rs_3d_active(void);
 
+
+// DMLab maze raycast (crates/rasterizer/src/maze.rs; dmlab PLAN.md section 3.3).
+// `cells` is 8 planes of w*h u16 (maze.rs file comment); yaw in radians.
+void rs_maze_view(uint32_t canvas, const uint16_t* cells, uint32_t w, uint32_t h,
+                  float eyeX, float eyeY, float eyeZ, float yaw, float viewDist,
+                  const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles, uint32_t skyRgb,
+                  float decalLo, float decalHi,
+                  uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_boxes(uint32_t canvas, const float* boxes, uint32_t n,
+                   float eyeX, float eyeY, float eyeZ, float yaw, float viewDist,
+                   const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles, uint32_t skyRgb,
+                   uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_quads(uint32_t canvas, const float* quads, uint32_t n,
+                   float eyeX, float eyeY, float eyeZ, float yaw, float viewDist,
+                   const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles,
+                   uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_sky(uint32_t canvas, float yaw, const uint8_t* sky, uint32_t size,
+                 uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_pview(uint32_t canvas, float yaw, float pitch, float view, const uint8_t* pano, uint32_t size,
+                   const float* quads, uint32_t n,
+                   uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_sprite(uint32_t canvas, float eyeX, float eyeY, float eyeZ, float yaw, float viewDist,
+                    float spriteX, float spriteZ, float baseY, float sizeW, float sizeH,
+                    const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles, uint32_t atlasTile,
+                    uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_sprite2(uint32_t canvas, float eyeX, float eyeY, float eyeZ, float yaw, float viewDist,
+                     float spriteX, float spriteZ, float baseY, float sizeW, float sizeH,
+                     const uint8_t* atlas, uint32_t tilePx, uint32_t nTiles, uint32_t atlasTile,
+                     uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH,
+                     uint32_t rgb1, uint32_t rgb2);
+
 }  // extern "C"
 
 #endif  // PLAYTRAIN_RASTER_ABI_H

@@ -116,12 +116,36 @@ class QuickJSEnv(gym.Env):
                 "seed": self._last_seed, "actionMeanings": self._action_names}
         return reward, bool(term), bool(trunc), info, obs
 
+    def _instruction(self) -> str | None:
+        """The game's getInstruction() now (a text observation, e.g. DMLab's
+        language levels), or None if the game defines none (serve cmd 4)."""
+        self._proc.stdin.write(bytes([4]) + struct.pack("<i", 0))
+        self._proc.stdin.flush()
+        n = struct.unpack("<I", self._read_exact(4))[0]
+        if n == 0xFFFFFFFF:
+            return None
+        return self._read_exact(n).decode("utf-8", errors="replace") if n else ""
+
+    def _with_instruction(self, info: dict[str, Any]) -> dict[str, Any]:
+        # Asked at each reset; a game without getInstruction costs nothing after.
+        if getattr(self, "_has_instruction", False):
+            text = self._instruction()
+            if text is not None:
+                info["instruction"] = text
+        return info
+
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         super().reset(seed=seed)
         if seed is None:
             seed = int(self.np_random.integers(0, 2**31 - 1))
         self._last_seed = seed
         _, _, _, info, obs = self._rpc(0, int(seed) & 0x7FFFFFFF)
+        self._has_instruction = True
+        text = self._instruction()
+        if text is None:
+            self._has_instruction = False
+        else:
+            info["instruction"] = text
         return obs, info
 
     def step(self, action):
@@ -130,12 +154,12 @@ class QuickJSEnv(gym.Env):
             # the wire contract) and step via serve cmd 3.
             q = quantize_box_actions(np.asarray(action, dtype=np.float64), self._box_channels)
             reward, term, trunc, info, obs = self._rpc(3, 0, q.astype("<u2").tobytes())
-            return obs, float(reward), term, trunc, info
+            return obs, float(reward), term, trunc, self._with_instruction(info)
         action = int(action)
         if not 0 <= action < self.action_space.n:
             raise ValueError(f"action {action} out of range [0, {self.action_space.n})")
         reward, term, trunc, info, obs = self._rpc(1, action)
-        return obs, float(reward), term, trunc, info
+        return obs, float(reward), term, trunc, self._with_instruction(info)
 
     def close(self):
         if self._closed:

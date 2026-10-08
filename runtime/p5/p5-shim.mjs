@@ -325,6 +325,87 @@ function voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping)
   _ctx.voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping);
 }
 
+// DMLab maze raycast (crates/rasterizer/src/maze.rs). Mirrors p5::mazeView in
+// native/runtime/p5.cpp. Unlike voxelView, the maze primitives take their dst
+// rect in LOGICAL canvas units: _mazeDst scales it to device pixels, so one
+// game draws a 64x64 agent view and a full-size human view from the same call.
+function _mazeDst(x, y, w, h) {
+  const sx = _canvas.width / _width, sy = _canvas.height / _height;
+  return [Math.floor(x * sx + 0.5), Math.floor(y * sy + 0.5),
+    Math.floor(w * sx + 0.5), Math.floor(h * sy + 0.5)];
+}
+
+function mazeView(cells, w, h, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, decalLo, decalHi, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazeView !== 'function') {
+    throw new Error('mazeView: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w2, h2] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeView(cells, w, h, eyeX, eyeY, eyeZ, yaw, viewDist,
+    atlas, tilePx, nTiles, skyRgb, decalLo, decalHi, x, y, w2, h2);
+}
+
+// Axis-aligned boxes (crates/rasterizer/src/maze.rs rs_maze_boxes). Mirrors
+// p5::mazeBoxes; boxes is a Float32Array of n * 60.
+function mazeBoxes(boxes, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazeBoxes !== 'function') {
+    throw new Error('mazeBoxes: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeBoxes(boxes, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, x, y, w, h);
+}
+
+// Vertical textured quads over mazeBoxes' depths (crates/rasterizer/src/maze.rs
+// rs_maze_quads). Mirrors p5::mazeQuads; quads is a Float32Array of n * 12.
+function mazeQuads(quads, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazeQuads !== 'function') {
+    throw new Error('mazeQuads: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeQuads(quads, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, x, y, w, h);
+}
+
+// The skybox cube over the sky (crates/rasterizer/src/maze.rs rs_maze_sky).
+// Mirrors p5::mazeSky; sky is a Uint8Array of 6 * size * size * 4.
+function mazeSky(yaw, sky, size, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazeSky !== 'function') {
+    throw new Error('mazeSky: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeSky(yaw, sky, size, x, y, w, h);
+}
+
+// A view with pitch from a fixed eye (crates/rasterizer/src/maze.rs
+// rs_maze_pview): a cube panorama (Uint8Array, 6 * size * size * 4) and solid
+// quads over it (Float32Array, n records of 12). Mirrors p5::mazePview.
+function mazePview(yaw, pitch, view, pano, size, quads, n, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazePview !== 'function') {
+    throw new Error('mazePview: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazePview(yaw, pitch, view, pano, size, quads, n, x, y, w, h);
+}
+
+// A sized billboard over mazeView's depths. Mirrors p5::mazeSprite.
+function mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+  if (typeof _ctx.mazeSprite !== 'function') {
+    throw new Error('mazeSprite: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH,
+    atlas, tilePx, nTiles, atlasTile, x, y, w, h);
+}
+
+// A two-colour billboard (DMLab's hrp pickups): mazeSprite with a tile of
+// (shade, pattern weight, -, coverage) and the colours 0xRRGGBB. Mirrors p5::mazeSprite2.
+function mazeSprite2(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH, rgb1, rgb2) {
+  if (typeof _ctx.mazeSprite2 !== 'function') {
+    throw new Error('mazeSprite2: this rasterizer backend has no maze primitive');
+  }
+  const [x, y, w, h] = _mazeDst(dstX, dstY, dstW, dstH);
+  _ctx.mazeSprite2(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH,
+    atlas, tilePx, nTiles, atlasTile, x, y, w, h, rgb1, rgb2);
+}
+
 // ---- Drawing primitives ----
 function background(...args) {
   _ctx.save();
@@ -737,7 +818,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk, mazeView, mazeSprite, mazeSprite2, mazeBoxes, mazeQuads, mazeSky, mazePview,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

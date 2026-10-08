@@ -26,6 +26,26 @@ function _rsin(x) {
 }
 function _rcos(x) { return _rsin(x + _PIH); }
 
+// Mip levels for the maze primitives (maze.rs, dmlab PLAN.md section 10 V2):
+// tilePx is a word, bits 0-15 the tile size, bits 16-23 the levels past the
+// first; level l of the atlas follows levels 0..l-1, n_tiles tiles each.
+function _mipLevel(word, foot) {
+  const levels = (word >>> 16) & 0xFF;
+  let l = 0, th = Math.fround(1.4142135);
+  while (l < levels && foot > th) { l++; th = Math.fround(th * 2); }
+  return l;
+}
+function _mipFoot(z, fw, word, dens, cosi) {
+  const F = Math.fround;
+  const c = cosi < 0.015625 ? 0.015625 : cosi;
+  return F(F(F(z * F(2 / fw)) * F(F(word & 0xFFFF) * dens)) / c);
+}
+function _mipBase(nTiles, size, level) {
+  let off = 0;
+  for (let k = 0; k < level; k++) { const s = size >> k; off += nTiles * s * s * 4; }
+  return off;
+}
+
 function parseColor(s) {
   if (Array.isArray(s)) return s;
   if (typeof s !== 'string') return [0, 0, 0, 255];
@@ -505,6 +525,603 @@ class Context2D {
         } else {
           const a = F(sa / 255);
           const ia = F(1 - a);
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
+          px[d + 3] = 255;
+        }
+      }
+    }
+  }
+
+  // ---- DMLab maze raycast -------------------------------------------------
+  // A LINE-FOR-LINE port of rs_maze_view (crates/rasterizer/src/maze.rs),
+  // which is the spec; read its file comment for the geometry and the cell
+  // planes. Same rule as voxelView: Math.fround after every float op, in the
+  // Rust's association order, and tests/test_maze.py plus
+  // crates/rasterizer/tests/wasm_maze_check.mjs compare the hashes.
+  mazeView(cells, w, h, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, decalLo, decalHi, dstX, dstY, dstW, dstH) {
+    if (!cells || !atlas) return;
+    if (w === 0 || h === 0 || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+
+    const NONE = 0xFFFF, SOLID = 0x100, BIG = F(1.0e30);
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const dlo = F(decalLo), dhi = F(decalHi);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
+    const n = w * h;
+    const fw = F(dstW), fh = F(dstH);
+    const dspan = F(dhi - dlo);
+    const size = tilePx & 0xFFFF;
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    const frac = (x) => F(x - F(ffloor(x)));
+    const texel = (tile, lvl, u, v) => {
+      const sz = size >> lvl, tpx = F(sz), tmax = sz - 1;
+      let tx = F(u * tpx) | 0, ty = F(v * tpx) | 0;
+      if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+      return _mipBase(nTiles, size, lvl) + tile * sz * sz * 4 + (ty * sz + tx) * 4;
+    };
+
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+        const rdx = F(F(sx * rgtX) + fwdX);
+        const rdz = F(F(sx * rgtZ) + fwdZ);
+        const rdy = sy;
+        const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
+        const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
+
+        let mx = ffloor(ex), mz = ffloor(ez);
+        const adx = dx < 0 ? F(-dx) : dx;
+        const adz = dz < 0 ? F(-dz) : dz;
+        const ddx = adx > 0 ? F(1 / adx) : BIG;
+        const ddz = adz > 0 ? F(1 / adz) : BIG;
+        const stepx = dx > 0 ? 1 : -1;
+        const stepz = dz > 0 ? 1 : -1;
+        let sidex = adx > 0 ? (dx > 0 ? F(F(F(mx + 1) - ex) * ddx) : F(F(ex - F(mx)) * ddx)) : BIG;
+        let sidez = adz > 0 ? (dz > 0 ? F(F(F(mz + 1) - ez) * ddz) : F(F(ez - F(mz)) * ddz)) : BIG;
+
+        let hit = 0, tHit = 0, ci = 0, tEnter = 0, axisX = true, first = true, top = 0;
+        let prevTop = F(-BIG);
+        for (;;) {
+          if (mx < 0 || mz < 0 || mx >= w || mz >= h) break;
+          if (tEnter > vd) break;
+          const i = mz * w + mx;
+          const flags = cells[3 * n + i];
+          const floor = cells[n + i];
+          const solid = (flags & SOLID) !== 0;
+          const hasCol = solid || floor !== NONE;
+          const ctop = solid ? 1 : F((flags & 0xFF) * 0.125);
+          const tExit = sidex < sidez ? sidex : sidez;
+          if (!first && hasCol && prevTop < ctop) {
+            const yIn = F(ey + F(dy * tEnter));
+            if (yIn < ctop) { hit = axisX ? 1 : 2; tHit = tEnter; ci = i; top = ctop; break; }
+          }
+          if (hasCol && dy < 0) {
+            const tTop = F(F(ctop - ey) / dy);
+            if (tTop >= tEnter && tTop < tExit) { hit = 3; tHit = tTop; ci = i; top = ctop; break; }
+          }
+          if (!solid && dy > 0) {
+            const ceil = cells[2 * n + i];
+            if (ceil !== NONE) {
+              const tC = F(F(1 - ey) / dy);
+              if (tC >= tEnter && tC < tExit) { hit = 4; tHit = tC; ci = i; break; }
+            }
+          }
+          prevTop = hasCol ? ctop : F(-BIG);
+          if (sidex < sidez) { tEnter = sidex; sidex = F(sidex + ddx); mx += stepx; axisX = true; }
+          else { tEnter = sidez; sidez = F(sidez + ddz); mz += stepz; axisX = false; }
+          first = false;
+        }
+        if (hit !== 0 && tHit > vd) hit = 0;
+
+        let r, g, b, depth;
+        if (hit === 0) {
+          r = skyR; g = skyG; b = skyB; depth = Infinity;
+        } else {
+          const xh = F(ex + F(dx * tHit));
+          const yh = F(ey + F(dy * tHit));
+          const zh = F(ez + F(dz * tHit));
+          const solid = (cells[3 * n + ci] & SOLID) !== 0;
+          let plane, u, v;
+          if (hit === 1) { const f = frac(zh); plane = 0; u = stepx > 0 ? f : F(1 - f); v = frac(F(top - yh)); }
+          else if (hit === 2) { const f = frac(xh); plane = 0; u = stepz > 0 ? F(1 - f) : f; v = frac(F(top - yh)); }
+          else if (hit === 3) { plane = solid ? 0 : 1; u = frac(xh); v = frac(zh); }
+          else { plane = 2; u = frac(xh); v = frac(zh); }
+          const raw = cells[plane * n + ci];
+          const tile = raw < nTiles ? raw : 0;
+          const cosi = hit === 1 ? (dx < 0 ? F(-dx) : dx) : hit === 2 ? (dz < 0 ? F(-dz) : dz) : (dy < 0 ? F(-dy) : dy);
+          const zf = F(tHit / len);
+          let o = texel(tile, _mipLevel(tilePx, _mipFoot(zf, fw, tilePx, 1, cosi)), u, v);
+          r = atlas[o]; g = atlas[o + 1]; b = atlas[o + 2];
+          if (solid && hit <= 2 && dspan > 0) {
+            const face = hit === 1 ? (stepx > 0 ? 7 : 5) : (stepz > 0 ? 4 : 6);
+            const draw = cells[face * n + ci];
+            if (draw !== NONE && u >= dlo && u < dhi && v >= dlo && v < dhi) {
+              const dt = draw < nTiles ? draw : 0;
+              const du = F(F(u - dlo) / dspan), dv = F(F(v - dlo) / dspan);
+              o = texel(dt, _mipLevel(tilePx, _mipFoot(zf, fw, tilePx, F(1 / dspan), cosi)), du, dv);
+              const sr = atlas[o], sg = atlas[o + 1], sb = atlas[o + 2], sa = atlas[o + 3];
+              if (sa === 255) { r = sr; g = sg; b = sb; }
+              else if (sa !== 0) {
+                const a = F(sa / 255), ia = F(1 - a);
+                r = F(F(r * ia) + F(sr * a)) | 0;
+                g = F(F(g * ia) + F(sg * a)) | 0;
+                b = F(F(b * ia) + F(sb * a)) | 0;
+              }
+            }
+          }
+          depth = F(tHit / len);
+        }
+        const i = cyp * cw + cxp, o = i * 4;
+        px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+        this.depth[i] = depth;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_maze_boxes (maze.rs): axis-aligned boxes, one
+  // slab test per box per pixel, the nearest visible face textured through its
+  // affine UV map. Math.fround after every float op, in the Rust's order.
+  mazeBoxes(boxes, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, dstX, dstY, dstW, dstH) {
+    if (!boxes || !atlas || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    const BIG = F(1.0e30), STRIDE = 60;
+    const e = [F(eyeX), F(eyeY), F(eyeZ)], vd = F(viewDist);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
+    const fw = F(dstW), fh = F(dstH);
+    const size = tilePx & 0xFFFF;
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    const frac = (x) => F(x - F(ffloor(x)));
+    const d = [0, 0, 0], inv = [0, 0, 0];
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+        const rdx = F(F(sx * rgtX) + fwdX);
+        const rdz = F(F(sx * rgtZ) + fwdZ);
+        const rdy = sy;
+        const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
+        d[0] = F(rdx / len); d[1] = F(rdy / len); d[2] = F(rdz / len);
+        for (let k = 0; k < 3; k++) inv[k] = (d[k] > 0 || d[k] < 0) ? F(1 / d[k]) : BIG;
+        let best = vd, hitBox = -1, hitFace = 0;
+        for (let bi = 0; bi < n; bi++) {
+          const o = bi * STRIDE;
+          let t0 = F(-BIG), t1 = BIG, face = 0, inside = true, miss = false;
+          for (let k = 0; k < 3; k++) {
+            const lo = boxes[o + k], hi = boxes[o + 3 + k];
+            if (e[k] < lo || e[k] > hi) inside = false;
+            if (d[k] > 0 || d[k] < 0) {
+              const ta = F(F(lo - e[k]) * inv[k]);
+              const tb = F(F(hi - e[k]) * inv[k]);
+              let tn, tf, fn;
+              if (ta < tb) { tn = ta; tf = tb; fn = 2 * k; } else { tn = tb; tf = ta; fn = 2 * k + 1; }
+              if (tn > t0) { t0 = tn; face = fn; }
+              if (tf < t1) t1 = tf;
+            } else if (e[k] < lo || e[k] > hi) {
+              miss = true;
+            }
+          }
+          if (miss || inside || !(t0 <= t1) || !(t0 > 0) || !(t0 < best)) continue;
+          const tile = boxes[o + 6 + face * 9];
+          if (!(tile >= 0) || !(tile < nTiles)) continue;
+          best = t0; hitBox = bi; hitFace = face;
+        }
+        let r, g, b, depth;
+        if (hitBox < 0) {
+          r = skyR; g = skyG; b = skyB; depth = Infinity;
+        } else {
+          const h0 = F(e[0] + F(d[0] * best)), h1 = F(e[1] + F(d[1] * best)), h2 = F(e[2] + F(d[2] * best));
+          const f = hitBox * STRIDE + 6 + hitFace * 9;
+          const u = frac(F(F(F(F(boxes[f + 1] * h0) + F(boxes[f + 2] * h1)) + F(boxes[f + 3] * h2)) + boxes[f + 4]));
+          const v = frac(F(F(F(F(boxes[f + 5] * h0) + F(boxes[f + 6] * h1)) + F(boxes[f + 7] * h2)) + boxes[f + 8]));
+          const t = boxes[f] | 0;
+          const k = hitFace >> 1;
+          const cosi = d[k] < 0 ? F(-d[k]) : d[k];
+          let dens = 0;
+          for (let j = 0; j < 3; j++) {
+            if (j === k) continue;
+            let au = boxes[f + 1 + j], av = boxes[f + 5 + j];
+            if (au < 0) au = F(-au);
+            if (av < 0) av = F(-av);
+            if (au > dens) dens = au;
+            if (av > dens) dens = av;
+          }
+          const lvl = _mipLevel(tilePx, _mipFoot(F(best / len), fw, tilePx, dens, cosi));
+          const sz = size >> lvl, tpx = F(sz), tmax = sz - 1;
+          let tx = F(u * tpx) | 0, ty = F(v * tpx) | 0;
+          if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+          if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+          const oo = _mipBase(nTiles, size, lvl) + t * sz * sz * 4 + (ty * sz + tx) * 4;
+          r = atlas[oo]; g = atlas[oo + 1]; b = atlas[oo + 2];
+          depth = F(best / len);
+        }
+        const i = cyp * cw + cxp, q = i * 4;
+        px[q] = r; px[q + 1] = g; px[q + 2] = b; px[q + 3] = 255;
+        this.depth[i] = depth;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_maze_quads (maze.rs): vertical textured quads
+  // over what is already drawn, depth-tested against it; walls (mode 0) first,
+  // the nearest per pixel, then pictures (mode 1) in record order.
+  mazeQuads(quads, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, dstX, dstY, dstW, dstH) {
+    if (!quads || !atlas || n === 0 || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    const STRIDE = 12;
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const fw = F(dstW), fh = F(dstH);
+    const size = tilePx & 0xFFFF;
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    const frac = (x) => F(x - F(ffloor(x)));
+    const tex = (t, lvl, u, v) => {
+      const sz = size >> lvl, tpx = F(sz), tmax = sz - 1;
+      let tx = F(u * tpx) | 0, ty = F(v * tpx) | 0;
+      if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+      return _mipBase(nTiles, size, lvl) + t * sz * sz * 4 + (ty * sz + tx) * 4;
+    };
+    const q = quads;
+    const quadFoot = (o, z, den) => {
+      if (((tilePx >>> 16) & 0xFF) === 0) return 0;
+      const sgx = F(q[o + 2] - q[o]), sgz = F(q[o + 3] - q[o + 1]);
+      const sl = F(Math.sqrt(F(F(sgx * sgx) + F(sgz * sgz))));
+      let du = F(q[o + 8] - q[o + 7]), dv = F(q[o + 10] - q[o + 9]);
+      if (du < 0) du = F(-du);
+      if (dv < 0) dv = F(-dv);
+      du = F(du / sl);
+      dv = F(dv / F(q[o + 5] - q[o + 4]));
+      const dens = du > dv ? du : dv;
+      const ad = den < 0 ? F(-den) : den;
+      return _mipFoot(z, fw, tilePx, dens, F(ad / sl));
+    };
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+        const rdx = F(F(sx * rgtX) + fwdX);
+        const rdz = F(F(sx * rgtZ) + fwdZ);
+        const rdy = sy;
+        const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
+        const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
+        const i = cyp * cw + cxp;
+        for (let pass = 0; pass < 2; pass++) {
+          let best = F(this.depth[i] * len);
+          if (!(best < vd)) best = vd;
+          let hit = -1, hitS = 0, hitY = 0;
+          for (let qi = 0; qi < n; qi++) {
+            const o = qi * STRIDE;
+            const mode = q[o + 11];
+            if ((pass === 0) !== (mode < 0.5)) continue;
+            const tile = q[o + 6];
+            if (!(tile >= 0) || !(tile < nTiles)) continue;
+            const x0 = q[o], z0 = q[o + 1];
+            const sgx = F(q[o + 2] - x0), sgz = F(q[o + 3] - z0);
+            const den = F(F(dx * sgz) - F(dz * sgx));
+            if (!(den > 0 || den < 0)) continue;
+            const wx = F(x0 - ex), wz = F(z0 - ez);
+            const t = F(F(F(wx * sgz) - F(wz * sgx)) / den);
+            const sp = F(F(F(wx * dz) - F(wz * dx)) / den);
+            if (!(t > 0) || !(t < best) || sp < 0 || sp > 1) continue;
+            const hy = F(ey + F(dy * t));
+            if (hy < q[o + 4] || hy > q[o + 5]) continue;
+            if (pass === 0) { best = t; hit = qi; hitS = sp; hitY = hy; continue; }
+            const fy = F(F(q[o + 5] - hy) / F(q[o + 5] - q[o + 4]));
+            const u = F(q[o + 7] + F(F(q[o + 8] - q[o + 7]) * sp));
+            const v = F(q[o + 9] + F(F(q[o + 10] - q[o + 9]) * fy));
+            const oo = tex(tile >>> 0, _mipLevel(tilePx, quadFoot(o, F(t / len), den)), u, v);
+            const sa = atlas[oo + 3];
+            if (sa === 0) continue;
+            const d = i * 4;
+            if (sa === 255) {
+              px[d] = atlas[oo]; px[d + 1] = atlas[oo + 1]; px[d + 2] = atlas[oo + 2]; px[d + 3] = 255;
+              this.depth[i] = F(t / len);
+              best = t;
+            } else {
+              const a = F(sa / 255), ia = F(1 - a);
+              px[d] = F(F(px[d] * ia) + F(atlas[oo] * a)) | 0;
+              px[d + 1] = F(F(px[d + 1] * ia) + F(atlas[oo + 1] * a)) | 0;
+              px[d + 2] = F(F(px[d + 2] * ia) + F(atlas[oo + 2] * a)) | 0;
+              px[d + 3] = 255;
+            }
+          }
+          if (pass === 0 && hit >= 0) {
+            const o = hit * STRIDE;
+            const fy = F(F(q[o + 5] - hitY) / F(q[o + 5] - q[o + 4]));
+            const u = frac(F(q[o + 7] + F(F(q[o + 8] - q[o + 7]) * hitS)));
+            const v = frac(F(q[o + 9] + F(F(q[o + 10] - q[o + 9]) * fy)));
+            const den = F(F(dx * F(q[o + 3] - q[o + 1])) - F(dz * F(q[o + 2] - q[o])));
+            const oo = tex(q[o + 6] >>> 0, _mipLevel(tilePx, quadFoot(o, F(best / len), den)), u, v);
+            const d = i * 4;
+            px[d] = atlas[oo]; px[d + 1] = atlas[oo + 1]; px[d + 2] = atlas[oo + 2]; px[d + 3] = 255;
+            this.depth[i] = F(best / len);
+          }
+        }
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_maze_sky (maze.rs): the skybox cube (faces rt,
+  // lf, up, dn, ft, bk, Quake's mapping) over the pixels left as sky.
+  mazeSky(yaw, sky, size, dstX, dstY, dstW, dstH) {
+    if (!sky || size === 0 || dstW === 0 || dstH === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0 || !this.depth || this.depth.length !== cw * ch) return;
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const fw = F(dstW), fh = F(dstH), fs = F(size), smax = size - 1;
+    const faceBytes = size * size * 4;
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        if (this.depth[i] !== Infinity && this.depth[i] !== -Infinity) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+        const x = F(F(sx * rgtX) + fwdX), y = sy, z = F(F(sx * rgtZ) + fwdZ);
+        const ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, az = z < 0 ? -z : z;
+        let face, uu, vv;
+        if (ax >= ay && ax >= az) {
+          if (x > 0) { face = 0; uu = F(z / ax); vv = F(-y / ax); } else { face = 1; uu = F(-z / ax); vv = F(-y / ax); }
+        } else if (ay >= az) {
+          if (y > 0) { face = 2; uu = F(-x / ay); vv = F(z / ay); } else { face = 3; uu = F(-x / ay); vv = F(-z / ay); }
+        } else if (z > 0) {
+          face = 4; uu = F(x / az); vv = F(-y / az);
+        } else {
+          face = 5; uu = F(-x / az); vv = F(-y / az);
+        }
+        let tx = F(F(F(uu + 1) * 0.5) * fs) | 0, ty = F(F(F(vv + 1) * 0.5) * fs) | 0;
+        if (tx < 0) tx = 0; if (tx > smax) tx = smax;
+        if (ty < 0) ty = 0; if (ty > smax) ty = smax;
+        const o = face * faceBytes + (ty * size + tx) * 4, d = i * 4;
+        px[d] = sky[o]; px[d + 1] = sky[o + 1]; px[d + 2] = sky[o + 2]; px[d + 3] = 255;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_maze_pview (maze.rs): a view with pitch from a
+  // fixed eye; the cube panorama (+x -x +y -y +z -z), then solid quads over it.
+  mazePview(yaw, pitch, view, pano, size, quads, n, dstX, dstY, dstW, dstH) {
+    if (!pano || size === 0 || dstW === 0 || dstH === 0) return;
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    const yw = F(yaw), pt = F(pitch), vw = F(view);
+    const sy_ = F(_rsin(yw)), cy_ = F(_rcos(yw)), sp = F(_rsin(pt)), cp = F(_rcos(pt));
+    const f0 = F(cp * cy_), f1 = F(cp * sy_), f2 = F(-sp);
+    const r0 = sy_, r1 = F(-cy_), r2 = 0;
+    const u0 = F(sp * cy_), u1 = F(sp * sy_), u2 = cp;
+    const q = quads && n > 0 ? quads : new Float32Array(0), nq = q.length ? n : 0;
+    const pre = [];
+    for (let k = 0; k < nq; k++) {
+      const b = k * 12;
+      const nx = F(F(q[b + 4] * q[b + 8]) - F(q[b + 5] * q[b + 7]));
+      const ny = F(F(q[b + 5] * q[b + 6]) - F(q[b + 3] * q[b + 8]));
+      const nz = F(F(q[b + 3] * q[b + 7]) - F(q[b + 4] * q[b + 6]));
+      const on = F(F(F(q[b] * nx) + F(q[b + 1] * ny)) + F(q[b + 2] * nz));
+      const aa = F(F(F(q[b + 3] * q[b + 3]) + F(q[b + 4] * q[b + 4])) + F(q[b + 5] * q[b + 5]));
+      const bb = F(F(F(q[b + 6] * q[b + 6]) + F(q[b + 7] * q[b + 7])) + F(q[b + 8] * q[b + 8]));
+      pre.push([nx, ny, nz, on, aa, bb]);
+    }
+    const u8 = (v) => (v > 0 ? (v < 255 ? Math.trunc(v) : 255) : 0);
+    const fw = F(dstW), fh = F(dstH), fs = F(size), smax = size - 1;
+    const faceBytes = size * size * 4;
+    for (let py = 0; py < dstH; py++) {
+      const cyp = dstY + py;
+      if (cyp >= ch) continue;
+      const sy = F(F(1 - F(2 * F(F(py + 0.5) / fh))) * vw);
+      for (let pxi = 0; pxi < dstW; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        const sx = F(F(F(2 * F(F(pxi + 0.5) / fw)) - 1) * vw);
+        const dx = F(F(f0 + F(sx * r0)) + F(sy * u0));
+        const dy = F(F(f1 + F(sx * r1)) + F(sy * u1));
+        const dz = F(F(f2 + F(sx * r2)) + F(sy * u2));
+        const ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy, az = dz < 0 ? -dz : dz;
+        let face, uu, vv;
+        if (ax >= ay && ax >= az) {
+          if (dx > 0) { face = 0; uu = F(dy / ax); vv = F(-dz / ax); } else { face = 1; uu = F(-dy / ax); vv = F(-dz / ax); }
+        } else if (ay >= az) {
+          if (dy > 0) { face = 2; uu = F(-dx / ay); vv = F(-dz / ay); } else { face = 3; uu = F(dx / ay); vv = F(-dz / ay); }
+        } else if (dz > 0) {
+          face = 4; uu = F(dx / az); vv = F(dy / az);
+        } else {
+          face = 5; uu = F(dx / az); vv = F(-dy / az);
+        }
+        let tx = F(F(F(uu + 1) * 0.5) * fs) | 0, ty = F(F(F(vv + 1) * 0.5) * fs) | 0;
+        if (tx < 0) tx = 0; if (tx > smax) tx = smax;
+        if (ty < 0) ty = 0; if (ty > smax) ty = smax;
+        const o = face * faceBytes + (ty * size + tx) * 4;
+        let r = pano[o], g = pano[o + 1], bl = pano[o + 2];
+        for (let k = 0; k < nq; k++) {
+          const p = pre[k];
+          const dn = F(F(F(dx * p[0]) + F(dy * p[1])) + F(dz * p[2]));
+          if (dn === 0) continue;
+          const t = F(p[3] / dn);
+          if (!(t > 0)) continue;
+          const b = k * 12;
+          const hx = F(F(t * dx) - q[b]), hy = F(F(t * dy) - q[b + 1]), hz = F(F(t * dz) - q[b + 2]);
+          const s = F(F(F(F(hx * q[b + 3]) + F(hy * q[b + 4])) + F(hz * q[b + 5])) / p[4]);
+          if (!(s >= 0 && s < 1)) continue;
+          const u = F(F(F(F(hx * q[b + 6]) + F(hy * q[b + 7])) + F(hz * q[b + 8])) / p[5]);
+          if (!(u >= 0 && u < 1)) continue;
+          r = u8(q[b + 9]); g = u8(q[b + 10]); bl = u8(q[b + 11]);
+        }
+        const d = i * 4;
+        px[d] = r; px[d + 1] = g; px[d + 2] = bl; px[d + 3] = 255;
+        this.depth[i] = Infinity;
+      }
+    }
+  }
+
+  // A LINE-FOR-LINE port of rs_maze_sprite.
+  mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
+    if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
+    tilePx &= 0xFFFF;   // level 0 only: the mip levels follow it in the atlas
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fx = s, fz = F(-co), rx = co, rz = s;
+    const dx = F(F(spriteX) - ex), dz = F(F(spriteZ) - ez);
+    const depth = F(F(dx * fx) + F(dz * fz));
+    const lat = F(F(dx * rx) + F(dz * rz));
+    if (!(depth > 0) || depth > vd) return;
+    const by = F(baseY), sw = F(sizeW), sh = F(sizeH);
+    const fw = F(dstW), fh = F(dstH);
+    const hw = F(fw * 0.5), hh = F(fh * 0.5);
+    const half = F(sw * 0.5);
+    const x0f = F(F(F(F(F(lat - half) / depth) + 1) * hw) - 0.5);
+    const x1f = F(F(F(F(F(lat + half) / depth) + 1) * hw) - 0.5);
+    const y0f = F(F(F(1 - F(F(F(by + sh) - ey) / depth)) * hh) - 0.5);
+    const y1f = F(F(F(1 - F(F(by - ey) / depth)) * hh) - 0.5);
+    const wf = F(x1f - x0f), hf = F(y1f - y0f);
+    if (!(wf > 0) || !(hf > 0)) return;
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    let ix0 = -ffloor(F(-x0f)), ix1 = ffloor(x1f), iy0 = -ffloor(F(-y0f)), iy1 = ffloor(y1f);
+    if (ix0 < 0) ix0 = 0;
+    if (iy0 < 0) iy0 = 0;
+    if (ix1 > dstW - 1) ix1 = dstW - 1;
+    if (iy1 > dstH - 1) iy1 = dstH - 1;
+    const t = atlasTile < nTiles ? atlasTile : 0;
+    const tpx = F(tilePx), tmax = tilePx - 1, tstride = tilePx * tilePx * 4;
+    for (let py = iy0; py <= iy1; py++) {
+      const cyp = dstY + py;
+      if (cyp < 0 || cyp >= ch) continue;
+      const v = F(F(py - y0f) / hf);
+      let ty = F(v * tpx) | 0;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+      for (let pxi = ix0; pxi <= ix1; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp < 0 || cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        if (depth >= this.depth[i]) continue;
+        const u = F(F(pxi - x0f) / wf);
+        let tx = F(u * tpx) | 0;
+        if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+        const o = t * tstride + (ty * tilePx + tx) * 4;
+        const sr = atlas[o], sg = atlas[o + 1], sb = atlas[o + 2], sa = atlas[o + 3];
+        if (sa === 0) continue;
+        const d = i * 4;
+        if (sa === 255) {
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
+          this.depth[i] = depth;
+        } else {
+          const a = F(sa / 255), ia = F(1 - a);
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
+          px[d + 3] = 255;
+        }
+      }
+    }
+  }
+  // A LINE-FOR-LINE port of rs_maze_sprite2 (maze.rs): rs_maze_sprite with the
+  // texel read as (shade, pattern weight, -, coverage) and two colours given.
+  mazeSprite2(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH, rgb1, rgb2) {
+    if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
+    tilePx &= 0xFFFF;   // level 0 only: the mip levels follow it in the atlas
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    if (cw === 0 || ch === 0) return;
+    if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fx = s, fz = F(-co), rx = co, rz = s;
+    const dx = F(F(spriteX) - ex), dz = F(F(spriteZ) - ez);
+    const depth = F(F(dx * fx) + F(dz * fz));
+    const lat = F(F(dx * rx) + F(dz * rz));
+    if (!(depth > 0) || depth > vd) return;
+    const by = F(baseY), sw = F(sizeW), sh = F(sizeH);
+    const fw = F(dstW), fh = F(dstH);
+    const hw = F(fw * 0.5), hh = F(fh * 0.5);
+    const half = F(sw * 0.5);
+    const x0f = F(F(F(F(F(lat - half) / depth) + 1) * hw) - 0.5);
+    const x1f = F(F(F(F(F(lat + half) / depth) + 1) * hw) - 0.5);
+    const y0f = F(F(F(1 - F(F(F(by + sh) - ey) / depth)) * hh) - 0.5);
+    const y1f = F(F(F(1 - F(F(by - ey) / depth)) * hh) - 0.5);
+    const wf = F(x1f - x0f), hf = F(y1f - y0f);
+    if (!(wf > 0) || !(hf > 0)) return;
+    const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
+    let ix0 = -ffloor(F(-x0f)), ix1 = ffloor(x1f), iy0 = -ffloor(F(-y0f)), iy1 = ffloor(y1f);
+    if (ix0 < 0) ix0 = 0;
+    if (iy0 < 0) iy0 = 0;
+    if (ix1 > dstW - 1) ix1 = dstW - 1;
+    if (iy1 > dstH - 1) iy1 = dstH - 1;
+    const t = atlasTile < nTiles ? atlasTile : 0;
+    const tpx = F(tilePx), tmax = tilePx - 1, tstride = tilePx * tilePx * 4;
+    for (let py = iy0; py <= iy1; py++) {
+      const cyp = dstY + py;
+      if (cyp < 0 || cyp >= ch) continue;
+      const v = F(F(py - y0f) / hf);
+      let ty = F(v * tpx) | 0;
+      if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+      for (let pxi = ix0; pxi <= ix1; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp < 0 || cxp >= cw) continue;
+        const i = cyp * cw + cxp;
+        if (depth >= this.depth[i]) continue;
+        const u = F(F(pxi - x0f) / wf);
+        let tx = F(u * tpx) | 0;
+        if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+        const o = t * tstride + (ty * tilePx + tx) * 4;
+        const shade = atlas[o], wgt = atlas[o + 1], sa = atlas[o + 3];
+        const ch = (k) => {
+          const c = (((rgb1 >>> k) & 255) * (255 - wgt) + ((rgb2 >>> k) & 255) * wgt + 127) / 255 | 0;
+          return (c * shade + 127) / 255 | 0;
+        };
+        const sr = ch(16), sg = ch(8), sb = ch(0);
+        if (sa === 0) continue;
+        const d = i * 4;
+        if (sa === 255) {
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
+          this.depth[i] = depth;
+        } else {
+          const a = F(sa / 255), ia = F(1 - a);
           px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
           px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
           px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;

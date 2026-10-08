@@ -161,6 +161,71 @@ export function makeWasmBackend(ex) {
       }
     }
 
+    // ---- DMLab maze raycast (crates/rasterizer/src/maze.rs) ----
+    // The cell planes go through the voxel grid staging buffer and change
+    // every frame (copied each call); the atlas is staged once by identity.
+    mazeView(cells, w, h, ex_, ey, ez, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, dlo, dhi, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_voxel_grid_ptr(cells.length);
+      const gp = ex.rs_voxel_grid_ptr(cells.length);
+      new Uint16Array(mem(), gp, cells.length).set(cells);
+      ex.rs_maze_view(this._h, gp, w, h, ex_, ey, ez, yaw, viewDist,
+        ap, tilePx, nTiles, skyRgb, dlo, dhi, dx, dy, dw, dh);
+    }
+
+    // Box records go through the voxel f32 staging buffer (copied each call).
+    mazeBoxes(boxes, n, ex_, ey, ez, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_voxel_noise_ptr(boxes.length);
+      const bp = ex.rs_voxel_noise_ptr(boxes.length);
+      new Float32Array(mem(), bp, boxes.length).set(boxes);
+      this._noiseStaged = null;   // the noise staging cache no longer holds the noise texture
+      ex.rs_maze_boxes(this._h, bp, n, ex_, ey, ez, yaw, viewDist, ap, tilePx, nTiles, skyRgb, dx, dy, dw, dh);
+    }
+
+    // Quad records go through the same f32 staging buffer as boxes (copied each call).
+    mazeQuads(quads, n, ex_, ey, ez, yaw, viewDist, atlas, tilePx, nTiles, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_voxel_noise_ptr(quads.length);
+      const qp = ex.rs_voxel_noise_ptr(quads.length);
+      new Float32Array(mem(), qp, quads.length).set(quads);
+      this._noiseStaged = null;
+      ex.rs_maze_quads(this._h, qp, n, ex_, ey, ez, yaw, viewDist, ap, tilePx, nTiles, dx, dy, dw, dh);
+    }
+
+    // The panorama goes through the atlas staging buffer (cached: it is one
+    // array for the episode), the quads through the f32 one.
+    mazePview(yaw, pitch, view, pano, size, quads, n, dx, dy, dw, dh) {
+      const pp = this._stage('atlas', pano, Uint8Array);
+      ex.rs_voxel_noise_ptr(Math.max(quads.length, 1));
+      const qp = ex.rs_voxel_noise_ptr(Math.max(quads.length, 1));
+      new Float32Array(mem(), qp, quads.length).set(quads);
+      this._noiseStaged = null;
+      ex.rs_maze_pview(this._h, yaw, pitch, view, pp, size, qp, n, dx, dy, dw, dh);
+    }
+
+    // The sky cube's bytes go through the f32 staging buffer (copied each call).
+    mazeSky(yaw, sky, size, dx, dy, dw, dh) {
+      const n = Math.ceil(sky.length / 4);
+      ex.rs_voxel_noise_ptr(n);
+      const sp = ex.rs_voxel_noise_ptr(n);
+      new Uint8Array(mem(), sp, sky.length).set(sky);
+      this._noiseStaged = null;
+      ex.rs_maze_sky(this._h, yaw, sp, size, dx, dy, dw, dh);
+    }
+
+    mazeSprite(ex_, ey, ez, yaw, viewDist, sx, sz, by, sw, sh, atlas, tilePx, nTiles, tile, dx, dy, dw, dh) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_maze_sprite(this._h, ex_, ey, ez, yaw, viewDist, sx, sz, by, sw, sh,
+        ap, tilePx, nTiles, tile, dx, dy, dw, dh);
+    }
+
+    mazeSprite2(ex_, ey, ez, yaw, viewDist, sx, sz, by, sw, sh, atlas, tilePx, nTiles, tile, dx, dy, dw, dh, rgb1, rgb2) {
+      const ap = this._stage('atlas', atlas, Uint8Array);
+      ex.rs_maze_sprite2(this._h, ex_, ey, ez, yaw, viewDist, sx, sz, by, sw, sh,
+        ap, tilePx, nTiles, tile, dx, dy, dw, dh, rgb1 >>> 0, rgb2 >>> 0);
+    }
+
     voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noise, sleeping) {
       const np = this._stage('noise', noise, Float32Array);
       ex.rs_dusk(this._h, x, y, w, h, daylight, key0, key1, useStatic, np, sleeping);

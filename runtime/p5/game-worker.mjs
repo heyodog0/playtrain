@@ -189,6 +189,14 @@ function handleRequest(request, binaryLength) {
     return;
   }
 
+  if (request.cmd === 'instruction') {
+    // A text observation (DMLab's language levels): the game's
+    // getInstruction() now, or null if it defines none.
+    const fn = globalThis.getInstruction;
+    ok({ instruction: typeof fn === 'function' ? String(fn()) : null });
+    return;
+  }
+
   if (request.cmd === 'ping') {
     ok({ pong: true, action_meanings: env.actionMeanings() });
     return;

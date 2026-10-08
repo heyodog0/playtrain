@@ -111,6 +111,13 @@ def _load_lib(path: Path) -> ctypes.CDLL:
         lib.vec_error.argtypes = [P]
     except AttributeError:
         pass
+    # The instruction channel (a text observation, getInstruction()); absent
+    # from older builds, where every game simply has no instruction.
+    try:
+        lib.vec_instruction.restype = ctypes.c_int
+        lib.vec_instruction.argtypes = [P, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+    except AttributeError:
+        pass
     # Custom-action-space entry points, absent from pre-box builds of the .so.
     # Bind them only if present: the default8 path never calls them, so an old
     # binary keeps working for default-space games (A/B against archived .so's).
@@ -354,7 +361,26 @@ class NativeVecEnv:
         self._lib.vec_reset(self._h, seeds.ctypes.data_as(ctypes.c_void_p), self._obs_p)
         self._raise_if_js_error()
         self._checked_steps = False
+        self.has_instruction = self.instructions() is not None
         return self._obs
+
+    def instructions(self) -> list[str] | None:
+        """Each env's getInstruction() now (a text observation, e.g. DMLab's
+        language levels), or None if the game defines none. Call between steps."""
+        fn = getattr(self._lib, "vec_instruction", None)
+        if fn is None:
+            return None
+        out = []
+        buf = ctypes.create_string_buffer(1024)
+        for i in range(self.num_envs):
+            n = fn(self._h, i, buf, len(buf))
+            if n < 0:
+                return None
+            if n > len(buf):
+                buf = ctypes.create_string_buffer(n)
+                n = fn(self._h, i, buf, len(buf))
+            out.append(buf.raw[:n].decode("utf-8", errors="replace"))
+        return out
 
     def step(self, actions):
         if self.box_channels is not None:
@@ -368,7 +394,7 @@ class NativeVecEnv:
                 self._checked_steps = True
                 self._raise_if_js_error()
             return (self._obs, self._rew,
-                    self._term.view(bool), self._trunc.view(bool), {})
+                    self._term.view(bool), self._trunc.view(bool), self._step_info())
         # Copy into the persistent int32 buffer and reuse its cached pointer
         # (avoids per-step ctypes pointer creation; raises on length mismatch).
         self._act[:] = actions
@@ -384,7 +410,13 @@ class NativeVecEnv:
         # uint8 buffers hold only 0/1, so .view(bool) is a valid zero-copy view
         # (avoids a per-step allocation in the hot loop).
         return (self._obs, self._rew,
-                self._term.view(bool), self._trunc.view(bool), {})
+                self._term.view(bool), self._trunc.view(bool), self._step_info())
+
+    def _step_info(self) -> dict:
+        # Only a game with getInstruction pays for the call.
+        if getattr(self, "has_instruction", False):
+            return {"instruction": self.instructions()}
+        return {}
 
     def set_autoreset_seeds(self, mode: str, *, pool: Sequence[int] | None = None,
                             fixed_seed: int = 0, rng_seed: int = 0):

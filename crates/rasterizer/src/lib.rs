@@ -21,6 +21,9 @@ pub use three::*;
 // First-person voxel raycast (rs_voxel_* ABI). See voxel.rs.
 pub mod voxel;
 pub use voxel::*;
+// DMLab maze raycast (rs_maze_* ABI). See maze.rs.
+pub mod maze;
+pub use maze::*;
 // Tile-grid blit (rs_draw_tiles). See tiles.rs.
 pub mod tiles;
 pub use tiles::*;

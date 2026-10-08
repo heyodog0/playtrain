@@ -279,6 +279,75 @@ void voxelDusk(int x, int y, int w, int h, double daylight,
           (float)daylight, key0, key1, (uint32_t)useStatic, intensity, (uint32_t)sleeping);
 }
 
+// The maze primitives take their dst rect in LOGICAL canvas units, scaled
+// here to device pixels (p5-shim.mjs _mazeDst, same rounding): one game call
+// draws the 64x64 agent view and a full-size human view.
+static uint32_t mazeDev(int v, double s) { return (uint32_t)(int64_t)((double)v * s + 0.5); }
+
+void mazeView(const uint16_t* cells, int w, int h,
+              double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+              const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+              double decalLo, double decalHi,
+              int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_view(_h, cells, (uint32_t)w, (uint32_t)h,
+               (float)eyeX, (float)eyeY, (float)eyeZ, (float)yaw, (float)viewDist,
+               atlas, (uint32_t)tilePx, (uint32_t)nTiles, skyRgb,
+               (float)decalLo, (float)decalHi,
+               mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazeBoxes(const float* boxes, int n,
+               double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_boxes(_h, boxes, (uint32_t)n,
+                (float)eyeX, (float)eyeY, (float)eyeZ, (float)yaw, (float)viewDist,
+                atlas, (uint32_t)tilePx, (uint32_t)nTiles, skyRgb,
+                mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazeQuads(const float* quads, int n,
+               double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles,
+               int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_quads(_h, quads, (uint32_t)n,
+                (float)eyeX, (float)eyeY, (float)eyeZ, (float)yaw, (float)viewDist,
+                atlas, (uint32_t)tilePx, (uint32_t)nTiles,
+                mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazeSky(double yaw, const uint8_t* sky, int size, int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_sky(_h, (float)yaw, sky, (uint32_t)size,
+              mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazePview(double yaw, double pitch, double view, const uint8_t* pano, int size,
+               const float* quads, int n, int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_pview(_h, (float)yaw, (float)pitch, (float)view, pano, (uint32_t)size, quads, (uint32_t)n,
+                mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazeSprite(double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+                double spriteX, double spriteZ, double baseY, double sizeW, double sizeH,
+                const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                int dstX, int dstY, int dstW, int dstH) {
+  rs_maze_sprite(_h, (float)eyeX, (float)eyeY, (float)eyeZ, (float)yaw, (float)viewDist,
+                 (float)spriteX, (float)spriteZ, (float)baseY, (float)sizeW, (float)sizeH,
+                 atlas, (uint32_t)tilePx, (uint32_t)nTiles, (uint32_t)atlasTile,
+                 mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
+}
+
+void mazeSprite2(double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+                 double spriteX, double spriteZ, double baseY, double sizeW, double sizeH,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH, uint32_t rgb1, uint32_t rgb2) {
+  rs_maze_sprite2(_h, (float)eyeX, (float)eyeY, (float)eyeZ, (float)yaw, (float)viewDist,
+                  (float)spriteX, (float)spriteZ, (float)baseY, (float)sizeW, (float)sizeH,
+                  atlas, (uint32_t)tilePx, (uint32_t)nTiles, (uint32_t)atlasTile,
+                  mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy),
+                  rgb1, rgb2);
+}
+
 void image(int srcHandle, double x, double y, double w, double h) {
   // p5 image() honors the current transform; here we map logical->device via the
   // MAIN canvas base scale (image is only ever called at identity transform in

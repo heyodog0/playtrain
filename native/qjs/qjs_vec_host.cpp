@@ -288,6 +288,172 @@ FN(js_voxelSprite) {
   JS_FreeValue(ctx, aab);
   return JS_UNDEFINED;
 }
+// mazeView(cellsU16, w, h, eyeX, eyeY, eyeZ, yaw, viewDist,
+//          atlasU8, tilePx, nTiles, skyRgb, decalLo, decalHi, dstX, dstY, dstW, dstH)
+// Same shape as voxelView: flush the command buffer, read both typed arrays
+// in place.
+FN(js_mazeView) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t goff = 0, glen = 0, gper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue gab = JS_GetTypedArrayBuffer(ctx, argv[0], &goff, &glen, &gper);
+  if (JS_IsException(gab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[8], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, gab); return JS_UNDEFINED; }
+  size_t gsz = 0, asz = 0;
+  uint8_t* gsrc = JS_GetArrayBuffer(ctx, &gsz, gab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  int w = (int)argd(ctx, argv[1]), h = (int)argd(ctx, argv[2]);
+  if (gsrc && asrc && goff + glen <= gsz && aoff + alen <= asz && w > 0 && h > 0 &&
+      glen >= (size_t)w * (size_t)h * 8 * sizeof(uint16_t)) {
+    p5::mazeView((const uint16_t*)(gsrc + goff), w, h,
+                 argd(ctx, argv[3]), argd(ctx, argv[4]), argd(ctx, argv[5]),
+                 argd(ctx, argv[6]), argd(ctx, argv[7]),
+                 asrc + aoff, (int)argd(ctx, argv[9]), (int)argd(ctx, argv[10]),
+                 (unsigned int)argd(ctx, argv[11]),
+                 argd(ctx, argv[12]), argd(ctx, argv[13]),
+                 (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]),
+                 (int)argd(ctx, argv[16]), (int)argd(ctx, argv[17]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, gab);
+  return JS_UNDEFINED;
+}
+// mazeBoxes(boxesF32, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlasU8, tilePx, nTiles, skyRgb,
+//           dstX, dstY, dstW, dstH)
+FN(js_mazeBoxes) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t goff = 0, glen = 0, gper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue gab = JS_GetTypedArrayBuffer(ctx, argv[0], &goff, &glen, &gper);
+  if (JS_IsException(gab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[7], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, gab); return JS_UNDEFINED; }
+  size_t gsz = 0, asz = 0;
+  uint8_t* gsrc = JS_GetArrayBuffer(ctx, &gsz, gab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  int n = (int)argd(ctx, argv[1]);
+  if (gsrc && asrc && goff + glen <= gsz && aoff + alen <= asz && n >= 0 &&
+      glen >= (size_t)n * 60 * sizeof(float)) {
+    p5::mazeBoxes((const float*)(gsrc + goff), n,
+                  argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4]),
+                  argd(ctx, argv[5]), argd(ctx, argv[6]),
+                  asrc + aoff, (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]),
+                  (unsigned int)argd(ctx, argv[10]),
+                  (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                  (int)argd(ctx, argv[13]), (int)argd(ctx, argv[14]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, gab);
+  return JS_UNDEFINED;
+}
+// mazeQuads(quadsF32, n, eyeX, eyeY, eyeZ, yaw, viewDist, atlasU8, tilePx, nTiles,
+//           dstX, dstY, dstW, dstH)
+FN(js_mazeQuads) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t goff = 0, glen = 0, gper = 0, aoff = 0, alen = 0, aper = 0;
+  JSValue gab = JS_GetTypedArrayBuffer(ctx, argv[0], &goff, &glen, &gper);
+  if (JS_IsException(gab)) return JS_UNDEFINED;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[7], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) { JS_FreeValue(ctx, gab); return JS_UNDEFINED; }
+  size_t gsz = 0, asz = 0;
+  uint8_t* gsrc = JS_GetArrayBuffer(ctx, &gsz, gab);
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  int n = (int)argd(ctx, argv[1]);
+  if (gsrc && asrc && goff + glen <= gsz && aoff + alen <= asz && n >= 0 &&
+      glen >= (size_t)n * 12 * sizeof(float)) {
+    p5::mazeQuads((const float*)(gsrc + goff), n,
+                  argd(ctx, argv[2]), argd(ctx, argv[3]), argd(ctx, argv[4]),
+                  argd(ctx, argv[5]), argd(ctx, argv[6]),
+                  asrc + aoff, (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]),
+                  (int)argd(ctx, argv[10]), (int)argd(ctx, argv[11]),
+                  (int)argd(ctx, argv[12]), (int)argd(ctx, argv[13]));
+  }
+  JS_FreeValue(ctx, aab);
+  JS_FreeValue(ctx, gab);
+  return JS_UNDEFINED;
+}
+// mazePview(yaw, pitch, view, panoU8, size, quadsF32, n, dstX, dstY, dstW, dstH)
+FN(js_mazePview) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t poff = 0, plen = 0, pper = 0, qoff = 0, qlen = 0, qper = 0;
+  JSValue pab = JS_GetTypedArrayBuffer(ctx, argv[3], &poff, &plen, &pper);
+  if (JS_IsException(pab)) return JS_UNDEFINED;
+  JSValue qab = JS_GetTypedArrayBuffer(ctx, argv[5], &qoff, &qlen, &qper);
+  if (JS_IsException(qab)) { JS_FreeValue(ctx, pab); return JS_UNDEFINED; }
+  size_t psz = 0, qsz = 0;
+  uint8_t* psrc = JS_GetArrayBuffer(ctx, &psz, pab);
+  uint8_t* qsrc = JS_GetArrayBuffer(ctx, &qsz, qab);
+  int size = (int)argd(ctx, argv[4]);
+  int n = (int)argd(ctx, argv[6]);
+  if (psrc && qsrc && poff + plen <= psz && qoff + qlen <= qsz && size > 0 && n >= 0 &&
+      plen >= (size_t)size * size * 4 * 6 && qlen >= (size_t)n * 12 * sizeof(float)) {
+    p5::mazePview(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]), psrc + poff, size,
+                  (const float*)(qsrc + qoff), n,
+                  (int)argd(ctx, argv[7]), (int)argd(ctx, argv[8]), (int)argd(ctx, argv[9]), (int)argd(ctx, argv[10]));
+  }
+  JS_FreeValue(ctx, qab);
+  JS_FreeValue(ctx, pab);
+  return JS_UNDEFINED;
+}
+// mazeSky(yaw, skyU8, size, dstX, dstY, dstW, dstH)
+FN(js_mazeSky) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t soff = 0, slen = 0, sper = 0;
+  JSValue sab = JS_GetTypedArrayBuffer(ctx, argv[1], &soff, &slen, &sper);
+  if (JS_IsException(sab)) return JS_UNDEFINED;
+  size_t ssz = 0;
+  uint8_t* ssrc = JS_GetArrayBuffer(ctx, &ssz, sab);
+  int size = (int)argd(ctx, argv[2]);
+  if (ssrc && soff + slen <= ssz && size > 0 && slen >= (size_t)size * size * 4 * 6) {
+    p5::mazeSky(argd(ctx, argv[0]), ssrc + soff, size,
+                (int)argd(ctx, argv[3]), (int)argd(ctx, argv[4]), (int)argd(ctx, argv[5]), (int)argd(ctx, argv[6]));
+  }
+  JS_FreeValue(ctx, sab);
+  return JS_UNDEFINED;
+}
+// mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH,
+//            atlasU8, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH)
+FN(js_mazeSprite) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t aoff = 0, alen = 0, aper = 0;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[10], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) return JS_UNDEFINED;
+  size_t asz = 0;
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (asrc && aoff + alen <= asz) {
+    p5::mazeSprite(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]),
+                   argd(ctx, argv[3]), argd(ctx, argv[4]),
+                   argd(ctx, argv[5]), argd(ctx, argv[6]), argd(ctx, argv[7]),
+                   argd(ctx, argv[8]), argd(ctx, argv[9]),
+                   asrc + aoff, (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                   (int)argd(ctx, argv[13]),
+                   (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]),
+                   (int)argd(ctx, argv[16]), (int)argd(ctx, argv[17]));
+  }
+  JS_FreeValue(ctx, aab);
+  return JS_UNDEFINED;
+}
+// mazeSprite2(... as mazeSprite ..., rgb1, rgb2): a two-colour tile (rs_maze_sprite2)
+FN(js_mazeSprite2) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  size_t aoff = 0, alen = 0, aper = 0;
+  JSValue aab = JS_GetTypedArrayBuffer(ctx, argv[10], &aoff, &alen, &aper);
+  if (JS_IsException(aab)) return JS_UNDEFINED;
+  size_t asz = 0;
+  uint8_t* asrc = JS_GetArrayBuffer(ctx, &asz, aab);
+  if (asrc && aoff + alen <= asz) {
+    p5::mazeSprite2(argd(ctx, argv[0]), argd(ctx, argv[1]), argd(ctx, argv[2]),
+                    argd(ctx, argv[3]), argd(ctx, argv[4]),
+                    argd(ctx, argv[5]), argd(ctx, argv[6]), argd(ctx, argv[7]),
+                    argd(ctx, argv[8]), argd(ctx, argv[9]),
+                    asrc + aoff, (int)argd(ctx, argv[11]), (int)argd(ctx, argv[12]),
+                    (int)argd(ctx, argv[13]),
+                    (int)argd(ctx, argv[14]), (int)argd(ctx, argv[15]),
+                    (int)argd(ctx, argv[16]), (int)argd(ctx, argv[17]),
+                    (uint32_t)(int64_t)argd(ctx, argv[18]), (uint32_t)(int64_t)argd(ctx, argv[19]));
+  }
+  JS_FreeValue(ctx, aab);
+  return JS_UNDEFINED;
+}
 // voxelDusk(x, y, w, h, daylight, key0, key1, useStatic, noiseF32, sleeping)
 FN(js_voxelDusk) {
   if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
@@ -344,6 +510,13 @@ static const Binding BINDINGS[] = {
   {"voxelView", js_voxelView, 16},
   {"voxelSprite", js_voxelSprite, 15},
   {"voxelDusk", js_voxelDusk, 10},
+  {"mazeView", js_mazeView, 18},
+  {"mazeSprite", js_mazeSprite, 18},
+  {"mazeSprite2", js_mazeSprite2, 20},
+  {"mazeBoxes", js_mazeBoxes, 15},
+  {"mazeQuads", js_mazeQuads, 14},
+  {"mazeSky", js_mazeSky, 7},
+  {"mazePview", js_mazePview, 11},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5}, {"drawTiles", js_drawTiles, 10},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},
@@ -421,6 +594,8 @@ struct Env {
   // PLAN 3.6 symbolic obs: the game's getObservation(), when it has one.
   JSValue jsGetObs = JS_UNDEFINED;
   bool hasGetObs = false;
+  JSValue jsInstr = JS_UNDEFINED;   // getInstruction(): a text observation (tier 2)
+  bool hasInstr = false;
   bool hasKeyPressed = false;
   bool hasMousePressed = false;
   uint32_t prev_buttons = 0;   // for the mousePressed() rising-edge event
@@ -691,6 +866,8 @@ static void env_init(VecHost* H, Env& e, int idx) {
   e.hasMousePressed = JS_IsFunction(ctx, e.jsMousePressed);
   e.jsGetObs = JS_GetPropertyStr(ctx, g, "getObservation");
   e.hasGetObs = JS_IsFunction(ctx, e.jsGetObs);
+  e.jsInstr = JS_GetPropertyStr(ctx, g, "getInstruction");
+  e.hasInstr = JS_IsFunction(ctx, e.jsInstr);
   e.call0(jsSetup);
   e.flushCB();
   JS_FreeValue(ctx, jsSetup);
@@ -1034,6 +1211,34 @@ void vec_close(void* h);   // defined below; used by the create paths on failure
 // the Python wrapper after reset and after the first step: a JS exception in
 // resetGame or draw leaves the frame blank rather than stopping anything, and
 // that reads as a game that trains badly instead of one that never ran.
+// The game's getInstruction() for env i, as UTF-8 into buf (at most cap
+// bytes, not NUL-terminated); returns the full length, or -1 if the game has
+// no getInstruction (or i is out of range). Call only between steps: it runs
+// JS in env i's own runtime on the caller's thread.
+int vec_instruction(void* h, int i, char* buf, int cap) {
+  if (!h) return -1;
+  VecHost* H = (VecHost*)h;
+  if (i < 0 || i >= H->num_envs) return -1;
+  Env& e = H->envs[i];
+  if (!e.hasInstr) return -1;
+  e.select();
+  JSValue r = JS_Call(e.ctx, e.jsInstr, JS_UNDEFINED, 0, nullptr);
+  int out = -1;
+  if (!JS_IsException(r)) {
+    size_t len = 0;
+    const char* cs = JS_ToCStringLen(e.ctx, &len, r);
+    if (cs) {
+      if (buf && cap > 0) memcpy(buf, cs, len < (size_t)cap ? len : (size_t)cap);
+      out = (int)len;
+      JS_FreeCString(e.ctx, cs);
+    }
+  } else {
+    JS_FreeValue(e.ctx, JS_GetException(e.ctx));
+  }
+  JS_FreeValue(e.ctx, r);
+  return out;
+}
+
 const char* vec_error(void* h) {
   if (!h) return nullptr;
   VecHost* H = (VecHost*)h;
@@ -1274,6 +1479,7 @@ void vec_close(void* h) {
       JS_FreeValue(e.ctx, e.jsReset); JS_FreeValue(e.ctx, e.jsDraw);
       JS_FreeValue(e.ctx, e.jsState); JS_FreeValue(e.ctx, e.jsKeyPressed);
       JS_FreeValue(e.ctx, e.jsMousePressed);
+      JS_FreeValue(e.ctx, e.jsInstr);
       JS_FreeValue(e.ctx, e.g);
       JS_FreeContext(e.ctx); JS_FreeRuntime(e.rt);
     }

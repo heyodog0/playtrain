@@ -15,6 +15,7 @@ loads the bundle like any other game, by name.
 | [`parity/chip8`](parity/chip8) | 22 CHIP-8 arcade games, 37 bundles | Octax, step for step |
 | [`parity/vgdl`](parity/vgdl) | VGDL games, 26 bundles | py-vgdl, step for step |
 | [`parity/puzzlescript`](parity/puzzlescript) | 17 PuzzleScript games | the PuzzleScript engine itself |
+| [`parity/dmlab`](parity/dmlab) | 23 DMLab-30 levels | DeepMind Lab, frame by frame |
 
 ## Layout
 

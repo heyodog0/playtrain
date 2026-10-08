@@ -1,0 +1,68 @@
+# DeepMind Lab
+
+23 levels of [DMLab-30](https://github.com/google-deepmind/lab/tree/master/game_scripts/levels/contributed/dmlab30),
+ported to PlayTrain.
+
+| family | levels |
+|---|---|
+| explore | `explore_goal_locations_{small,large}`, `explore_obstructed_goals_{small,large}`, `explore_object_locations_{small,large}`, `explore_object_rewards_{few,many}` |
+| rooms | `rooms_collect_good_objects_{train,test}`, `rooms_exploit_deferred_effects_{train,test}`, `rooms_select_nonmatching_object`, `rooms_keys_doors_puzzle`, `rooms_watermaze` |
+| skymaze | `skymaze_irreversible_path_{hard,varied}` |
+| language | `language_select_described_object`, `language_select_located_object`, `language_execute_random_task`, `language_answer_quantitative_question` |
+| psychlab | `psychlab_visual_search`, `psychlab_sequential_comparison` |
+
+Each level is one bundle in `dist/`: `dmlab_<level>.js` plus its `.json` sidecar
+(action set, step budget, what is and is not matched).
+
+```python
+from playtrain.runtime import NativeVecEnv
+
+venv = NativeVecEnv(game="dmlab_explore_goal_locations_small", num_envs=8,
+                    num_threads=8, obs_size=64, autoreset=True)
+venv.reset(list(range(8)))
+obs, rew, term, trunc, info = venv.step(actions)   # actions: (8,) int64
+```
+
+Observations are 64x64 RGB, one step is 4 engine frames (IMPALA's action
+repeat), and the actions are IMPALA's 9. Psychlab adds look up and look down,
+11 actions in all. The language levels return their instruction as
+`info["instruction"]`.
+
+## How close to DMLab
+
+Each port was checked frame by frame against DMLab itself, built from source.
+
+- Layouts: the mazes, rooms and objects are the ones DMLab generated for
+  seeds 0-31. Seed s plays layout s mod 32.
+- Movement: Quake 3's walk, refitted to DMLab's own trajectories. The yaw is
+  exact, the position stays within 2 game units, and the rewards land on the
+  same frames.
+- Psychlab: the view, the gaze on the screen and the rewards match on every
+  frame.
+- Pixels: close but not equal. On average a frame is 18 grey levels (out of
+  255) away from DMLab's at the same pose.
+
+The sidecar's `reference.not_matched` lists the rest for each level.
+
+Speed on an Apple M4 Pro, median over the 23 levels:
+
+- one env: 8,600 steps/s (range 0.9k-11.7k);
+- eight envs: 46,000 steps/s.
+
+That is a median 11x DMLab on the same machine (3.6-73x), though there DMLab
+runs under x86 emulation.
+
+## Licence
+
+The textures, sprites and maps in the bundles are derived from DeepMind Lab's
+`//assets` (https://github.com/google-deepmind/lab, commit
+`b1db91af5b4d2f3a24466f4632a3e5e1b0829cca`), copyright DeepMind Technologies
+Limited, CC BY 4.0. They were changed:
+
+- shader stages flattened to one texture;
+- downsampled;
+- pickup models drawn as flat sprites;
+- the psychlab room captured as a panorama.
+
+DMLab's GPL-2 code was read only as a specification of behaviour. None of it
+is copied or translated here.

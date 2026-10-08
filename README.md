@@ -31,7 +31,7 @@ LLM-Generated Adaptable JavaScript Games* ([arXiv][paper]).
 
 The catalog has 51 games: clones of Atari and ProcGen games, original games, and
 variants of a base game. `examples/games/multifile/` adds exact ports of Craftax-Classic,
-the Octax CHIP-8 games, VGDL and PuzzleScript. All of them are playable at
+the Octax CHIP-8 games, VGDL, PuzzleScript and 23 DeepMind Lab levels. All of them are playable at
 [playtrain.org/play](https://playtrain.org/play/).
 
 ## Getting started

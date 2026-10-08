@@ -1,0 +1,114 @@
+{
+  "name": "dmlab_psychlab_visual_search",
+  "version": "0.1.0",
+  "title": "DMLab psychlab_visual_search",
+  "action_space": "psychlab11",
+  "actions": [
+    {
+      "name": "FORWARD",
+      "held": [
+        87
+      ],
+      "press": null
+    },
+    {
+      "name": "BACKWARD",
+      "held": [
+        83
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_LEFT",
+      "held": [
+        65
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_RIGHT",
+      "held": [
+        68
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "FORWARD_LOOK_LEFT",
+      "held": [
+        87,
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "FORWARD_LOOK_RIGHT",
+      "held": [
+        87,
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "FIRE",
+      "held": [
+        32
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_UP",
+      "held": [
+        38
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_DOWN",
+      "held": [
+        40
+      ],
+      "press": null
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64,
+    "frame": "64x64 first-person view, 90 degree FOV, eye 0.5 cells above the floor"
+  },
+  "max_steps": 2250,
+  "max_steps_source": "episodeLengthSeconds 150 s x 60 fps / action repeat 4",
+  "human": {
+    "steps_per_second": 15,
+    "controls": "Arrow keys look left/right/up/down (the player cannot walk; psychlab answers by gaze). One step is 4 engine frames at 60 fps."
+  },
+  "reference": {
+    "name": "DeepMind Lab (DMLab-30)",
+    "repo": "https://github.com/google-deepmind/lab",
+    "commit": "b1db91af5b4d2f3a24466f4632a3e5e1b0829cca",
+    "license": "GPL-2.0 (engine, game_scripts); CC BY 4.0 (//assets)",
+    "parity": "G3 (psychlab): under the dumps' gaze-controller actions the view (yaw, pitch) per frame within 1e-3 degrees, the gaze on the screen (DMLab's lookat: a muzzle-point trace) within 1e-4 of the screen, the rewards and the screen's widget changes identical; replay inputs (games/<level>.replay.json): the view accumulators' phases and each trial's objects",
+    "not_matched": [
+      "pixels: the room is a cube panorama captured from the oracle at the fixed eye (tools/psych_panorama.py); the screen is drawn as solid rects",
+      "the corpus is DMLab seeds 0..31; episode seed s plays corpus entry s mod 32",
+      "actions: IMPALA's 9 plus look up and look down (IMPALA's set cannot reach the answer buttons)",
+      "trials in play: drawn with the port's PCG following the factory's rules (interleaved search modes, the staircase over set sizes), not DMLab's Lua RNG"
+    ],
+    "level": "contributed/dmlab30/psychlab_visual_search",
+    "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
+  },
+  "source_sha256": "e3f852dccf4d95f03b6de712064d31b73d21d8446595cf48fc925308010d0535"
+}

@@ -174,6 +174,45 @@ void voxelDusk(int x, int y, int w, int h, double daylight,
                unsigned int key0, unsigned int key1, int useStatic,
                const float* intensity, int sleeping);
 
+// DMLab maze raycast (crates/rasterizer/src/maze.rs). Like voxelView: writes
+// the current target's pixels and depth directly, dst rect in DEVICE pixels.
+// `cells` is 8 planes of w*h u16 (wall, floor, ceiling tile, flags, 4 decals).
+void mazeView(const uint16_t* cells, int w, int h,
+              double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+              const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+              double decalLo, double decalHi,
+              int dstX, int dstY, int dstW, int dstH);
+// Axis-aligned boxes (the rooms levels' brushes), 60 floats per box: see
+// rs_maze_boxes in crates/rasterizer/src/maze.rs.
+void mazeBoxes(const float* boxes, int n,
+               double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles, unsigned int skyRgb,
+               int dstX, int dstY, int dstW, int dstH);
+// Vertical textured quads (walls that are not axis-aligned, pictures on them),
+// 12 floats per quad, drawn over mazeBoxes' depths: see rs_maze_quads in
+// crates/rasterizer/src/maze.rs.
+void mazeQuads(const float* quads, int n,
+               double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+               const uint8_t* atlas, int tilePx, int nTiles,
+               int dstX, int dstY, int dstW, int dstH);
+// The skybox cube (6 faces size x size RGBA: rt, lf, up, dn, ft, bk) over the
+// pixels the other maze primitives left as sky: see rs_maze_sky in maze.rs.
+void mazeSky(double yaw, const uint8_t* sky, int size, int dstX, int dstY, int dstW, int dstH);
+// A view with pitch from a fixed eye: a cube panorama and solid quads over it
+// (psychlab): see rs_maze_pview in maze.rs.
+void mazePview(double yaw, double pitch, double view, const uint8_t* pano, int size,
+               const float* quads, int n, int dstX, int dstY, int dstW, int dstH);
+// A sized upright billboard, depth-tested against mazeView's depths.
+void mazeSprite(double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+                double spriteX, double spriteZ, double baseY, double sizeW, double sizeH,
+                const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                int dstX, int dstY, int dstW, int dstH);
+// mazeSprite with a two-colour tile (shade, pattern weight, -, coverage): rs_maze_sprite2.
+void mazeSprite2(double eyeX, double eyeY, double eyeZ, double yaw, double viewDist,
+                 double spriteX, double spriteZ, double baseY, double sizeW, double sizeH,
+                 const uint8_t* atlas, int tilePx, int nTiles, int atlasTile,
+                 int dstX, int dstY, int dstW, int dstH, uint32_t rgb1, uint32_t rgb2);
+
 // Text — visual only, no rasterizer text; kept as no-ops that consume args so
 // generated code compiles. (The shim renders text; the rasterizer's fillText is
 // a no-op, so headless obs already omits text. Matches env behavior.)
