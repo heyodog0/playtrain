@@ -79,7 +79,13 @@
   "max_steps_source": "episodeLengthSeconds 12 s x 60 fps / action repeat 4",
   "human": {
     "steps_per_second": 15,
-    "controls": "W/S forward/back, A/D strafe, arrow keys turn, space fires (no effect here). One step is 4 engine frames at 60 fps."
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "unused_actions": [
+      "FIRE",
+      "FORWARD_LOOK_LEFT",
+      "FORWARD_LOOK_RIGHT"
+    ],
+    "hint": "Click the view to look around with the mouse (Esc gives it back)."
   },
   "reference": {
     "name": "DeepMind Lab (DMLab-30)",
@@ -99,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_select_nonmatching_object",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "6a2a1baef473eac0a0726a8f66c81bfaecae4636d134cc3a254fda110d8be2e5"
+  "source_sha256": "997fa45e9643c8b7fdf1ad2b24f0f1c24ee906bd2626049dd6cae1f29bdac223"
 }

@@ -79,7 +79,13 @@
   "max_steps_source": "episodeLengthSeconds 60 s x 60 fps / action repeat 4",
   "human": {
     "steps_per_second": 15,
-    "controls": "W/S forward/back, A/D strafe, arrow keys turn, space fires (no effect here). One step is 4 engine frames at 60 fps."
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "hint": "Click the view to look around with the mouse (Esc gives it back). Look at the objects, then answer: walk into the white ball for yes or the black ball for no.",
+    "unused_actions": [
+      "FIRE",
+      "FORWARD_LOOK_LEFT",
+      "FORWARD_LOOK_RIGHT"
+    ]
   },
   "reference": {
     "name": "DeepMind Lab (DMLab-30)",
@@ -99,5 +105,5 @@
     "level": "contributed/dmlab30/language_answer_quantitative_question",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "7b9cc4782f920051ce136f7c22a7fb9863102876f9219584f8003c65f30cc74f"
+  "source_sha256": "2637648bf5cd5cc442a7c35651437f1a1c733093f5280b2927d47946dfc31ca9"
 }

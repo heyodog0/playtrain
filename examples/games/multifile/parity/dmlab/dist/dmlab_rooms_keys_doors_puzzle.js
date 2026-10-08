@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 14 sources listed in
 // examples/games/multifile/parity/dmlab/manifest_rooms_keys_doors_puzzle.json
-// Source hash (sha256 over the concatenated sources): 36287e05aaee8312afb8b524061fd41524dc42bd7741c3f8c1ea69f55b2b8fd0
+// Source hash (sha256 over the concatenated sources): a48f22d9a62b15db2ee34febdf0fab28b076f5c6b09e990eaed7872e8da054a0
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle dmlab_rooms_keys_doors_puzzle
@@ -6975,7 +6975,7 @@ function dmRender(st) {
   if (DM_LEVEL.kind === 'psychlab') { dmRenderPsych(st); return; }
   dmRenderScene(st);
   dmDrawSpawn(st);
-  dmDrawHud();
+  if (!dmHuman) dmDrawHud();
 }
 
 function dmRenderScene(st) {
@@ -7052,6 +7052,15 @@ function dmRenderPsych(st) {
     q, q.length / 12, 0, 0, width, height);
   const s = width / 64;
   noStroke();
+  if (dmHuman) {
+    // a person needs to see where they look: a crosshair at the view's centre
+    const c = width / 2, l = width / 24, t = Math.max(1, width / 160);
+    fill(0, 0, 0, 160);
+    rect(c - l - t, c - 2 * t, 2 * (l + t), 4 * t); rect(c - 2 * t, c - l - t, 4 * t, 2 * (l + t));
+    fill(255, 255, 255);
+    rect(c - l, c - t, 2 * l, 2 * t); rect(c - t, c - l, 2 * t, 2 * l);
+    return;
+  }
   for (const [r, c, a, cr, cg, cb] of DM_PSY_HUD) {
     fill(cr, cg, cb, Math.round(a * 255));
     rect(c * s, r * s, s, s);
@@ -7137,13 +7146,31 @@ function dmFrame(st, act) {
 
 function dmMaxFrames() { return DM_LEVEL.episode_seconds * DM_FPS; }
 
+// Human play only. The play page calls humanStart() once and humanLook(dx, dy)
+// on mouse moves; an env never does, so what an agent sees and does is
+// unchanged. A person gets mouse look (a mouse pixel is DMLab's look pixel: its
+// look actions are 20 px), a crosshair in psychlab, and no approximate HUD.
+let dmHuman = false, dmLookDx = 0, dmLookDy = 0;
+var humanStart = function () { dmHuman = true; };
+var humanLook = function (dx, dy) { dmLookDx += dx; dmLookDy += dy; };
+
 function draw() {
   if (gameState === null) resetGame(0);
   if (!gameOver) {
     const a = currentAction();
-    const act = a < 0 ? DM_NOOP : DM_ACTIONS[a];
+    let act = a < 0 ? DM_NOOP : DM_ACTIONS[a];
+    if (dmLookDx !== 0 || dmLookDy !== 0) {
+      // the whole move on this step's first frame; psychlab's pitch kept within 85 degrees
+      act = act.slice();
+      act[0] += dmLookDx;
+      if (DM_LEVEL.kind === 'psychlab') {
+        const p = gameState.pitch + dmLookDy * DM_LOOK;
+        act[1] += p > 85 ? (85 - gameState.pitch) / DM_LOOK : p < -85 ? (-85 - gameState.pitch) / DM_LOOK : dmLookDy;
+      }
+      dmLookDx = 0; dmLookDy = 0;
+    }
     for (let i = 0; i < DM_REPEAT && !gameOver; i++) {
-      dmFrame(gameState, act);
+      dmFrame(gameState, i === 0 ? act : (a < 0 ? DM_NOOP : DM_ACTIONS[a]));
       if (gameState.frame >= dmMaxFrames()) gameOver = true;
       if (gameState.endAt >= 0 && gameState.frame >= gameState.endAt) gameOver = true;
     }

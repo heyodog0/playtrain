@@ -93,7 +93,17 @@
   "max_steps_source": "episodeLengthSeconds 300 s x 60 fps / action repeat 4",
   "human": {
     "steps_per_second": 15,
-    "controls": "Arrow keys look left/right/up/down (the player cannot walk; psychlab answers by gaze). One step is 4 engine frames at 60 fps."
+    "controls": "Click the view to look with the mouse (Esc gives it back), or use the arrow keys. The player cannot walk; you answer by where you look.",
+    "hint": "Click the view to look around with the mouse (Esc gives it back). Look at the red cross to start. Remember the shapes, then look at the small turquoise square and away. When the shapes come back, look at the right button if nothing changed or the left one if a shape changed, then look away to answer.",
+    "unused_actions": [
+      "FORWARD",
+      "BACKWARD",
+      "STRAFE_LEFT",
+      "STRAFE_RIGHT",
+      "FIRE",
+      "FORWARD_LOOK_LEFT",
+      "FORWARD_LOOK_RIGHT"
+    ]
   },
   "reference": {
     "name": "DeepMind Lab (DMLab-30)",
@@ -111,5 +121,5 @@
     "level": "contributed/dmlab30/psychlab_sequential_comparison",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "2ce16c21c5b6fa395443d15c26c565f7ecfd9ab984148719267dae1a65700754"
+  "source_sha256": "d17d8a0dccad46f0e442777738dbd47740f5ff1fc88f4a090fc1deba0654ea7e"
 }

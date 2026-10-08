@@ -79,7 +79,13 @@
   "max_steps_source": "episodeLengthSeconds 60 s x 60 fps / action repeat 4",
   "human": {
     "steps_per_second": 15,
-    "controls": "W/S forward/back, A/D strafe, arrow keys turn, space fires (no effect here). One step is 4 engine frames at 60 fps."
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. One step is 4 engine frames at 60 fps.",
+    "unused_actions": [
+      "FIRE",
+      "FORWARD_LOOK_LEFT",
+      "FORWARD_LOOK_RIGHT"
+    ],
+    "hint": "Click the view to look around with the mouse (Esc gives it back)."
   },
   "reference": {
     "name": "DeepMind Lab (DMLab-30)",
@@ -99,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_keys_doors_puzzle",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "36287e05aaee8312afb8b524061fd41524dc42bd7741c3f8c1ea69f55b2b8fd0"
+  "source_sha256": "a48f22d9a62b15db2ee34febdf0fab28b076f5c6b09e990eaed7872e8da054a0"
 }
