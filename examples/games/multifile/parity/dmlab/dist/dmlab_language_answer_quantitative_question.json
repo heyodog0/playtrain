@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/language_answer_quantitative_question",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "2637648bf5cd5cc442a7c35651437f1a1c733093f5280b2927d47946dfc31ca9"
+  "source_sha256": "e7af27f78a739574217ca53acca510a8a338a966799170f5eda6606df2aa09b5"
 }

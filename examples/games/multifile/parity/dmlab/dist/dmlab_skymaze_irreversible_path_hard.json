@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/skymaze_irreversible_path_hard",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "02b38cca7079cf6f2c5cbe840ca4a87ff39b7c843dd6b0645b4a915ef7022d38"
+  "source_sha256": "414cd829691963ab04bc5697060700343f790ac480f3566d6b48b1c06d8c84cb"
 }

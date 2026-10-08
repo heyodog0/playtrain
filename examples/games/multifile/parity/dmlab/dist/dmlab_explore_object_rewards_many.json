@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/explore_object_rewards_many",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "b5e901d015554c5290c5c6e034f610ef4a68405fec8edc479f1f03c46ff25bc9"
+  "source_sha256": "d36c7b1a3cee85c4583dfcf21a2a89c5d005be6bce2dc56aed4f7c29a5218653"
 }

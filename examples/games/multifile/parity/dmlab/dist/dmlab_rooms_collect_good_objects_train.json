@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_collect_good_objects_train",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "221245f2baf2eca2df1687420bb9434b24ec0ee5297b7a0d12ab5b4607dadb74"
+  "source_sha256": "cb72a32ba28427ca2b59920d3d6305e4b1c5710f47ac428b975a35f4efabd7b0"
 }

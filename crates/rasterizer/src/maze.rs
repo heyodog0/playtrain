@@ -132,6 +132,46 @@ fn texel_mip(atlas: *const u8, n_tiles: u32, tile: u32, word: u32, level: u32, u
     texel(unsafe { atlas.add(off) }, tile, size >> level, u, v)
 }
 
+// ---- pitch ----------------------------------------------------------------
+// A person on the play page can look up and down (dmlab PLAN.md section 12);
+// agents never do. rs_maze_pitch sets the view's pitch (radians, positive
+// looks down, Quake's sign) for the maze primitives drawn after it on this
+// thread; it stays 0 unless set. A per-thread value, not a canvas field: a
+// game sets it right before it draws, every frame, so the vec env's worker
+// threads each carry their own. At pitch 0 every primitive takes exactly the
+// path it took before pitch existed, so every older golden holds.
+//
+// With pitch p the basis of the primitive frame (x east, y up, z south) is
+//     fwd = (s cp, -sp, -co cp)   rgt = (co, 0, s)   up = (s sp, cp, -co sp)
+// (s, co = sin, cos of the yaw; sp, cp of the pitch, by psin/pcos), and a
+// pixel's ray is fwd + sx rgt + sy up, evaluated as ((sx rgt + fwd) + sy up)
+// per component. The basis is orthonormal, so a ray's forward depth stays
+// t / |ray|.
+thread_local! {
+    static MAZE_PITCH: core::cell::Cell<f32> = const { core::cell::Cell::new(0.0f32) };
+}
+
+#[no_mangle]
+pub extern "C" fn rs_maze_pitch(_canvas: u32, pitch: f32) {
+    MAZE_PITCH.with(|p| p.set(pitch));
+}
+
+#[inline]
+fn maze_pitch() -> f32 {
+    MAZE_PITCH.with(|p| p.get())
+}
+
+/// (sp, cp) of the current pitch; (0, 1) exactly at pitch 0.
+#[inline]
+fn pitch_sc() -> (f32, f32) {
+    let p = maze_pitch();
+    if p == 0.0f32 {
+        (0.0f32, 1.0f32)
+    } else {
+        (psin(p as f64) as f32, pcos(p as f64) as f32)
+    }
+}
+
 /// Render a first-person view of a maze into the rect (`dst_x`, `dst_y`,
 /// `dst_w`, `dst_h`) of `canvas`, filling that rect of the canvas depth buffer
 /// with forward distance (sky = +inf) for `rs_maze_sprite`.
@@ -185,6 +225,15 @@ pub extern "C" fn rs_maze_view(
     let fwd_z = -co;
     let rgt_x = co;
     let rgt_z = s;
+    // pitch (section "pitch" above): 0 keeps the original ray exactly
+    let pitched = maze_pitch() != 0.0f32;
+    let (sp, cp) = pitch_sc();
+    let pfx = s * cp;
+    let pfy = -sp;
+    let pfz = -co * cp;
+    let pux = s * sp;
+    let puy = cp;
+    let puz = -co * sp;
 
     let sky_r = ((sky_rgb >> 16) & 255) as u8;
     let sky_g = ((sky_rgb >> 8) & 255) as u8;
@@ -212,9 +261,11 @@ pub extern "C" fn rs_maze_view(
             }
             let sx = 2.0f32 * ((px as f32 + 0.5f32) / fw) - 1.0f32;
 
-            let rdx = sx * rgt_x + fwd_x;
-            let rdz = sx * rgt_z + fwd_z;
-            let rdy = sy;
+            let (rdx, rdy, rdz) = if pitched {
+                ((sx * rgt_x + pfx) + sy * pux, pfy + sy * puy, (sx * rgt_z + pfz) + sy * puz)
+            } else {
+                (sx * rgt_x + fwd_x, sy, sx * rgt_z + fwd_z)
+            };
             let len = (rdx * rdx + rdy * rdy + rdz * rdz).sqrt();
             let dx = rdx / len;
             let dy = rdy / len;
@@ -392,6 +443,160 @@ pub extern "C" fn rs_maze_view(
     }
 }
 
+// A billboard under pitch (section "pitch"). The sprite stays an upright
+// quad facing the eye horizontally, so under pitch it is no longer a screen
+// rect: each pixel of its projected bounding box casts the pitched ray into
+// the billboard's plane (normal: the horizontal forward). With ray r and the
+// sprite's horizontal depth dh, the hit is at t = dh / (r . fwd_h); u runs
+// along the horizontal right, v down from the sprite's top. The basis is
+// orthonormal and r . fwd' = 1, so t is the forward depth the other maze
+// primitives write. `colours` is rs_maze_sprite2's (rgb1, rgb2), None for
+// rs_maze_sprite. Rules as rs_maze_sprite: only opaque texels write depth.
+#[allow(clippy::too_many_arguments)]
+fn sprite_pitched(
+    canvas: u32, eye_x: f32, eye_y: f32, eye_z: f32, yaw: f32, view_dist: f32,
+    sprite_x: f32, sprite_z: f32, base_y: f32, size_w: f32, size_h: f32,
+    atlas: *const u8, tile_px: u32, n_tiles: u32, atlas_tile: u32,
+    dst_x: u32, dst_y: u32, dst_w: u32, dst_h: u32, colours: Option<(u32, u32)>,
+) {
+    let c = cv(canvas);
+    let cw = c.dw;
+    let ch = c.dh;
+    let s = psin(yaw as f64) as f32;
+    let co = pcos(yaw as f64) as f32;
+    let fwd_x = s;
+    let fwd_z = -co;
+    let rgt_x = co;
+    let rgt_z = s;
+    let (sp, cp) = pitch_sc();
+    let pfx = s * cp;
+    let pfy = -sp;
+    let pfz = -co * cp;
+    let pux = s * sp;
+    let puy = cp;
+    let puz = -co * sp;
+
+    let dx = sprite_x - eye_x;
+    let dz = sprite_z - eye_z;
+    let dh = dx * fwd_x + dz * fwd_z;
+    let lat = dx * rgt_x + dz * rgt_z;
+    if !(dh > 0.0f32) || dh > view_dist {
+        return;
+    }
+    let half = size_w * 0.5f32;
+    let top_y = base_y + size_h;
+    let fw = dst_w as f32;
+    let fh = dst_h as f32;
+    let hw = fw * 0.5f32;
+    let hh = fh * 0.5f32;
+    // the bounding box of the four corners, projected with the pitched camera
+    let mut x0 = 0i32;
+    let mut x1 = dst_w as i32 - 1;
+    let mut y0 = 0i32;
+    let mut y1 = dst_h as i32 - 1;
+    let mut bx0 = BIG;
+    let mut bx1 = -BIG;
+    let mut by0 = BIG;
+    let mut by1 = -BIG;
+    let mut behind = false;
+    for k in 0..4 {
+        let l = if k & 1 == 0 { lat - half } else { lat + half };
+        let py_w = if k & 2 == 0 { base_y } else { top_y };
+        // the corner relative to the eye: horizontal (dh along fwd, l along rgt), py_w - eye_y up
+        let px_ = dh * fwd_x + l * rgt_x;
+        let pz_ = dh * fwd_z + l * rgt_z;
+        let pyr = py_w - eye_y;
+        let zc = (px_ * pfx + pyr * pfy) + pz_ * pfz;
+        if !(zc > 0.0001f32) {
+            behind = true;
+            break;
+        }
+        let xc = px_ * rgt_x + pz_ * rgt_z;
+        let yc = (px_ * pux + pyr * puy) + pz_ * puz;
+        let sxp = (xc / zc + 1.0f32) * hw - 0.5f32;
+        let syp = (1.0f32 - yc / zc) * hh - 0.5f32;
+        if sxp < bx0 { bx0 = sxp; }
+        if sxp > bx1 { bx1 = sxp; }
+        if syp < by0 { by0 = syp; }
+        if syp > by1 { by1 = syp; }
+    }
+    if !behind {
+        let a = ffloor(bx0) - 1;
+        let b = ffloor(bx1) + 1;
+        let e = ffloor(by0) - 1;
+        let f = ffloor(by1) + 1;
+        if a > x0 { x0 = a; }
+        if b < x1 { x1 = b; }
+        if e > y0 { y0 = e; }
+        if f < y1 { y1 = f; }
+    }
+    let tile = if atlas_tile < n_tiles { atlas_tile } else { 0 };
+    let mut py = y0;
+    while py <= y1 {
+        let cyp = dst_y as i32 + py;
+        if cyp < 0 || cyp as usize >= ch {
+            py += 1;
+            continue;
+        }
+        let sy = 1.0f32 - 2.0f32 * ((py as f32 + 0.5f32) / fh);
+        let mut pxi = x0;
+        while pxi <= x1 {
+            let cxp = dst_x as i32 + pxi;
+            if cxp < 0 || cxp as usize >= cw {
+                pxi += 1;
+                continue;
+            }
+            let sx = 2.0f32 * ((pxi as f32 + 0.5f32) / fw) - 1.0f32;
+            let rdx = (sx * rgt_x + pfx) + sy * pux;
+            let rdy = pfy + sy * puy;
+            let rdz = (sx * rgt_z + pfz) + sy * puz;
+            let rn = rdx * fwd_x + rdz * fwd_z;
+            if !(rn > 0.0f32) {
+                pxi += 1;
+                continue;
+            }
+            let t = dh / rn;
+            let u = (t * (rdx * rgt_x + rdz * rgt_z) - (lat - half)) / size_w;
+            let v = (top_y - (eye_y + t * rdy)) / size_h;
+            if !(u >= 0.0f32 && u < 1.0f32 && v >= 0.0f32 && v < 1.0f32) {
+                pxi += 1;
+                continue;
+            }
+            let i = (cyp as usize) * cw + (cxp as usize);
+            if t >= c.depth[i] {
+                pxi += 1;
+                continue;
+            }
+            let (t0, t1, t2, sa) = texel(atlas, tile, tile_size(tile_px), u, v);
+            if sa == 0 {
+                pxi += 1;
+                continue;
+            }
+            let (sr, sg, sb) = match colours {
+                Some((c1, c2)) => hrp_colour(c1, c2, t0, t1),
+                None => (t0, t1, t2),
+            };
+            let d = i * 4;
+            if sa == 255 {
+                c.px[d] = sr;
+                c.px[d + 1] = sg;
+                c.px[d + 2] = sb;
+                c.px[d + 3] = 255;
+                c.depth[i] = t;
+            } else {
+                let a = (sa as f32) / 255.0f32;
+                let ia = 1.0f32 - a;
+                c.px[d] = ((c.px[d] as f32) * ia + (sr as f32) * a) as u8;
+                c.px[d + 1] = ((c.px[d + 1] as f32) * ia + (sg as f32) * a) as u8;
+                c.px[d + 2] = ((c.px[d + 2] as f32) * ia + (sb as f32) * a) as u8;
+                c.px[d + 3] = 255;
+            }
+            pxi += 1;
+        }
+        py += 1;
+    }
+}
+
 /// Draw an upright billboard `size_w` wide and `size_h` tall (cells), its
 /// bottom at height `base_y`, centred on (`sprite_x`, `sprite_z`), depth-tested
 /// against the forward depths `rs_maze_view` left in the canvas. Same rules as
@@ -430,6 +635,11 @@ pub extern "C" fn rs_maze_sprite(
     }
     if c.depth.len() != cw * ch {
         c.depth = vec![f32::INFINITY; cw * ch];
+    }
+    if maze_pitch() != 0.0f32 {
+        sprite_pitched(canvas, eye_x, eye_y, eye_z, yaw, view_dist, sprite_x, sprite_z, base_y, size_w, size_h,
+            atlas, tile_px, n_tiles, atlas_tile, dst_x, dst_y, dst_w, dst_h, None);
+        return;
     }
     let s = psin(yaw as f64) as f32;
     let co = pcos(yaw as f64) as f32;
@@ -575,6 +785,11 @@ pub extern "C" fn rs_maze_sprite2(
     if c.depth.len() != cw * ch {
         c.depth = vec![f32::INFINITY; cw * ch];
     }
+    if maze_pitch() != 0.0f32 {
+        sprite_pitched(canvas, eye_x, eye_y, eye_z, yaw, view_dist, sprite_x, sprite_z, base_y, size_w, size_h,
+            atlas, tile_px, n_tiles, atlas_tile, dst_x, dst_y, dst_w, dst_h, Some((rgb1, rgb2)));
+        return;
+    }
     let s = psin(yaw as f64) as f32;
     let co = pcos(yaw as f64) as f32;
     let fwd_x = s;
@@ -714,6 +929,15 @@ pub extern "C" fn rs_maze_boxes(
     let fwd_z = -co;
     let rgt_x = co;
     let rgt_z = s;
+    // pitch (section "pitch"): 0 keeps the original ray exactly
+    let pitched = maze_pitch() != 0.0f32;
+    let (sp, cp) = pitch_sc();
+    let pfx = s * cp;
+    let pfy = -sp;
+    let pfz = -co * cp;
+    let pux = s * sp;
+    let puy = cp;
+    let puz = -co * sp;
     let sky_r = ((sky_rgb >> 16) & 255) as u8;
     let sky_g = ((sky_rgb >> 8) & 255) as u8;
     let sky_b = (sky_rgb & 255) as u8;
@@ -734,9 +958,11 @@ pub extern "C" fn rs_maze_boxes(
                 continue;
             }
             let sx = 2.0f32 * ((px as f32 + 0.5f32) / fw) - 1.0f32;
-            let rdx = sx * rgt_x + fwd_x;
-            let rdz = sx * rgt_z + fwd_z;
-            let rdy = sy;
+            let (rdx, rdy, rdz) = if pitched {
+                ((sx * rgt_x + pfx) + sy * pux, pfy + sy * puy, (sx * rgt_z + pfz) + sy * puz)
+            } else {
+                (sx * rgt_x + fwd_x, sy, sx * rgt_z + fwd_z)
+            };
             let len = (rdx * rdx + rdy * rdy + rdz * rdz).sqrt();
             let d = [rdx / len, rdy / len, rdz / len];
             let e = [eye_x, eye_y, eye_z];
@@ -871,6 +1097,15 @@ pub extern "C" fn rs_maze_quads(
     let fwd_z = -co;
     let rgt_x = co;
     let rgt_z = s;
+    // pitch (section "pitch"): 0 keeps the original ray exactly
+    let pitched = maze_pitch() != 0.0f32;
+    let (sp, cp) = pitch_sc();
+    let pfx = s * cp;
+    let pfy = -sp;
+    let pfz = -co * cp;
+    let pux = s * sp;
+    let puy = cp;
+    let puz = -co * sp;
     let fw = dst_w as f32;
     let fh = dst_h as f32;
     let stride = MAZE_QUAD_FLOATS as usize;
@@ -908,9 +1143,11 @@ pub extern "C" fn rs_maze_quads(
                 continue;
             }
             let sx = 2.0f32 * ((px as f32 + 0.5f32) / fw) - 1.0f32;
-            let rdx = sx * rgt_x + fwd_x;
-            let rdz = sx * rgt_z + fwd_z;
-            let rdy = sy;
+            let (rdx, rdy, rdz) = if pitched {
+                ((sx * rgt_x + pfx) + sy * pux, pfy + sy * puy, (sx * rgt_z + pfz) + sy * puz)
+            } else {
+                (sx * rgt_x + fwd_x, sy, sx * rgt_z + fwd_z)
+            };
             let len = (rdx * rdx + rdy * rdy + rdz * rdz).sqrt();
             let dx = rdx / len;
             let dy = rdy / len;
@@ -1051,6 +1288,15 @@ pub extern "C" fn rs_maze_sky(
     let fwd_z = -co;
     let rgt_x = co;
     let rgt_z = s;
+    // pitch (section "pitch"): 0 keeps the original ray exactly
+    let pitched = maze_pitch() != 0.0f32;
+    let (sp, cp) = pitch_sc();
+    let pfx = s * cp;
+    let pfy = -sp;
+    let pfz = -co * cp;
+    let pux = s * sp;
+    let puy = cp;
+    let puz = -co * sp;
     let fw = dst_w as f32;
     let fh = dst_h as f32;
     let fs = size as f32;
@@ -1072,9 +1318,11 @@ pub extern "C" fn rs_maze_sky(
                 continue;
             }
             let sx = 2.0f32 * ((px as f32 + 0.5f32) / fw) - 1.0f32;
-            let x = sx * rgt_x + fwd_x;
-            let y = sy;
-            let z = sx * rgt_z + fwd_z;
+            let (x, y, z) = if pitched {
+                ((sx * rgt_x + pfx) + sy * pux, pfy + sy * puy, (sx * rgt_z + pfz) + sy * puz)
+            } else {
+                (sx * rgt_x + fwd_x, sy, sx * rgt_z + fwd_z)
+            };
             let ax = if x < 0.0f32 { -x } else { x };
             let ay = if y < 0.0f32 { -y } else { y };
             let az = if z < 0.0f32 { -z } else { z };
@@ -1481,21 +1729,28 @@ mod tests {
     }
 
     fn scene_hash(name: &str) -> u64 {
+        scene_hash_p(name, name, 0.0f32)
+    }
+
+    // `label` is the scene's name in the goldens; `name` the scene it draws, at `pitch`.
+    fn scene_hash_p(label: &str, name: &str, pitch: f32) -> u64 {
         let (m, eye, yaw) = scene(name);
         let a = atlas_bytes();
         let h = fresh();
+        rs_maze_pitch(h, pitch);
         render_all(h, name, &m, eye, yaw, &a);
+        rs_maze_pitch(h, 0.0f32);
         let hh = fnv(&crate::cv(h).px);
         // MAZE_DUMP_DIR=<dir>: raw 64x64 RGBA per scene, for looking at.
         if let Ok(d) = std::env::var("MAZE_DUMP_DIR") {
-            std::fs::write(format!("{}/{}.rgba", d, name), &crate::cv(h).px).unwrap();
+            std::fs::write(format!("{}/{}.rgba", d, label), &crate::cv(h).px).unwrap();
         }
         if let Ok(p) = std::env::var("MAZE_SCENES_OUT") {
             let line = format!(
                 "{{\"name\":\"{}\",\"hash\":\"{}\",\"w\":{},\"h\":{},\"cells\":[{}],\
                  \"eye\":[{},{},{}],\"yaw\":{},\"view\":{},\"tile_px\":{},\"n_tiles\":{},\
-                 \"sky\":{},\"decal\":[{},{}],\"dst\":[{},{},{},{}],\"sprites\":[{}],\"sprites2\":[{}],\"atlas\":\"{}\"}}\n",
-                name, hh, W, H,
+                 \"sky\":{},\"decal\":[{},{}],\"dst\":[{},{},{},{}],\"sprites\":[{}],\"sprites2\":[{}],\"atlas\":\"{}\",\"pitch\":{:?}}}\n",
+                label, hh, W, H,
                 m.p.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
                 eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY, DECAL.0, DECAL.1,
                 DST.0, DST.1, DST.2, DST.3,
@@ -1503,7 +1758,7 @@ mod tests {
                     .collect::<Vec<_>>().join(","),
                 sprites2(name).iter().map(|s| format!("[{},{},{},{},{},{},{},{}]", s.0, s.1, s.2, s.3, s.4, s.5, s.6, s.7))
                     .collect::<Vec<_>>().join(","),
-                b64(&a),
+                b64(&a), pitch,
             );
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
@@ -1738,6 +1993,7 @@ mod tests {
                 eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY, DST.0, DST.1, DST.2, DST.3,
                 if name == "box_pillar" { "[0.6,-1.0,0.0,0.25,0.33,7]" } else { "" },
                 b64(&a));
+            let line = tag_pitch(line, name);
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
             f.write_all(line.as_bytes()).unwrap();
@@ -1847,6 +2103,7 @@ mod tests {
                 "{{\"kind\":\"quads\",\"name\":\"{}\",\"hash\":\"{}\",\"boxes\":[{}],\"quads\":[{}],\"eye\":[{},{},{}],\"yaw\":{},\"view\":{},\"tile_px\":{},\"n_tiles\":{},\"sky\":{},\"dst\":[{},{},{},{}],\"atlas\":\"{}\"}}\n",
                 name, hh, f32s(&bx), f32s(&qs), eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY,
                 DST.0, DST.1, DST.2, DST.3, b64(&a));
+            let line = tag_pitch(line, name);
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
             f.write_all(line.as_bytes()).unwrap();
@@ -1909,6 +2166,7 @@ mod tests {
                 name, hh, bx.iter().map(|v| format!("{:?}", v)).collect::<Vec<_>>().join(","),
                 eye.0, eye.1, eye.2, yaw, VIEW, TILE_PX, N_TILES, SKY, SKY_PX, b64(&s),
                 DST.0, DST.1, DST.2, DST.3, b64(&a));
+            let line = tag_pitch(line, name);
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
             f.write_all(line.as_bytes()).unwrap();
@@ -2008,6 +2266,42 @@ mod tests {
         assert!(bad.is_empty(), "{}", bad.join("; "));
     }
 
+    // A scene drawn at a pitch (section "pitch"): its line names the pitch,
+    // which wasm_maze_check sets before drawing, and the scene gets a
+    // distinct name.
+    fn tag_pitch(line: String, name: &str) -> String {
+        let p = maze_pitch();
+        if p == 0.0f32 {
+            return line;
+        }
+        line.replacen(&format!("\"name\":\"{}\"", name), &format!("\"name\":\"{}_pitch{:?}\",\"pitch\":{:?}", name, p, p), 1)
+    }
+
+    fn pitched(p: f32, f: impl Fn() -> u64) -> u64 {
+        rs_maze_pitch(0, p);
+        let h = f();
+        rs_maze_pitch(0, 0.0f32);
+        h
+    }
+
+    // Recorded 2026-10-08 on aarch64-apple-darwin (rustc 1.85.0).
+    // box_pillar has sprites: re-recorded in P4, when sprites took the pitch
+    const PRIM_PITCH_GOLD: [u64; 4] = [17235878260193232661, 6852526034784080148, 10634550033366741183, 16505755188274154013];
+
+    #[test]
+    fn prim_pitch_goldens() {
+        // a closed room looked down at, a pillar looked up at, the octagon looked down at,
+        // and the sky cube looked up at
+        let got = vec![
+            pitched(0.6, || box_hash("box_room")),
+            pitched(-0.5, || box_hash("box_pillar")),
+            pitched(0.4, || quad_hash("quad_ring")),
+            pitched(-0.7, || sky_hash("sky_east", 1.2)),
+        ];
+        if std::env::var("MAZE_PRINT_GOLD").is_ok() { eprintln!("PRIM_PITCH_GOLD {:?}", got); }
+        assert_eq!(got, PRIM_PITCH_GOLD.to_vec());
+    }
+
     // Recorded 2026-10-03 on aarch64-apple-darwin (rustc 1.85.0).
     const QUAD_GOLD: [u64; 2] = [7597624935351682213, 3003790360022301269];
 
@@ -2022,6 +2316,45 @@ mod tests {
 
     // Recorded 2026-09-30 on aarch64-apple-darwin (rustc 1.85.0); the wasm32
     // build matches (tests/wasm_maze_check.mjs).
+    // Pitched views (section "pitch"): the maze looked down at, up at a
+    // ceiling, and steeply down from a platform's edge.
+    const PITCH_SCENES: [(&str, &str, f32); 5] = [
+        ("corridor_down", "corridor", 0.5),
+        ("room_ceiling_up", "room_ceiling", -0.6),
+        ("platform_edge_down", "platform_edge", 0.9),
+        // billboards and two-colour sprites under pitch (P4)
+        ("sprites_down", "sprites", 0.5),
+        ("sprites_up", "sprites", -0.5),
+    ];
+    // Recorded 2026-10-08 on aarch64-apple-darwin (rustc 1.85.0).
+    const PITCH_GOLD: [u64; 5] = [2084675812799101400, 3909786894804493505, 12583855333488843055, 17743188390924374150, 15844655631080512421];
+
+    #[test]
+    fn pitch_goldens() {
+        let got: Vec<u64> = PITCH_SCENES.iter().map(|(l, n, p)| scene_hash_p(l, n, *p)).collect();
+        if std::env::var("MAZE_PRINT_GOLD").is_ok() { eprintln!("PITCH_GOLD {:?}", got); }
+        let bad: Vec<String> = PITCH_SCENES.iter().enumerate().filter(|(i, _)| got[*i] != PITCH_GOLD[*i])
+            .map(|(i, (l, _, _))| format!("{} got {} want {}", l, got[i], PITCH_GOLD[i])).collect();
+        assert!(bad.is_empty(), "{}", bad.join("; "));
+    }
+
+    #[test]
+    fn pitch_moves_the_horizon() {
+        // looking down, fewer rows are all sky; looking up, more
+        let (m, eye, yaw) = scene("open_sky");
+        let a = atlas_bytes();
+        let sky_rows = |pitch: f32| {
+            let h = fresh();
+            rs_maze_pitch(h, pitch);
+            render(h, &m, eye, yaw, &a);
+            rs_maze_pitch(h, 0.0f32);
+            let d = &crate::cv(h).depth;
+            (0..64).filter(|&y| (0..64).all(|x| d[y * 64 + x].is_infinite())).count()
+        };
+        let (down, level, up) = (sky_rows(0.4), sky_rows(0.0), sky_rows(-0.4));
+        assert!(down < level && level < up, "sky rows down {} level {} up {}", down, level, up);
+    }
+
     const GOLD: [u64; 7] = [
         8890691392851134841,
         18171036880018896050,

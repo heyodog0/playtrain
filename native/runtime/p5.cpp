@@ -321,6 +321,10 @@ void mazeSky(double yaw, const uint8_t* sky, int size, int dstX, int dstY, int d
               mazeDev(dstX, _devSx), mazeDev(dstY, _devSy), mazeDev(dstW, _devSx), mazeDev(dstH, _devSy));
 }
 
+void mazePitch(double pitch) {
+  rs_maze_pitch(_h, (float)pitch);
+}
+
 void mazePview(double yaw, double pitch, double view, const uint8_t* pano, int size,
                const float* quads, int n, int dstX, int dstY, int dstW, int dstH) {
   rs_maze_pview(_h, (float)yaw, (float)pitch, (float)view, pano, (uint32_t)size, quads, (uint32_t)n,

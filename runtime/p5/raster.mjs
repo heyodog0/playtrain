@@ -540,6 +540,16 @@ class Context2D {
   // planes. Same rule as voxelView: Math.fround after every float op, in the
   // Rust's association order, and tests/test_maze.py plus
   // crates/rasterizer/tests/wasm_maze_check.mjs compare the hashes.
+  // rs_maze_pitch (maze.rs, section "pitch"): the pitch the maze primitives
+  // drawn after it use, radians, positive looks down; 0 unless set. Rust keeps
+  // it per thread, this per canvas: a game draws one canvas.
+  mazePitch(pitch) { this._mazePitch = Math.fround(pitch); }
+  // [sp, cp] of the current pitch; exactly [0, 1] at pitch 0.
+  _mazePitchSC() {
+    const p = this._mazePitch || 0;
+    return p === 0 ? [0, 1] : [Math.fround(_rsin(p)), Math.fround(_rcos(p))];
+  }
+
   mazeView(cells, w, h, eyeX, eyeY, eyeZ, yaw, viewDist, atlas, tilePx, nTiles, skyRgb, decalLo, decalHi, dstX, dstY, dstW, dstH) {
     if (!cells || !atlas) return;
     if (w === 0 || h === 0 || dstW === 0 || dstH === 0 || tilePx === 0 || nTiles === 0) return;
@@ -554,6 +564,10 @@ class Context2D {
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));
     const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const pitched = (this._mazePitch || 0) !== 0;
+    const [sp, cp] = this._mazePitchSC();
+    const pfx = F(s * cp), pfy = F(-sp), pfz = F(F(-co) * cp);
+    const pux = F(s * sp), puy = cp, puz = F(F(-co) * sp);
     const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
     const n = w * h;
     const fw = F(dstW), fh = F(dstH);
@@ -577,9 +591,16 @@ class Context2D {
         const cxp = dstX + pxi;
         if (cxp >= cw) continue;
         const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
-        const rdx = F(F(sx * rgtX) + fwdX);
-        const rdz = F(F(sx * rgtZ) + fwdZ);
-        const rdy = sy;
+        let rdx, rdy, rdz;
+        if (pitched) {
+          rdx = F(F(F(sx * rgtX) + pfx) + F(sy * pux));
+          rdy = F(pfy + F(sy * puy));
+          rdz = F(F(F(sx * rgtZ) + pfz) + F(sy * puz));
+        } else {
+          rdx = F(F(sx * rgtX) + fwdX);
+          rdz = F(F(sx * rgtZ) + fwdZ);
+          rdy = sy;
+        }
         const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
         const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
 
@@ -686,6 +707,10 @@ class Context2D {
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));
     const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const pitched = (this._mazePitch || 0) !== 0;
+    const [sp, cp] = this._mazePitchSC();
+    const pfx = F(s * cp), pfy = F(-sp), pfz = F(F(-co) * cp);
+    const pux = F(s * sp), puy = cp, puz = F(F(-co) * sp);
     const skyR = (skyRgb >>> 16) & 255, skyG = (skyRgb >>> 8) & 255, skyB = skyRgb & 255;
     const fw = F(dstW), fh = F(dstH);
     const size = tilePx & 0xFFFF;
@@ -700,9 +725,16 @@ class Context2D {
         const cxp = dstX + pxi;
         if (cxp >= cw) continue;
         const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
-        const rdx = F(F(sx * rgtX) + fwdX);
-        const rdz = F(F(sx * rgtZ) + fwdZ);
-        const rdy = sy;
+        let rdx, rdy, rdz;
+        if (pitched) {
+          rdx = F(F(F(sx * rgtX) + pfx) + F(sy * pux));
+          rdy = F(pfy + F(sy * puy));
+          rdz = F(F(F(sx * rgtZ) + pfz) + F(sy * puz));
+        } else {
+          rdx = F(F(sx * rgtX) + fwdX);
+          rdz = F(F(sx * rgtZ) + fwdZ);
+          rdy = sy;
+        }
         const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
         d[0] = F(rdx / len); d[1] = F(rdy / len); d[2] = F(rdz / len);
         for (let k = 0; k < 3; k++) inv[k] = (d[k] > 0 || d[k] < 0) ? F(1 / d[k]) : BIG;
@@ -779,6 +811,10 @@ class Context2D {
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));
     const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const pitched = (this._mazePitch || 0) !== 0;
+    const [sp, cp] = this._mazePitchSC();
+    const pfx = F(s * cp), pfy = F(-sp), pfz = F(F(-co) * cp);
+    const pux = F(s * sp), puy = cp, puz = F(F(-co) * sp);
     const fw = F(dstW), fh = F(dstH);
     const size = tilePx & 0xFFFF;
     const ffloor = (x) => { const t = x | 0; return F(t) > x ? t - 1 : t; };
@@ -812,9 +848,16 @@ class Context2D {
         const cxp = dstX + pxi;
         if (cxp >= cw) continue;
         const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
-        const rdx = F(F(sx * rgtX) + fwdX);
-        const rdz = F(F(sx * rgtZ) + fwdZ);
-        const rdy = sy;
+        let rdx, rdy, rdz;
+        if (pitched) {
+          rdx = F(F(F(sx * rgtX) + pfx) + F(sy * pux));
+          rdy = F(pfy + F(sy * puy));
+          rdz = F(F(F(sx * rgtZ) + pfz) + F(sy * puz));
+        } else {
+          rdx = F(F(sx * rgtX) + fwdX);
+          rdz = F(F(sx * rgtZ) + fwdZ);
+          rdy = sy;
+        }
         const len = F(Math.sqrt(F(F(F(rdx * rdx) + F(rdy * rdy)) + F(rdz * rdz))));
         const dx = F(rdx / len), dy = F(rdy / len), dz = F(rdz / len);
         const i = cyp * cw + cxp;
@@ -884,6 +927,10 @@ class Context2D {
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));
     const fwdX = s, fwdZ = F(-co), rgtX = co, rgtZ = s;
+    const pitched = (this._mazePitch || 0) !== 0;
+    const [sp, cp] = this._mazePitchSC();
+    const pfx = F(s * cp), pfy = F(-sp), pfz = F(F(-co) * cp);
+    const pux = F(s * sp), puy = cp, puz = F(F(-co) * sp);
     const fw = F(dstW), fh = F(dstH), fs = F(size), smax = size - 1;
     const faceBytes = size * size * 4;
     for (let py = 0; py < dstH; py++) {
@@ -896,7 +943,14 @@ class Context2D {
         const i = cyp * cw + cxp;
         if (this.depth[i] !== Infinity && this.depth[i] !== -Infinity) continue;
         const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
-        const x = F(F(sx * rgtX) + fwdX), y = sy, z = F(F(sx * rgtZ) + fwdZ);
+        let x, y, z;
+        if (pitched) {
+          x = F(F(F(sx * rgtX) + pfx) + F(sy * pux));
+          y = F(pfy + F(sy * puy));
+          z = F(F(F(sx * rgtZ) + pfz) + F(sy * puz));
+        } else {
+          x = F(F(sx * rgtX) + fwdX); y = sy; z = F(F(sx * rgtZ) + fwdZ);
+        }
         const ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, az = z < 0 ? -z : z;
         let face, uu, vv;
         if (ax >= ay && ax >= az) {
@@ -995,6 +1049,103 @@ class Context2D {
   }
 
   // A LINE-FOR-LINE port of rs_maze_sprite.
+  // A LINE-FOR-LINE port of sprite_pitched (maze.rs, section "pitch"): a
+  // billboard under pitch, each pixel of its projected bounding box casting
+  // the pitched ray into the billboard's plane. colours: [rgb1, rgb2] for
+  // rs_maze_sprite2, null for rs_maze_sprite. tilePx is the level-0 size.
+  _mazeSpritePitched(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH, colours) {
+    const F = Math.fround;
+    const cw = this.w, ch = this.h, px = this.px;
+    const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
+    const yw = F(yaw);
+    const s = F(_rsin(yw)), co = F(_rcos(yw));
+    const fx = s, fz = F(-co), rx = co, rz = s;
+    const [sp, cp] = this._mazePitchSC();
+    const pfx = F(s * cp), pfy = F(-sp), pfz = F(F(-co) * cp);
+    const pux = F(s * sp), puy = cp, puz = F(F(-co) * sp);
+    const dx = F(F(spriteX) - ex), dz = F(F(spriteZ) - ez);
+    const dh = F(F(dx * fx) + F(dz * fz));
+    const lat = F(F(dx * rx) + F(dz * rz));
+    if (!(dh > 0) || dh > vd) return;
+    const by = F(baseY), sw = F(sizeW), sh = F(sizeH);
+    const half = F(sw * 0.5), topY = F(by + sh);
+    const fw = F(dstW), fh = F(dstH);
+    const hw = F(fw * 0.5), hh = F(fh * 0.5);
+    // Rust's `as i32` saturates; JS's |0 would wrap
+    const toI = (x) => (x >= 2147483647 ? 2147483647 : x <= -2147483648 ? -2147483648 : Math.trunc(x));
+    const ffloor = (x) => { const t = toI(x); return F(t) > x ? t - 1 : t; };
+    const BIG = F(1.0e30);
+    let x0 = 0, x1 = dstW - 1, y0 = 0, y1 = dstH - 1;
+    let bx0 = BIG, bx1 = F(-BIG), by0 = BIG, by1 = F(-BIG), behind = false;
+    for (let k = 0; k < 4; k++) {
+      const l = (k & 1) === 0 ? F(lat - half) : F(lat + half);
+      const pyw = (k & 2) === 0 ? by : topY;
+      const pX = F(F(dh * fx) + F(l * rx)), pZ = F(F(dh * fz) + F(l * rz)), pyr = F(pyw - ey);
+      const zc = F(F(F(pX * pfx) + F(pyr * pfy)) + F(pZ * pfz));
+      if (!(zc > F(0.0001))) { behind = true; break; }
+      const xc = F(F(pX * rx) + F(pZ * rz));
+      const yc = F(F(F(pX * pux) + F(pyr * puy)) + F(pZ * puz));
+      const sxp = F(F(F(F(xc / zc) + 1) * hw) - 0.5);
+      const syp = F(F(F(1 - F(yc / zc)) * hh) - 0.5);
+      if (sxp < bx0) bx0 = sxp; if (sxp > bx1) bx1 = sxp;
+      if (syp < by0) by0 = syp; if (syp > by1) by1 = syp;
+    }
+    if (!behind) {
+      const a = ffloor(bx0) - 1, b = ffloor(bx1) + 1, e = ffloor(by0) - 1, f = ffloor(by1) + 1;
+      if (a > x0) x0 = a; if (b < x1) x1 = b;
+      if (e > y0) y0 = e; if (f < y1) y1 = f;
+    }
+    const tile = atlasTile < nTiles ? atlasTile : 0;
+    const tpx = F(tilePx), tmax = tilePx - 1, tstride = tilePx * tilePx * 4;
+    for (let py = y0; py <= y1; py++) {
+      const cyp = dstY + py;
+      if (cyp < 0 || cyp >= ch) continue;
+      const sy = F(1 - F(2 * F(F(py + 0.5) / fh)));
+      for (let pxi = x0; pxi <= x1; pxi++) {
+        const cxp = dstX + pxi;
+        if (cxp < 0 || cxp >= cw) continue;
+        const sx = F(F(2 * F(F(pxi + 0.5) / fw)) - 1);
+        const rdx = F(F(F(sx * rx) + pfx) + F(sy * pux));
+        const rdy = F(pfy + F(sy * puy));
+        const rdz = F(F(F(sx * rz) + pfz) + F(sy * puz));
+        const rn = F(F(rdx * fx) + F(rdz * fz));
+        if (!(rn > 0)) continue;
+        const t = F(dh / rn);
+        const u = F(F(F(t * F(F(rdx * rx) + F(rdz * rz))) - F(lat - half)) / sw);
+        const v = F(F(topY - F(ey + F(t * rdy))) / sh);
+        if (!(u >= 0 && u < 1 && v >= 0 && v < 1)) continue;
+        const i = cyp * cw + cxp;
+        if (t >= this.depth[i]) continue;
+        let tx = toI(F(u * tpx)), ty = toI(F(v * tpx));
+        if (tx < 0) tx = 0; if (tx > tmax) tx = tmax;
+        if (ty < 0) ty = 0; if (ty > tmax) ty = tmax;
+        const o = tile * tstride + (ty * tilePx + tx) * 4;
+        const t0 = atlas[o], t1 = atlas[o + 1], t2 = atlas[o + 2], sa = atlas[o + 3];
+        if (sa === 0) continue;
+        let sr = t0, sg = t1, sb = t2;
+        if (colours) {
+          const [c1, c2] = colours;
+          const chn = (k) => {
+            const c = (((c1 >>> k) & 255) * (255 - t1) + ((c2 >>> k) & 255) * t1 + 127) / 255 | 0;
+            return (c * t0 + 127) / 255 | 0;
+          };
+          sr = chn(16); sg = chn(8); sb = chn(0);
+        }
+        const d = i * 4;
+        if (sa === 255) {
+          px[d] = sr; px[d + 1] = sg; px[d + 2] = sb; px[d + 3] = 255;
+          this.depth[i] = t;
+        } else {
+          const a = F(sa / 255), ia = F(1 - a);
+          px[d] = F(F(px[d] * ia) + F(sr * a)) | 0;
+          px[d + 1] = F(F(px[d + 1] * ia) + F(sg * a)) | 0;
+          px[d + 2] = F(F(px[d + 2] * ia) + F(sb * a)) | 0;
+          px[d + 3] = 255;
+        }
+      }
+    }
+  }
+
   mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
     if (!atlas || tilePx === 0 || nTiles === 0 || dstW === 0 || dstH === 0) return;
     tilePx &= 0xFFFF;   // level 0 only: the mip levels follow it in the atlas
@@ -1002,6 +1153,10 @@ class Context2D {
     const cw = this.w, ch = this.h, px = this.px;
     if (cw === 0 || ch === 0) return;
     if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    if ((this._mazePitch || 0) !== 0) {
+      this._mazeSpritePitched(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH, null);
+      return;
+    }
     const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));
@@ -1068,6 +1223,10 @@ class Context2D {
     const cw = this.w, ch = this.h, px = this.px;
     if (cw === 0 || ch === 0) return;
     if (!this.depth || this.depth.length !== cw * ch) this.depth = new Float32Array(cw * ch).fill(Infinity);
+    if ((this._mazePitch || 0) !== 0) {
+      this._mazeSpritePitched(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH, [rgb1, rgb2]);
+      return;
+    }
     const ex = F(eyeX), ey = F(eyeY), ez = F(eyeZ), vd = F(viewDist);
     const yw = F(yaw);
     const s = F(_rsin(yw)), co = F(_rcos(yw));

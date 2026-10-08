@@ -117,6 +117,7 @@ void rs_maze_quads(uint32_t canvas, const float* quads, uint32_t n,
                    uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
 void rs_maze_sky(uint32_t canvas, float yaw, const uint8_t* sky, uint32_t size,
                  uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);
+void rs_maze_pitch(uint32_t canvas, float pitch);
 void rs_maze_pview(uint32_t canvas, float yaw, float pitch, float view, const uint8_t* pano, uint32_t size,
                    const float* quads, uint32_t n,
                    uint32_t dstX, uint32_t dstY, uint32_t dstW, uint32_t dstH);

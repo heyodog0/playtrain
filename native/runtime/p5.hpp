@@ -198,6 +198,9 @@ void mazeQuads(const float* quads, int n,
 // The skybox cube (6 faces size x size RGBA: rt, lf, up, dn, ft, bk) over the
 // pixels the other maze primitives left as sky: see rs_maze_sky in maze.rs.
 void mazeSky(double yaw, const uint8_t* sky, int size, int dstX, int dstY, int dstW, int dstH);
+// The pitch the maze primitives drawn after it use (radians, positive looks
+// down; 0 unless set): see rs_maze_pitch in maze.rs.
+void mazePitch(double pitch);
 // A view with pitch from a fixed eye: a cube panorama and solid quads over it
 // (psychlab): see rs_maze_pview in maze.rs.
 void mazePview(double yaw, double pitch, double view, const uint8_t* pano, int size,

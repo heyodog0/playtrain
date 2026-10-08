@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/explore_obstructed_goals_large",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "1660b65e365841a440c7b0af65a148c12baca0e06d9498cbd938583177a1342c"
+  "source_sha256": "d668af07cbd8bcc24fdfa86b360450dda32305880ae0b3af1bd94bf3740d0805"
 }

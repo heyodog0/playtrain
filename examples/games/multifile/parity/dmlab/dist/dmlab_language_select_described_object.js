@@ -3,7 +3,7 @@
 //
 // Built by tools/bundle_multifile.py from 14 sources listed in
 // examples/games/multifile/parity/dmlab/manifest_language_select_described_object.json
-// Source hash (sha256 over the concatenated sources): 8bba7812d099011684feebde430a2138aed27da3251b7237969ec125657ff9b0
+// Source hash (sha256 over the concatenated sources): bcee9608676f9a233430b0130f530b078ea15fa082971896ea8bb86376888e18
 //
 // Edit the files under src/ and common/, then run:
 //     just bundle dmlab_language_select_described_object
@@ -9487,6 +9487,9 @@ function dmDrawSpawn(st) {
 
 function dmRender(st) {
   if (DM_LEVEL.kind === 'psychlab') { dmRenderPsych(st); return; }
+  // the maze primitives' pitch: a person's look up/down, 0 for an agent; set
+  // every frame (the rasterizer keeps it per thread)
+  if (typeof mazePitch === 'function') mazePitch(dmLookPitch * Math.PI / 180);
   dmRenderScene(st);
   dmDrawSpawn(st);
   if (!dmHuman) dmDrawHud();
@@ -9665,8 +9668,16 @@ function dmMaxFrames() { return DM_LEVEL.episode_seconds * DM_FPS; }
 // unchanged. A person gets mouse look (a mouse pixel is DMLab's look pixel: its
 // look actions are 20 px), a crosshair in psychlab, and no approximate HUD.
 let dmHuman = false, dmLookDx = 0, dmLookDy = 0;
+// The view's pitch for a person outside psychlab (degrees, positive looks
+// down; PLAN.md section 12). Drawing only: Quake walks along the yaw alone, so
+// pitch never moves the player (PROGRESS.md P0), and only humanLook changes it.
+let dmLookPitch = 0;
 var humanStart = function () { dmHuman = true; };
-var humanLook = function (dx, dy) { dmLookDx += dx; dmLookDy += dy; };
+var humanLook = function (dx, dy) {
+  dmLookDx += dx;
+  if (DM_LEVEL.kind === 'psychlab') { dmLookDy += dy; return; }
+  dmLookPitch = Math.max(-85, Math.min(85, dmLookPitch + dy * DM_LOOK));
+};
 
 function draw() {
   if (gameState === null) resetGame(0);
@@ -9683,6 +9694,13 @@ function draw() {
       }
       dmLookDx = 0; dmLookDy = 0;
     }
+    // a person's arrow up / down outside psychlab: the look actions' rate
+    // (20 px a frame), drawing only like the mouse's
+    if (dmHuman && DM_LEVEL.kind !== 'psychlab' && typeof keyIsDown === 'function') {
+      const step = DM_REPEAT * 20 * DM_LOOK;
+      if (keyIsDown(DM_KEY.UP)) dmLookPitch = Math.max(-85, dmLookPitch - step);
+      if (keyIsDown(DM_KEY.DOWN)) dmLookPitch = Math.min(85, dmLookPitch + step);
+    }
     for (let i = 0; i < DM_REPEAT && !gameOver; i++) {
       dmFrame(gameState, i === 0 ? act : (a < 0 ? DM_NOOP : DM_ACTIONS[a]));
       if (gameState.frame >= dmMaxFrames()) gameOver = true;
@@ -9693,6 +9711,7 @@ function draw() {
 }
 
 function resetGame(seed) {
+  dmLookPitch = 0;
   if (gameState === null) gameState = createState();
   dmLoad(gameState, seed >>> 0);
   gameOver = false;

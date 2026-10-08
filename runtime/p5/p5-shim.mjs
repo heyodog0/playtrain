@@ -385,6 +385,13 @@ function mazePview(yaw, pitch, view, pano, size, quads, n, dstX, dstY, dstW, dst
   _ctx.mazePview(yaw, pitch, view, pano, size, quads, n, x, y, w, h);
 }
 
+// The pitch the maze primitives drawn after it use (radians, positive looks
+// down; 0 unless set): crates/rasterizer/src/maze.rs rs_maze_pitch. A backend
+// without maze primitives draws no maze, so a pitch there is ignored.
+function mazePitch(pitch) {
+  if (typeof _ctx.mazePitch === 'function') _ctx.mazePitch(pitch);
+}
+
 // A sized billboard over mazeView's depths. Mirrors p5::mazeSprite.
 function mazeSprite(eyeX, eyeY, eyeZ, yaw, viewDist, spriteX, spriteZ, baseY, sizeW, sizeH, atlas, tilePx, nTiles, atlasTile, dstX, dstY, dstW, dstH) {
   if (typeof _ctx.mazeSprite !== 'function') {
@@ -818,7 +825,7 @@ const WEBGL = 2;
 // ---- Install globals ----
 function installGlobals() {
   const globals = {
-    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk, mazeView, mazeSprite, mazeSprite2, mazeBoxes, mazeQuads, mazeSky, mazePview,
+    createCanvas, createGraphics, createBitmap, loadBitmap, setTarget, clearTarget, image, drawTiles, voxelView, voxelSprite, voxelDusk, mazeView, mazeSprite, mazeSprite2, mazeBoxes, mazeQuads, mazeSky, mazePview, mazePitch,
     background, fill, noFill, rectMode, rect, ellipseMode, ellipse, circle, triangle, quad, line,
     stroke, noStroke, strokeWeight, noSmooth, color, lerpColor,
     textSize, textAlign, textFont, text,

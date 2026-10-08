@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/rooms_keys_doors_puzzle",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "a48f22d9a62b15db2ee34febdf0fab28b076f5c6b09e990eaed7872e8da054a0"
+  "source_sha256": "d63c7f828d07f7096eeac88af94fd08296d48cea14a64befbfb0174265ab1d91"
 }

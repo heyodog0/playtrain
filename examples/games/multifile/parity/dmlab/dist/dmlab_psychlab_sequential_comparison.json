@@ -121,5 +121,5 @@
     "level": "contributed/dmlab30/psychlab_sequential_comparison",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "d17d8a0dccad46f0e442777738dbd47740f5ff1fc88f4a090fc1deba0654ea7e"
+  "source_sha256": "287999d27eef2626e4955c36ac6315468d9f36bfab9cdfe227f59dc1f4ccc4d9"
 }

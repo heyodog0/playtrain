@@ -195,6 +195,8 @@ export function makeWasmBackend(ex) {
 
     // The panorama goes through the atlas staging buffer (cached: it is one
     // array for the episode), the quads through the f32 one.
+    mazePitch(pitch) { ex.rs_maze_pitch(this._h, pitch); }
+
     mazePview(yaw, pitch, view, pano, size, quads, n, dx, dy, dw, dh) {
       const pp = this._stage('atlas', pano, Uint8Array);
       ex.rs_voxel_noise_ptr(Math.max(quads.length, 1));

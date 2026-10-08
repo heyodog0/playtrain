@@ -371,6 +371,12 @@ FN(js_mazeQuads) {
   JS_FreeValue(ctx, gab);
   return JS_UNDEFINED;
 }
+// mazePitch(pitch)
+FN(js_mazePitch) {
+  if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
+  p5::mazePitch(argd(ctx, argv[0]));
+  return JS_UNDEFINED;
+}
 // mazePview(yaw, pitch, view, panoU8, size, quadsF32, n, dstX, dstY, dstW, dstH)
 FN(js_mazePview) {
   if (p5cb::Buf* b = cbuf(ctx)) p5cb::flush(b, g_nodraw);
@@ -517,6 +523,7 @@ static const Binding BINDINGS[] = {
   {"mazeQuads", js_mazeQuads, 14},
   {"mazeSky", js_mazeSky, 7},
   {"mazePview", js_mazePview, 11},
+  {"mazePitch", js_mazePitch, 1},
   {"clearTarget", js_clearTarget, 0}, {"image", js_image, 5}, {"drawTiles", js_drawTiles, 10},
   {"textSize", js_noop, 1}, {"textAlign", js_noop, 2}, {"text", js_noop, 3},
   {"textFont", js_noop, 1}, {"noSmooth", js_noop, 0}, {"tint", js_noop, 4},

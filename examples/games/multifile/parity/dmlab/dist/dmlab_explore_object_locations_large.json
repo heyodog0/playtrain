@@ -105,5 +105,5 @@
     "level": "contributed/dmlab30/explore_object_locations_large",
     "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
   },
-  "source_sha256": "6857504f64f813cc8140d18d4e000d0feb2df15053ac11d8ff72946d4c453827"
+  "source_sha256": "ccaaa82e6b461aed7c488a749d98d34fe28c9003194b2d117561b1e7efac5ef2"
 }

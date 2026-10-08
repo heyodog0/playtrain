@@ -120,6 +120,8 @@ function renderWasmPview(sc) {
 }
 
 function renderWasm(sc) {
+  // the maze pitch is per thread in Rust and outlives a scene: set it every time
+  x.rs_maze_pitch(0, sc.pitch || 0);
   if (sc.kind === 'pview') return renderWasmPview(sc);
   if (sc.kind === 'boxes') return renderWasmBoxes(sc);
   if (sc.kind === 'sky') return renderWasmSky(sc);
@@ -157,6 +159,7 @@ if (jsPath) {
 
 function renderJs(sc) {
   const c = JsCanvas(64, 64, 64, 64).getContext('2d');
+  c.mazePitch(sc.pitch || 0);
   if (sc.kind === 'pview') {
     const qs = Float32Array.from(sc.quads);
     c.mazePview(sc.yaw, sc.pitch, sc.view, new Uint8Array(Buffer.from(sc.pano, 'base64')), sc.pano_px,
