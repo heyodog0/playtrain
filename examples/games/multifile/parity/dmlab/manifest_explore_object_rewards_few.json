@@ -1,0 +1,124 @@
+{
+  "name": "dmlab_explore_object_rewards_few",
+  "version": "0.1.0",
+  "title": "DMLab explore_object_rewards_few",
+  "sources": [
+    "../../common/f32.js",
+    "../../common/rng_pcg32.js",
+    "src/00_header.js",
+    "src/10_constants.js",
+    "src/atlas/explore_object_rewards_few.js",
+    "src/levels/explore_object_rewards_few.js",
+    "src/spawn/explore_object_rewards_few.js",
+    "src/20_state.js",
+    "src/30_level.js",
+    "src/40_pmove.js",
+    "src/50_tasks/explore.js",
+    "src/50_tasks/rooms.js",
+    "src/80_render.js",
+    "src/90_playtrain.js"
+  ],
+  "action_space": "dmlab9",
+  "actions": [
+    {
+      "name": "FORWARD",
+      "held": [
+        87
+      ],
+      "press": null
+    },
+    {
+      "name": "BACKWARD",
+      "held": [
+        83
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_LEFT",
+      "held": [
+        65
+      ],
+      "press": null
+    },
+    {
+      "name": "STRAFE_RIGHT",
+      "held": [
+        68
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_LEFT",
+      "held": [
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "LOOK_RIGHT",
+      "held": [
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "FORWARD_LOOK_LEFT",
+      "held": [
+        87,
+        37
+      ],
+      "press": null
+    },
+    {
+      "name": "FORWARD_LOOK_RIGHT",
+      "held": [
+        87,
+        39
+      ],
+      "press": null
+    },
+    {
+      "name": "FIRE",
+      "held": [
+        32
+      ],
+      "press": null
+    }
+  ],
+  "obs": {
+    "rgb": true,
+    "rgb_size": 64,
+    "frame": "64x64 first-person view, 90 degree FOV, eye 0.5 cells above the floor"
+  },
+  "max_steps": 1350,
+  "max_steps_source": "episodeLengthSeconds 90 s x 60 fps / action repeat 4",
+  "human": {
+    "steps_per_second": 60,
+    "controls": "W/S forward and back, A/D strafe, arrow keys or the mouse (click the view; Esc gives it back) to turn. The page runs DMLab's 60 frames a second.",
+    "unused_actions": [
+      "FIRE",
+      "FORWARD_LOOK_LEFT",
+      "FORWARD_LOOK_RIGHT"
+    ],
+    "hint": "Click the view to look around with the mouse (Esc gives it back)."
+  },
+  "reference": {
+    "name": "DeepMind Lab (DMLab-30)",
+    "repo": "https://github.com/google-deepmind/lab",
+    "commit": "b1db91af5b4d2f3a24466f4632a3e5e1b0829cca",
+    "license": "GPL-2.0 (engine, game_scripts); CC BY 4.0 (//assets)",
+    "parity": "G2 layouts exact; G3 trajectories under the dumps' scripted actions within PLAN.md section 4 tolerances, with the oracle's engine timing, yaw phase and respawn poses as replay inputs (games/<level>.replay.json)",
+    "not_matched": [
+      "pixels: no lightmaps, one static frame of each animated Q3 shader, no HUD, flat sky colour (G6 measures it)",
+      "engine timing in play: a fixed 17,17,14 ms cycle; DMLab's client-clock jitter is reproduced only in G3 replays",
+      "goal pickup: a static billboard; DMLab's model spins and bobs",
+      "the corpus is DMLab seeds 0..31; episode seed s plays corpus entry s mod 32",
+      "restarts in play: spawn, door states and object placements drawn with the port's PCG following the factories' rules, not DMLab's Lua RNG; hold 0 frames",
+      "closed doors are drawn as full wall cells (they collide as a panel across the cell centre)",
+      "human-recognisable objects: the two-colour patterns are this port's own drawings (DMLab's pattern images are under game_scripts/, GPL-2)"
+    ],
+    "level": "contributed/dmlab30/explore_object_rewards_few",
+    "family_pins": "manifest.json (oracle, action set, constants, dump hashes, files read)"
+  }
+}
